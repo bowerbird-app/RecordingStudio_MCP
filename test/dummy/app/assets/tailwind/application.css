@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Resolved engine/gem paths written before each Tailwind build/watch. */
+@import "./gem_sources.css";
+
 /* Include dummy app views for Tailwind CSS */
 @source "../../views/**/*.erb";
 
@@ -10,6 +13,3 @@
 /* Scan FlatPack components for classes used by the bundled ViewComponents */
 @source "../../../vendor/bundle/**/flatpack/app/components/**/*.{rb,erb}";
 @source "../../../../../../usr/local/bundle/ruby/**/bundler/gems/flatpack-*/app/components/**/*.{rb,erb}";
-
-/* Include the engine's views in the Tailwind build */
-@source "../../../../../app/views/**/*.erb";
