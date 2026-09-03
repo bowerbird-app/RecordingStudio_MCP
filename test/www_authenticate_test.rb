@@ -11,7 +11,7 @@ class WwwAuthenticateTest < Minitest::Test
     value = RecordingStudioMcp::WwwAuthenticate.header_value(request)
 
     assert_equal(
-      'Bearer FAKESECRET_g3h4i5j6k7l8m9n0o1p2="https://studio.example/.well-known/oauth-protected-resource"',
+      'Bearer resource_metadata="https://studio.example/.well-known/oauth-protected-resource"',
       value
     )
     refute_includes value, "recording_studio_mcp"

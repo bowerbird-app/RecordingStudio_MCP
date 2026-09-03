@@ -60,4 +60,52 @@ class ProtocolTest < Minitest::Test
     assert result.notification
     assert_nil result.body
   end
+
+  def test_ping_returns_empty_result
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 4, "method" => "ping" },
+      access_grant: @grant
+    )
+
+    assert_equal({}, result.body[:result])
+  end
+
+  def test_invalid_request_without_jsonrpc
+    result = RecordingStudioMcp::Protocol.handle(
+      { "id" => 5, "method" => "ping" },
+      access_grant: @grant
+    )
+
+    assert_equal(-32_600, result.body.dig(:error, :code))
+  end
+
+  def test_initialize_falls_back_to_default_protocol_version
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 6,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "1999-01-01" }
+      },
+      access_grant: @grant
+    )
+
+    assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
+  end
+
+  def test_tools_call_dispatches
+    RecordingStudioMcp::Dispatcher.stub(:call, { content: [{ type: "text", text: "{}" }], isError: false }) do
+      result = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 7,
+          "method" => "tools/call",
+          "params" => { "name" => "list", "arguments" => { "type" => "Workspace" } }
+        },
+        access_grant: @grant
+      )
+
+      refute result.body.dig(:result, :isError)
+    end
+  end
 end

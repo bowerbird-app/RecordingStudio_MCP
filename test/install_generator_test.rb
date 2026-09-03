@@ -11,10 +11,8 @@ class InstallGeneratorTest < Minitest::Test
     __dir__
   )
 
-  def with_temp_app
-    Dir.mktmpdir do |dir|
-      yield dir
-    end
+  def with_temp_app(&)
+    Dir.mktmpdir(&)
   end
 
   def build_generator(destination_root, options = {})

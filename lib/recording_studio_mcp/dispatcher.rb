@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "action_controller"
+
 module RecordingStudioMcp
   class Dispatcher
     RESOURCE_TOOLS = {
@@ -27,11 +29,12 @@ module RecordingStudioMcp
       else
         dispatch_resource(RESOURCE_TOOLS.fetch(name), args)
       end
-    rescue RecordingStudioApi::AuthorizationError => error
-      error_result(error.message)
-    rescue RecordingStudioApi::NotFoundError, RecordingStudioApi::UnsupportedActionError,
-           RecordingStudioApi::InvalidActionInputError, RecordingStudioApi::InvalidPaginationTokenError => error
-      error_result(error.message)
+    rescue RecordingStudioApi::AuthorizationError,
+           RecordingStudioApi::NotFoundError,
+           RecordingStudioApi::UnsupportedActionError,
+           RecordingStudioApi::InvalidActionInputError,
+           RecordingStudioApi::InvalidPaginationTokenError => e
+      error_result(e.message)
     end
 
     private
@@ -41,10 +44,14 @@ module RecordingStudioMcp
     def dispatch_resource(operation_name, args)
       recordable_type = resolve_recordable_type!(args["type"])
       registration = RecordingStudioApi.recordable_registration_for(recordable_type, api: api_key)
-      raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{recordable_type}" if registration && !registration.supports_operation?(operation_name)
+      if registration && !registration.supports_operation?(operation_name)
+        raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{recordable_type}"
+      end
 
       operation = RecordingStudioApi.resource_action(operation_name, version: api_version, api: api_key)
-      raise RecordingStudioApi::UnsupportedActionError, "Unknown API resource operation #{operation_name}" if operation.nil?
+      if operation.nil?
+        raise RecordingStudioApi::UnsupportedActionError, "Unknown API resource operation #{operation_name}"
+      end
 
       recording = load_recording(recordable_type, args["id"]) if %i[show update].include?(operation_name)
       result = operation.handler.call(resource_context(recordable_type, args, recording: recording))
@@ -58,8 +65,12 @@ module RecordingStudioMcp
 
       action = RecordingStudioApi.capability_action(action_name, version: api_version, api: api_key)
       raise RecordingStudioApi::UnsupportedActionError, "Unknown API action #{action_name}" if action.nil?
-      raise RecordingStudioApi::UnsupportedActionError, "#{action.name} is not enabled for #{recordable_type}" unless action.applicable_to?(recordable_type)
-      raise RecordingStudioApi::UnsupportedActionError, "#{action.name} is not enabled for #{recordable_type}" unless RecordingStudioApi.capability_action_enabled_for?(action, recordable_type, api: api_key)
+      unless action.applicable_to?(recordable_type)
+        raise RecordingStudioApi::UnsupportedActionError, "#{action.name} is not enabled for #{recordable_type}"
+      end
+      unless RecordingStudioApi.capability_action_enabled_for?(action, recordable_type, api: api_key)
+        raise RecordingStudioApi::UnsupportedActionError, "#{action.name} is not enabled for #{recordable_type}"
+      end
 
       recording = load_recording(recordable_type, args["id"])
       context = action_context(recording, args, action)
@@ -148,7 +159,9 @@ module RecordingStudioMcp
 
       recording = access_grant.accessible_recordings.find_by(id: id)
       raise RecordingStudioApi::NotFoundError, "Resource was not found in this API scope" if recording.nil?
-      raise RecordingStudioApi::NotFoundError, "Resource type does not match #{recordable_type}" unless recording.recordable_type == recordable_type
+      unless recording.recordable_type == recordable_type
+        raise RecordingStudioApi::NotFoundError, "Resource type does not match #{recordable_type}"
+      end
 
       recording
     end
@@ -160,7 +173,7 @@ module RecordingStudioMcp
       return name if RecordingStudioApi.recordable_registration_for(name, api: api_key)
 
       from_resource = RecordingStudioApi.recordable_type_for_resource(name, api: api_key) ||
-        RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api_key)
+                      RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api_key)
       return from_resource if from_resource.present?
 
       raise RecordingStudioApi::NotFoundError, "Unknown API resource #{name}"

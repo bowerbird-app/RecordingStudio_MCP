@@ -122,7 +122,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
   end
 
   test "create and show go through the named api" do
-    token = issue_delegated_token
+    token = issue_delegated_token(role: "edit")
 
     post "/recording_studio_mcp",
          params: rpc(
@@ -136,8 +136,9 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
          ).to_json,
          headers: json_headers.merge("Authorization" => "Bearer #{token}")
 
-    assert_response :success
-    created = JSON.parse(JSON.parse(response.body).dig("result", "content", 0, "text"))
+    assert_response :success, response.body
+    inner = JSON.parse(response.body).dig("result", "content", 0, "text")
+    created = JSON.parse(inner)
     id = created["id"]
 
     post "/recording_studio_mcp",
@@ -167,11 +168,12 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     { jsonrpc: "2.0", id: SecureRandom.random_number(1_000), method: method, params: params }
   end
 
-  def issue_delegated_token
+  def issue_delegated_token(role: "view")
     approved = approve_delegated_oauth(
       oauth_client: @oauth_client,
       user: @user,
       access_recording: @access_recording,
+      role: role,
       pkce: @pkce
     )
 

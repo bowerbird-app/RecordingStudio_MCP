@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Run .cursor/install.sh against stubbed PATH. Modes: warm, cold-apt-fail.
-# Prints SANDBOX_* lines a test can parse. Does not talk to apt or the network.
-
 set -euo pipefail
 
 MODE="${1:?mode required: warm or cold-apt-fail}"

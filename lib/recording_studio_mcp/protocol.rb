@@ -25,8 +25,8 @@ module RecordingStudioMcp
       return rpc_error(nil, INVALID_REQUEST, "Invalid Request") unless valid_request?(message)
 
       dispatch(message)
-    rescue StandardError => error
-      rpc_error(message.is_a?(Hash) ? message["id"] : nil, INTERNAL_ERROR, error.message)
+    rescue StandardError => e
+      rpc_error(message.is_a?(Hash) ? message["id"] : nil, INTERNAL_ERROR, e.message)
     end
 
     private
