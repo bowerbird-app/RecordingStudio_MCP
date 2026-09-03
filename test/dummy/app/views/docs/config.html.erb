@@ -3,14 +3,17 @@
 <div class="flex w-full flex-col gap-6">
   <%= render FlatPack::PageTitle::Component.new(
     title: "Config",
-    subtitle: "Replace this placeholder with the configuration settings your generated gem exposes.",
+    subtitle: "MCP points unauthenticated clients at Oauth protected-resource metadata.",
     variant: :h1
   ) %>
 
   <%= render FlatPack::CodeBlock::Component.new(
     language: :ruby,
     code: <<~'CODE'
-      # Add the config settings for the gem here.
+      RecordingStudioMcp.configure do |config|
+        config.oauth_protected_resource_path = "/.well-known/oauth-protected-resource"
+        config.oauth_engine_mount_path = "/recording_studio_oauth"
+      end
     CODE
   ) %>
 </div>

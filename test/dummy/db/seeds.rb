@@ -1,6 +1,4 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
+# frozen_string_literal: true
 
 find_or_record_child = lambda do |recordable, root_recording, parent_recording|
   RecordingStudio::Recording.find_by(
@@ -16,37 +14,112 @@ find_or_record_child = lambda do |recordable, root_recording, parent_recording|
   ).recording
 end
 
-# Create the admin user
+grant_or_find_access = lambda do |recording, actor, role|
+  existing = RecordingStudioAccessible.access_recordings_for_actor(
+    recording: recording,
+    actor: actor
+  ).first
+  return existing if existing.present?
+
+  result = RecordingStudioAccessible.grant_access(
+    recording: recording,
+    actor: actor,
+    role: role,
+    manager_actor: actor
+  )
+  return result.value if result.success?
+
+  bootstrap = RecordingStudioAccessible.bootstrap_owner_access!(
+    recording: recording,
+    actor: actor
+  )
+  raise bootstrap.error if bootstrap.failure?
+
+  bootstrap.value
+end
+
 user = User.find_or_create_by!(email: "admin@admin.com") do |u|
   u.password = "Password"
   u.password_confirmation = "Password"
 end
 
-# Create the workspace recordables
-workspace = Workspace.find_or_create_by!(name: "Studio Workspace")
-accessible_workspace = Workspace.find_or_create_by!(name: "Client Workspace")
-private_workspace = Workspace.find_or_create_by!(name: "Private Workspace")
+studio = Workspace.find_or_create_by!(name: "Studio Workspace")
+docs = Workspace.find_or_create_by!(name: "Docs Workspace")
 folder = Folder.find_or_create_by!(name: "Product Docs")
 page = Page.find_or_create_by!(title: "Getting Started")
+admin_root = AdminRoot.find_or_create_by!(name: "Admin")
+
+oauth_client = RecordingStudioOauth::OauthClient.find_or_initialize_by(name: "Seed MCP App")
+oauth_client.redirect_uris = ["http://127.0.0.1:3000/callback"]
+oauth_client.confidential = false
+oauth_client.api_key = "public"
+oauth_client.save!
 
 previous_actor = Current.actor
 Current.actor = user
 
 begin
-  # Create the root recording
-  root_recording = RecordingStudio.root_recording_for(workspace)
-  accessible_root_recording = RecordingStudio.root_recording_for(accessible_workspace)
-  private_root_recording = RecordingStudio.root_recording_for(private_workspace)
+  studio_root = RecordingStudio.root_recording_for(studio)
+  docs_root = RecordingStudio.root_recording_for(docs)
+  admin_recording = RecordingStudio.root_recording_for(admin_root)
+  folder_recording = find_or_record_child.call(folder, studio_root, studio_root)
+  find_or_record_child.call(page, studio_root, folder_recording)
 
-  folder_recording = find_or_record_child.call(folder, root_recording, root_recording)
+  studio_access = grant_or_find_access.call(studio_root, user, :admin)
+  docs_access = grant_or_find_access.call(docs_root, user, :admin)
+  grant_or_find_access.call(folder_recording, user, :edit)
+  grant_or_find_access.call(admin_recording, user, :admin)
 
-  find_or_record_child.call(page, root_recording, folder_recording)
+  unless RecordingStudioSiteSettings.name_for(studio_root) == "Studio"
+    RecordingStudioSiteSettings.update!(studio_root, name: "Studio", actor: user)
+  end
+  unless RecordingStudioSiteSettings.name_for(docs_root) == "Studio"
+    RecordingStudioSiteSettings.update!(docs_root, name: "Studio", actor: user)
+  end
+
+  pkce_challenge = RecordingStudioOauth::Pkce.s256_challenge("V" + ("a" * 42))
+
+  unless RecordingStudioOauth::OauthAuthorization.exists?(oauth_client: oauth_client, manager_actor: user, manager_access_recording: studio_access, revoked_at: nil)
+    connected = RecordingStudioOauth::Services::CreateOauthAuthorization.call(
+      oauth_client: oauth_client,
+      manager_actor: user,
+      access_recording: studio_access,
+      role: "view",
+      redirect_uri: oauth_client.redirect_uris.first,
+      code_challenge: pkce_challenge,
+      code_challenge_method: "S256"
+    )
+    raise connected.error if connected.failure?
+  end
+
+  reconnect = RecordingStudioOauth::OauthAuthorization.find_by(
+    oauth_client: oauth_client,
+    manager_actor: user,
+    manager_access_recording: docs_access
+  )
+  if reconnect.nil?
+    created = RecordingStudioOauth::Services::CreateOauthAuthorization.call(
+      oauth_client: oauth_client,
+      manager_actor: user,
+      access_recording: docs_access,
+      role: "view",
+      redirect_uri: oauth_client.redirect_uris.first,
+      code_challenge: pkce_challenge,
+      code_challenge_method: "S256"
+    )
+    raise created.error if created.failure?
+
+    RecordingStudioOauth::Services::VoidOauthAuthorization.call(
+      authorization: created.value.fetch(:authorization)
+    )
+  elsif reconnect.revoked_at.nil?
+    RecordingStudioOauth::Services::VoidOauthAuthorization.call(authorization: reconnect)
+  end
 ensure
   Current.actor = previous_actor
 end
 
 puts "Seeded: admin@admin.com / Password"
-puts "Seeded: Workspace '#{workspace.name}' with root recording ##{root_recording.id}"
-puts "Seeded: Workspace '#{accessible_workspace.name}' with root recording ##{accessible_root_recording.id}"
-puts "Seeded: Workspace '#{private_workspace.name}' with root recording ##{private_root_recording.id}"
-puts "Seeded: Folder '#{folder.name}' and page '#{page.title}'"
+puts "Seeded: Seed MCP App client_id=#{oauth_client.client_id}"
+puts "Seeded: Studio Workspace (Connected), Docs Workspace (Reconnect)"
+puts "Seeded: MCP at /recording_studio_mcp"

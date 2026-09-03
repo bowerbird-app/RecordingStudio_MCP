@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
-GemTemplate::Engine.routes.draw do
-  root "home#index"
+RecordingStudioMcp::Engine.routes.draw do
+  match "/", to: "mcp#handle", via: %i[get post], as: :mcp
 end

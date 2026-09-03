@@ -20,16 +20,30 @@ Layout/LineLength:
 Metrics/ClassLength:
   Exclude:
     - 'test/**/*'
+    - 'lib/recording_studio_mcp/dispatcher.rb'
+
+Metrics/ModuleLength:
+  Exclude:
+    - 'lib/recording_studio_mcp/tools.rb'
 
 Metrics/MethodLength:
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
+    - 'lib/recording_studio_mcp/dispatcher.rb'
+    - 'lib/recording_studio_mcp/protocol.rb'
+    - 'lib/recording_studio_mcp/tools.rb'
 
 Metrics/AbcSize:
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
+    - 'lib/recording_studio_mcp/dispatcher.rb'
+    - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - 'lib/recording_studio_mcp/protocol.rb'
 
 # Allow empty blocks in tests (common for stubs/mocks)
 Lint/EmptyBlock:

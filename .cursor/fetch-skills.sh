@@ -22,7 +22,7 @@ PLUGIN_RAW="https://raw.githubusercontent.com/${PLUGIN_OWNER}/${PLUGIN_REPO}/${P
 PLUGIN_CATALOG="https://raw.githubusercontent.com/${PLUGIN_OWNER}/${PLUGIN_REPO}/${PLUGIN_REF}/skill-sources.json"
 PLUGIN_RULES_API="https://api.github.com/repos/${PLUGIN_OWNER}/${PLUGIN_REPO}/contents/rules?ref=${PLUGIN_REF}"
 PLUGIN_RULES_RAW="https://raw.githubusercontent.com/${PLUGIN_OWNER}/${PLUGIN_REPO}/${PLUGIN_REF}/rules"
-USER_AGENT="RecordingStudio-gem-template-fetch-skills"
+USER_AGENT="RecordingStudio-mcp-fetch-skills"
 SKIP_ID="add-skill-or-agent"
 
 warn() {
