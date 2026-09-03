@@ -100,7 +100,9 @@ class DispatcherTest < Minitest::Test
   def test_authorization_error_is_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-        RecordingStudioApi.stub(:resource_action, ->(*) { raise RecordingStudioApi::AuthorizationError, "forbidden" }) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise RecordingStudioApi::AuthorizationError, "forbidden"
+        }) do
           RecordingStudioApi.stub(:resource_name_for, "workspaces") do
             RecordingStudioApi.stub(:default_api_version, "v1") do
               result = dispatch("list", { "type" => "Workspace" })
@@ -201,7 +203,9 @@ class DispatcherTest < Minitest::Test
 
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :create ? FakeOperation.new(handler) : nil }) do
+        RecordingStudioApi.stub(:resource_action, lambda { |name, **|
+          name == :create ? FakeOperation.new(handler) : nil
+        }) do
           RecordingStudioApi.stub(:resource_name_for, "pages") do
             RecordingStudioApi.stub(:default_api_version, "v1") do
               result = RecordingStudioMcp::Dispatcher.call(

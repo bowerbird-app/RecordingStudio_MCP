@@ -116,7 +116,12 @@ class ProtocolTest < Minitest::Test
   end
 
   def test_tools_call_dispatches
-    RecordingStudioMcp::Dispatcher.stub(:call, { content: [{ type: "text", text: "{}" }], structuredContent: {}, isError: false }) do
+    stub_result = {
+      content: [{ type: "text", text: "{}" }],
+      structuredContent: {},
+      isError: false
+    }
+    RecordingStudioMcp::Dispatcher.stub(:call, stub_result) do
       result = RecordingStudioMcp::Protocol.handle(
         {
           "jsonrpc" => "2.0",

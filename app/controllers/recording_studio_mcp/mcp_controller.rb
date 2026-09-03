@@ -26,31 +26,36 @@ module RecordingStudioMcp
     def ensure_api_access_enabled!
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
 
-      render json: api_error_payload(
-        code: "api_access_disabled",
-        message: "API access is temporarily disabled"
-      ), status: :service_unavailable
+      render_api_disabled
     end
 
     def authenticate_mcp!
       auth = Authenticator.access_grant(request.headers["Authorization"])
-      unless auth.success?
-        error = auth.error == :missing_token ? nil : "invalid_token"
-        response.set_header("WWW-Authenticate", WwwAuthenticate.header_value(request, error: error))
-        render json: { error: "unauthorized" }, status: :unauthorized
-        return
-      end
+      return render_unauthorized(auth) unless auth.success?
 
-      @access_grant = auth.access_grant
-      @current_api_key = @access_grant.api_client&.api_key.presence || "public"
-      @current_api_client = @access_grant.api_client
-      @current_api_credential = @access_grant.credential
-      @current_access_recording = @access_grant.access_recording
-      @current_root_recording = @access_grant.root_recording
-      @current_access_grant = @access_grant
-
+      assign_access_grant(auth.access_grant)
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
 
+      render_api_disabled
+    end
+
+    def assign_access_grant(grant)
+      @access_grant = grant
+      @current_api_key = grant.api_client&.api_key.presence || "public"
+      @current_api_client = grant.api_client
+      @current_api_credential = grant.credential
+      @current_access_recording = grant.access_recording
+      @current_root_recording = grant.root_recording
+      @current_access_grant = grant
+    end
+
+    def render_unauthorized(auth)
+      error = auth.error == :missing_token ? nil : "invalid_token"
+      response.set_header("WWW-Authenticate", WwwAuthenticate.header_value(request, error: error))
+      render json: { error: "unauthorized" }, status: :unauthorized
+    end
+
+    def render_api_disabled
       render json: api_error_payload(
         code: "api_access_disabled",
         message: "API access is temporarily disabled"

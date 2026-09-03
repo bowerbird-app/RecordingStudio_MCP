@@ -22,6 +22,10 @@ Metrics/ClassLength:
     - 'test/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
 
+Metrics/ModuleLength:
+  Exclude:
+    - 'lib/recording_studio_mcp/tools.rb'
+
 Metrics/MethodLength:
   Exclude:
     - 'test/**/*'
