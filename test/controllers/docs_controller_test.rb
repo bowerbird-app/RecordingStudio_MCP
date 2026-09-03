@@ -102,7 +102,7 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     get docs_methods_path
     assert_response :success
     assert_select "h1", text: "Tools"
-    assert_includes response.body, "list, show, create, update, capability_action"
+    assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "tools/call"
     assert_includes response.body, "Workspace"
   end

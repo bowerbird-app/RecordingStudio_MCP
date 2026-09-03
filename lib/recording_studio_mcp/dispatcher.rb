@@ -10,21 +10,27 @@ module RecordingStudioMcp
       "create" => :create,
       "update" => :update
     }.freeze
+    WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
 
-    def self.call(tool_name:, arguments:, access_grant:)
-      new(access_grant: access_grant).call(tool_name, arguments)
+    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil)
+      new(access_grant: access_grant, idempotency_key: idempotency_key).call(tool_name, arguments)
     end
 
-    def initialize(access_grant:)
+    def initialize(access_grant:, idempotency_key: nil)
       @access_grant = access_grant
+      @idempotency_key = idempotency_key
+      @catalog = Catalog.for(access_grant)
     end
 
     def call(tool_name, arguments)
       name = tool_name.to_s
       args = stringify_keys(arguments)
-      return error_result("Unknown tool #{name}") unless Tools.known?(name)
+      return error_result(unknown_tool_message(name)) unless Tools.known?(name)
 
-      if name == "capability_action"
+      case name
+      when "describe"
+        success_result(catalog.describe(args["type"]))
+      when "capability_action"
         dispatch_capability_action(args)
       else
         dispatch_resource(RESOURCE_TOOLS.fetch(name), args)
@@ -39,10 +45,10 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant
+    attr_reader :access_grant, :idempotency_key, :catalog
 
     def dispatch_resource(operation_name, args)
-      recordable_type = resolve_recordable_type!(args["type"])
+      recordable_type = catalog.resolve_type!(args["type"])
       registration = RecordingStudioApi.recordable_registration_for(recordable_type, api: api_key)
       if registration && !registration.supports_operation?(operation_name)
         raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{recordable_type}"
@@ -54,22 +60,20 @@ module RecordingStudioMcp
       end
 
       recording = load_recording(recordable_type, args["id"]) if %i[show update].include?(operation_name)
-      result = operation.handler.call(resource_context(recordable_type, args, recording: recording))
+      result = operation.handler.call(
+        resource_context(recordable_type, args, recording: recording, operation_name: operation_name)
+      )
       success_result(result.fetch(:json))
     end
 
     def dispatch_capability_action(args)
-      recordable_type = resolve_recordable_type!(args["type"])
+      recordable_type = catalog.resolve_type!(args["type"])
       action_name = args["action"].to_s
       raise RecordingStudioApi::InvalidActionInputError, "action is required" if action_name.blank?
 
       action = RecordingStudioApi.capability_action(action_name, version: api_version, api: api_key)
-      raise RecordingStudioApi::UnsupportedActionError, "Unknown API action #{action_name}" if action.nil?
-      unless action.applicable_to?(recordable_type)
-        raise RecordingStudioApi::UnsupportedActionError, "#{action.name} is not enabled for #{recordable_type}"
-      end
-      unless RecordingStudioApi.capability_action_enabled_for?(action, recordable_type, api: api_key)
-        raise RecordingStudioApi::UnsupportedActionError, "#{action.name} is not enabled for #{recordable_type}"
+      unless action && RecordingStudioApi.capability_action_enabled_for?(action, recordable_type, api: api_key)
+        raise RecordingStudioApi::UnsupportedActionError, catalog.unknown_action_message(action_name, recordable_type)
       end
 
       recording = load_recording(recordable_type, args["id"])
@@ -87,9 +91,9 @@ module RecordingStudioMcp
       success_result(payload)
     end
 
-    def resource_context(recordable_type, args, recording: nil)
+    def resource_context(recordable_type, args, recording: nil, operation_name: nil)
       params = ActionController::Parameters.new(resource_params(recordable_type, args)).permit!
-      request_params = ActionController::Parameters.new(write_params(args)).permit!
+      request_params = ActionController::Parameters.new(write_params(recordable_type, args, operation_name)).permit!
 
       RecordingStudioApi::ResourceOperationContext.new(
         recording: recording,
@@ -105,7 +109,7 @@ module RecordingStudioMcp
         request_params: request_params,
         scoped_recordings: access_grant.accessible_recordings,
         parent_recording: nil,
-        idempotency_key: nil
+        idempotency_key: create_idempotency_key(args, operation_name)
       )
     end
 
@@ -144,14 +148,36 @@ module RecordingStudioMcp
         "sort" => args["sort"],
         "order" => args["order"],
         "filter" => args["filter"],
-        "include" => args["include"]
+        "include" => args["include"],
+        "pagination_token" => args["pagination_token"]
       }.compact
     end
 
-    def write_params(args)
-      payload = stringify_keys(args["attributes"])
+    def write_params(recordable_type, args, operation_name)
+      return {} unless %i[create update].include?(operation_name)
+
+      if args.key?("attributes")
+        raise RecordingStudioApi::InvalidActionInputError,
+              "Send writable fields at the request root, not inside attributes"
+      end
+
+      payload = stringify_keys(args).except(*WRITE_RESERVED_KEYS)
+      allowed = catalog.writable_fields(recordable_type)
+      unknown = payload.keys - allowed
+      if unknown.any?
+        allowed_sentence = allowed.any? ? allowed.join(", ") : "(none)"
+        raise RecordingStudioApi::InvalidActionInputError,
+              "Unknown fields #{unknown.sort.join(', ')}. Writable fields for #{recordable_type}: #{allowed_sentence}"
+      end
+
       payload["parent_id"] = args["parent_id"] if args.key?("parent_id")
       payload
+    end
+
+    def create_idempotency_key(args, operation_name)
+      return unless operation_name == :create
+
+      args["idempotency_key"].presence || idempotency_key
     end
 
     def load_recording(recordable_type, id)
@@ -166,19 +192,6 @@ module RecordingStudioMcp
       recording
     end
 
-    def resolve_recordable_type!(type)
-      raise RecordingStudioApi::InvalidActionInputError, "type is required" if type.blank?
-
-      name = type.to_s
-      return name if RecordingStudioApi.recordable_registration_for(name, api: api_key)
-
-      from_resource = RecordingStudioApi.recordable_type_for_resource(name, api: api_key) ||
-                      RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api_key)
-      return from_resource if from_resource.present?
-
-      raise RecordingStudioApi::NotFoundError, "Unknown API resource #{name}"
-    end
-
     def serialize_capability_result(action, result)
       return result.fetch(:json) if result.is_a?(Hash) && result.key?(:json)
 
@@ -191,7 +204,7 @@ module RecordingStudioMcp
     end
 
     def api_key
-      access_grant.api_client&.api_key.presence || "public"
+      catalog.api
     end
 
     def api_version
@@ -206,11 +219,23 @@ module RecordingStudioMcp
       {}
     end
 
+    def unknown_tool_message(name)
+      "Unknown tool #{name}. Allowed tools: #{Tools::NAMES.join(', ')}"
+    end
+
     def success_result(payload)
+      json = stringify_payload(payload)
       {
-        content: [{ type: "text", text: JSON.generate(payload) }],
+        content: [{ type: "text", text: JSON.generate(json) }],
+        structuredContent: json,
         isError: false
       }
+    end
+
+    def stringify_payload(payload)
+      JSON.parse(JSON.generate(payload))
+    rescue JSON::GeneratorError, TypeError
+      payload
     end
 
     def error_result(message)

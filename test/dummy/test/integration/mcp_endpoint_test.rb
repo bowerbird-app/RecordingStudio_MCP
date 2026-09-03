@@ -54,7 +54,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     payload = JSON.parse(response.body)
-    records = JSON.parse(payload.dig("result", "content", 0, "text")).fetch("records")
+    records = tool_payload(payload).fetch("records")
     names = records.map { |record| record["name"] }
 
     assert_equal false, payload.dig("result", "isError")
@@ -74,7 +74,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     payload = JSON.parse(response.body)
-    body = JSON.parse(payload.dig("result", "content", 0, "text"))
+    body = tool_payload(payload)
 
     assert_equal false, payload.dig("result", "isError")
     assert_equal true, body["ok"]
@@ -115,7 +115,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
          headers: json_headers.merge("Authorization" => "Bearer #{token}")
 
     assert_response :success
-    records = JSON.parse(JSON.parse(response.body).dig("result", "content", 0, "text")).fetch("records")
+    records = tool_payload(JSON.parse(response.body)).fetch("records")
     names = records.map { |record| record["name"] }
     assert_includes names, @root_recording.recordable.name
     refute_includes names, outsider.name
@@ -131,22 +131,132 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
            arguments: {
              type: "Page",
              parent_id: @root_recording.id,
-             attributes: { title: "Created via MCP" }
+             title: "Created via MCP"
            }
          ).to_json,
          headers: json_headers.merge("Authorization" => "Bearer #{token}")
 
     assert_response :success, response.body
-    inner = JSON.parse(response.body).dig("result", "content", 0, "text")
-    created = JSON.parse(inner)
+    created = tool_payload(JSON.parse(response.body))
     id = created["id"]
+    assert_equal "Created via MCP", created["title"]
 
     post "/recording_studio_mcp",
          params: rpc("tools/call", name: "show", arguments: { type: "Page", id: id }).to_json,
          headers: json_headers.merge("Authorization" => "Bearer #{token}")
 
-    shown = JSON.parse(JSON.parse(response.body).dig("result", "content", 0, "text"))
+    shown = tool_payload(JSON.parse(response.body))
     assert_equal "Created via MCP", shown["title"]
+  end
+
+  test "tools list names dummy types including Folder and Page" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/list").to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success
+    tools = JSON.parse(response.body).dig("result", "tools")
+    names = tools.map { |tool| tool["name"] }
+    list_enum = tools.find { |tool| tool["name"] == "list" }.dig("inputSchema", "properties", "type", "enum")
+    describe_enum = tools.find { |tool| tool["name"] == "describe" }.dig("inputSchema", "properties", "type", "enum")
+
+    assert_includes names, "describe"
+    assert_includes list_enum, "Folder"
+    assert_includes list_enum, "Page"
+    assert_includes list_enum, "Workspace"
+    assert_equal list_enum, describe_enum
+  end
+
+  test "describe page shows title writable" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "describe", arguments: { type: "Page" }).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    payload = JSON.parse(response.body)
+    described = tool_payload(payload)
+
+    refute payload.dig("result", "isError")
+    assert_includes described.fetch("writable_fields"), "title"
+    assert_includes described.fetch("operations"), "create"
+    refute_includes described.fetch("capability_actions"), "move"
+  end
+
+  test "list with pagination_token reaches page two when has_more" do
+    token = issue_delegated_token(role: "edit")
+    3.times do |index|
+      post "/recording_studio_mcp",
+           params: rpc(
+             "tools/call",
+             name: "create",
+             arguments: {
+               type: "Page",
+               parent_id: @root_recording.id,
+               title: "Paged #{index} #{SecureRandom.hex(4)}"
+             }
+           ).to_json,
+           headers: json_headers.merge("Authorization" => "Bearer #{token}")
+      assert_response :success, response.body
+    end
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "list", arguments: { type: "Page", limit: 2 }).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    first = tool_payload(JSON.parse(response.body))
+    assert_equal true, first.dig("meta", "has_more")
+    token_value = first.dig("meta", "next_pagination_token")
+    refute_nil token_value
+    first_ids = first.fetch("records").map { |record| record["id"] }
+
+    post "/recording_studio_mcp",
+         params: rpc(
+           "tools/call",
+           name: "list",
+           arguments: { type: "Page", limit: 2, pagination_token: token_value }
+         ).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    second = tool_payload(JSON.parse(response.body))
+    second_ids = second.fetch("records").map { |record| record["id"] }
+    assert second_ids.any?
+    assert_empty first_ids & second_ids
+  end
+
+  test "unknown type error lists allowed types" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "list", arguments: { type: "Nope" }).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success
+    payload = JSON.parse(response.body)
+    assert_equal true, payload.dig("result", "isError")
+    message = payload.dig("result", "content", 0, "text")
+    assert_includes message, "Unknown type Nope"
+    assert_includes message, "Folder"
+    assert_includes message, "Page"
+    assert_includes message, "Workspace"
+  end
+
+  test "mcp does not serve records when api access is disabled" do
+    token = issue_delegated_token
+    setting = RecordingStudioApi::ApiSetting.find_or_create_by!(key: "api")
+    setting.update!(api_access_enabled: false)
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "list", arguments: { type: "Workspace" }).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :service_unavailable
+    assert_equal "api_access_disabled", JSON.parse(response.body).dig("error", "code")
+  ensure
+    setting&.update!(api_access_enabled: true)
   end
 
   test "host well known protected resource still comes from oauth" do
@@ -166,6 +276,13 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
   def rpc(method, **params)
     { jsonrpc: "2.0", id: SecureRandom.random_number(1_000), method: method, params: params }
+  end
+
+  def tool_payload(payload)
+    result = payload.fetch("result")
+    return result.fetch("structuredContent") if result["structuredContent"].present?
+
+    JSON.parse(result.dig("content", 0, "text"))
   end
 
   def issue_delegated_token(role: "view")

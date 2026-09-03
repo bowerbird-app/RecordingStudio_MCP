@@ -29,6 +29,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "/recording_studio_mcp"
     assert_includes response.body, "Dummy-only"
+    assert_includes response.body, "describe"
     assert_includes response.body, "/assets/tailwind-"
   end
 end

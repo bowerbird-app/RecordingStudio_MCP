@@ -17,8 +17,13 @@ Tools are a small parameterized set over the named API the OauthClient is bound 
 - `create`
 - `update`
 - `capability_action`
+- `describe`
 
-Not one MCP tool per OpenAPI path. Handlers call the same API resource and capability actions.
+`tools/list` is grant-aware. `type` is an enum of types registered on that OauthClient's named API. Call `describe` for operations, writable fields, enabled capability actions, and parent rules. Unknown type or action errors name the allowed set.
+
+Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`. Tool results include MCP `structuredContent`.
+
+Not one MCP tool per OpenAPI path. Handlers call the same API resource and capability actions. MCP does not serve records when API access is disabled.
 
 Staff register the client in Oauth. There is no Dynamic Client Registration.
 

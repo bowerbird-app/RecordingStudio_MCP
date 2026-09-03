@@ -4,7 +4,7 @@ require "test_helper"
 
 class ToolsTest < Minitest::Test
   def test_names_are_the_parameterized_set
-    assert_equal %w[list show create update capability_action], RecordingStudioMcp::Tools::NAMES
+    assert_equal %w[list show create update capability_action describe], RecordingStudioMcp::Tools::NAMES
   end
 
   def test_definitions_cover_each_tool
@@ -14,8 +14,23 @@ class ToolsTest < Minitest::Test
   end
 
   def test_list_requires_type
-    schema = RecordingStudioMcp::Tools.list_tool.fetch(:inputSchema)
+    schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }.fetch(:inputSchema)
 
     assert_equal ["type"], schema.fetch(:required)
+    assert schema.fetch(:properties).key?(:pagination_token)
+  end
+
+  def test_read_tools_are_marked_read_only
+    %w[list show describe].each do |name|
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
+      assert_equal true, tool.dig(:annotations, :readOnlyHint), name
+    end
+  end
+
+  def test_create_has_no_attributes_envelope
+    schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "create" }.fetch(:inputSchema)
+
+    refute schema.fetch(:properties).key?(:attributes)
+    assert_equal true, schema[:additionalProperties]
   end
 end

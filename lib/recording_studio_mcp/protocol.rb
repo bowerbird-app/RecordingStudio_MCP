@@ -11,12 +11,13 @@ module RecordingStudioMcp
 
     Result = Struct.new(:status, :body, :notification, keyword_init: true)
 
-    def self.handle(payload, access_grant:)
-      new(access_grant: access_grant).handle(payload)
+    def self.handle(payload, access_grant:, idempotency_key: nil)
+      new(access_grant: access_grant, idempotency_key: idempotency_key).handle(payload)
     end
 
-    def initialize(access_grant:)
+    def initialize(access_grant:, idempotency_key: nil)
       @access_grant = access_grant
+      @idempotency_key = idempotency_key
     end
 
     def handle(payload)
@@ -31,7 +32,7 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant
+    attr_reader :access_grant, :idempotency_key
 
     def parse(payload)
       return payload if payload.is_a?(Hash)
@@ -62,7 +63,7 @@ module RecordingStudioMcp
         when "ping"
           {}
         when "tools/list"
-          { tools: Tools.definitions }
+          { tools: Tools.definitions(access_grant: access_grant) }
         when "tools/call"
           call_tool(params)
         else
@@ -85,7 +86,7 @@ module RecordingStudioMcp
 
       {
         protocolVersion: version,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: true } },
         serverInfo: {
           name: "recording-studio",
           version: RecordingStudioMcp::VERSION
@@ -98,7 +99,12 @@ module RecordingStudioMcp
       arguments = params["arguments"] || {}
       return rpc_invalid_params("name is required") if name.blank?
 
-      Dispatcher.call(tool_name: name, arguments: arguments, access_grant: access_grant)
+      Dispatcher.call(
+        tool_name: name,
+        arguments: arguments,
+        access_grant: access_grant,
+        idempotency_key: idempotency_key
+      )
     end
 
     def rpc_invalid_params(message)

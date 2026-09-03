@@ -27,6 +27,35 @@ class DispatcherTest < Minitest::Test
       recording if recording&.id.to_s == id.to_s
     end
   end
+  FakeCatalog = Struct.new(:api) do
+    def resolve_type!(name)
+      raise RecordingStudioApi::NotFoundError, unknown_type_message(name) if name.to_s == "Nope"
+
+      name.to_s
+    end
+
+    def writable_fields(_type)
+      %w[title]
+    end
+
+    def unknown_action_message(action, type)
+      "Unknown action #{action}. Allowed actions for #{type}: ping"
+    end
+
+    def describe(type)
+      {
+        "type" => type.to_s,
+        "operations" => %w[index show create update],
+        "writable_fields" => %w[title],
+        "capability_actions" => [],
+        "parent" => { "root" => false, "allowed_parent_types" => %w[Folder Workspace] }
+      }
+    end
+
+    def unknown_type_message(name)
+      "Unknown type #{name}. Allowed types: Folder, Page, Workspace"
+    end
+  end
 
   def setup
     @grant = FakeGrant.new(
@@ -36,31 +65,32 @@ class DispatcherTest < Minitest::Test
       root_recording: nil,
       accessible_recordings: []
     )
+    @catalog = FakeCatalog.new("public")
   end
 
   def test_unknown_tool_is_error
-    result = RecordingStudioMcp::Dispatcher.call(tool_name: "explode", arguments: {}, access_grant: @grant)
+    result = dispatch("explode", {})
 
     assert_equal true, result[:isError]
     assert_includes result.dig(:content, 0, :text), "Unknown tool"
+    assert_includes result.dig(:content, 0, :text), "describe"
   end
 
-  def test_list_calls_index_and_returns_json
+  def test_list_calls_index_and_returns_structured_content
     operation = FakeOperation.new(FakeHandler.new({ json: { records: [{ name: "Studio" }] } }))
 
-    RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-      RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :index ? operation : nil }) do
-        RecordingStudioApi.stub(:resource_name_for, "workspaces") do
-          RecordingStudioApi.stub(:default_api_version, "v1") do
-            result = RecordingStudioMcp::Dispatcher.call(
-              tool_name: "list",
-              arguments: { type: "Workspace" },
-              access_grant: @grant
-            )
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :index ? operation : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { type: "Workspace" })
 
-            refute result[:isError]
-            payload = JSON.parse(result.dig(:content, 0, :text))
-            assert_equal "Studio", payload.dig("records", 0, "name")
+              refute result[:isError]
+              assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
+              payload = JSON.parse(result.dig(:content, 0, :text))
+              assert_equal "Studio", payload.dig("records", 0, "name")
+            end
           end
         end
       end
@@ -68,36 +98,30 @@ class DispatcherTest < Minitest::Test
   end
 
   def test_authorization_error_is_tool_error
-    RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-      RecordingStudioApi.stub(:resource_action, ->(*) { raise RecordingStudioApi::AuthorizationError, "forbidden" }) do
-        RecordingStudioApi.stub(:resource_name_for, "workspaces") do
-          RecordingStudioApi.stub(:default_api_version, "v1") do
-            result = RecordingStudioMcp::Dispatcher.call(
-              tool_name: "list",
-              arguments: { "type" => "Workspace" },
-              access_grant: @grant
-            )
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(*) { raise RecordingStudioApi::AuthorizationError, "forbidden" }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { "type" => "Workspace" })
 
-            assert result[:isError]
-            assert_equal "forbidden", result.dig(:content, 0, :text)
+              assert result[:isError]
+              assert_equal "forbidden", result.dig(:content, 0, :text)
+            end
           end
         end
       end
     end
   end
 
-  def test_unknown_type_is_not_found
-    RecordingStudioApi.stub(:recordable_registration_for, nil) do
-      RecordingStudioApi.stub(:recordable_type_for_resource, nil) do
-        result = RecordingStudioMcp::Dispatcher.call(
-          tool_name: "show",
-          arguments: { type: "Nope", id: "1" },
-          access_grant: @grant
-        )
+  def test_unknown_type_lists_allowed_types
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = dispatch("show", { type: "Nope", id: "1" })
 
-        assert result[:isError]
-        assert_includes result.dig(:content, 0, :text), "Unknown API resource"
-      end
+      assert result[:isError]
+      assert_includes result.dig(:content, 0, :text), "Unknown type Nope"
+      assert_includes result.dig(:content, 0, :text), "Folder"
+      assert_includes result.dig(:content, 0, :text), "Page"
     end
   end
 
@@ -106,19 +130,89 @@ class DispatcherTest < Minitest::Test
     @grant.accessible_recordings = FakeRelation.new(recording)
     operation = FakeOperation.new(FakeHandler.new({ json: { title: "Getting Started" } }))
 
-    RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-      RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :show ? operation : nil }) do
-        RecordingStudioApi.stub(:resource_name_for, "pages") do
-          RecordingStudioApi.stub(:default_api_version, "v1") do
-            result = RecordingStudioMcp::Dispatcher.call(
-              tool_name: "show",
-              arguments: { type: "Page", id: "rec-1" },
-              access_grant: @grant
-            )
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :show ? operation : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("show", { type: "Page", id: "rec-1" })
 
-            refute result[:isError]
-            payload = JSON.parse(result.dig(:content, 0, :text))
-            assert_equal "Getting Started", payload["title"]
+              refute result[:isError]
+              assert_equal "Getting Started", result.dig(:structuredContent, "title")
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_create_rejects_attributes_envelope
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :create ? FakeOperation.new(nil) : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("create", { type: "Page", attributes: { title: "Nope" } })
+
+              assert result[:isError]
+              assert_includes result.dig(:content, 0, :text), "not inside attributes"
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_create_rejects_unknown_writable_fields
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :create ? FakeOperation.new(nil) : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("create", { type: "Page", title: "Ok", mystery: "nope" })
+
+              assert result[:isError]
+              assert_includes result.dig(:content, 0, :text), "mystery"
+              assert_includes result.dig(:content, 0, :text), "title"
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_describe_returns_type_contract
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = dispatch("describe", { type: "Page" })
+
+      refute result[:isError]
+      assert_equal "title", result.dig(:structuredContent, "writable_fields", 0)
+    end
+  end
+
+  def test_create_passes_idempotency_key_to_api_context
+    captured = nil
+    handler = Class.new do
+      define_method(:call) do |context|
+        captured = context
+        { json: { "id" => "page-1" } }
+      end
+    end.new
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :create ? FakeOperation.new(handler) : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = RecordingStudioMcp::Dispatcher.call(
+                tool_name: "create",
+                arguments: { type: "Page", title: "Hello", idempotency_key: "create-1" },
+                access_grant: @grant
+              )
+
+              refute result[:isError]
+              assert_equal "create-1", captured.idempotency_key
+            end
           end
         end
       end
@@ -126,15 +220,32 @@ class DispatcherTest < Minitest::Test
   end
 
   def test_capability_action_requires_action
-    RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-      result = RecordingStudioMcp::Dispatcher.call(
-        tool_name: "capability_action",
-        arguments: { type: "Workspace", id: "1" },
-        access_grant: @grant
-      )
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = dispatch("capability_action", { type: "Workspace", id: "1" })
 
       assert result[:isError]
       assert_includes result.dig(:content, 0, :text), "action is required"
     end
+  end
+
+  def test_unknown_action_lists_allowed_actions
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:capability_action, nil) do
+        RecordingStudioApi.stub(:default_api_version, "v1") do
+          result = dispatch("capability_action", { type: "Workspace", id: "1", action: "move" })
+
+          assert result[:isError]
+          assert_includes result.dig(:content, 0, :text), "Unknown action move"
+          assert_includes result.dig(:content, 0, :text), "ping"
+          refute_includes result.dig(:content, 0, :text), "for example"
+        end
+      end
+    end
+  end
+
+  private
+
+  def dispatch(tool_name, arguments)
+    RecordingStudioMcp::Dispatcher.call(tool_name: tool_name, arguments: arguments, access_grant: @grant)
   end
 end

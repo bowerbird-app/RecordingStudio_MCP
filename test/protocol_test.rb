@@ -22,6 +22,7 @@ class ProtocolTest < Minitest::Test
 
     assert_equal :ok, result.status
     assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
+    assert_equal true, result.body.dig(:result, :capabilities, :tools, :listChanged)
     assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
     assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
   end
@@ -33,7 +34,7 @@ class ProtocolTest < Minitest::Test
     )
 
     names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-    assert_equal %w[list show create update capability_action], names
+    assert_equal %w[list show create update capability_action describe], names
   end
 
   def test_unknown_method_is_method_not_found
@@ -93,8 +94,29 @@ class ProtocolTest < Minitest::Test
     assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
   end
 
+  def test_tools_call_passes_idempotency_key
+    captured = nil
+    RecordingStudioMcp::Dispatcher.stub(:call, lambda { |**kwargs|
+      captured = kwargs
+      { content: [{ type: "text", text: "{}" }], structuredContent: {}, isError: false }
+    }) do
+      RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 8,
+          "method" => "tools/call",
+          "params" => { "name" => "create", "arguments" => { "type" => "Page", "title" => "Hi" } }
+        },
+        access_grant: @grant,
+        idempotency_key: "create-1"
+      )
+    end
+
+    assert_equal "create-1", captured[:idempotency_key]
+  end
+
   def test_tools_call_dispatches
-    RecordingStudioMcp::Dispatcher.stub(:call, { content: [{ type: "text", text: "{}" }], isError: false }) do
+    RecordingStudioMcp::Dispatcher.stub(:call, { content: [{ type: "text", text: "{}" }], structuredContent: {}, isError: false }) do
       result = RecordingStudioMcp::Protocol.handle(
         {
           "jsonrpc" => "2.0",
