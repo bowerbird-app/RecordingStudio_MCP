@@ -45,6 +45,8 @@ class RecordingStudioTemplateTest < ActiveSupport::TestCase
     assert_equal folder_recording, page_recording.parent_recording
     assert_equal false, oauth_client.confidential
     assert_equal "public", oauth_client.api_key
+    assert_equal ["http://127.0.0.1:3000/callback"], oauth_client.redirect_uris
+    refute_includes oauth_client.redirect_uris.first, "#"
 
     assert_no_difference -> { User.count } do
       assert_no_difference -> { RecordingStudio::Recording.count } do

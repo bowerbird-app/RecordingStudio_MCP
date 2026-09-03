@@ -186,6 +186,16 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success, response.body
-    JSON.parse(response.body).fetch("access_token")
+    token = JSON.parse(response.body).fetch("access_token")
+    assert token.start_with?("rsoauth_at_")
+
+    grant = RecordingStudioApi.access_grant_from_authorization_header(
+      authorization_header: "Bearer #{token}",
+      api: "public"
+    )
+    assert grant.success?
+    assert_kind_of RecordingStudioOauth::OauthClient, grant.value.api_client
+
+    token
   end
 end
