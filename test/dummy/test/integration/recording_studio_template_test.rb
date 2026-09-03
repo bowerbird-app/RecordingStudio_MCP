@@ -66,4 +66,13 @@ class RecordingStudioTemplateTest < ActiveSupport::TestCase
     refute RecordingStudio.capability_enabled?(:accessible, for: Page)
     assert_includes ApplicationController.ancestors, RecordingStudio::UsesDefaultLayout
   end
+
+  test "dummy importmap looks up engine constants from the top-level namespace" do
+    source = File.read(Rails.root.join("config/importmap.rb"))
+
+    assert_includes source, "::RecordingStudioAdmin::Engine"
+    assert_includes source, "::FlatPack::Engine"
+    refute_match(/^\s*pin_all_from RecordingStudioAdmin::Engine/, source)
+    refute_match(/^\s*pin_all_from FlatPack::Engine/, source)
+  end
 end
