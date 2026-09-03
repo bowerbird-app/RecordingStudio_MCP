@@ -5,8 +5,6 @@ pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
-# Importmap instance_evals this file inside Importmap::Map, so engine
-# constants must be looked up from the top-level namespace.
 pin_all_from ::RecordingStudioAdmin::Engine.root.join("app/javascript/recording_studio_admin/controllers"),
              under: "controllers/recording_studio_admin",
              to: "recording_studio_admin/controllers",
