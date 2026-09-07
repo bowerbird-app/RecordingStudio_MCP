@@ -39,7 +39,77 @@ class DocsController < ApplicationController
   def mcp
   end
 
+  # Dummy-only helper for local MCP curl testing. Mints a real Oauth Bearer.
+  def create_mcp_test_token
+    return head :not_found unless mcp_test_token_minting_allowed?
+
+    result = mint_mcp_test_token
+    if result[:ok]
+      @mcp_test_token = result[:token]
+      render :mcp
+    else
+      flash.now[:alert] = result[:error]
+      render :mcp, status: :unprocessable_entity
+    end
+  end
+
   private
+
+  def mcp_test_token_minting_allowed?
+    Rails.env.local?
+  end
+  helper_method :mcp_test_token_minting_allowed?
+
+  def mint_mcp_test_token
+    oauth_client = RecordingStudioOauth::OauthClient.find_by(name: "Seed MCP App")
+    return { ok: false, error: "Seed MCP App is missing. Run seeds, then try again." } if oauth_client.nil?
+
+    studio = Workspace.find_by(name: "Studio Workspace")
+    return { ok: false, error: "Studio Workspace is missing. Run seeds, then try again." } if studio.nil?
+
+    studio_root = RecordingStudio.root_recording_for(studio)
+    access_recording = RecordingStudioAccessible.access_recordings_for_actor(
+      recording: studio_root,
+      actor: current_user
+    ).first
+    if access_recording.nil?
+      return { ok: false, error: "You don’t have access to Studio Workspace. Ask someone to invite you, or run seeds." }
+    end
+
+    redirect_uri = oauth_client.redirect_uris.first
+    return { ok: false, error: "Seed MCP App has no redirect URI. Fix seeds and try again." } if redirect_uri.blank?
+
+    verifier = "V#{SecureRandom.urlsafe_base64(32)}".ljust(43, "a")
+    challenge = RecordingStudioOauth::Pkce.s256_challenge(verifier)
+
+    approved = RecordingStudioOauth::Services::CreateOauthAuthorization.call(
+      oauth_client: oauth_client,
+      manager_actor: current_user,
+      access_recording: access_recording,
+      role: "view",
+      redirect_uri: redirect_uri,
+      code_challenge: challenge,
+      code_challenge_method: "S256"
+    )
+    return { ok: false, error: "Couldn’t connect Seed MCP App. Try again." } unless approved.success?
+
+    token_result = RecordingStudioOauth::Services::IssueDelegatedAccessToken.call(
+      grant_type: "authorization_code",
+      client_id: oauth_client.client_id,
+      code: approved.value.fetch(:code),
+      redirect_uri: redirect_uri,
+      code_verifier: verifier,
+      api: "public"
+    )
+    return { ok: false, error: "Couldn’t mint a test token. Try again." } unless token_result.success?
+
+    token = token_result.value.fetch(:access_token)
+    return { ok: false, error: "Couldn’t mint a test token. Try again." } unless token.to_s.start_with?("rsoauth_at_")
+
+    { ok: true, token: token }
+  rescue StandardError
+    { ok: false, error: "Something went wrong minting a test token. Try again." }
+  end
 
   def normalize_recordable_declaration(declaration)
     {

@@ -107,6 +107,38 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Workspace"
   end
 
+  test "mcp page shows the mint test token button when signed in" do
+    get docs_mcp_path
+
+    assert_response :success
+    assert_select "h1", text: "MCP URL"
+    assert_includes response.body, "Mint test token"
+    assert_select "form[action=?][method=?]", docs_mcp_test_token_path, "post" do
+      assert_select "input[name=?]", "authenticity_token", count: 1
+    end
+  end
+
+  test "create mcp test token mints a real oauth bearer" do
+    load Rails.root.join("db/seeds.rb").to_s
+    admin = User.find_by!(email: "admin@admin.com")
+    sign_in admin
+
+    post docs_mcp_test_token_path
+
+    assert_response :success
+    token = response.body[/(rsoauth_at_[A-Za-z0-9_\-]+)/, 1]
+    assert token.present?, "expected a real rsoauth_at_ token in the response"
+    assert_includes response.body, "Authorization: Bearer"
+  end
+
+  test "create mcp test token requires sign in" do
+    sign_out @user
+
+    post docs_mcp_test_token_path
+
+    assert_redirected_to new_user_session_path
+  end
+
   test "authenticated docs pages use the recording studio default layout" do
     get docs_install_path
 

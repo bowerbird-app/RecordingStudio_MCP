@@ -30,6 +30,7 @@ Rails.application.routes.draw do
   get "docs/gem_views", to: "docs#gem_views", as: :docs_gem_views
   get "docs/methods", to: "docs#methods", as: :docs_methods
   get "docs/mcp", to: "docs#mcp", as: :docs_mcp
+  post "docs/mcp/test_token", to: "docs#create_mcp_test_token", as: :docs_mcp_test_token
 
   root "home#index"
 end

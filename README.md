@@ -51,8 +51,8 @@ This gem ships no product UI. Dummy host chrome may use Flatpack. Oauth owns Con
 
 `test/dummy` on port 3000. Sign in with `admin@admin.com` / `Password`. Seed MCP App is a public OauthClient. Studio Workspace starts Connected. Site name `Studio` comes from Site settings when Connect needs it.
 
-The dummy-only docs page at `/docs/mcp` shows the MCP URL. It is not the product.
+The dummy-only docs page at `/docs/mcp` shows the MCP URL. Signed-in users can mint a real test Bearer for Seed MCP App against Studio Workspace for local curl. It is not the product.
 
 ## Version
 
-0.2.0
+0.2.1

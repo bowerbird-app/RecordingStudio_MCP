@@ -1,17 +1,57 @@
 <% dummy_page_nav(title: "MCP URL", back_url: root_path) %>
 
-<%= render FlatPack::PageTitle::Component.new(
-  title: "MCP URL",
-  subtitle: "Dummy-only. Point a remote MCP client at this host path.",
-  variant: :h1
-) %>
+<div class="flex w-full flex-col gap-6">
+  <%= render FlatPack::PageTitle::Component.new(
+    title: "MCP URL",
+    subtitle: "Dummy-only. Point a remote MCP client at this host path.",
+    variant: :h1
+  ) %>
 
-<p class="mt-4 text-sm leading-6">
-  <code>/recording_studio_mcp</code>
-</p>
-<p class="mt-2 text-sm leading-6">
-  After Connect, call <code>initialize</code> then <code>tools/list</code>. Use <code>describe</code> before create.
-</p>
-<p class="mt-2 text-sm leading-6">
-  The Connect token works here and with the API on purpose.
-</p>
+  <p class="text-sm leading-6">
+    <code>/recording_studio_mcp</code>
+  </p>
+  <p class="text-sm leading-6">
+    After Connect, call <code>initialize</code> then <code>tools/list</code>. Use <code>describe</code> before create.
+  </p>
+  <p class="text-sm leading-6">
+    The Connect token works here and with the API on purpose.
+  </p>
+
+  <% if mcp_test_token_minting_allowed? %>
+    <%= render FlatPack::SectionTitle::Component.new(
+      title: "Mint a test token",
+      subtitle: "Dummy-only for local curl. One click, one token, shown once."
+    ) %>
+
+    <% if flash[:alert].present? %>
+      <%= render FlatPack::Alert::Component.new(
+        title: "Couldn’t mint",
+        description: flash[:alert],
+        style: :danger
+      ) %>
+    <% end %>
+
+    <% if @mcp_test_token.present? %>
+      <%= render FlatPack::Alert::Component.new(
+        title: "Fresh token — copy it now",
+        description: "Paste into Authorization: Bearer … for curl. It won’t be shown again.",
+        style: :success
+      ) %>
+      <%= render FlatPack::CodeBlock::Component.new(
+        language: :text,
+        title: "Test token",
+        wrap: true,
+        code: @mcp_test_token
+      ) %>
+    <% end %>
+
+    <%= form_with url: docs_mcp_test_token_path, method: :post, local: true do %>
+      <%= render FlatPack::Button::Component.new(
+        text: "Mint test token",
+        style: :primary,
+        size: :md,
+        type: "submit"
+      ) %>
+    <% end %>
+  <% end %>
+</div>
