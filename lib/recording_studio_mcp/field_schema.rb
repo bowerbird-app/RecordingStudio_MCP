@@ -39,36 +39,32 @@ module RecordingStudioMcp
 
     def field(name)
       property = openapi_properties[name] || {}
-      result = {
+      {
         "name" => name,
         "required" => required?(name),
-        "type" => property_value(property, :type) || column_type(name)
-      }
-
-      allowed_values = property_value(property, :enum) || model_allowed_values(name)
-      result["allowed_values"] = Array(allowed_values) if allowed_values.present?
-      result["description"] = property_value(property, :description) if property_value(property, :description).present?
-      result["immutable_on_update"] = true if Array(registration&.immutable_fields).map(&:to_s).include?(name)
-      result
+        "type" => property_value(property, :type) || column_type(name),
+        "allowed_values" => allowed_values(name, property),
+        "description" => property_value(property, :description).presence,
+        "immutable_on_update" => immutable?(name) || nil
+      }.compact
     end
 
     def openapi_properties
-      @openapi_properties ||= begin
-        schema = registration&.openapi&.dig(:details_schema) ||
-                 registration&.openapi&.dig("details_schema") ||
-                 {}
-        properties = schema[:properties] || schema["properties"] || {}
-        properties.to_h.transform_keys(&:to_s)
-      end
+      @openapi_properties ||= (details_schema[:properties] || details_schema["properties"] || {})
+                              .to_h.transform_keys(&:to_s)
     end
 
     def openapi_required
-      @openapi_required ||= begin
-        schema = registration&.openapi&.dig(:details_schema) ||
-                 registration&.openapi&.dig("details_schema") ||
-                 {}
-        Array(schema[:required] || schema["required"]).map(&:to_s)
-      end
+      @openapi_required ||= Array(details_schema[:required] || details_schema["required"]).map(&:to_s)
+    end
+
+    def details_schema
+      @details_schema ||= openapi_details_schema || {}
+    end
+
+    def openapi_details_schema
+      openapi = registration&.openapi
+      openapi[:details_schema] || openapi["details_schema"] if openapi
     end
 
     def property_value(property, key)
@@ -77,7 +73,7 @@ module RecordingStudioMcp
 
     def required?(name)
       return true if openapi_required.include?(name)
-      return false unless recordable_class&.respond_to?(:validators_on)
+      return false unless recordable_class.respond_to?(:validators_on)
 
       unconditional_presence?(name) || required_column?(name)
     end
@@ -97,18 +93,31 @@ module RecordingStudioMcp
     end
 
     def column_type(name)
-      column = recordable_class.columns_hash[name] if recordable_class&.respond_to?(:columns_hash)
+      column = recordable_class.columns_hash[name] if recordable_class.respond_to?(:columns_hash)
       TYPE_MAP.fetch(column&.type, "string")
     end
 
-    def model_allowed_values(name)
-      enum_values = recordable_class.defined_enums[name]&.keys if recordable_class&.respond_to?(:defined_enums)
-      return enum_values if enum_values.present?
-      return unless recordable_class&.respond_to?(:validators_on)
+    def allowed_values(name, property)
+      values = property_value(property, :enum) || enum_values(name) || inclusion_values(name)
+      Array(values).presence
+    end
+
+    def enum_values(name)
+      return unless recordable_class.respond_to?(:defined_enums)
+
+      recordable_class.defined_enums[name]&.keys
+    end
+
+    def inclusion_values(name)
+      return unless recordable_class.respond_to?(:validators_on)
 
       validator = recordable_class.validators_on(name).find { |entry| entry.kind == :inclusion }
       values = validator&.options&.fetch(:in, nil)
       values.to_a if values.is_a?(Array) || values.is_a?(Range)
+    end
+
+    def immutable?(name)
+      Array(registration&.immutable_fields).map(&:to_s).include?(name)
     end
   end
 end

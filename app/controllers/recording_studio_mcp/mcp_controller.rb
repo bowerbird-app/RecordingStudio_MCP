@@ -5,7 +5,8 @@ module RecordingStudioMcp
     include RecordingStudioApi::Concerns::RateLimiting
     include RecordingStudioApi::Concerns::RequestLogging
 
-    prepend_before_action :validate_origin!, :authenticate_mcp!, :validate_protocol_version!
+    prepend_before_action :authenticate_mcp!
+    include RecordingStudioMcp::TransportSecurity
     include RecordingStudioApi::Concerns::ApiAccessControl
 
     def handle
@@ -22,29 +23,6 @@ module RecordingStudioMcp
     end
 
     private
-
-    def validate_origin!
-      return if OriginGuard.allowed?(
-        request.headers["Origin"],
-        request_origin: request.base_url,
-        allowed_origins: RecordingStudioMcp.configuration.allowed_origins
-      )
-
-      render json: { error: "invalid_origin" }, status: :forbidden
-    end
-
-    def validate_protocol_version!
-      return if jsonrpc_method == "initialize"
-
-      version = request.headers["MCP-Protocol-Version"].presence || "2025-03-26"
-      return if Configuration::SUPPORTED_PROTOCOL_VERSIONS.include?(version)
-
-      render json: api_error_payload(
-        code: "unsupported_protocol_version",
-        message: "MCP-Protocol-Version is not supported",
-        details: { supported_versions: Configuration::SUPPORTED_PROTOCOL_VERSIONS }
-      ), status: :bad_request
-    end
 
     def ensure_api_access_enabled!
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
