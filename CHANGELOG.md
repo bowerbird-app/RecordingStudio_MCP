@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initialize instructions that teach clients to describe types before writes, use top-level fields, and follow pagination tokens.
 - Typed writable-field details and capability action input contracts in `describe`.
-- Explicit read-only and destructive tool annotations.
+- Explicit tool titles plus read-only, destructive, idempotent, and closed-world (`openWorldHint: false`) annotations.
 - Origin allowlisting and `MCP-Protocol-Version` validation for Streamable HTTP requests.
 
 ### Changed

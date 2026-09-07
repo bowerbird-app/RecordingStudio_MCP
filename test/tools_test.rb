@@ -20,25 +20,51 @@ class ToolsTest < Minitest::Test
     assert schema.fetch(:properties).key?(:pagination_token)
   end
 
+  def test_tools_have_display_titles
+    expected = {
+      "list" => "List records",
+      "show" => "Show a record",
+      "create" => "Create a record",
+      "update" => "Update a record",
+      "capability_action" => "Run a capability action",
+      "describe" => "Describe a type"
+    }
+
+    expected.each do |name, title|
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
+      assert_equal title, tool[:title], name
+    end
+  end
+
   def test_read_tools_are_marked_read_only
     %w[list show describe].each do |name|
       tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
       assert_equal true, tool.dig(:annotations, :readOnlyHint), name
       assert_equal false, tool.dig(:annotations, :destructiveHint), name
+      assert_equal true, tool.dig(:annotations, :idempotentHint), name
+      assert_equal false, tool.dig(:annotations, :openWorldHint), name
     end
   end
 
   def test_write_tools_are_marked_as_changing_data
-    %w[create update].each do |name|
-      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
-      assert_equal false, tool.dig(:annotations, :readOnlyHint), name
-      assert_equal false, tool.dig(:annotations, :destructiveHint), name
+    create = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
+    update = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "update" }
+    action = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "capability_action" }
+
+    [create, update].each do |tool|
+      assert_equal false, tool.dig(:annotations, :readOnlyHint), tool[:name]
+      assert_equal false, tool.dig(:annotations, :destructiveHint), tool[:name]
+      assert_equal false, tool.dig(:annotations, :openWorldHint), tool[:name]
       assert_includes tool[:description], "Changes data"
     end
 
-    action = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "capability_action" }
+    assert_equal true, create.dig(:annotations, :idempotentHint)
+    assert_equal false, update.dig(:annotations, :idempotentHint)
+
     assert_equal false, action.dig(:annotations, :readOnlyHint)
     assert_equal true, action.dig(:annotations, :destructiveHint)
+    assert_equal false, action.dig(:annotations, :idempotentHint)
+    assert_equal false, action.dig(:annotations, :openWorldHint)
     assert_includes action[:description], "destructively change data"
   end
 

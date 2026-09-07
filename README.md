@@ -23,7 +23,7 @@ Tools are a small parameterized set over the named API the OauthClient is bound 
 
 Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`. Tool results include MCP `structuredContent`.
 
-The initialize response repeats that starter flow in `instructions`. Tool annotations mark reads, writes, and potentially destructive capability actions. The server reports `tools.listChanged: false`; it does not stream tool-list changes.
+The initialize response repeats that starter flow in `instructions`. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), and potentially destructive capability actions. The server reports `tools.listChanged: false`; it does not stream tool-list changes.
 
 Not one MCP tool per OpenAPI path. Handlers call the same API resource and capability actions. MCP does not serve records when API access is disabled.
 
