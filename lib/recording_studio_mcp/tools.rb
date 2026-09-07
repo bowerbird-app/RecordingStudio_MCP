@@ -18,11 +18,13 @@ module RecordingStudioMcp
     def list_tool(catalog)
       tool(
         name: "list",
+        title: "List records",
         description: "List records of one type on this OauthClient's named API. " \
                      "Use describe first if you do not know the type. " \
                      "Send pagination_token from meta.next_pagination_token to get the next page. " \
                      "Returns records and meta.",
         read_only: true,
+        idempotent: true,
         required: ["type"],
         properties: {
           type: catalog.type_schema,
@@ -42,8 +44,10 @@ module RecordingStudioMcp
     def show_tool(catalog)
       tool(
         name: "show",
+        title: "Show a record",
         description: "Show one record by id. Use list or a create result to get ids. Returns the record.",
         read_only: true,
+        idempotent: true,
         required: %w[type id],
         properties: {
           type: catalog.type_schema,
@@ -55,10 +59,14 @@ module RecordingStudioMcp
     def create_tool(catalog)
       tool(
         name: "create",
-        description: "Create a record. Send writable fields at the root, " \
+        title: "Create a record",
+        description: "Changes data by creating a record. Send writable fields at the root, " \
                      "for example title, not nested under attributes. " \
                      "Child types need parent_id. Call describe for writable fields and parent rules. " \
                      "Returns the created record.",
+        read_only: false,
+        destructive: false,
+        idempotent: true,
         additional_properties: true,
         required: ["type"],
         properties: {
@@ -78,9 +86,13 @@ module RecordingStudioMcp
     def update_tool(catalog)
       tool(
         name: "update",
-        description: "Update a record. Send writable fields at the root, " \
+        title: "Update a record",
+        description: "Changes data by updating a record. Send writable fields at the root, " \
                      "for example title, not nested under attributes. " \
                      "Call describe for the type. Returns the updated record.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
         additional_properties: true,
         required: %w[type id],
         properties: {
@@ -93,9 +105,13 @@ module RecordingStudioMcp
     def capability_action_tool(catalog)
       tool(
         name: "capability_action",
-        description: "Run one named API capability action on a record. " \
+        title: "Run a capability action",
+        description: "May destructively change data by running one named API capability action on a record. " \
                      "Call describe for the type to see which actions are enabled. " \
                      "Returns the action result.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
         required: %w[type id action],
         properties: {
           type: catalog.type_schema,
@@ -109,10 +125,13 @@ module RecordingStudioMcp
     def describe_tool(catalog)
       tool(
         name: "describe",
+        title: "Describe a type",
         description: "Describe one type on this named API. " \
-                     "Returns operations, writable fields, enabled capability actions, and parent rules. " \
+                     "Returns operations, typed writable fields with requirements and allowed values, " \
+                     "enabled capability actions with input contracts, and parent rules. " \
                      "Use this before create or capability_action.",
         read_only: true,
+        idempotent: true,
         required: ["type"],
         properties: { type: catalog.type_schema }
       )
@@ -127,10 +146,16 @@ module RecordingStudioMcp
       schema[:additionalProperties] = true if options[:additional_properties]
       payload = {
         name: options.fetch(:name),
+        title: options.fetch(:title),
         description: options.fetch(:description),
         inputSchema: schema
       }
-      payload[:annotations] = { readOnlyHint: true } if options[:read_only]
+      payload[:annotations] = {
+        readOnlyHint: options.fetch(:read_only, false),
+        destructiveHint: options.fetch(:destructive, false),
+        idempotentHint: options.fetch(:idempotent, false),
+        openWorldHint: false
+      }
       payload
     end
     private_class_method :tool

@@ -45,6 +45,70 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes response.headers["WWW-Authenticate"], 'error="invalid_token"'
   end
 
+  test "present origin must match the request or configured origins" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/list").to_json,
+         headers: json_headers.merge(
+           "Authorization" => "Bearer #{token}",
+           "Origin" => "https://attacker.example"
+         )
+
+    assert_response :forbidden
+    assert_equal "invalid_origin", JSON.parse(response.body).fetch("error")
+
+    RecordingStudioMcp.configuration.allowed_origins = ["https://assistant.example"]
+    post "/recording_studio_mcp",
+         params: rpc("tools/list").to_json,
+         headers: json_headers.merge(
+           "Authorization" => "Bearer #{token}",
+           "Origin" => "https://assistant.example"
+         )
+
+    assert_response :success
+  ensure
+    RecordingStudioMcp.configuration.allowed_origins = []
+  end
+
+  test "bad origin is rejected before authentication" do
+    post "/recording_studio_mcp",
+         params: rpc("initialize").to_json,
+         headers: json_headers.merge("Origin" => "https://attacker.example")
+
+    assert_response :forbidden
+    assert_equal "invalid_origin", JSON.parse(response.body).fetch("error")
+  end
+
+  test "subsequent requests reject unsupported protocol versions" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/list").to_json,
+         headers: json_headers.merge(
+           "Authorization" => "Bearer #{token}",
+           "MCP-Protocol-Version" => "1999-01-01"
+         )
+
+    assert_response :bad_request
+    error = JSON.parse(response.body).fetch("error")
+    assert_equal "unsupported_protocol_version", error.fetch("code")
+    assert_equal RecordingStudioMcp::Configuration::SUPPORTED_PROTOCOL_VERSIONS,
+                 error.dig("details", "supported_versions")
+  end
+
+  test "subsequent requests accept supported and missing protocol versions" do
+    token = issue_delegated_token
+
+    ["2025-06-18", nil].each do |version|
+      headers = json_headers.merge("Authorization" => "Bearer #{token}")
+      headers["MCP-Protocol-Version"] = version if version
+      post "/recording_studio_mcp", params: rpc("tools/list").to_json, headers: headers
+
+      assert_response :success
+    end
+  end
+
   test "bearer from oauth token can list workspaces" do
     token = issue_delegated_token
 
@@ -179,11 +243,31 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_response :success, response.body
     payload = JSON.parse(response.body)
     described = tool_payload(payload)
+    title = described.fetch("writable_fields").find { |field| field["name"] == "title" }
 
     refute payload.dig("result", "isError")
-    assert_includes described.fetch("writable_fields"), "title"
+    assert_equal "string", title.fetch("type")
+    assert_equal false, title.fetch("required")
     assert_includes described.fetch("operations"), "create"
-    refute_includes described.fetch("capability_actions"), "move"
+    refute_includes described.fetch("capability_actions").map { |action| action.fetch("name") }, "move"
+  end
+
+  test "describe includes required fields and capability input contracts" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "describe", arguments: { type: "Workspace" }).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    described = tool_payload(JSON.parse(response.body))
+    name = described.fetch("writable_fields").find { |field| field["name"] == "name" }
+    ping = described.fetch("capability_actions").find { |action| action["name"] == "ping" }
+
+    assert_equal true, name.fetch("required")
+    assert_equal "string", name.fetch("type")
+    assert_equal "string", ping.dig("params", "fields", "style", "type")
+    assert_equal %w[quiet loud], ping.dig("params", "fields", "style", "enum")
   end
 
   test "list with pagination_token reaches page two when has_more" do

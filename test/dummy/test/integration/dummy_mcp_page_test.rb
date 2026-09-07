@@ -19,6 +19,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "/recording_studio_mcp"
+    assert_includes response.body, "same token works with MCP and the API on purpose"
     assert_includes response.body, "/assets/tailwind-"
     assert_includes response.body, "/assets/flat_pack/variables-"
   end
@@ -30,6 +31,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "/recording_studio_mcp"
     assert_includes response.body, "Dummy-only"
     assert_includes response.body, "describe"
+    assert_includes response.body, "works here and with the API on purpose"
     assert_includes response.body, "/assets/tailwind-"
   end
 end

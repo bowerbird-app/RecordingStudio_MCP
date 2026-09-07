@@ -12,7 +12,7 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - MCP URL at `/recording_studio_mcp`
 - Dummy-only `/docs/mcp` (mentions `describe`)
 
-Token URL stays on the API engine. MCP authenticates `rsoauth_at_` tokens through Oauth's TokenAuthenticator.
+Token URL stays on the API engine. MCP authenticates `rsoauth_at_` tokens through Oauth's TokenAuthenticator. The same token works with MCP and the named API on purpose; both resolve the same AccessGrant.
 
 ## Quick start
 

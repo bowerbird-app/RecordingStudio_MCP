@@ -22,9 +22,12 @@ class ProtocolTest < Minitest::Test
 
     assert_equal :ok, result.status
     assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
-    assert_equal true, result.body.dig(:result, :capabilities, :tools, :listChanged)
+    assert_equal false, result.body.dig(:result, :capabilities, :tools, :listChanged)
     assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
     assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
+    assert_includes result.body.dig(:result, :instructions), "Call describe before create"
+    assert_includes result.body.dig(:result, :instructions), "meta.next_pagination_token"
+    assert_includes result.body.dig(:result, :instructions), "both this MCP endpoint and the Recording Studio API"
   end
 
   def test_tools_list_returns_parameterized_tools

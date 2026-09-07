@@ -86,11 +86,12 @@ module RecordingStudioMcp
 
       {
         protocolVersion: version,
-        capabilities: { tools: { listChanged: true } },
+        capabilities: { tools: { listChanged: false } },
         serverInfo: {
           name: "recording-studio",
           version: RecordingStudioMcp::VERSION
-        }
+        },
+        instructions: Instructions.text
       }
     end
 

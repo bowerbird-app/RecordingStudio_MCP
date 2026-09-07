@@ -54,5 +54,10 @@ RecordingStudioApi.register_capability_action(
   version: "1.0.0",
   http_verb: :post,
   required_role: :view,
+  input_contract: {
+    fields: {
+      style: { type: :string, required: false, enum: %w[quiet loud] }
+    }
+  },
   handler: Dummy::PingWorkspace
 )

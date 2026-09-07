@@ -6,6 +6,7 @@ module RecordingStudioMcp
     include RecordingStudioApi::Concerns::RequestLogging
 
     prepend_before_action :authenticate_mcp!
+    include RecordingStudioMcp::TransportSecurity
     include RecordingStudioApi::Concerns::ApiAccessControl
 
     def handle

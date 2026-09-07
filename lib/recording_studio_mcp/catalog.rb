@@ -34,8 +34,8 @@ module RecordingStudioMcp
       {
         "type" => recordable_type,
         "operations" => Array(registration&.operations).map(&:to_s),
-        "writable_fields" => Array(registration&.writable_attributes).map(&:to_s),
-        "capability_actions" => enabled_capability_action_names(recordable_type),
+        "writable_fields" => FieldSchema.for(recordable_type, registration),
+        "capability_actions" => enabled_capability_actions(recordable_type),
         "parent" => parent_rules(recordable_type)
       }.compact
     end
@@ -72,10 +72,21 @@ module RecordingStudioMcp
     end
 
     def enabled_capability_action_names(recordable_type)
+      enabled_action_registrations(recordable_type).map { |action| action.name.to_s }.sort
+    end
+
+    def enabled_capability_actions(recordable_type)
+      enabled_action_registrations(recordable_type).sort_by { |action| action.name.to_s }.map do |action|
+        details = { "name" => action.name.to_s }
+        contract = action.input_contract&.as_json
+        details["params"] = contract.deep_stringify_keys if contract.present?
+        details
+      end
+    end
+
+    def enabled_action_registrations(recordable_type)
       version = RecordingStudioApi.default_api_version(api: api)
-      RecordingStudioApi.capability_actions_for(recordable_type, version: version, api: api).map do |action|
-        action.name.to_s
-      end.sort
+      RecordingStudioApi.capability_actions_for(recordable_type, version: version, api: api)
     end
 
     def writable_fields(recordable_type)
