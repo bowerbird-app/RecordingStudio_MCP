@@ -151,8 +151,8 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     post docs_mcp_sample_post_path, params: { test_token: token }
 
     assert_response :success
-    assert_includes response.body, "Sample POST worked"
-    assert_includes response.body, "resolved"
+    assert_includes response.body, "All checks passed"
+    assert_includes response.body, "Grant resolved"
   end
 
   test "create mcp test token requires sign in" do

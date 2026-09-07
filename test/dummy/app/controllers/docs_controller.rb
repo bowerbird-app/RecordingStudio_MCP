@@ -47,6 +47,12 @@ class DocsController < ApplicationController
     if result[:ok]
       @mcp_test_token = result[:token]
       @mcp_test_probe = probe_mcp_with_token(@mcp_test_token)
+      flash.now[:notice] = if @mcp_test_probe[:ok]
+        "MCP answered. Click Sample POST next."
+      else
+        "Token minted, but MCP didn’t answer."
+      end
+      flash.now[:alert] = @mcp_test_probe[:error] if @mcp_test_probe && !@mcp_test_probe[:ok]
       render :mcp
     else
       flash.now[:alert] = result[:error]
@@ -66,7 +72,13 @@ class DocsController < ApplicationController
     end
 
     @mcp_test_token = token
+    @mcp_test_probe = probe_mcp_with_token(token)
     @mcp_sample_post = sample_post_mcp(token)
+    if @mcp_sample_post[:ok]
+      flash.now[:notice] = "Sample POST worked. Grant resolved."
+    else
+      flash.now[:alert] = @mcp_sample_post[:error].presence || "Sample POST failed."
+    end
     render :mcp
   end
 

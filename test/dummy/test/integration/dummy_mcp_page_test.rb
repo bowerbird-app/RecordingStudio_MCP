@@ -31,7 +31,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "/recording_studio_mcp"
     assert_includes response.body, "Dummy-only"
     assert_includes response.body, "Try MCP"
-    assert_includes response.body, "sample POST"
+    assert_includes response.body, "Sample POST"
     assert_includes response.body, "/assets/tailwind-"
   end
 
@@ -58,10 +58,9 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "MCP answered"
-    assert_includes response.body, "Test token"
+    assert_includes response.body, "Sample POST"
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Studio Workspace"
-    assert_includes response.body, "Sample POST"
     assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
     refute_includes response.body, ">Try MCP<"
 
@@ -86,8 +85,9 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     post docs_mcp_sample_post_path, params: { test_token: token }
 
     assert_response :success
-    assert_includes response.body, "Sample POST worked"
-    assert_includes response.body, "Grant: <code>resolved</code>"
+    assert_includes response.body, "All checks passed"
+    assert_includes response.body, "Grant resolved"
+    assert_includes response.body, "Sample POST worked. Grant resolved."
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Sign out"
     assert_select "body[data-recording-studio-default-layout='true']", count: 1

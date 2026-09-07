@@ -3,7 +3,7 @@
 <div class="flex w-full flex-col gap-6">
   <%= render FlatPack::PageTitle::Component.new(
     title: "Test token",
-    subtitle: "Dummy-only. Try MCP, then sample POST the real path.",
+    subtitle: "Dummy-only. Try MCP, then Sample POST.",
     variant: :h1
   ) %>
 
@@ -16,10 +16,39 @@
 
   <% if mcp_test_token_minting_allowed? %>
     <% if @mcp_test_token.present? %>
-      <% if @mcp_test_probe&.fetch(:ok, false) %>
+      <% sample_ok = @mcp_sample_post&.fetch(:ok, false) %>
+      <% probe_ok = @mcp_test_probe&.fetch(:ok, false) %>
+
+      <% if sample_ok %>
         <%= render FlatPack::Alert::Component.new(
-          title: "MCP answered",
-          description: "Initialize, tools/list, and list workspaces all came back.",
+          title: "All checks passed",
+          description: "Token minted · MCP answered · Sample POST grant resolved.",
+          style: :success
+        ) %>
+        <%= render FlatPack::Badge::Component.new(
+          text: "Grant resolved",
+          style: :success,
+          size: :md
+        ) %>
+        <p class="text-sm leading-6">
+          Status: <code><%= @mcp_sample_post[:status] %></code>
+          · Tools: <code><%= Array(@mcp_sample_post[:tool_names]).join(", ") %></code>
+        </p>
+        <% if @mcp_sample_post[:server_version].present? %>
+          <p class="text-sm leading-6">
+            Server: <code><%= @mcp_sample_post[:server_version] %></code>
+          </p>
+        <% end %>
+      <% elsif @mcp_sample_post.present? %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "Sample POST failed",
+          description: @mcp_sample_post[:error].presence || "Try again.",
+          style: :danger
+        ) %>
+      <% elsif probe_ok %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "MCP answered — one more step",
+          description: "Click Sample POST to prove the Bearer grant resolves.",
           style: :success
         ) %>
         <p class="text-sm leading-6">
@@ -28,40 +57,12 @@
         <p class="text-sm leading-6">
           Workspaces: <code><%= Array(@mcp_test_probe[:workspace_names]).presence&.join(", ") || "none" %></code>
         </p>
-        <% if @mcp_test_probe[:server_version].present? %>
-          <p class="text-sm leading-6">
-            Server: <code><%= @mcp_test_probe[:server_version] %></code>
-          </p>
-        <% end %>
       <% elsif @mcp_test_probe.present? %>
         <%= render FlatPack::Alert::Component.new(
           title: "Token made, MCP didn’t answer",
           description: @mcp_test_probe[:error].presence || "Try again.",
           style: :danger
         ) %>
-      <% end %>
-
-      <% if @mcp_sample_post.present? %>
-        <% if @mcp_sample_post[:ok] %>
-          <%= render FlatPack::Alert::Component.new(
-            title: "Sample POST worked",
-            description: "Bearer authorized, grant resolved, and MCP initialize + tools/list answered.",
-            style: :success
-          ) %>
-          <p class="text-sm leading-6">
-            HTTP: <code><%= @mcp_sample_post[:status] %></code>
-            · Grant: <code>resolved</code>
-          </p>
-          <p class="text-sm leading-6">
-            Tools: <code><%= Array(@mcp_sample_post[:tool_names]).join(", ") %></code>
-          </p>
-        <% else %>
-          <%= render FlatPack::Alert::Component.new(
-            title: "Sample POST failed",
-            description: @mcp_sample_post[:error].presence || "Try again.",
-            style: :danger
-          ) %>
-        <% end %>
       <% end %>
 
       <%= render FlatPack::TextInput::Component.new(
@@ -71,7 +72,7 @@
         quick_copy: true
       ) %>
 
-      <% unless @mcp_sample_post&.fetch(:ok, false) %>
+      <% unless sample_ok %>
         <%= form_with url: docs_mcp_sample_post_path, method: :post, local: true, data: { turbo: false } do %>
           <%= hidden_field_tag :test_token, @mcp_test_token %>
           <%= render FlatPack::Button::Component.new(
