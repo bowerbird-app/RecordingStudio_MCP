@@ -37,6 +37,9 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
   end
 
   test "signed in mcp page shows a csrf protected mint form" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+
     get docs_mcp_path
 
     assert_response :success
@@ -45,6 +48,8 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
       assert_select "button[type=?]", "submit"
     end
     assert_includes response.body, "Mint test token"
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
   end
 
   test "mint test token posts a real oauth bearer for seed mcp app" do

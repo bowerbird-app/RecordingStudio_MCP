@@ -108,6 +108,9 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "mcp page shows the mint test token button when signed in" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+
     get docs_mcp_path
 
     assert_response :success
@@ -116,6 +119,8 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?][method=?]", docs_mcp_test_token_path, "post" do
       assert_select "input[name=?]", "authenticity_token", count: 1
     end
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
   end
 
   test "create mcp test token mints a real oauth bearer" do
