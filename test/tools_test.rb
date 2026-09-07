@@ -24,7 +24,22 @@ class ToolsTest < Minitest::Test
     %w[list show describe].each do |name|
       tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
       assert_equal true, tool.dig(:annotations, :readOnlyHint), name
+      assert_equal false, tool.dig(:annotations, :destructiveHint), name
     end
+  end
+
+  def test_write_tools_are_marked_as_changing_data
+    %w[create update].each do |name|
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
+      assert_equal false, tool.dig(:annotations, :readOnlyHint), name
+      assert_equal false, tool.dig(:annotations, :destructiveHint), name
+      assert_includes tool[:description], "Changes data"
+    end
+
+    action = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "capability_action" }
+    assert_equal false, action.dig(:annotations, :readOnlyHint)
+    assert_equal true, action.dig(:annotations, :destructiveHint)
+    assert_includes action[:description], "destructively change data"
   end
 
   def test_create_has_no_attributes_envelope

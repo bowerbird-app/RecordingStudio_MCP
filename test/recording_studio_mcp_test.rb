@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_1_0
-    assert_equal "0.1.0", ::RecordingStudioMcp::VERSION
+    assert_equal "0.2.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists

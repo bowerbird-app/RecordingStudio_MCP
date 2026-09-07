@@ -6,7 +6,7 @@ People Connect an app. The app gets its own Accessible grant. MCP then uses that
 
 ## What you get
 
-A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at Oauth's RFC 9728 protected-resource metadata. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`.
+A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at Oauth's RFC 9728 protected-resource metadata. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`. The issued Bearer intentionally works for both the named API and MCP; both resolve the same AccessGrant.
 
 Authorization is Recording Studio Accessible through that AccessGrant. Same grant as API. No Pundit. No OAuth scopes.
 
@@ -19,13 +19,21 @@ Tools are a small parameterized set over the named API the OauthClient is bound 
 - `capability_action`
 - `describe`
 
-`tools/list` is grant-aware. `type` is an enum of types registered on that OauthClient's named API. Call `describe` for operations, writable fields, enabled capability actions, and parent rules. Unknown type or action errors name the allowed set.
+`tools/list` is grant-aware. `type` is an enum of types registered on that OauthClient's named API. Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
 
 Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`. Tool results include MCP `structuredContent`.
+
+The initialize response repeats that starter flow in `instructions`. Tool annotations mark reads, writes, and potentially destructive capability actions. The server reports `tools.listChanged: false`; it does not stream tool-list changes.
 
 Not one MCP tool per OpenAPI path. Handlers call the same API resource and capability actions. MCP does not serve records when API access is disabled.
 
 Staff register the client in Oauth. There is no Dynamic Client Registration.
+
+## Transport checks
+
+Native clients may omit `Origin`. When a browser sends `Origin`, it must match the MCP host origin or an entry in `allowed_origins`; otherwise MCP returns `403`. Configure additional trusted browser origins in `config/initializers/recording_studio_mcp.rb`.
+
+After initialize, clients send the negotiated version in `MCP-Protocol-Version`. Unsupported versions return `400`. A missing header uses MCP's `2025-03-26` backwards-compatible default.
 
 ## Install
 
@@ -47,4 +55,4 @@ The dummy-only docs page at `/docs/mcp` shows the MCP URL. It is not the product
 
 ## Version
 
-0.1.0
+0.2.0
