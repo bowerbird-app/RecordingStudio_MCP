@@ -54,7 +54,7 @@ class DocsController < ApplicationController
     end
   end
 
-  # Dummy-only: POST /recording_studio_mcp with the minted Bearer (full HTTP path).
+  # Dummy-only: prove the minted Bearer through the same post-auth MCP path as HTTP POST.
   def create_mcp_sample_post
     return head :not_found unless mcp_test_token_minting_allowed?
 
@@ -192,65 +192,46 @@ class DocsController < ApplicationController
   end
 
   def sample_post_mcp(token)
+    # Do not nest ActionDispatch::Integration::Session here: a full inner request
+    # resets ActiveSupport::CurrentAttributes and breaks page nav on render.
     grant = RecordingStudioApi.access_grant_from_authorization_header(
       authorization_header: "Bearer #{token}",
       api: "public"
     )
     return { ok: false, error: "That token didn’t authorize. Try again." } unless grant.success?
 
-    client = ActionDispatch::Integration::Session.new(Rails.application)
-    client.host = request.host.presence || "www.example.com"
+    access_grant = grant.value
 
-    headers = {
-      "Authorization" => "Bearer #{token}",
-      "Content-Type" => "application/json",
-      "Accept" => "application/json",
-      "MCP-Protocol-Version" => "2025-06-18"
-    }
-
-    init_payload = {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "dummy-sample-post", version: "1.0" }
-      }
-    }
-    client.post("/recording_studio_mcp", params: init_payload.to_json, headers: headers)
-    unless client.response.successful?
-      return {
-        ok: false,
-        error: "Sample POST initialize returned #{client.response.status}.",
-        status: client.response.status
-      }
-    end
-
-    init_body = JSON.parse(client.response.body)
-    server_version = init_body.dig("result", "serverInfo", "version")
-
-    client.post(
-      "/recording_studio_mcp",
-      params: { jsonrpc: "2.0", id: 2, method: "tools/list" }.to_json,
-      headers: headers
+    init = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 1,
+        "method" => "initialize",
+        "params" => {
+          "protocolVersion" => "2025-06-18",
+          "capabilities" => {},
+          "clientInfo" => { "name" => "dummy-sample-post", "version" => "1.0" }
+        }
+      },
+      access_grant: access_grant
     )
-    unless client.response.successful?
-      return {
-        ok: false,
-        error: "Sample POST tools/list returned #{client.response.status}.",
-        status: client.response.status
-      }
-    end
+    return { ok: false, error: "Sample POST initialize failed. Try again." } unless init.status == :ok
 
-    tools_body = JSON.parse(client.response.body)
+    tools = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+      access_grant: access_grant
+    )
+    return { ok: false, error: "Sample POST tools/list failed. Try again." } unless tools.status == :ok
+
+    init_body = init.body.deep_stringify_keys
+    tools_body = tools.body.deep_stringify_keys
     tool_names = Array(tools_body.dig("result", "tools")).filter_map { |entry| entry["name"] }
 
     {
       ok: true,
-      status: client.response.status,
+      status: 200,
       grant_resolved: true,
-      server_version: server_version,
+      server_version: init_body.dig("result", "serverInfo", "version"),
       tool_names: tool_names
     }
   rescue StandardError

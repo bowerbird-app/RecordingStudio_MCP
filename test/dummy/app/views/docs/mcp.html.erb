@@ -45,7 +45,7 @@
         <% if @mcp_sample_post[:ok] %>
           <%= render FlatPack::Alert::Component.new(
             title: "Sample POST worked",
-            description: "POST /recording_studio_mcp with the Bearer resolved the grant.",
+            description: "Bearer authorized, grant resolved, and MCP initialize + tools/list answered.",
             style: :success
           ) %>
           <p class="text-sm leading-6">

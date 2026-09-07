@@ -89,7 +89,10 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Sample POST worked"
     assert_includes response.body, "Grant: <code>resolved</code>"
     assert_includes response.body, "list, show, create, update, capability_action, describe"
+    assert_includes response.body, "Sign out"
+    assert_select "body[data-recording-studio-default-layout='true']", count: 1
     refute_includes response.body, ">Sample POST<"
+    refute_includes response.body, "Exception caught"
   end
 
   test "sample post without a token asks you to try mcp first" do
