@@ -60,10 +60,10 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Copy it now"
     assert_includes response.body, "Test token"
-    assert_match(/rsoauth_at_[A-Za-z0-9_\-]+/, response.body)
+    assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
     refute_includes response.body, "Get a test token"
 
-    token = response.body[/(rsoauth_at_[A-Za-z0-9_\-]+)/, 1]
+    token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
     assert token.present?
 
     grant = RecordingStudioApi.access_grant_from_authorization_header(
