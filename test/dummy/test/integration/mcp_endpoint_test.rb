@@ -71,6 +71,15 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     RecordingStudioMcp.configuration.allowed_origins = []
   end
 
+  test "bad origin is rejected before authentication" do
+    post "/recording_studio_mcp",
+         params: rpc("initialize").to_json,
+         headers: json_headers.merge("Origin" => "https://attacker.example")
+
+    assert_response :forbidden
+    assert_equal "invalid_origin", JSON.parse(response.body).fetch("error")
+  end
+
   test "subsequent requests reject unsupported protocol versions" do
     token = issue_delegated_token
 
