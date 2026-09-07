@@ -54,6 +54,22 @@ class DocsController < ApplicationController
     end
   end
 
+  # Dummy-only: POST /recording_studio_mcp with the minted Bearer (full HTTP path).
+  def create_mcp_sample_post
+    return head :not_found unless mcp_test_token_minting_allowed?
+
+    token = params[:test_token].to_s
+    unless token.start_with?("rsoauth_at_")
+      flash.now[:alert] = "Need a test token first. Click Try MCP."
+      render :mcp, status: :unprocessable_entity
+      return
+    end
+
+    @mcp_test_token = token
+    @mcp_sample_post = sample_post_mcp(token)
+    render :mcp
+  end
+
   private
 
   def mcp_test_token_minting_allowed?
@@ -173,6 +189,72 @@ class DocsController < ApplicationController
     }
   rescue StandardError
     { ok: false, error: "MCP probe failed. Try again." }
+  end
+
+  def sample_post_mcp(token)
+    grant = RecordingStudioApi.access_grant_from_authorization_header(
+      authorization_header: "Bearer #{token}",
+      api: "public"
+    )
+    return { ok: false, error: "That token didn’t authorize. Try again." } unless grant.success?
+
+    client = ActionDispatch::Integration::Session.new(Rails.application)
+    client.host = request.host.presence || "www.example.com"
+
+    headers = {
+      "Authorization" => "Bearer #{token}",
+      "Content-Type" => "application/json",
+      "Accept" => "application/json",
+      "MCP-Protocol-Version" => "2025-06-18"
+    }
+
+    init_payload = {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "dummy-sample-post", version: "1.0" }
+      }
+    }
+    client.post("/recording_studio_mcp", params: init_payload.to_json, headers: headers)
+    unless client.response.successful?
+      return {
+        ok: false,
+        error: "Sample POST initialize returned #{client.response.status}.",
+        status: client.response.status
+      }
+    end
+
+    init_body = JSON.parse(client.response.body)
+    server_version = init_body.dig("result", "serverInfo", "version")
+
+    client.post(
+      "/recording_studio_mcp",
+      params: { jsonrpc: "2.0", id: 2, method: "tools/list" }.to_json,
+      headers: headers
+    )
+    unless client.response.successful?
+      return {
+        ok: false,
+        error: "Sample POST tools/list returned #{client.response.status}.",
+        status: client.response.status
+      }
+    end
+
+    tools_body = JSON.parse(client.response.body)
+    tool_names = Array(tools_body.dig("result", "tools")).filter_map { |entry| entry["name"] }
+
+    {
+      ok: true,
+      status: client.response.status,
+      grant_resolved: true,
+      server_version: server_version,
+      tool_names: tool_names
+    }
+  rescue StandardError
+    { ok: false, error: "Sample POST failed. Try again." }
   end
 
   def normalize_recordable_declaration(declaration)

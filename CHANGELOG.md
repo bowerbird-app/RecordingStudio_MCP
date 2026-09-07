@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2026-09-07
 
 ### Added
-- Dummy-only “Try MCP” control on `/docs/mcp` that mints a Seed MCP App token and probes initialize, tools/list, and list workspaces.
+- Dummy-only “Try MCP” and “Sample POST” on `/docs/mcp`: mint a Seed MCP App token, probe MCP, then POST `/recording_studio_mcp` so the Bearer grant resolves over HTTP.
 
 ### Upgrade notes
 - Dummy-only helper. No host upgrade required.

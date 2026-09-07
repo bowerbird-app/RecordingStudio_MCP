@@ -135,7 +135,24 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert token.present?, "expected a real rsoauth_at_ token in the response"
     assert_includes response.body, "MCP answered"
     assert_includes response.body, "Studio Workspace"
+    assert_includes response.body, "Sample POST"
     refute_includes response.body, ">Try MCP<"
+  end
+
+  test "create mcp sample post posts the bearer to the mcp endpoint" do
+    load Rails.root.join("db/seeds.rb").to_s
+    admin = User.find_by!(email: "admin@admin.com")
+    sign_in admin
+
+    post docs_mcp_test_token_path
+    token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
+    assert token.present?
+
+    post docs_mcp_sample_post_path, params: { test_token: token }
+
+    assert_response :success
+    assert_includes response.body, "Sample POST worked"
+    assert_includes response.body, "resolved"
   end
 
   test "create mcp test token requires sign in" do

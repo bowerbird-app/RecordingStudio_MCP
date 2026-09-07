@@ -31,7 +31,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "/recording_studio_mcp"
     assert_includes response.body, "Dummy-only"
     assert_includes response.body, "Try MCP"
-    assert_includes response.body, "One click makes a token"
+    assert_includes response.body, "sample POST"
     assert_includes response.body, "/assets/tailwind-"
   end
 
@@ -61,6 +61,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Test token"
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Studio Workspace"
+    assert_includes response.body, "Sample POST"
     assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
     refute_includes response.body, ">Try MCP<"
 
@@ -72,6 +73,30 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
       api: "public"
     )
     assert grant.success?
+  end
+
+  test "sample post hits recording studio mcp with the minted bearer" do
+    load Rails.root.join("db/seeds.rb").to_s
+
+    post docs_mcp_test_token_path
+    assert_response :success
+    token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
+    assert token.present?
+
+    post docs_mcp_sample_post_path, params: { test_token: token }
+
+    assert_response :success
+    assert_includes response.body, "Sample POST worked"
+    assert_includes response.body, "Grant: <code>resolved</code>"
+    assert_includes response.body, "list, show, create, update, capability_action, describe"
+    refute_includes response.body, ">Sample POST<"
+  end
+
+  test "sample post without a token asks you to try mcp first" do
+    post docs_mcp_sample_post_path, params: { test_token: "" }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Need a test token first"
   end
 
   test "unauthenticated mint redirects to sign in" do

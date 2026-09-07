@@ -3,7 +3,7 @@
 <div class="flex w-full flex-col gap-6">
   <%= render FlatPack::PageTitle::Component.new(
     title: "Test token",
-    subtitle: "Dummy-only. One click makes a token and tries MCP for you.",
+    subtitle: "Dummy-only. Try MCP, then sample POST the real path.",
     variant: :h1
   ) %>
 
@@ -11,7 +11,7 @@
     <code>/recording_studio_mcp</code>
   </p>
   <p class="text-sm leading-6">
-    You don’t need curl for a smoke check. Optional: copy the token for your own client.
+    Opening that URL in a browser stays blank or unauthorized. Use the buttons here instead.
   </p>
 
   <% if mcp_test_token_minting_allowed? %>
@@ -33,20 +33,55 @@
             Server: <code><%= @mcp_test_probe[:server_version] %></code>
           </p>
         <% end %>
-      <% else %>
+      <% elsif @mcp_test_probe.present? %>
         <%= render FlatPack::Alert::Component.new(
           title: "Token made, MCP didn’t answer",
-          description: @mcp_test_probe&.fetch(:error, nil).presence || "Try again.",
+          description: @mcp_test_probe[:error].presence || "Try again.",
           style: :danger
         ) %>
       <% end %>
 
+      <% if @mcp_sample_post.present? %>
+        <% if @mcp_sample_post[:ok] %>
+          <%= render FlatPack::Alert::Component.new(
+            title: "Sample POST worked",
+            description: "POST /recording_studio_mcp with the Bearer resolved the grant.",
+            style: :success
+          ) %>
+          <p class="text-sm leading-6">
+            HTTP: <code><%= @mcp_sample_post[:status] %></code>
+            · Grant: <code>resolved</code>
+          </p>
+          <p class="text-sm leading-6">
+            Tools: <code><%= Array(@mcp_sample_post[:tool_names]).join(", ") %></code>
+          </p>
+        <% else %>
+          <%= render FlatPack::Alert::Component.new(
+            title: "Sample POST failed",
+            description: @mcp_sample_post[:error].presence || "Try again.",
+            style: :danger
+          ) %>
+        <% end %>
+      <% end %>
+
       <%= render FlatPack::TextInput::Component.new(
-        name: "test_token",
+        name: "test_token_display",
         label: "Test token (optional copy)",
         value: @mcp_test_token,
         quick_copy: true
       ) %>
+
+      <% unless @mcp_sample_post&.fetch(:ok, false) %>
+        <%= form_with url: docs_mcp_sample_post_path, method: :post, local: true, data: { turbo: false } do %>
+          <%= hidden_field_tag :test_token, @mcp_test_token %>
+          <%= render FlatPack::Button::Component.new(
+            text: "Sample POST",
+            style: :primary,
+            size: :md,
+            type: "submit"
+          ) %>
+        <% end %>
+      <% end %>
     <% else %>
       <%= form_with url: docs_mcp_test_token_path, method: :post, local: true, data: { turbo: false } do %>
         <%= render FlatPack::Button::Component.new(
