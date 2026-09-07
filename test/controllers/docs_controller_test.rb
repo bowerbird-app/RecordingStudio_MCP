@@ -114,8 +114,8 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     get docs_mcp_path
 
     assert_response :success
-    assert_select "h1", text: "MCP URL"
-    assert_includes response.body, "Mint test token"
+    assert_select "h1", text: "Test token"
+    assert_includes response.body, "Get a test token"
     assert_select "form[action=?][method=?]", docs_mcp_test_token_path, "post" do
       assert_select "input[name=?]", "authenticity_token", count: 1
     end
@@ -133,7 +133,8 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     token = response.body[/(rsoauth_at_[A-Za-z0-9_\-]+)/, 1]
     assert token.present?, "expected a real rsoauth_at_ token in the response"
-    assert_includes response.body, "Authorization: Bearer"
+    assert_includes response.body, "Copy it now"
+    refute_includes response.body, "Get a test token"
   end
 
   test "create mcp test token requires sign in" do

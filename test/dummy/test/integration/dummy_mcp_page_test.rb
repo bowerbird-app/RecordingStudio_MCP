@@ -32,7 +32,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Dummy-only"
     assert_includes response.body, "describe"
     assert_includes response.body, "works here and with the API on purpose"
-    assert_includes response.body, "Mint test token"
+    assert_includes response.body, "Get a test token"
     assert_includes response.body, "/assets/tailwind-"
   end
 
@@ -47,7 +47,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
       assert_select "input[name=?]", "authenticity_token", count: 1
       assert_select "button[type=?]", "submit"
     end
-    assert_includes response.body, "Mint test token"
+    assert_includes response.body, "Get a test token"
   ensure
     ActionController::Base.allow_forgery_protection = previous
   end
@@ -58,8 +58,10 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     post docs_mcp_test_token_path
 
     assert_response :success
-    assert_includes response.body, "Fresh token"
+    assert_includes response.body, "Copy it now"
+    assert_includes response.body, "Test token"
     assert_match(/rsoauth_at_[A-Za-z0-9_\-]+/, response.body)
+    refute_includes response.body, "Get a test token"
 
     token = response.body[/(rsoauth_at_[A-Za-z0-9_\-]+)/, 1]
     assert token.present?

@@ -39,7 +39,7 @@ class DocsController < ApplicationController
   def mcp
   end
 
-  # Dummy-only helper for local MCP curl testing. Mints a real Oauth Bearer.
+  # Dummy-only helper for local MCP curl testing. Issues a real Oauth Bearer.
   def create_mcp_test_token
     return head :not_found unless mcp_test_token_minting_allowed?
 
@@ -101,14 +101,14 @@ class DocsController < ApplicationController
       code_verifier: verifier,
       api: "public"
     )
-    return { ok: false, error: "Couldn’t mint a test token. Try again." } unless token_result.success?
+    return { ok: false, error: "Couldn’t make a test token. Try again." } unless token_result.success?
 
     token = token_result.value.fetch(:access_token)
-    return { ok: false, error: "Couldn’t mint a test token. Try again." } unless token.to_s.start_with?("rsoauth_at_")
+    return { ok: false, error: "Couldn’t make a test token. Try again." } unless token.to_s.start_with?("rsoauth_at_")
 
     { ok: true, token: token }
   rescue StandardError
-    { ok: false, error: "Something went wrong minting a test token. Try again." }
+    { ok: false, error: "Something went wrong making a test token. Try again." }
   end
 
   def normalize_recordable_declaration(declaration)

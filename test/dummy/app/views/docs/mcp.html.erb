@@ -1,9 +1,9 @@
-<% dummy_page_nav(title: "MCP URL", back_url: root_path) %>
+<% dummy_page_nav(title: "Test token", back_url: root_path) %>
 
 <div class="flex w-full flex-col gap-6">
   <%= render FlatPack::PageTitle::Component.new(
-    title: "MCP URL",
-    subtitle: "Dummy-only. Point a remote MCP client at this host path.",
+    title: "Test token",
+    subtitle: "Dummy-only. Grab one, copy it once, paste it into your MCP client.",
     variant: :h1
   ) %>
 
@@ -18,40 +18,27 @@
   </p>
 
   <% if mcp_test_token_minting_allowed? %>
-    <%= render FlatPack::SectionTitle::Component.new(
-      title: "Mint a test token",
-      subtitle: "Dummy-only for local curl. One click, one token, shown once."
-    ) %>
-
-    <% if flash[:alert].present? %>
-      <%= render FlatPack::Alert::Component.new(
-        title: "Couldn’t mint",
-        description: flash[:alert],
-        style: :danger
-      ) %>
-    <% end %>
-
     <% if @mcp_test_token.present? %>
       <%= render FlatPack::Alert::Component.new(
-        title: "Fresh token — copy it now",
-        description: "Paste into Authorization: Bearer … for curl. It won’t be shown again.",
+        title: "Copy it now",
+        description: "This is the only time you’ll see it.",
         style: :success
       ) %>
-      <%= render FlatPack::CodeBlock::Component.new(
-        language: :text,
-        title: "Test token",
-        wrap: true,
-        code: @mcp_test_token
+      <%= render FlatPack::TextInput::Component.new(
+        name: "test_token",
+        label: "Test token",
+        value: @mcp_test_token,
+        quick_copy: true
       ) %>
-    <% end %>
-
-    <%= form_with url: docs_mcp_test_token_path, method: :post, local: true, data: { turbo: false } do %>
-      <%= render FlatPack::Button::Component.new(
-        text: "Mint test token",
-        style: :primary,
-        size: :md,
-        type: "submit"
-      ) %>
+    <% else %>
+      <%= form_with url: docs_mcp_test_token_path, method: :post, local: true, data: { turbo: false } do %>
+        <%= render FlatPack::Button::Component.new(
+          text: "Get a test token",
+          style: :primary,
+          size: :md,
+          type: "submit"
+        ) %>
+      <% end %>
     <% end %>
   <% end %>
 </div>
