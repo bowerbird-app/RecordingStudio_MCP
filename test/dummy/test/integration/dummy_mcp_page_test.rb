@@ -30,9 +30,8 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "/recording_studio_mcp"
     assert_includes response.body, "Dummy-only"
-    assert_includes response.body, "describe"
-    assert_includes response.body, "works here and with the API on purpose"
-    assert_includes response.body, "Get a test token"
+    assert_includes response.body, "Try MCP"
+    assert_includes response.body, "One click makes a token"
     assert_includes response.body, "/assets/tailwind-"
   end
 
@@ -47,7 +46,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
       assert_select "input[name=?]", "authenticity_token", count: 1
       assert_select "button[type=?]", "submit"
     end
-    assert_includes response.body, "Get a test token"
+    assert_includes response.body, "Try MCP"
   ensure
     ActionController::Base.allow_forgery_protection = previous
   end
@@ -58,10 +57,12 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     post docs_mcp_test_token_path
 
     assert_response :success
-    assert_includes response.body, "Copy it now"
+    assert_includes response.body, "MCP answered"
     assert_includes response.body, "Test token"
+    assert_includes response.body, "list, show, create, update, capability_action, describe"
+    assert_includes response.body, "Studio Workspace"
     assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
-    refute_includes response.body, "Get a test token"
+    refute_includes response.body, ">Try MCP<"
 
     token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
     assert token.present?

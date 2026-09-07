@@ -3,7 +3,7 @@
 <div class="flex w-full flex-col gap-6">
   <%= render FlatPack::PageTitle::Component.new(
     title: "Test token",
-    subtitle: "Dummy-only. Grab one, copy it once, paste it into your MCP client.",
+    subtitle: "Dummy-only. One click makes a token and tries MCP for you.",
     variant: :h1
   ) %>
 
@@ -11,29 +11,46 @@
     <code>/recording_studio_mcp</code>
   </p>
   <p class="text-sm leading-6">
-    After Connect, call <code>initialize</code> then <code>tools/list</code>. Use <code>describe</code> before create.
-  </p>
-  <p class="text-sm leading-6">
-    The Connect token works here and with the API on purpose.
+    You don’t need curl for a smoke check. Optional: copy the token for your own client.
   </p>
 
   <% if mcp_test_token_minting_allowed? %>
     <% if @mcp_test_token.present? %>
-      <%= render FlatPack::Alert::Component.new(
-        title: "Copy it now",
-        description: "This is the only time you’ll see it.",
-        style: :success
-      ) %>
+      <% if @mcp_test_probe&.fetch(:ok, false) %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "MCP answered",
+          description: "Initialize, tools/list, and list workspaces all came back.",
+          style: :success
+        ) %>
+        <p class="text-sm leading-6">
+          Tools: <code><%= Array(@mcp_test_probe[:tool_names]).join(", ") %></code>
+        </p>
+        <p class="text-sm leading-6">
+          Workspaces: <code><%= Array(@mcp_test_probe[:workspace_names]).presence&.join(", ") || "none" %></code>
+        </p>
+        <% if @mcp_test_probe[:server_version].present? %>
+          <p class="text-sm leading-6">
+            Server: <code><%= @mcp_test_probe[:server_version] %></code>
+          </p>
+        <% end %>
+      <% else %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "Token made, MCP didn’t answer",
+          description: @mcp_test_probe&.fetch(:error, nil).presence || "Try again.",
+          style: :danger
+        ) %>
+      <% end %>
+
       <%= render FlatPack::TextInput::Component.new(
         name: "test_token",
-        label: "Test token",
+        label: "Test token (optional copy)",
         value: @mcp_test_token,
         quick_copy: true
       ) %>
     <% else %>
       <%= form_with url: docs_mcp_test_token_path, method: :post, local: true, data: { turbo: false } do %>
         <%= render FlatPack::Button::Component.new(
-          text: "Get a test token",
+          text: "Try MCP",
           style: :primary,
           size: :md,
           type: "submit"

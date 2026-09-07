@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.2`. Oauth `
 
 ## 0.2.1
 
-Dummy-only “Get a test token” on `/docs/mcp`. No host upgrade required.
+Dummy-only “Try MCP” on `/docs/mcp` mints a token and probes the endpoint. No host upgrade required.
 
 Dummy GitHub tags used to prove Connect then MCP:
 

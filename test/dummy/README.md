@@ -11,7 +11,7 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - Site name `Studio` through Site settings
 - MCP URL at `/recording_studio_mcp`
 - Dummy-only `/docs/mcp` (mentions `describe`)
-- Signed-in “Get a test token” on `/docs/mcp` (local/dev/test only) for a real `rsoauth_at_…` token against Seed MCP App + Studio Workspace
+- Signed-in “Try MCP” on `/docs/mcp` (local/dev/test only) mints a real `rsoauth_at_…` token and probes initialize / tools/list / list workspaces
 
 Token URL stays on the API engine. MCP authenticates `rsoauth_at_` tokens through Oauth's TokenAuthenticator. The same token works with MCP and the named API on purpose; both resolve the same AccessGrant.
 
@@ -33,6 +33,6 @@ Open port 3000. Sign in with `admin@admin.com` / `Password`.
 - `/recording_studio_oauth/oauth/authorize` Connect
 - `/recording_studio_api/oauth/token` API token URL
 - `/.well-known/oauth-protected-resource` Oauth metadata
-- `/docs/mcp` dummy-only MCP URL + get a test token
-- `POST /docs/mcp/test_token` dummy-only token helper (signed in, local only)
+- `/docs/mcp` dummy-only MCP try-it page
+- `POST /docs/mcp/test_token` dummy-only mint + MCP probe (signed in, local only)
 - `/users/sign_in` Devise

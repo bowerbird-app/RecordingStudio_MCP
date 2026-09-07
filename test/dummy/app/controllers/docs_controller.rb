@@ -39,13 +39,14 @@ class DocsController < ApplicationController
   def mcp
   end
 
-  # Dummy-only helper for local MCP curl testing. Issues a real Oauth Bearer.
+  # Dummy-only helper for local MCP testing. Issues a real Oauth Bearer and probes MCP.
   def create_mcp_test_token
     return head :not_found unless mcp_test_token_minting_allowed?
 
     result = mint_mcp_test_token
     if result[:ok]
       @mcp_test_token = result[:token]
+      @mcp_test_probe = probe_mcp_with_token(@mcp_test_token)
       render :mcp
     else
       flash.now[:alert] = result[:error]
@@ -109,6 +110,69 @@ class DocsController < ApplicationController
     { ok: true, token: token }
   rescue StandardError
     { ok: false, error: "Something went wrong making a test token. Try again." }
+  end
+
+  def probe_mcp_with_token(token)
+    grant = RecordingStudioApi.access_grant_from_authorization_header(
+      authorization_header: "Bearer #{token}",
+      api: "public"
+    )
+    return { ok: false, error: "That token didn’t authorize. Try again." } unless grant.success?
+
+    access_grant = grant.value
+
+    init = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 1,
+        "method" => "initialize",
+        "params" => {
+          "protocolVersion" => "2025-06-18",
+          "capabilities" => {},
+          "clientInfo" => { "name" => "dummy-test-token", "version" => "1.0" }
+        }
+      },
+      access_grant: access_grant
+    )
+    return { ok: false, error: "MCP initialize failed. Check the endpoint and try again." } unless init.status == :ok
+
+    tools = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+      access_grant: access_grant
+    )
+    return { ok: false, error: "MCP tools/list failed. Try again." } unless tools.status == :ok
+
+    tools_body = tools.body.deep_stringify_keys
+    tool_names = Array(tools_body.dig("result", "tools")).filter_map { |entry| entry["name"] }
+
+    listed = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 3,
+        "method" => "tools/call",
+        "params" => { "name" => "list", "arguments" => { "type" => "Workspace" } }
+      },
+      access_grant: access_grant
+    )
+    return { ok: false, error: "MCP list workspaces failed. Try again." } unless listed.status == :ok
+
+    listed_body = listed.body.deep_stringify_keys
+    records = listed_body.dig("result", "structuredContent", "records")
+    if records.blank?
+      text = listed_body.dig("result", "content", 0, "text")
+      records = text.present? ? JSON.parse(text).fetch("records", []) : []
+    end
+    workspace_names = Array(records).filter_map { |record| record["name"] }
+
+    init_body = init.body.deep_stringify_keys
+    {
+      ok: true,
+      server_version: init_body.dig("result", "serverInfo", "version"),
+      tool_names: tool_names,
+      workspace_names: workspace_names
+    }
+  rescue StandardError
+    { ok: false, error: "MCP probe failed. Try again." }
   end
 
   def normalize_recordable_declaration(declaration)

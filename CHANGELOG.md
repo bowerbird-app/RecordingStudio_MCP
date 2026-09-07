@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2026-09-07
 
 ### Added
-- Dummy-only “Get a test token” control on `/docs/mcp` for local curl against Seed MCP App and Studio Workspace.
+- Dummy-only “Try MCP” control on `/docs/mcp` that mints a Seed MCP App token and probes initialize, tools/list, and list workspaces.
 
 ### Upgrade notes
 - Dummy-only helper. No host upgrade required.
