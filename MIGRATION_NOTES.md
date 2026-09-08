@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.2`. Oauth `~> 0.1`.
 
+## 0.2.1
+
+Dummy-only “Try MCP” and “Sample POST” on `/docs/mcp`. No host upgrade required.
+
 Dummy GitHub tags used to prove Connect then MCP:
 
 - Recording Studio `v4.2.1`

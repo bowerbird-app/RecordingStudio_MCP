@@ -107,6 +107,62 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Workspace"
   end
 
+  test "mcp page shows the mint test token button when signed in" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+
+    get docs_mcp_path
+
+    assert_response :success
+    assert_select "h1", text: "Test token"
+    assert_includes response.body, "Try MCP"
+    assert_select "form[action=?][method=?]", docs_mcp_test_token_path, "post" do
+      assert_select "input[name=?]", "authenticity_token", count: 1
+    end
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
+  test "create mcp test token mints a real oauth bearer" do
+    load Rails.root.join("db/seeds.rb").to_s
+    admin = User.find_by!(email: "admin@admin.com")
+    sign_in admin
+
+    post docs_mcp_test_token_path
+
+    assert_response :success
+    token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
+    assert token.present?, "expected a real rsoauth_at_ token in the response"
+    assert_includes response.body, "MCP answered"
+    assert_includes response.body, "Studio Workspace"
+    assert_includes response.body, "Sample POST"
+    refute_includes response.body, ">Try MCP<"
+  end
+
+  test "create mcp sample post posts the bearer to the mcp endpoint" do
+    load Rails.root.join("db/seeds.rb").to_s
+    admin = User.find_by!(email: "admin@admin.com")
+    sign_in admin
+
+    post docs_mcp_test_token_path
+    token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
+    assert token.present?
+
+    post docs_mcp_sample_post_path, params: { test_token: token }
+
+    assert_response :success
+    assert_includes response.body, "All checks passed"
+    assert_includes response.body, "Grant resolved"
+  end
+
+  test "create mcp test token requires sign in" do
+    sign_out @user
+
+    post docs_mcp_test_token_path
+
+    assert_redirected_to new_user_session_path
+  end
+
   test "authenticated docs pages use the recording studio default layout" do
     get docs_install_path
 

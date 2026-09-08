@@ -1,17 +1,97 @@
-<% dummy_page_nav(title: "MCP URL", back_url: root_path) %>
+<% dummy_page_nav(title: "Test token", back_url: root_path) %>
 
-<%= render FlatPack::PageTitle::Component.new(
-  title: "MCP URL",
-  subtitle: "Dummy-only. Point a remote MCP client at this host path.",
-  variant: :h1
-) %>
+<div class="flex w-full flex-col gap-6">
+  <%= render FlatPack::PageTitle::Component.new(
+    title: "Test token",
+    subtitle: "Dummy-only. Try MCP, then Sample POST.",
+    variant: :h1
+  ) %>
 
-<p class="mt-4 text-sm leading-6">
-  <code>/recording_studio_mcp</code>
-</p>
-<p class="mt-2 text-sm leading-6">
-  After Connect, call <code>initialize</code> then <code>tools/list</code>. Use <code>describe</code> before create.
-</p>
-<p class="mt-2 text-sm leading-6">
-  The Connect token works here and with the API on purpose.
-</p>
+  <p class="text-sm leading-6">
+    <code>/recording_studio_mcp</code>
+  </p>
+  <p class="text-sm leading-6">
+    Opening that URL in a browser stays blank or unauthorized. Use the buttons here instead.
+  </p>
+
+  <% if mcp_test_token_minting_allowed? %>
+    <% if @mcp_test_token.present? %>
+      <% sample_ok = @mcp_sample_post&.fetch(:ok, false) %>
+      <% probe_ok = @mcp_test_probe&.fetch(:ok, false) %>
+
+      <% if sample_ok %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "All checks passed",
+          description: "Token minted · MCP answered · Sample POST grant resolved.",
+          style: :success
+        ) %>
+        <%= render FlatPack::Badge::Component.new(
+          text: "Grant resolved",
+          style: :success,
+          size: :md
+        ) %>
+        <p class="text-sm leading-6">
+          Status: <code><%= @mcp_sample_post[:status] %></code>
+          · Tools: <code><%= Array(@mcp_sample_post[:tool_names]).join(", ") %></code>
+        </p>
+        <% if @mcp_sample_post[:server_version].present? %>
+          <p class="text-sm leading-6">
+            Server: <code><%= @mcp_sample_post[:server_version] %></code>
+          </p>
+        <% end %>
+      <% elsif @mcp_sample_post.present? %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "Sample POST failed",
+          description: @mcp_sample_post[:error].presence || "Try again.",
+          style: :danger
+        ) %>
+      <% elsif probe_ok %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "MCP answered — one more step",
+          description: "Click Sample POST to prove the Bearer grant resolves.",
+          style: :success
+        ) %>
+        <p class="text-sm leading-6">
+          Tools: <code><%= Array(@mcp_test_probe[:tool_names]).join(", ") %></code>
+        </p>
+        <p class="text-sm leading-6">
+          Workspaces: <code><%= Array(@mcp_test_probe[:workspace_names]).presence&.join(", ") || "none" %></code>
+        </p>
+      <% elsif @mcp_test_probe.present? %>
+        <%= render FlatPack::Alert::Component.new(
+          title: "Token made, MCP didn’t answer",
+          description: @mcp_test_probe[:error].presence || "Try again.",
+          style: :danger
+        ) %>
+      <% end %>
+
+      <%= render FlatPack::TextInput::Component.new(
+        name: "test_token_display",
+        label: "Test token (optional copy)",
+        value: @mcp_test_token,
+        quick_copy: true
+      ) %>
+
+      <% unless sample_ok %>
+        <%= form_with url: docs_mcp_sample_post_path, method: :post, local: true, data: { turbo: false } do %>
+          <%= hidden_field_tag :test_token, @mcp_test_token %>
+          <%= render FlatPack::Button::Component.new(
+            text: "Sample POST",
+            style: :primary,
+            size: :md,
+            type: "submit"
+          ) %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <%= form_with url: docs_mcp_test_token_path, method: :post, local: true, data: { turbo: false } do %>
+        <%= render FlatPack::Button::Component.new(
+          text: "Try MCP",
+          style: :primary,
+          size: :md,
+          type: "submit"
+        ) %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
