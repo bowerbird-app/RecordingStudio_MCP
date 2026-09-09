@@ -19,21 +19,19 @@ module RecordingStudioMcp
     def initialize(access_grant:, idempotency_key: nil)
       @access_grant = access_grant
       @idempotency_key = idempotency_key
-      @catalog = Catalog.for(access_grant)
+      @surface = ToolSurface.for(access_grant: access_grant)
+      @catalog = @surface.catalog
     end
 
     def call(tool_name, arguments)
       name = tool_name.to_s
       args = stringify_keys(arguments)
-      return error_result(unknown_tool_message(name)) unless Tools.known?(name)
+      return error_result(unknown_tool_message(name)) unless surface.known?(name)
 
-      case name
-      when "describe"
-        success_result(catalog.describe(args["type"]))
-      when "capability_action"
-        dispatch_capability_action(args)
+      if surface.tree_tool?(name)
+        dispatch_tree(name, args)
       else
-        dispatch_resource(RESOURCE_TOOLS.fetch(name), args)
+        dispatch_endpoint(surface.endpoint_for(name), args)
       end
     rescue RecordingStudioApi::AuthorizationError,
            RecordingStudioApi::NotFoundError,
@@ -45,7 +43,62 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant, :idempotency_key, :catalog
+    attr_reader :access_grant, :idempotency_key, :catalog, :surface
+
+    def dispatch_tree(name, args)
+      case name
+      when "describe"
+        success_result(catalog.describe(args["type"]))
+      when "capability_action"
+        dispatch_capability_action(args)
+      else
+        dispatch_resource(RESOURCE_TOOLS.fetch(name), args)
+      end
+    end
+
+    def dispatch_endpoint(endpoint, args)
+      context = RecordingStudioApi::RegisteredEndpointContext.new(
+        api_client: access_grant.api_client,
+        credential: access_grant.credential,
+        access_recording: access_grant.access_recording,
+        access_grant: access_grant,
+        root_recording: access_grant.root_recording,
+        params: endpoint_params(endpoint, args)
+      )
+      result = endpoint.handler.call(context)
+      success_result(serialize_endpoint_result(endpoint, result))
+    end
+
+    def endpoint_params(endpoint, args)
+      path_keys = endpoint.path_segments.filter_map do |segment|
+        segment.delete_prefix(":") if segment.start_with?(":")
+      end
+
+      path_keys.each do |key|
+        raise RecordingStudioApi::InvalidActionInputError, "#{key} is required" if args[key].blank?
+      end
+
+      captures = path_keys.to_h { |key| [key.to_sym, args[key]] }
+      remaining = stringify_keys(args).except(*path_keys)
+      remaining = remaining.deep_symbolize_keys if remaining.respond_to?(:deep_symbolize_keys)
+      merged = remaining.merge(captures)
+      return merged if endpoint.input_contract.nil?
+
+      contract_result = endpoint.input_contract.call(merged)
+      return contract_result.value if contract_result.success?
+
+      raise RecordingStudioApi::InvalidActionInputError.new(
+        "Invalid input for endpoint #{endpoint.name}",
+        details: contract_result.errors
+      )
+    end
+
+    def serialize_endpoint_result(endpoint, result)
+      serializer = endpoint.serializer
+      return result if serializer.nil?
+
+      serializer.call(result)
+    end
 
     def dispatch_resource(operation_name, args)
       recordable_type = catalog.resolve_type!(args["type"])
@@ -220,7 +273,9 @@ module RecordingStudioMcp
     end
 
     def unknown_tool_message(name)
-      "Unknown tool #{name}. Allowed tools: #{Tools::NAMES.join(', ')}"
+      allowed = surface.tool_names
+      suffix = allowed.any? ? allowed.join(", ") : "(none)"
+      "Unknown tool #{name}. Allowed tools: #{suffix}"
     end
 
     def success_result(payload)
