@@ -91,7 +91,7 @@ module RecordingStudioMcp
           name: "recording-studio",
           version: RecordingStudioMcp::VERSION
         },
-        instructions: Instructions.text
+        instructions: Instructions.text(access_grant: access_grant)
       }
     end
 
