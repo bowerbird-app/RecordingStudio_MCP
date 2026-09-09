@@ -14,12 +14,6 @@ module RecordingStudioMcp
       TREE_NAMES.map { |name| public_send("#{name}_tool", catalog) }
     end
 
-    def known?(name, surface: nil)
-      return surface.known?(name) if surface
-
-      TREE_NAMES.include?(name.to_s)
-    end
-
     def endpoint_tool(endpoint)
       schema = EndpointSchema.build(endpoint)
       options = {

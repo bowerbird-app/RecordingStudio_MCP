@@ -7,24 +7,6 @@ class ToolsTest < Minitest::Test
     assert_equal %w[list show create update capability_action describe], RecordingStudioMcp::Tools::TREE_NAMES
   end
 
-  def test_known_uses_surface_when_provided
-    assert_equal true, RecordingStudioMcp::Tools.known?("list")
-    assert_equal false, RecordingStudioMcp::Tools.known?("ping")
-
-    with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
-        :ping,
-        http_verb: :get,
-        path: "ping",
-        handler: ->(_context) { { ok: true } }
-      )
-      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
-
-      assert_equal true, RecordingStudioMcp::Tools.known?("ping", surface: surface)
-      assert_equal false, RecordingStudioMcp::Tools.known?("list", surface: surface)
-    end
-  end
-
   def test_definitions_with_types_include_tree_tools
     with_isolated_api_configuration do
       register_tree_type("Page")

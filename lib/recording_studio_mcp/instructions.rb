@@ -22,8 +22,8 @@ module RecordingStudioMcp
 
     module_function
 
-    def text(access_grant: nil, surface: nil)
-      surface ||= ToolSurface.for(access_grant: access_grant)
+    def text(access_grant: nil)
+      surface = ToolSurface.for(access_grant: access_grant)
       parts = [AUTH_BLURB]
       parts << TREE_BLURB if surface.tree_enabled?
       parts << ENDPOINT_BLURB if surface.endpoints_enabled?
