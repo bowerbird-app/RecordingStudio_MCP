@@ -37,7 +37,7 @@ After initialize, clients send the negotiated version in `MCP-Protocol-Version`.
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.2`, Oauth `~> 0.1`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `~> 0.1`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Alias `/.well-known/oauth-protected-resource` to Oauth's metadata, as the Oauth dummy does.

@@ -1,6 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.2`. Oauth `~> 0.1`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `~> 0.1`.
+
+## 0.3.0
+
+Endpoint MCP tools for hosts that register `RecordingStudioApi.register_endpoint` routes. Tree tools stay when recordable types exist. Catalog-only hosts no longer advertise empty tree tools. Pin API to `~> 0.5.4`.
 
 ## 0.2.1
 
@@ -10,7 +14,7 @@ Dummy GitHub tags used to prove Connect then MCP:
 
 - Recording Studio `v4.2.1`
 - Accessible `v0.9.1`
-- API `v0.5.2`
+- API `v0.5.4`
 - Oauth `v0.1.0`
 - Admin `v2.0.2`
 - Site settings `v0.1.0`

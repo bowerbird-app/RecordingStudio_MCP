@@ -16,7 +16,7 @@ class RecordingStudioMcpTest < Minitest::Test
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", "~> 0.5.2"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", "~> 0.5.4"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", "~> 0.1"'
     refute_includes gemspec, "recording_studio_users"
     refute_includes gemspec, "doorkeeper"
@@ -66,7 +66,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.2.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.9.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.2"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.5.2"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.5.4"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.1.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.5.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.0"'
