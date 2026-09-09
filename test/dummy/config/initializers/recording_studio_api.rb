@@ -61,3 +61,14 @@ RecordingStudioApi.register_capability_action(
   },
   handler: Dummy::PingWorkspace
 )
+
+RecordingStudioApi.register_endpoint(
+  :ping,
+  http_verb: :get,
+  path: "ping",
+  openapi: {
+    summary: "Ping",
+    description: "Confirm this named API can reach a registered endpoint."
+  },
+  handler: ->(_context) { { ok: true } }
+)

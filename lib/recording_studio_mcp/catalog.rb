@@ -93,6 +93,10 @@ module RecordingStudioMcp
       Array(RecordingStudioApi.recordable_registration_for(recordable_type, api: api)&.writable_attributes).map(&:to_s)
     end
 
+    def registered_endpoints
+      RecordingStudioApi.configuration.fetch_api(api).registered_endpoint_registry.all
+    end
+
     private
 
     def registered_types

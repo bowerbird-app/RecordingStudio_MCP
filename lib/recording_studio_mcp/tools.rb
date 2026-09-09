@@ -2,17 +2,32 @@
 
 module RecordingStudioMcp
   module Tools
-    NAMES = %w[list show create update capability_action describe].freeze
+    TREE_NAMES = %w[list show create update capability_action describe].freeze
 
     module_function
 
     def definitions(access_grant: nil, api: nil)
-      catalog = Catalog.new(api: api || Catalog.api_from(access_grant))
-      NAMES.map { |name| public_send("#{name}_tool", catalog) }
+      ToolSurface.for(access_grant: access_grant, api: api).tool_definitions
     end
 
-    def known?(name)
-      NAMES.include?(name.to_s)
+    def tree_definitions(catalog)
+      TREE_NAMES.map { |name| public_send("#{name}_tool", catalog) }
+    end
+
+    def endpoint_tool(endpoint)
+      schema = EndpointSchema.build(endpoint)
+      options = {
+        name: endpoint.name,
+        title: endpoint_title(endpoint),
+        description: endpoint_description(endpoint),
+        read_only: endpoint.http_verb == :get,
+        destructive: endpoint.http_verb == :delete,
+        idempotent: endpoint.http_verb == :get,
+        required: schema.fetch(:required),
+        properties: schema.fetch(:properties)
+      }
+      options[:additional_properties] = schema[:additionalProperties] if schema.key?(:additionalProperties)
+      tool(options)
     end
 
     def list_tool(catalog)
@@ -137,13 +152,22 @@ module RecordingStudioMcp
       )
     end
 
+    def endpoint_title(endpoint)
+      endpoint.openapi[:summary].presence || endpoint.name.to_s.tr("_", " ").capitalize
+    end
+
+    def endpoint_description(endpoint)
+      parts = [endpoint.openapi[:description].presence, "#{endpoint.http_verb.to_s.upcase} #{endpoint.path}"]
+      parts.compact.join(" ")
+    end
+
     def tool(options)
       schema = {
         type: "object",
         properties: options.fetch(:properties),
         required: options.fetch(:required)
       }
-      schema[:additionalProperties] = true if options[:additional_properties]
+      schema[:additionalProperties] = options[:additional_properties] if options.key?(:additional_properties)
       payload = {
         name: options.fetch(:name),
         title: options.fetch(:title),
@@ -158,6 +182,6 @@ module RecordingStudioMcp
       }
       payload
     end
-    private_class_method :tool
+    private_class_method :tool, :endpoint_title, :endpoint_description
   end
 end

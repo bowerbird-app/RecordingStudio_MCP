@@ -227,10 +227,26 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     describe_enum = tools.find { |tool| tool["name"] == "describe" }.dig("inputSchema", "properties", "type", "enum")
 
     assert_includes names, "describe"
+    assert_includes names, "ping"
     assert_includes list_enum, "Folder"
     assert_includes list_enum, "Page"
     assert_includes list_enum, "Workspace"
     assert_equal list_enum, describe_enum
+  end
+
+  test "tools call dispatches the registered ping endpoint" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "ping", arguments: {}).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    payload = JSON.parse(response.body)
+    body = tool_payload(payload)
+
+    assert_equal false, payload.dig("result", "isError")
+    assert_equal true, body["ok"]
   end
 
   test "describe page shows title writable" do

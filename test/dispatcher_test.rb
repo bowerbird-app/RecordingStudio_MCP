@@ -55,6 +55,14 @@ class DispatcherTest < Minitest::Test
     def unknown_type_message(name)
       "Unknown type #{name}. Allowed types: Folder, Page, Workspace"
     end
+
+    def type_names
+      %w[Folder Page Workspace]
+    end
+
+    def registered_endpoints
+      []
+    end
   end
 
   def setup
@@ -69,11 +77,13 @@ class DispatcherTest < Minitest::Test
   end
 
   def test_unknown_tool_is_error
-    result = dispatch("explode", {})
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = dispatch("explode", {})
 
-    assert_equal true, result[:isError]
-    assert_includes result.dig(:content, 0, :text), "Unknown tool"
-    assert_includes result.dig(:content, 0, :text), "describe"
+      assert_equal true, result[:isError]
+      assert_includes result.dig(:content, 0, :text), "Unknown tool"
+      assert_includes result.dig(:content, 0, :text), "describe"
+    end
   end
 
   def test_list_calls_index_and_returns_structured_content
@@ -244,6 +254,101 @@ class DispatcherTest < Minitest::Test
           refute_includes result.dig(:content, 0, :text), "for example"
         end
       end
+    end
+  end
+
+  def test_endpoint_dispatch_returns_handler_payload
+    captured = nil
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :echo,
+        http_verb: :post,
+        path: "echo/:key",
+        handler: lambda { |context|
+          captured = context
+          { key: context.params[:key], message: context.params[:message] }
+        }
+      )
+
+      result = dispatch("echo", { key: "widget", message: "hello" })
+
+      refute result[:isError]
+      assert_equal "widget", result.dig(:structuredContent, "key")
+      assert_equal "hello", result.dig(:structuredContent, "message")
+      assert_kind_of RecordingStudioApi::RegisteredEndpointContext, captured
+      assert_equal @grant, captured.access_grant
+    end
+  end
+
+  def test_endpoint_serializer_wraps_handler_result
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :shout,
+        http_verb: :post,
+        path: "shout",
+        serializer: ->(result) { { wrapped: result } },
+        handler: ->(_context) { { message: "hi" } }
+      )
+
+      result = dispatch("shout", {})
+
+      refute result[:isError]
+      assert_equal({ "message" => "hi" }, result.dig(:structuredContent, "wrapped"))
+    end
+  end
+
+  def test_endpoint_input_contract_failure_is_tool_error
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :shout,
+        http_verb: :post,
+        path: "shout",
+        input_contract: {
+          fields: {
+            message: { type: :string, required: true, allow_blank: false }
+          }
+        },
+        handler: ->(_context) { { ok: true } }
+      )
+
+      result = dispatch("shout", {})
+
+      assert result[:isError]
+      assert_includes result.dig(:content, 0, :text), "Invalid input for endpoint shout"
+    end
+  end
+
+  def test_endpoint_missing_path_token_is_tool_error
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :echo,
+        http_verb: :post,
+        path: "echo/:key",
+        handler: ->(_context) { { ok: true } }
+      )
+
+      result = dispatch("echo", {})
+
+      assert result[:isError]
+      assert_includes result.dig(:content, 0, :text), "key is required"
+    end
+  end
+
+  def test_unknown_tool_on_catalog_only_host_lists_endpoint_names
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :echo,
+        http_verb: :get,
+        path: "echo",
+        handler: ->(_context) { { ok: true } }
+      )
+
+      result = dispatch("explode", {})
+
+      assert result[:isError]
+      assert_includes result.dig(:content, 0, :text), "Unknown tool explode"
+      assert_includes result.dig(:content, 0, :text), "echo"
+      refute_includes result.dig(:content, 0, :text), "describe"
     end
   end
 

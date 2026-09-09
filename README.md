@@ -10,22 +10,21 @@ A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` w
 
 Authorization is Recording Studio Accessible through that AccessGrant. Same grant as API. No Pundit. No OAuth scopes.
 
-Tools are a small parameterized set over the named API the OauthClient is bound to:
+`tools/list` advertises the named API bound to the OauthClient. The surface depends on what that API registered.
 
-- `list`
-- `show`
-- `create`
-- `update`
-- `capability_action`
-- `describe`
+Tree hosts register recordable types. They get six parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `type` is an enum of those types. Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
 
-`tools/list` is grant-aware. `type` is an enum of types registered on that OauthClient's named API. Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
+Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`.
 
-Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`. Tool results include MCP `structuredContent`.
+Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens and `input_contract` fields become `inputSchema` arguments. There is no `describe` hop and no empty tree tool list.
 
-The initialize response repeats that starter flow in `instructions`. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), and potentially destructive capability actions. The server reports `tools.listChanged: false`; it does not stream tool-list changes.
+Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `capability_action`, or `describe`.
 
-Not one MCP tool per OpenAPI path. Handlers call the same API resource and capability actions. MCP does not serve records when API access is disabled.
+Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
+
+Tool results include MCP `structuredContent`. The initialize `instructions` match the grant's surface. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), destructive capability actions, and GET versus mutating endpoint verbs. The server reports `tools.listChanged: false`. Call `tools/list` again when you need a fresh list.
+
+Handlers call the same API resource actions, capability actions, and registered endpoint handlers. MCP does not serve records when API access is disabled.
 
 Staff register the client in Oauth. There is no Dynamic Client Registration.
 
@@ -37,7 +36,7 @@ After initialize, clients send the negotiated version in `MCP-Protocol-Version`.
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.2`, Oauth `~> 0.1`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `~> 0.1`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Alias `/.well-known/oauth-protected-resource` to Oauth's metadata, as the Oauth dummy does.
@@ -55,4 +54,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.2.1
+0.3.0

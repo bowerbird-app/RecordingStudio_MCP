@@ -12,6 +12,20 @@ class CatalogTest < Minitest::Test
     assert_equal "public", RecordingStudioMcp::Catalog.api_from(grant)
   end
 
+  def test_registered_endpoints_delegates_to_the_named_api_registry
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        handler: ->(_context) { { ok: true } }
+      )
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal ["ping"], catalog.registered_endpoints.map(&:name)
+    end
+  end
+
   def test_unknown_type_message_names_the_allowed_set
     catalog = RecordingStudioMcp::Catalog.new(api: :public)
     names = catalog.type_names
