@@ -27,7 +27,7 @@ class EndpointSchemaTest < Minitest::Test
       handler: ->(_context) { {} },
       input_contract: {
         fields: {
-          q: { type: :string, required: true },
+          q: { type: :string, required: true, description: "Search query" },
           limit: { type: :integer, required: false },
           style: { type: :string, required: false, enum: %w[quiet loud] },
           flags: { type: :hash, required: false }
@@ -43,6 +43,26 @@ class EndpointSchemaTest < Minitest::Test
     assert_equal "object", schema.dig(:properties, :flags, :type)
     assert_equal %w[quiet loud], schema.dig(:properties, :style, :enum)
     assert_equal false, schema[:additionalProperties]
+    assert_equal "Search query", schema.dig(:properties, :q, :description)
+  end
+
+  def test_reject_unknown_false_leaves_additional_properties_open
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :search,
+      http_verb: :post,
+      path: "search",
+      handler: ->(_context) { {} },
+      input_contract: {
+        reject_unknown: false,
+        fields: {
+          q: { type: :string, required: false }
+        }
+      }
+    )
+
+    schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+
+    refute schema.key?(:additionalProperties)
   end
 
   def test_path_tokens_win_on_name_collision

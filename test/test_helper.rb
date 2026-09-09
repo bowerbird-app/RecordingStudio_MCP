@@ -26,8 +26,9 @@ module IsolatedApiConfiguration
   def register_tree_type(name = "Page")
     RecordingStudioApi.register_recordable_type_api(
       name,
-      serializer: ->(*) { {} },
-      output_keys: %i[id],
+      serializer: ->(*) { { title: "Title" } },
+      output_keys: %i[title],
+      writable_attributes: %i[title],
       operations: %i[index show create update]
     )
   end
