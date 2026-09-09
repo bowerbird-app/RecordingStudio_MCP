@@ -34,6 +34,8 @@ module IsolatedApiConfiguration
   end
 end
 
-class Minitest::Test
-  include IsolatedApiConfiguration
+module Minitest
+  class Test
+    include IsolatedApiConfiguration
+  end
 end

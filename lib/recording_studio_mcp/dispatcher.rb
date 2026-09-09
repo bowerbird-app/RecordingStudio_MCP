@@ -70,18 +70,31 @@ module RecordingStudioMcp
     end
 
     def endpoint_params(endpoint, args)
-      path_keys = endpoint.path_segments.filter_map do |segment|
-        segment.delete_prefix(":") if segment.start_with?(":")
-      end
+      apply_endpoint_contract(endpoint, merge_endpoint_args(endpoint, args))
+    end
 
-      path_keys.each do |key|
-        raise RecordingStudioApi::InvalidActionInputError, "#{key} is required" if args[key].blank?
-      end
-
+    def merge_endpoint_args(endpoint, args)
+      path_keys = endpoint_path_keys(endpoint)
+      require_endpoint_path_args!(path_keys, args)
       captures = path_keys.to_h { |key| [key.to_sym, args[key]] }
       remaining = stringify_keys(args).except(*path_keys)
       remaining = remaining.deep_symbolize_keys if remaining.respond_to?(:deep_symbolize_keys)
-      merged = remaining.merge(captures)
+      remaining.merge(captures)
+    end
+
+    def endpoint_path_keys(endpoint)
+      endpoint.path_segments.filter_map do |segment|
+        segment.delete_prefix(":") if segment.start_with?(":")
+      end
+    end
+
+    def require_endpoint_path_args!(path_keys, args)
+      path_keys.each do |key|
+        raise RecordingStudioApi::InvalidActionInputError, "#{key} is required" if args[key].blank?
+      end
+    end
+
+    def apply_endpoint_contract(endpoint, merged)
       return merged if endpoint.input_contract.nil?
 
       contract_result = endpoint.input_contract.call(merged)

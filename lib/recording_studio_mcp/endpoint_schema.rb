@@ -23,13 +23,10 @@ module RecordingStudioMcp
     def build
       path = path_properties
       contract = contract_properties
-      properties = contract.fetch(:properties).merge(path.fetch(:properties))
-      required = (path.fetch(:required) + contract.fetch(:required)).uniq
-
       schema = {
         type: "object",
-        properties: properties,
-        required: required
+        properties: contract.fetch(:properties).merge(path.fetch(:properties)),
+        required: (path.fetch(:required) + contract.fetch(:required)).uniq
       }
       schema[:additionalProperties] = false if reject_unknown?
       schema
@@ -42,19 +39,19 @@ module RecordingStudioMcp
     def path_properties
       properties = {}
       required = []
+      each_path_token do |name|
+        properties[name.to_sym] = { type: "string", description: path_description(name) }
+        required << name
+      end
+      { properties: properties, required: required }
+    end
 
+    def each_path_token
       endpoint.path_segments.each do |segment|
         next unless segment.start_with?(":")
 
-        name = segment.delete_prefix(":")
-        properties[name.to_sym] = {
-          type: "string",
-          description: path_description(name)
-        }
-        required << name
+        yield segment.delete_prefix(":")
       end
-
-      { properties: properties, required: required }
     end
 
     def path_description(name)
@@ -67,18 +64,20 @@ module RecordingStudioMcp
 
       properties = {}
       required = []
-
       contract_fields.each do |field_name, rules|
         rules = rules.to_h.deep_symbolize_keys
         name = field_name.to_sym
-        property = { type: CONTRACT_TYPE_MAP.fetch(rules[:type]&.to_sym, "string") }
-        property[:enum] = Array(rules[:enum]) if rules[:enum].present?
-        property[:description] = rules[:description] if rules[:description].present?
-        properties[name] = property
+        properties[name] = contract_field_property(rules)
         required << name.to_s if rules[:required]
       end
-
       { properties: properties, required: required }
+    end
+
+    def contract_field_property(rules)
+      property = { type: CONTRACT_TYPE_MAP.fetch(rules[:type]&.to_sym, "string") }
+      property[:enum] = Array(rules[:enum]) if rules[:enum].present?
+      property[:description] = rules[:description] if rules[:description].present?
+      property
     end
 
     def contract_definition
@@ -96,13 +95,7 @@ module RecordingStudioMcp
       definition = contract_definition
       return false unless definition
 
-      if definition.key?(:reject_unknown)
-        definition[:reject_unknown]
-      elsif definition.key?("reject_unknown")
-        definition["reject_unknown"]
-      else
-        true
-      end
+      definition.fetch(:reject_unknown) { definition.fetch("reject_unknown", true) }
     end
   end
 end
