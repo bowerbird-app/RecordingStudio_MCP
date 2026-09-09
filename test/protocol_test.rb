@@ -9,35 +9,88 @@ class ProtocolTest < Minitest::Test
     @grant = FakeGrant.new(nil)
   end
 
-  def test_initialize_returns_server_info
-    result = RecordingStudioMcp::Protocol.handle(
-      {
-        "jsonrpc" => "2.0",
-        "id" => 1,
-        "method" => "initialize",
-        "params" => { "protocolVersion" => "2025-06-18", "capabilities" => {}, "clientInfo" => { "name" => "test" } }
-      },
-      access_grant: @grant
-    )
+  def test_initialize_returns_tree_instructions_when_types_exist
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      result = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 1,
+          "method" => "initialize",
+          "params" => { "protocolVersion" => "2025-06-18", "capabilities" => {}, "clientInfo" => { "name" => "test" } }
+        },
+        access_grant: @grant
+      )
 
-    assert_equal :ok, result.status
-    assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
-    assert_equal false, result.body.dig(:result, :capabilities, :tools, :listChanged)
-    assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
-    assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
-    assert_includes result.body.dig(:result, :instructions), "Call describe before create"
-    assert_includes result.body.dig(:result, :instructions), "meta.next_pagination_token"
-    assert_includes result.body.dig(:result, :instructions), "both this MCP endpoint and the Recording Studio API"
+      instructions = result.body.dig(:result, :instructions)
+      assert_equal :ok, result.status
+      assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
+      assert_equal false, result.body.dig(:result, :capabilities, :tools, :listChanged)
+      assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
+      assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
+      assert_includes instructions, "Call describe before create"
+      assert_includes instructions, "meta.next_pagination_token"
+      assert_includes instructions, "both this MCP endpoint and the Recording Studio API"
+      refute_includes instructions, "Use the endpoint tools"
+    end
   end
 
-  def test_tools_list_returns_parameterized_tools
-    result = RecordingStudioMcp::Protocol.handle(
-      { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
-      access_grant: @grant
-    )
+  def test_initialize_returns_catalog_only_instructions
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        handler: ->(_context) { { ok: true } }
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 1,
+          "method" => "initialize",
+          "params" => { "protocolVersion" => "2025-06-18", "capabilities" => {}, "clientInfo" => { "name" => "test" } }
+        },
+        access_grant: @grant
+      )
 
-    names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-    assert_equal %w[list show create update capability_action describe], names
+      instructions = result.body.dig(:result, :instructions)
+      assert_includes instructions, "both this MCP endpoint and the Recording Studio API"
+      assert_includes instructions, "Use the endpoint tools"
+      assert_includes instructions, "Path parameters are tool arguments"
+      assert_includes instructions, "call tools/list again"
+      refute_includes instructions, "Call describe before create"
+    end
+  end
+
+  def test_tools_list_returns_tree_tools_when_types_exist
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+        access_grant: @grant
+      )
+
+      names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
+      assert_equal %w[list show create update capability_action describe], names
+    end
+  end
+
+  def test_tools_list_returns_endpoint_tools_on_catalog_only_host
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        handler: ->(_context) { { ok: true } }
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+        access_grant: @grant
+      )
+
+      names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
+      assert_equal %w[ping], names
+    end
   end
 
   def test_unknown_method_is_method_not_found

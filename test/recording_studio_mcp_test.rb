@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_1_0
-    assert_equal "0.2.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_3_0
+    assert_equal "0.3.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -87,6 +87,8 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "Recording Studio MCP"
     assert_includes readme, "Streamable HTTP"
     assert_includes readme, "WWW-Authenticate"
+    assert_includes readme, "register_endpoint"
+    assert_includes readme, "Catalog-only"
     refute_includes readme, "Internal template"
     refute_includes readme, "GemTemplate"
     refute_includes readme, "v3 declarations"
