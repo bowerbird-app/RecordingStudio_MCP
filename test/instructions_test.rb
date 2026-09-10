@@ -65,7 +65,9 @@ class InstructionsTest < Minitest::Test
         text = RecordingStudioMcp::Instructions.text
 
         assert_includes text, "call tools/list again"
-        assert_operator text.index("call tools/list again"), :<, text.index("Fetch item detail before you draw a screen.")
+        refresh_at = text.index("call tools/list again")
+        suffix_at = text.index("Fetch item detail before you draw a screen.")
+        assert_operator refresh_at, :<, suffix_at
         assert text.end_with?("Fetch item detail before you draw a screen.")
       end
     end

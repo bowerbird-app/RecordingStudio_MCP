@@ -42,13 +42,7 @@ module RecordingStudioMcp
       source = RecordingStudioMcp.configuration.instructions_suffix
       return nil if source.nil?
 
-      raw =
-        if source.respond_to?(:call)
-          source.call(access_grant: access_grant)
-        else
-          source
-        end
-
+      raw = source.respond_to?(:call) ? source.call(access_grant: access_grant) : source
       return nil unless raw.is_a?(String)
 
       text = raw.strip
