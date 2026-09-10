@@ -22,7 +22,7 @@ Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not reg
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
 
-Tool results include MCP `structuredContent`. The initialize `instructions` match the grant's surface. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), destructive capability actions, and GET versus mutating endpoint verbs. The server reports `tools.listChanged: false`. Call `tools/list` again when you need a fresh list.
+Tool results include MCP `structuredContent`. The initialize `instructions` match the grant's surface. Hosts may set `instructions_suffix`, and endpoint-only initialize text now teaches clients to call `tools/list` and fetch item details before generating UI. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), destructive capability actions, and GET versus mutating endpoint verbs. The server reports `tools.listChanged: false`. Call `tools/list` again when you need a fresh list.
 
 Handlers call the same API resource actions, capability actions, and registered endpoint handlers. MCP does not serve records when API access is disabled.
 
@@ -54,4 +54,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.3.0
+0.3.1
