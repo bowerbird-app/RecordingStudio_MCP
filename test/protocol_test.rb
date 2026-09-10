@@ -57,6 +57,8 @@ class ProtocolTest < Minitest::Test
       assert_includes instructions, "both this MCP endpoint and the Recording Studio API"
       assert_includes instructions, "Use the endpoint tools"
       assert_includes instructions, "Path parameters are tool arguments"
+      assert_includes instructions, "Call tools/list to see the available endpoint tools"
+      assert_includes instructions, "fetch the detail before generating UI"
       assert_includes instructions, "call tools/list again"
       refute_includes instructions, "Call describe before create"
     end

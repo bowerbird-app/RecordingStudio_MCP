@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `~> 0.1`.
 
+## 0.3.1
+
+Optional `config.instructions_suffix` (String or `->(access_grant:) { ... }`). Richer default endpoint initialize blurb. No OAuth, tool, or connect changes. Hosts that want product-specific MCP guidance set the suffix.
+
 ## 0.3.0
 
 Pin API to `~> 0.5.4`. That release owns `register_endpoint` and `RegisteredEndpointContext`.

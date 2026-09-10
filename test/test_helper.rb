@@ -34,8 +34,23 @@ module IsolatedApiConfiguration
   end
 end
 
+module IsolatedMcpConfiguration
+  def with_isolated_mcp_configuration
+    original = RecordingStudioMcp.instance_variable_get(:@configuration)
+    RecordingStudioMcp.instance_variable_set(:@configuration, RecordingStudioMcp::Configuration.new)
+    yield
+  ensure
+    if original
+      RecordingStudioMcp.instance_variable_set(:@configuration, original)
+    elsif RecordingStudioMcp.instance_variable_defined?(:@configuration)
+      RecordingStudioMcp.remove_instance_variable(:@configuration)
+    end
+  end
+end
+
 module Minitest
   class Test
     include IsolatedApiConfiguration
+    include IsolatedMcpConfiguration
   end
 end
