@@ -8,10 +8,10 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: 0e1bd61616a4b5b08a5d78edef4f782b7e42c6bc
-  branch: cursor/oauth-mcp-resource-identity-21f3
+  revision: 9f7a838a9d47e716887d269c313a9801b26617f5
+  branch: cursor/mcp-protected-resource-identity-607a
   specs:
-    recording_studio_oauth (0.1.1)
+    recording_studio_oauth (0.2.0)
       flat_pack (~> 0.1.144)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
@@ -91,7 +91,7 @@ PATH
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_api (~> 0.5.4)
-      recording_studio_oauth (>= 0.1.1)
+      recording_studio_oauth (>= 0.2.0)
 
 GEM
   remote: https://rubygems.org/
@@ -488,7 +488,7 @@ CHECKSUMS
   recording_studio_api (0.5.4)
   recording_studio_attachable (0.5.1)
   recording_studio_mcp (0.3.2)
-  recording_studio_oauth (0.1.1)
+  recording_studio_oauth (0.2.0)
   recording_studio_site_settings (0.1.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae
   redis-client (0.30.1) sha256=5151bc5c7bbfe48623732cdae3b900d8a22dc691cc7cdfacfb351ac55116522d

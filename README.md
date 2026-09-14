@@ -36,10 +36,10 @@ After initialize, clients send the negotiated version in `MCP-Protocol-Version`.
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.1.1` (or the `cursor/oauth-mcp-resource-identity-21f3` branch until tagged).
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.2.0` (or the `cursor/mcp-protected-resource-identity-607a` branch until tagged).
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
-4. Alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata. Keep Oauth's API metadata at `/.well-known/oauth-protected-resource`.
+4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
 5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token.
 
 Host authentication stays on the host. Dummy uses Devise. Do not add Users as a dependency of this gem.

@@ -18,6 +18,16 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     Current.actor = nil if defined?(Current)
   end
 
+  test "oauth mcp mount path stays aligned with mcp configuration" do
+    assert_equal(
+      RecordingStudioMcp::ProtectedResourceMetadata.mcp_mount_path,
+      RecordingStudioOauth.configuration.mcp_mount_path
+    )
+    entry = RecordingStudioOauth.protected_resources.find(kind: :mcp)
+    assert entry
+    assert_equal "/recording_studio_mcp", entry.path
+  end
+
   test "unauthenticated post returns 401 with mcp protected resource metadata" do
     post "/recording_studio_mcp",
          params: { jsonrpc: "2.0", id: 1, method: "initialize" }.to_json,
@@ -360,13 +370,27 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     setting&.update!(api_access_enabled: true)
   end
 
-  test "host well known protected resource still comes from oauth" do
+  test "origin unsuffixed protected resource is not the api document" do
     get "/.well-known/oauth-protected-resource"
+
+    assert_response :not_found
+  end
+
+  test "oauth engine protected resource still advertises the api identity" do
+    get "/recording_studio_oauth/.well-known/oauth-protected-resource"
 
     assert_response :success
     body = JSON.parse(response.body)
     assert_includes body.fetch("resource"), "/recording_studio_api"
     assert body.fetch("authorization_servers").any?
+  end
+
+  test "path inserted api protected resource comes from oauth" do
+    get "/.well-known/oauth-protected-resource/recording_studio_api/api"
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal "#{request.base_url}/recording_studio_api/api", body.fetch("resource")
   end
 
   test "mcp protected resource metadata uses the mcp url" do

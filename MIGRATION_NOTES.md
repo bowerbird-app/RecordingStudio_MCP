@@ -1,12 +1,20 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.1.1` (branch `cursor/oauth-mcp-resource-identity-21f3` until tagged).
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged).
 
 ## 0.3.2
 
-MCP advertises its own RFC 9728 protected-resource metadata. Alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to `recording_studio_mcp/oauth_discoveries#protected_resource`. Keep the API document at `/.well-known/oauth-protected-resource`.
+MCP advertises RFC 9728 protected-resource metadata whose `resource` is the MCP URL. `WWW-Authenticate` points at `/.well-known/oauth-protected-resource/recording_studio_mcp`. Oauth remains the authorization server and accepts that MCP `resource` identity.
 
-`WWW-Authenticate` now points at the MCP metadata path. `resource` is the MCP URL. Oauth remains the authorization server. Pin Oauth so authorize accepts the MCP resource identity. Clients that omit `resource` keep working.
+Draw Oauth origin well-known in the host:
+
+```ruby
+RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)
+```
+
+That serves MCP and API path-inserted documents. Origin unsuffixed `/.well-known/oauth-protected-resource` is 404 by default. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`. Clients that omit `resource` keep working.
+
+Alternatively alias the MCP well-known path to `recording_studio_mcp/oauth_discoveries#protected_resource`.
 
 ## 0.3.1
 
@@ -38,7 +46,7 @@ Dummy GitHub tags used to prove Connect then MCP:
 - Recording Studio `v4.2.1`
 - Accessible `v0.9.1`
 - API `v0.5.4`
-- Oauth `v0.1.0`
+- Oauth `v0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged)
 - Admin `v2.0.2`
 - Site settings `v0.1.0`
 - Attachable `v0.5.1`

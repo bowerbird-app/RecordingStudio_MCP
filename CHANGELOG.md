@@ -10,15 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - MCP-owned RFC 9728 protected-resource metadata at `/.well-known/oauth-protected-resource/recording_studio_mcp` (host alias). `resource` is the MCP URL. `authorization_servers` still points at Oauth.
 - `config.mcp_mount_path` (default `/recording_studio_mcp`).
-- Boot registers the MCP resource identity with `RecordingStudioOauth.register_protected_resource` when Oauth exposes that API.
+- After boot, syncs `RecordingStudioOauth.configuration.mcp_mount_path` so Oauth 0.2+ authorize accepts the MCP resource identity.
 
 ### Changed
-- Unauthenticated MCP calls return `WWW-Authenticate` `resource_metadata` for the MCP path, not the API `/.well-known/oauth-protected-resource` document.
+- Unauthenticated MCP calls return `WWW-Authenticate` `resource_metadata` for the MCP path, not the unsuffixed origin well-known URL.
 - Default `oauth_protected_resource_path` is now `/.well-known/oauth-protected-resource/recording_studio_mcp`.
 
 ### Upgrade notes
-- Alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to `recording_studio_mcp/oauth_discoveries#protected_resource`. Keep the API alias at `/.well-known/oauth-protected-resource` for API and ChatGPT Connect clients.
-- Pin Oauth to `>= 0.1.1` (branch `cursor/oauth-mcp-resource-identity-21f3` until tagged) so authorize accepts the MCP `resource` parameter. Blank `resource` still works on older Oauth.
+- Pin Oauth to `>= 0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged).
+- Draw Oauth origin well-known in the host: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. That serves MCP and API path-inserted metadata. Origin unsuffixed `/.well-known/oauth-protected-resource` is 404 by default; ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
+- You may still alias the MCP well-known path to `recording_studio_mcp/oauth_discoveries#protected_resource` if you prefer MCP-owned discovery over Oauth's draw helper.
 - Set `config.mcp_mount_path` if the engine is not mounted at `/recording_studio_mcp`, and keep `oauth_protected_resource_path` aligned with RFC 9728 (`/.well-known/oauth-protected-resource` + mount path).
 
 ## [0.3.1] - 2026-09-10

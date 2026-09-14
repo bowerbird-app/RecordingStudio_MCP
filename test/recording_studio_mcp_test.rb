@@ -17,7 +17,7 @@ class RecordingStudioMcpTest < Minitest::Test
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_api", "~> 0.5.4"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", ">= 0.1.1"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", ">= 0.2.0"'
     refute_includes gemspec, "recording_studio_users"
     refute_includes gemspec, "doorkeeper"
     refute_includes gemspec, "omniauth"
@@ -68,7 +68,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.5.4"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth"'
-    assert_includes gemfile, 'branch: "cursor/oauth-mcp-resource-identity-21f3"'
+    assert_includes gemfile, 'branch: "cursor/mcp-protected-resource-identity-607a"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.5.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.0"'
     assert_includes gemfile, 'github: "bowerbird-app/flatpack", tag: "v0.1.144"'

@@ -34,13 +34,15 @@ module RecordingStudioMcp
       end
     end
 
-    initializer "recording_studio_mcp.register_protected_resource", after: "recording_studio_mcp.load_config" do
+    # Oauth 0.2+ registers MCP via config.mcp_mount_path. Keep that path
+    # aligned with this gem so authorize accepts the MCP resource identity.
+    config.after_initialize do
       next unless defined?(RecordingStudioOauth)
-      next unless RecordingStudioOauth.respond_to?(:register_protected_resource)
 
-      RecordingStudioOauth.register_protected_resource(
-        ->(request) { ProtectedResourceMetadata.resource_identifier(request) }
-      )
+      oauth = RecordingStudioOauth.configuration
+      next unless oauth.respond_to?(:mcp_mount_path=)
+
+      oauth.mcp_mount_path = ProtectedResourceMetadata.mcp_mount_path
     end
   end
 end
