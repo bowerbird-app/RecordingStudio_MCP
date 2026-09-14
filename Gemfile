@@ -10,7 +10,9 @@ gem "recording_studio_accessible", github: "bowerbird-app/RecordingStudio_access
 gem "recording_studio_admin", github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.2"
 gem "recording_studio_api", github: "bowerbird-app/RecordingStudio_api", tag: "v0.5.4"
 gem "recording_studio_attachable", github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.5.1"
-gem "recording_studio_oauth", github: "bowerbird-app/RecordingStudio_Oauth", branch: "cursor/oauth-mcp-resource-identity-21f3"
+gem "recording_studio_oauth",
+    github: "bowerbird-app/RecordingStudio_Oauth",
+    branch: "cursor/oauth-mcp-resource-identity-21f3"
 gem "recording_studio_site_settings", github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.0"
 
 gem "devise"

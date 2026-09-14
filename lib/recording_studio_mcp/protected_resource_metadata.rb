@@ -36,9 +36,7 @@ module RecordingStudioMcp
 
     def well_known_path
       path = RecordingStudioMcp.configuration.oauth_protected_resource_path.to_s
-      if path.blank?
-        path = "/.well-known/oauth-protected-resource#{mcp_mount_path}"
-      end
+      path = "/.well-known/oauth-protected-resource#{mcp_mount_path}" if path.blank?
       path = "/#{path}" unless path.start_with?("/")
       path
     end
