@@ -58,11 +58,12 @@ class InstallGeneratorTest < Minitest::Test
     assert_equal ["INSTALL.md"], shown_templates
   end
 
-  def test_install_guide_points_at_oauth_and_api
+  def test_install_guide_points_at_mcp_and_api_metadata
     install_guide = File.read(INSTALL_TEMPLATE_PATH)
 
     assert_includes install_guide, "Oauth"
-    assert_includes install_guide, "oauth-protected-resource"
+    assert_includes install_guide, "oauth-protected-resource/recording_studio_mcp"
+    assert_includes install_guide, "recording_studio_mcp/oauth_discoveries#protected_resource"
     refute_includes install_guide, "RecordingStudio v3"
     refute_includes install_guide, "FlatPack"
   end

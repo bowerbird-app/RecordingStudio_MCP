@@ -6,7 +6,7 @@ People Connect an app. The app gets its own Accessible grant. MCP then uses that
 
 ## What you get
 
-A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at Oauth's RFC 9728 protected-resource metadata. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`. The issued Bearer intentionally works for both the named API and MCP; both resolve the same AccessGrant.
+A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at MCP's own RFC 9728 protected-resource metadata (`/.well-known/oauth-protected-resource/recording_studio_mcp`). That document sets `resource` to the MCP URL and `authorization_servers` to Oauth. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`. The issued Bearer intentionally works for both the named API and MCP; both resolve the same AccessGrant.
 
 Authorization is Recording Studio Accessible through that AccessGrant. Same grant as API. No Pundit. No OAuth scopes.
 
@@ -36,10 +36,10 @@ After initialize, clients send the negotiated version in `MCP-Protocol-Version`.
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `~> 0.1`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.2.0` (or the `cursor/mcp-protected-resource-identity-607a` branch until tagged).
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
-4. Alias `/.well-known/oauth-protected-resource` to Oauth's metadata, as the Oauth dummy does.
+4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
 5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token.
 
 Host authentication stays on the host. Dummy uses Devise. Do not add Users as a dependency of this gem.
@@ -54,4 +54,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.3.1
+0.3.2

@@ -8,24 +8,29 @@ class ConfigurationTest < Minitest::Test
   end
 
   def test_defaults
-    assert_equal "/.well-known/oauth-protected-resource", @configuration.oauth_protected_resource_path
+    assert_equal "/recording_studio_mcp", @configuration.mcp_mount_path
+    assert_equal "/.well-known/oauth-protected-resource/recording_studio_mcp",
+                 @configuration.oauth_protected_resource_path
     assert_equal "/recording_studio_oauth", @configuration.oauth_engine_mount_path
     assert_equal "2025-06-18", @configuration.protocol_version
     assert_equal [], @configuration.allowed_origins
     assert_nil @configuration.instructions_suffix
+    assert_includes @configuration.to_h.keys, :mcp_mount_path
     assert_includes @configuration.to_h.keys, :instructions_suffix
     assert_nil @configuration.to_h[:instructions_suffix]
   end
 
   def test_merge_updates_known_attributes
     @configuration.merge!(
-      oauth_protected_resource_path: "/oauth/.well-known/oauth-protected-resource",
+      oauth_protected_resource_path: "/.well-known/oauth-protected-resource/mcp",
+      mcp_mount_path: "/mcp",
       protocol_version: "2025-03-26",
       allowed_origins: ["https://assistant.example"],
       instructions_suffix: "Fetch item detail before you draw a screen."
     )
 
-    assert_equal "/oauth/.well-known/oauth-protected-resource", @configuration.oauth_protected_resource_path
+    assert_equal "/.well-known/oauth-protected-resource/mcp", @configuration.oauth_protected_resource_path
+    assert_equal "/mcp", @configuration.mcp_mount_path
     assert_equal "2025-03-26", @configuration.protocol_version
     assert_equal ["https://assistant.example"], @configuration.allowed_origins
     assert_equal "Fetch item detail before you draw a screen.", @configuration.instructions_suffix
@@ -42,6 +47,7 @@ class ConfigurationTest < Minitest::Test
   def test_merge_with_non_enumerable_is_noop
     @configuration.merge!(nil)
 
-    assert_equal "/.well-known/oauth-protected-resource", @configuration.oauth_protected_resource_path
+    assert_equal "/.well-known/oauth-protected-resource/recording_studio_mcp",
+                 @configuration.oauth_protected_resource_path
   end
 end

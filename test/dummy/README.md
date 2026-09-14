@@ -32,7 +32,10 @@ Open port 3000. Sign in with `admin@admin.com` / `Password`.
 - `/recording_studio_mcp` MCP endpoint
 - `/recording_studio_oauth/oauth/authorize` Connect
 - `/recording_studio_api/oauth/token` API token URL
-- `/.well-known/oauth-protected-resource` Oauth metadata
+- `/.well-known/oauth-protected-resource` 404 by default (origin unsuffixed)
+- `/.well-known/oauth-protected-resource/recording_studio_mcp` MCP metadata
+- `/.well-known/oauth-protected-resource/recording_studio_api/api` API metadata
+- `/recording_studio_oauth/.well-known/oauth-protected-resource` Oauth engine API metadata
 - `/docs/mcp` dummy-only MCP try-it page
 - `POST /docs/mcp/test_token` dummy-only mint + MCP probe (signed in, local only)
 - `POST /docs/mcp/sample_post` dummy-only HTTP sample POST with Bearer (signed in, local only)
