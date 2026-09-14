@@ -18,6 +18,8 @@ Rails.application.routes.draw do
   get "/.well-known/oauth-protected-resource",
       to: "recording_studio_oauth/oauth_discoveries#protected_resource",
       defaults: { api_key: "public" }
+  get "/.well-known/oauth-protected-resource/recording_studio_mcp",
+      to: "recording_studio_mcp/oauth_discoveries#protected_resource"
 
   recording_studio_admin_for :admin, at: "/admin", root_section: :root
 

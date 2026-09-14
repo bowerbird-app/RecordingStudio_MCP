@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-09-14
+
+### Added
+- MCP-owned RFC 9728 protected-resource metadata at `/.well-known/oauth-protected-resource/recording_studio_mcp` (host alias). `resource` is the MCP URL. `authorization_servers` still points at Oauth.
+- `config.mcp_mount_path` (default `/recording_studio_mcp`).
+- Boot registers the MCP resource identity with `RecordingStudioOauth.register_protected_resource` when Oauth exposes that API.
+
+### Changed
+- Unauthenticated MCP calls return `WWW-Authenticate` `resource_metadata` for the MCP path, not the API `/.well-known/oauth-protected-resource` document.
+- Default `oauth_protected_resource_path` is now `/.well-known/oauth-protected-resource/recording_studio_mcp`.
+
+### Upgrade notes
+- Alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to `recording_studio_mcp/oauth_discoveries#protected_resource`. Keep the API alias at `/.well-known/oauth-protected-resource` for API and ChatGPT Connect clients.
+- Pin Oauth to `>= 0.1.1` (branch `cursor/oauth-mcp-resource-identity-21f3` until tagged) so authorize accepts the MCP `resource` parameter. Blank `resource` still works on older Oauth.
+- Set `config.mcp_mount_path` if the engine is not mounted at `/recording_studio_mcp`, and keep `oauth_protected_resource_path` aligned with RFC 9728 (`/.well-known/oauth-protected-resource` + mount path).
+
 ## [0.3.1] - 2026-09-10
 
 ### Added
@@ -74,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
+[0.3.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/releases/tag/v0.3.0
 [0.2.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/releases/tag/v0.2.1

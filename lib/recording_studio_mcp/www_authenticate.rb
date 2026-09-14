@@ -11,10 +11,7 @@ module RecordingStudioMcp
     end
 
     def resource_metadata_url(request)
-      path = RecordingStudioMcp.configuration.oauth_protected_resource_path.to_s
-      path = "/.well-known/oauth-protected-resource" if path.blank?
-      path = "/#{path}" unless path.start_with?("/")
-      "#{request.base_url}#{path}"
+      "#{request.base_url}#{ProtectedResourceMetadata.well_known_path}"
     end
   end
 end

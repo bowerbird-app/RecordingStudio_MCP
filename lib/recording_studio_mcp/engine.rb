@@ -33,5 +33,14 @@ module RecordingStudioMcp
         end
       end
     end
+
+    initializer "recording_studio_mcp.register_protected_resource", after: "recording_studio_mcp.load_config" do
+      next unless defined?(RecordingStudioOauth)
+      next unless RecordingStudioOauth.respond_to?(:register_protected_resource)
+
+      RecordingStudioOauth.register_protected_resource(
+        ->(request) { ProtectedResourceMetadata.resource_identifier(request) }
+      )
+    end
   end
 end

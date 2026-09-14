@@ -1,6 +1,12 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `~> 0.1`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.1.1` (branch `cursor/oauth-mcp-resource-identity-21f3` until tagged).
+
+## 0.3.2
+
+MCP advertises its own RFC 9728 protected-resource metadata. Alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to `recording_studio_mcp/oauth_discoveries#protected_resource`. Keep the API document at `/.well-known/oauth-protected-resource`.
+
+`WWW-Authenticate` now points at the MCP metadata path. `resource` is the MCP URL. Oauth remains the authorization server. Pin Oauth so authorize accepts the MCP resource identity. Clients that omit `resource` keep working.
 
 ## 0.3.1
 

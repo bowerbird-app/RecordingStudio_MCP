@@ -3,7 +3,7 @@
 <div class="flex w-full flex-col gap-6">
   <%= render FlatPack::PageTitle::Component.new(
     title: "Config",
-    subtitle: "MCP points unauthenticated clients at Oauth protected-resource metadata.",
+    subtitle: "MCP advertises its own protected-resource metadata. Oauth stays the authorization server.",
     variant: :h1
   ) %>
 
@@ -11,7 +11,8 @@
     language: :ruby,
     code: <<~'CODE'
       RecordingStudioMcp.configure do |config|
-        config.oauth_protected_resource_path = "/.well-known/oauth-protected-resource"
+        config.mcp_mount_path = "/recording_studio_mcp"
+        config.oauth_protected_resource_path = "/.well-known/oauth-protected-resource/recording_studio_mcp"
         config.oauth_engine_mount_path = "/recording_studio_oauth"
       end
     CODE
