@@ -22,7 +22,9 @@ ruby_ok() {
 }
 
 bundle_ok() {
-  command -v bundle >/dev/null 2>&1
+  command -v bundle >/dev/null 2>&1 || return 1
+  bundle check >/dev/null 2>&1 || return 1
+  ( cd test/dummy && bundle check >/dev/null 2>&1 )
 }
 
 postgres_ok() {
