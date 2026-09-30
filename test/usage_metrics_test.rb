@@ -59,11 +59,10 @@ class UsageMetricsTest < Minitest::Test
     assert_equal 15, RecordingStudioMcp::UsageWindow.total
     points = RecordingStudioMcp::UsageWindow.series.first.fetch(:data)
     period = RecordingStudioAdmin::Period.from_preset_key(:last_4_weeks)
-    assert_equal (period.start_date..period.end_date).to_a.size, points.size
+    assert_equal 4, points.size
     assert_equal period.start_date..period.end_date, RecordingStudioMcp::UsageDailyMetric.seen_range
-    today = points.find { |point| point.fetch(:x) == Date.current.strftime("%b %-d") }
-    assert_equal 6, today.fetch(:y)
     assert_equal 0, points.first.fetch(:y)
+    assert_equal 15, points.last.fetch(:y)
   end
 
   def test_usage_window_is_zero_when_there_are_no_calls

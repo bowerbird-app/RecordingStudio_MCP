@@ -20,7 +20,7 @@ module RecordingStudioMcp
 
       summary do
         label "Calls"
-        change_good_when :neutral
+        hide_change
       end
 
       chart do

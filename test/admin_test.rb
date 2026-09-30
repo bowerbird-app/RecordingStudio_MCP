@@ -33,7 +33,7 @@ class AdminTest < Minitest::Test
     assert_equal "Calls from the last 4 weeks.", widget.info
     assert_equal "Last 4 weeks", widget.metadata[:period_label]
     assert_equal "Usage", widget.link_label
-    assert_includes widget.link_to, "/admin/screens/mcp_usage"
+    assert_equal "/admin/screens/mcp_usage", widget.link_to
     assert_equal 0, widget.value
     points = widget.series.first.fetch(:data)
     assert_equal RecordingStudioMcp::UsageWindow.series.first.fetch(:data).size, points.size

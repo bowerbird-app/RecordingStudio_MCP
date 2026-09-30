@@ -7,7 +7,7 @@ module RecordingStudioMcp
     module_function
 
     def series
-      [{ name: "Calls", data: points }]
+      [{ name: "Calls", data: week_points }]
     end
 
     def total
@@ -21,14 +21,19 @@ module RecordingStudioMcp
     end
 
     def screen_path(context)
-      return unless context
-
-      "#{context.admin_screen_path('mcp_usage')}?#{screen_query.to_query}"
+      context&.admin_screen_path("mcp_usage")
     end
 
-    def points
+    def week_points
       totals = counts_by_day
-      days.map { |day| { x: day.strftime("%b %-d"), y: totals.fetch(day, 0) } }
+      week_slices.map { |slice| { x: slice.first.strftime("%b %-d"), y: slice.sum { |day| totals.fetch(day, 0) } } }
+    end
+
+    def week_slices
+      remaining = days.dup
+      slices = Array.new(4) { remaining.pop(7) }.reverse
+      slices[0] = remaining + slices[0]
+      slices
     end
 
     def counts_by_day
@@ -52,11 +57,6 @@ module RecordingStudioMcp
       period.start_date..period.end_date
     end
 
-    def screen_query
-      range = day_range
-      { start_date: range.begin.iso8601, end_date: range.end.iso8601, group_by: "day" }
-    end
-
     def metrics_ready?
       UsageDailyMetric.table_available?
     rescue StandardError
@@ -68,7 +68,7 @@ module RecordingStudioMcp
     rescue StandardError
       false
     end
-    private_class_method :points, :counts_by_day, :counts, :days, :day_range, :screen_query, :metrics_ready?,
+    private_class_method :week_points, :week_slices, :counts_by_day, :counts, :days, :day_range, :metrics_ready?,
                          :logs_ready?
   end
 end
