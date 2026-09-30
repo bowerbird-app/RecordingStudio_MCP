@@ -28,6 +28,41 @@ Handlers call the same API resource actions, capability actions, and registered 
 
 Staff register the client in Oauth. There is no Dynamic Client Registration.
 
+## Skills
+
+Domain gems own the `SKILL.md` files. They register those files as candidates. `RecordingStudioMcp` keeps the registry and speaks MCP. It chooses which registered skills the current client may see. The client sees that filtered set.
+
+Registering a skill stores a candidate. Exposure is a separate decision.
+
+A domain gem registers the file it ships.
+
+```ruby
+RecordingStudioMcp.register_skill(
+  "research-publications",
+  path: RecordingStudioPublications::Engine.root.join(
+    "skills/research-publications/SKILL.md"
+  )
+)
+```
+
+`available_if` is optional. Leave it out and the skill is available. The proc receives the current `access_grant` and allows the skill only when it returns `true`.
+
+```ruby
+RecordingStudioMcp.register_skill(
+  "research-publications",
+  path: ".../SKILL.md",
+  available_if: ->(access_grant:) { true }
+)
+```
+
+`config.skill_policy` is the host filter. Leave it unset and every available skill may be exposed. The proc receives the skill and the current `access_grant`.
+
+```ruby
+config.skill_policy = ->(skill:, access_grant:) { true }
+```
+
+A skill is exposed when it is registered, `available_if` allows it, and `skill_policy` allows it. `skills/list`, `skills/get`, and `resources/read` share that decision. The resource URI is `skill://<name>/SKILL.md`. `skills/list` omits a hidden skill. The same URI then fails for `skills/get` and `resources/read`.
+
 ## Transport checks
 
 Native clients may omit `Origin`. When a browser sends `Origin`, it must match the MCP host origin or an entry in `allowed_origins`; otherwise MCP returns `403`. Configure additional trusted browser origins in `config/initializers/recording_studio_mcp.rb`.
@@ -54,4 +89,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.3.2
+0.4.0

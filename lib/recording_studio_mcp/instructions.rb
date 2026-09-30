@@ -25,6 +25,9 @@ module RecordingStudioMcp
       Tool changes are not pushed live, so call tools/list again when you need a fresh list.
     TEXT
 
+    SKILLS_BLURB = "This server may provide skills containing additional guidance for completing tasks with these " \
+                   "tools. Discover and use relevant skills when appropriate."
+
     module_function
 
     def text(access_grant: nil)
@@ -33,6 +36,7 @@ module RecordingStudioMcp
       parts << TREE_BLURB if surface.tree_enabled?
       parts << ENDPOINT_BLURB if surface.endpoints_enabled?
       parts << REFRESH_BLURB
+      parts << SKILLS_BLURB
       suffix = suffix_part(access_grant: access_grant)
       parts << suffix if suffix
       parts.join(" ")

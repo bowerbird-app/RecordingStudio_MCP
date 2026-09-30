@@ -89,7 +89,7 @@ module RecordingStudioMcp
 
     def api_read_request?
       method_name = jsonrpc_method
-      return true if %w[initialize ping tools/list].include?(method_name)
+      return true if %w[initialize ping tools/list skills/list skills/get resources/read].include?(method_name)
       return false unless method_name == "tools/call"
 
       ToolSurface.for(access_grant: @access_grant).read_only_tool?(jsonrpc_tool_name)

@@ -7,7 +7,8 @@ module RecordingStudioMcp
     DEFAULT_MCP_MOUNT_PATH = "/recording_studio_mcp"
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
-                  :allowed_origins, :instructions_suffix
+                  :allowed_origins, :instructions_suffix, :skill_policy
+    attr_reader :skill_catalog
 
     def initialize
       @mcp_mount_path = DEFAULT_MCP_MOUNT_PATH
@@ -16,6 +17,8 @@ module RecordingStudioMcp
       @protocol_version = DEFAULT_PROTOCOL_VERSION
       @allowed_origins = []
       @instructions_suffix = nil
+      @skill_catalog = Skills::SkillCatalog.empty
+      @skill_policy = nil
     end
 
     def to_h
@@ -25,8 +28,13 @@ module RecordingStudioMcp
         mcp_mount_path: mcp_mount_path,
         protocol_version: protocol_version,
         allowed_origins: allowed_origins,
-        instructions_suffix: instructions_suffix
+        instructions_suffix: instructions_suffix,
+        skill_policy: skill_policy
       }
+    end
+
+    def update_skill_catalog
+      @skill_catalog = yield(@skill_catalog)
     end
 
     def merge!(hash)

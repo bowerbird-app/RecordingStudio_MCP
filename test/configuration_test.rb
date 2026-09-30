@@ -15,9 +15,14 @@ class ConfigurationTest < Minitest::Test
     assert_equal "2025-06-18", @configuration.protocol_version
     assert_equal [], @configuration.allowed_origins
     assert_nil @configuration.instructions_suffix
+    assert_nil @configuration.skill_policy
     assert_includes @configuration.to_h.keys, :mcp_mount_path
     assert_includes @configuration.to_h.keys, :instructions_suffix
+    assert_includes @configuration.to_h.keys, :skill_policy
     assert_nil @configuration.to_h[:instructions_suffix]
+    assert_nil @configuration.to_h[:skill_policy]
+    refute_includes @configuration.to_h.keys, :skill_catalog
+    refute_respond_to @configuration, :skill_catalog=
   end
 
   def test_merge_updates_known_attributes
@@ -26,7 +31,8 @@ class ConfigurationTest < Minitest::Test
       mcp_mount_path: "/mcp",
       protocol_version: "2025-03-26",
       allowed_origins: ["https://assistant.example"],
-      instructions_suffix: "Fetch item detail before you draw a screen."
+      instructions_suffix: "Fetch item detail before you draw a screen.",
+      skill_policy: ->(skill:, access_grant:) { skill && access_grant }
     )
 
     assert_equal "/.well-known/oauth-protected-resource/mcp", @configuration.oauth_protected_resource_path
@@ -35,6 +41,8 @@ class ConfigurationTest < Minitest::Test
     assert_equal ["https://assistant.example"], @configuration.allowed_origins
     assert_equal "Fetch item detail before you draw a screen.", @configuration.instructions_suffix
     assert_equal "Fetch item detail before you draw a screen.", @configuration.to_h[:instructions_suffix]
+    assert @configuration.skill_policy.respond_to?(:call)
+    assert_same @configuration.skill_policy, @configuration.to_h[:skill_policy]
   end
 
   def test_merge_ignores_unknown_keys

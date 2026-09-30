@@ -21,6 +21,7 @@ Metrics/ClassLength:
   Exclude:
     - 'test/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
+    - 'lib/recording_studio_mcp/protocol.rb'
 
 Metrics/ModuleLength:
   Exclude:
@@ -39,6 +40,7 @@ Metrics/AbcSize:
     - 'test/**/*'
     - 'lib/generators/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
+    - 'lib/recording_studio_mcp/protocol.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
 
 Metrics/CyclomaticComplexity:

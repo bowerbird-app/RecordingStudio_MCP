@@ -66,10 +66,13 @@ module RecordingStudioMcp
           { tools: Tools.definitions(access_grant: access_grant) }
         when "tools/call"
           call_tool(params)
+        when "skills/list", "skills/get", "resources/read"
+          skill_result(method_name, params, id)
         else
           return rpc_error(id, METHOD_NOT_FOUND, "Method not found")
         end
 
+      return result if result.is_a?(Result)
       return Result.new(status: :accepted, body: nil, notification: true) if notification
 
       Result.new(status: :ok, body: { jsonrpc: JSONRPC_VERSION, id: id, result: result }, notification: false)
@@ -86,13 +89,31 @@ module RecordingStudioMcp
 
       {
         protocolVersion: version,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: {
+          tools: { listChanged: false },
+          resources: {},
+          extensions: { "io.modelcontextprotocol/skills" => {} }
+        },
         serverInfo: {
           name: "recording-studio",
           version: RecordingStudioMcp::VERSION
         },
         instructions: Instructions.text(access_grant: access_grant)
       }
+    end
+
+    def skill_result(method_name, params, id)
+      answer = Skills.answer(method_name, params, access_grant: access_grant)
+      case answer
+      when Skills::InvalidParams
+        rpc_error(id, INVALID_PARAMS, "Invalid params")
+      when Skills::Unavailable
+        rpc_error(id, INTERNAL_ERROR, "Skill content is unavailable")
+      when Skills::Result
+        answer.payload
+      else
+        raise TypeError, "unexpected skill answer"
+      end
     end
 
     def call_tool(params)

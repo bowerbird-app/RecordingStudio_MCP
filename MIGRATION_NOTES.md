@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged).
 
+## 0.4.0
+
+Domain gems may register `SKILL.md` candidates with `RecordingStudioMcp.register_skill`. Exposure is separate. `available_if` and `config.skill_policy` both have to allow the current access grant. Clients read the exposed set with `skills/list`, `skills/get`, and `resources/read`. No OAuth or tool changes.
+
 ## 0.3.2
 
 MCP advertises RFC 9728 protected-resource metadata whose `resource` is the MCP URL. `WWW-Authenticate` points at `/.well-known/oauth-protected-resource/recording_studio_mcp`. Oauth remains the authorization server and accepts that MCP `resource` identity.
