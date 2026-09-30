@@ -83,7 +83,7 @@ This gem ships no end-user product UI. Staff admin is the MCP section when `reco
 
 ## Admin
 
-Staff admin is the MCP section. It is not the `/docs/mcp` probe.
+Staff admin is the MCP admin section. It has no widgets. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe.
 
 1. Allow the section on the admin root.
 

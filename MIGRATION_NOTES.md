@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `
 
 ## 0.5.0
 
-Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. No migration. Hosts that do not mount admin see no new page.
+Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin and links to Oauth's Registered apps section. No migration. Hosts that do not mount admin see no new page.
 
 ## 0.4.0
 

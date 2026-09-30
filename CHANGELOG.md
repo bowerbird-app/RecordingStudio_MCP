@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-09-30
 
 ### Added
-- The gem registers a Recording Studio Admin section named MCP.
+- The gem registers a Recording Studio Admin section titled MCP admin. It has no widgets. Its Registered apps link opens Oauth's admin section.
 
 ### Upgrade notes
 - Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in).
