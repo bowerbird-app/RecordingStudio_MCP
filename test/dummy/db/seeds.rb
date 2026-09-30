@@ -14,6 +14,47 @@ find_or_record_child = lambda do |recordable, root_recording, parent_recording|
   ).recording
 end
 
+usage_subjects = %w[list show describe].freeze
+
+usage_sample_days = lambda do
+  period = RecordingStudioAdmin::Period.from_preset_key(:last_4_weeks)
+  (period.start_date..period.end_date).to_a
+end
+
+write_usage_call = lambda do |stamp, index, client|
+  subject = index.even? ? usage_subjects[index % 3] : "desk-notes"
+  method_name = index.even? ? "tools/call" : "skills/get"
+  RecordingStudioMcp::UsageLog.create!(
+    occurred_at: stamp + index.minutes, method_name: method_name, subject_name: subject,
+    status_code: 200, duration_ms: 8 + index, rate_limited: false, failed: false,
+    api_client_id: client.id
+  )
+end
+
+write_failed_usage = lambda do |stamp|
+  RecordingStudioMcp::UsageLog.create!(
+    occurred_at: stamp + 20.minutes, method_name: "ping", subject_name: "",
+    status_code: 401, duration_ms: 3, rate_limited: false, failed: true
+  )
+end
+
+write_usage_day = lambda do |day, client|
+  stamp = day.in_time_zone.change(hour: 9)
+  (1 + (day.yday % 4)).times { |index| write_usage_call.call(stamp, index, client) }
+  write_failed_usage.call(stamp) if day.day.odd?
+end
+
+seed_mcp_usage = lambda do |client|
+  next unless RecordingStudioMcp::UsageLog.table_available?
+
+  RecordingStudioMcp::UsageLog.delete_all
+  RecordingStudioMcp::UsageDailyMetric.delete_all
+  usage_sample_days.call.each do |day|
+    write_usage_day.call(day, client)
+    RecordingStudioMcp::AggregateUsage.call(metric_date: day)
+  end
+end
+
 grant_or_find_access = lambda do |recording, actor, role|
   existing = RecordingStudioAccessible.access_recordings_for_actor(
     recording: recording,
@@ -119,7 +160,10 @@ ensure
   Current.actor = previous_actor
 end
 
+seed_mcp_usage.call(oauth_client)
+
 puts "Seeded: admin@admin.com / Password"
 puts "Seeded: Seed MCP App client_id=#{oauth_client.client_id}"
 puts "Seeded: Studio Workspace (Connected), Docs Workspace (Reconnect)"
 puts "Seeded: MCP at /recording_studio_mcp"
+puts "Seeded: MCP usage for the last 4 weeks"

@@ -22,6 +22,7 @@ class DummyAdminRootSection < RecordingStudioAdmin::Section
   widget "oauth.active_apps"
   widget "oauth.active_connections"
   link :oauth_apps, text: "Registered apps", url: ->(context) { context.admin_section_path("oauth_apps") }
+  link :mcp, text: "MCP", url: ->(context) { context.admin_section_path("mcp") }
 end
 
 Rails.application.config.to_prepare do

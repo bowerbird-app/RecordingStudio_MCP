@@ -2,6 +2,12 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged).
 
+## 0.5.0
+
+Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin. It charts usage for the last 4 weeks, links to the Usage screen, and links to Oauth's Registered apps section.
+
+Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate`. That adds `recording_studio_mcp_usage_logs` and `recording_studio_mcp_usage_daily_metrics`. Schedule `rake recording_studio_mcp:maintain_usage` to rebuild yesterday and today, then delete raw logs older than 30 days. Hosts that do not mount admin still record usage. They do not see the widget.
+
 ## 0.4.0
 
 Domain gems may register `SKILL.md` candidates with `RecordingStudioMcp.register_skill`. Exposure is separate. `available_if` and `config.skill_policy` both have to allow the current access grant. Clients read the exposed set with `skills/list`, `skills/get`, and `resources/read`. No OAuth or tool changes.

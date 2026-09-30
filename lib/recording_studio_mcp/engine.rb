@@ -34,6 +34,12 @@ module RecordingStudioMcp
       end
     end
 
+    initializer "recording_studio_mcp.admin" do
+      config.to_prepare do
+        RecordingStudioMcp::Admin.register!
+      end
+    end
+
     # Oauth 0.2+ registers MCP via config.mcp_mount_path. Keep that path
     # aligned with this gem so authorize accepts the MCP resource identity.
     config.after_initialize do

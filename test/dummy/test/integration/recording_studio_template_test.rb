@@ -48,11 +48,24 @@ class RecordingStudioTemplateTest < ActiveSupport::TestCase
     assert_equal ["http://127.0.0.1:3000/callback"], oauth_client.redirect_uris
     refute_includes oauth_client.redirect_uris.first, "#"
 
+    period = RecordingStudioAdmin::Period.from_preset_key(:last_4_weeks)
+    window = period.start_date.beginning_of_day..period.end_date.end_of_day
+    usage_logs = RecordingStudioMcp::UsageLog.where(occurred_at: window)
+    assert usage_logs.exists?(subject_name: "list", api_client_id: oauth_client.id, failed: false)
+    assert usage_logs.exists?(method_name: "ping", failed: true)
+    refute_includes usage_logs.pluck(:subject_name).join(" "), "Secret"
+    metric_total = RecordingStudioMcp::UsageDailyMetric.where(metric_date: period.start_date..period.end_date)
+    assert metric_total.sum(:call_count).positive?
+    log_count = RecordingStudioMcp::UsageLog.count
+    metric_count = RecordingStudioMcp::UsageDailyMetric.count
+
     assert_no_difference -> { User.count } do
       assert_no_difference -> { RecordingStudio::Recording.count } do
         load Rails.root.join("db/seeds.rb").to_s
       end
     end
+    assert_equal log_count, RecordingStudioMcp::UsageLog.count
+    assert_equal metric_count, RecordingStudioMcp::UsageDailyMetric.count
     assert_nil Current.actor
   ensure
     Current.actor = nil

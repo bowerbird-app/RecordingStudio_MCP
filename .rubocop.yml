@@ -31,6 +31,7 @@ Metrics/MethodLength:
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
+    - 'db/migrate/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/tools.rb'
@@ -39,6 +40,7 @@ Metrics/AbcSize:
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
+    - 'db/migrate/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'

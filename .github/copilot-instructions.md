@@ -10,7 +10,7 @@ Do not add Pundit, Doorkeeper, OmniAuth, Dynamic Client Registration, or Users a
 
 ## UI
 
-This gem ships no product UI. Dummy host chrome may use Flatpack. Oauth owns Connect screens.
+This gem ships no end-user product UI. Staff admin is the MCP section when `recording_studio_admin` is mounted. Dummy host chrome may use Flatpack. Oauth owns Connect screens.
 
 ## Testing
 

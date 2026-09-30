@@ -21,11 +21,15 @@ RecordingStudioRootSwitchable.configure do |config|
 
   config.scope :all_workspaces do |scope|
     scope.label = "All workspaces"
-    scope.description = "Every workspace root in the dummy app."
+    scope.description = "Workspace roots, plus the admin home."
     scope.available_roots = lambda do |**|
-      Workspace.order(:name).filter_map do |workspace|
+      workspace_roots = Workspace.order(:name).filter_map do |workspace|
         RecordingStudio.root_recording_for(workspace)
       end
+      admin_roots = AdminRoot.order(:name).filter_map do |admin_root|
+        RecordingStudio.root_recording_for(admin_root)
+      end
+      workspace_roots + admin_roots
     end
     scope.access_check = ->(**) { true }
 
