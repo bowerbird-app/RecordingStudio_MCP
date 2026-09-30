@@ -53,26 +53,29 @@ class UsageMetricsTest < Minitest::Test
     assert_empty RecordingStudioMcp::UsageDailyMetric.cleared_dates
   end
 
-  def test_usage_widget_lists_calls_failures_and_the_busiest_subjects
+  def test_usage_window_totals_calls_across_the_last_four_weeks
     install_widget_metrics
 
-    items = RecordingStudioMcp::Admin.usage_items
-
-    assert_equal({ leading: "Calls", text: "21" }, items[0])
-    assert_equal({ leading: "Failed", text: "2" }, items[1])
-    names = items.drop(2).map { |item| item.fetch(:text) }
-    counts = items.drop(2).map { |item| item.fetch(:trailing) }
-    assert_equal %w[list show describe create update], names
-    assert_equal %w[6 5 4 3 2], counts
+    assert_equal 15, RecordingStudioMcp::UsageWindow.total
+    points = RecordingStudioMcp::UsageWindow.series.first.fetch(:data)
+    period = RecordingStudioAdmin::Period.from_preset_key(:last_4_weeks)
+    assert_equal (period.start_date..period.end_date).to_a.size, points.size
+    assert_equal period.start_date..period.end_date, RecordingStudioMcp::UsageDailyMetric.seen_range
+    today = points.find { |point| point.fetch(:x) == Date.current.strftime("%b %-d") }
+    assert_equal 6, today.fetch(:y)
+    assert_equal 0, points.first.fetch(:y)
   end
 
-  def test_usage_widget_says_none_yet_when_there_are_no_calls
-    install_widget_metrics(calls: 0, failed: 0, subjects: {})
+  def test_usage_window_is_zero_when_there_are_no_calls
+    install_widget_metrics(counts: {})
 
-    assert_equal [{ text: "None yet" }], RecordingStudioMcp::Admin.usage_items
+    assert_equal 0, RecordingStudioMcp::UsageWindow.total
+    points = RecordingStudioMcp::UsageWindow.series.first.fetch(:data)
+    zeros = points.all? { |point| point.fetch(:y).zero? }
+    assert zeros
   end
 
-  def test_usage_widget_says_none_yet_when_metrics_cannot_be_read
+  def test_usage_window_is_zero_when_metrics_cannot_be_read
     metric = Class.new do
       def self.table_available?
         raise "nope"
@@ -80,7 +83,11 @@ class UsageMetricsTest < Minitest::Test
     end
     install_constant(:UsageDailyMetric, metric)
 
-    assert_equal [{ text: "None yet" }], RecordingStudioMcp::Admin.usage_items
+    assert_equal 0, RecordingStudioMcp::UsageWindow.total
+    points = RecordingStudioMcp::UsageWindow.series.first.fetch(:data)
+    zeros = points.all? { |point| point.fetch(:y).zero? }
+    assert zeros
+    refute_empty points
   end
 
   private
@@ -134,11 +141,11 @@ class UsageMetricsTest < Minitest::Test
     install_constant(:UsageDailyMetric, metric)
   end
 
-  def install_widget_metrics(calls: 21, failed: 2, subjects: nil)
-    subjects ||= { "list" => 6, "show" => 5, "describe" => 4, "create" => 3, "update" => 2, "ping" => 1 }
+  def install_widget_metrics(counts: nil)
+    counts ||= { Date.current => 6, Date.current - 1 => 5, Date.current - 3 => 4 }
     metric = Class.new do
       class << self
-        attr_accessor :calls, :failed, :subjects
+        attr_accessor :counts, :seen_range
       end
 
       def self.table_available?
@@ -146,12 +153,12 @@ class UsageMetricsTest < Minitest::Test
       end
 
       def self.where(metric_date:)
-        Scope.new(metric_date, calls, failed, subjects)
+        self.seen_range = metric_date
+        Scope.new(counts)
       end
     end
-    metric.calls = calls
-    metric.failed = failed
-    metric.subjects = subjects
+    metric.counts = counts
+    metric.seen_range = nil
     install_constant(:UsageDailyMetric, metric)
   end
 
@@ -203,32 +210,8 @@ class UsageMetricsTest < Minitest::Test
   end
 
   class Scope
-    def initialize(metric_date, calls, failed, subjects)
-      raise "expected the last 7 days" unless metric_date.begin == Date.current - 6 && metric_date.end == Date.current
-
-      @calls = calls
-      @failed = failed
-      @subjects = subjects
-    end
-
-    def sum(column)
-      column == :failed_count ? @failed : @calls
-    end
-
-    def where
-      Narrow.new(@subjects)
-    end
-  end
-
-  class Narrow
-    def initialize(subjects)
-      @subjects = subjects
-    end
-
-    def not(subject_name:)
-      raise "expected blank subjects to be skipped" unless subject_name == ""
-
-      self
+    def initialize(counts)
+      @counts = counts
     end
 
     def group(*)
@@ -236,7 +219,7 @@ class UsageMetricsTest < Minitest::Test
     end
 
     def sum(*)
-      @subjects
+      @counts
     end
   end
 end

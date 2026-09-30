@@ -20,17 +20,34 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     Current.actor = nil if defined?(Current)
   end
 
-  test "mcp section is a title and a link to oauth registered apps" do
+  test "mcp section charts the last 4 weeks and links to the usage screen" do
     get "/admin/sections/mcp"
 
     assert_response :success
     assert_includes response.body, "MCP admin"
     assert_includes response.body, "Usage"
-    assert_includes response.body, "None yet"
+    assert_includes response.body, "Last 4 weeks"
+    assert_includes response.body, "Calls from the last 4 weeks."
     assert_includes response.body, "Registered apps"
+    refute_includes response.body, "None yet"
+    refute_includes response.body, "Calls from the last 7 days."
     refute_includes response.body, "What this server can do."
     refute_includes response.body, "List records"
     assert_includes response.body, "/admin/sections/oauth_apps"
+    assert_includes response.body, "/admin/screens/mcp_usage"
+
+    get "/admin/screens/mcp_usage"
+
+    assert_response :success
+    assert_includes response.body, "Every call from the last 4 weeks."
+    assert_includes response.body, "/admin/screens/mcp_usage/chart"
+    assert_includes response.body, "/admin/screens/mcp_usage/table"
+
+    get "/admin/screens/mcp_usage/chart"
+    assert_response :success
+
+    get "/admin/screens/mcp_usage/table"
+    assert_response :success
   end
 
   test "mcp section is defined by the gem and the host only allowlists it" do

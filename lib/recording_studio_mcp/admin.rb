@@ -5,13 +5,27 @@ require "recording_studio_admin"
 module RecordingStudioMcp
   module Admin
     UsageWidget = RecordingStudioAdmin::Widget.new("mcp.usage") do
-      type :list
+      type :chart
       title "Usage"
-      info "Calls from the last 7 days."
+      info "Calls from the last 4 weeks."
+      chart_type :column
       hide_change
-      hide_period
       blast_radius :site
-      items { RecordingStudioMcp::Admin.usage_items }
+      value { RecordingStudioMcp::UsageWindow.total }
+      metadata { { period_label: "Last 4 weeks" } }
+      series { RecordingStudioMcp::UsageWindow.series }
+      chart_options do
+        {
+          height: 240,
+          plotOptions: { bar: { horizontal: false, columnWidth: "52%" } },
+          xaxis: { labels: { rotate: 0, hideOverlappingLabels: true } },
+          yaxis: { min: 0, forceNiceScale: true },
+          dataLabels: { enabled: false },
+          stroke: { width: 0 }
+        }
+      end
+      link_to { |context| RecordingStudioMcp::UsageWindow.screen_path(context) }
+      link_label "Usage"
     end
 
     class McpSection < RecordingStudioAdmin::Section
@@ -25,53 +39,15 @@ module RecordingStudioMcp
       blast_radius :site
       widget "mcp.usage"
       link :oauth_apps, text: "Registered apps", url: ->(context) { context.admin_section_path("oauth_apps") }
+      link :usage, text: "Usage", url: ->(context) { context.admin_screen_path("mcp_usage") }
     end
 
     module_function
 
-    def usage_items
-      scope = recent_usage
-      return [{ text: "None yet" }] if scope.nil?
-
-      calls = scope.sum(:call_count)
-      return [{ text: "None yet" }] if calls.zero?
-
-      usage_lines(scope, calls)
-    end
-
     def register!
       RecordingStudioAdmin.register_widget(UsageWidget)
+      RecordingStudioAdmin.register_screen(UsageScreen)
       RecordingStudioAdmin.register_section(McpSection)
     end
-
-    def recent_usage
-      return unless usage_metrics_available?
-
-      UsageDailyMetric.where(metric_date: (Date.current - 6)..Date.current)
-    end
-
-    def usage_lines(scope, calls)
-      items = [
-        { leading: "Calls", text: calls.to_s },
-        { leading: "Failed", text: scope.sum(:failed_count).to_s }
-      ]
-      top_subjects(scope).each do |name, count|
-        items << { text: name, trailing: count.to_s }
-      end
-      items
-    end
-
-    def usage_metrics_available?
-      UsageDailyMetric.table_available?
-    rescue StandardError
-      false
-    end
-
-    def top_subjects(scope)
-      scope.where.not(subject_name: "").group(:subject_name).sum(:call_count)
-           .sort_by { |_name, count| -count }
-           .first(5)
-    end
-    private_class_method :recent_usage, :usage_lines, :usage_metrics_available?, :top_subjects
   end
 end

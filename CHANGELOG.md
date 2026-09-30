@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The gem registers a Recording Studio Admin section titled MCP admin. Its Registered apps link opens Oauth's admin section.
-- MCP usage is logged per call and rolled up by day. The MCP admin section shows a Usage widget for the last 7 days.
+- MCP usage is logged per call and rolled up by day. The MCP admin section charts the last 4 weeks and links to a Usage screen.
 
 ### Upgrade notes
 - Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in).

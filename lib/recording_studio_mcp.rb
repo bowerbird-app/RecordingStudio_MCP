@@ -23,6 +23,8 @@ require "recording_studio_mcp/usage_call"
 require "recording_studio_mcp/usage_recorder"
 require "recording_studio_mcp/aggregate_usage"
 require "recording_studio_mcp/maintain_usage"
+require "recording_studio_mcp/usage_window"
+require "recording_studio_mcp/usage_screen"
 require "recording_studio_mcp/admin"
 require "recording_studio_mcp/engine"
 

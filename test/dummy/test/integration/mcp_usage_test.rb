@@ -36,7 +36,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal false, body.dig("result", "isError"), response.body
-    log = RecordingStudioMcp::UsageLog.order(:occurred_at).last
+    log = RecordingStudioMcp::UsageLog.where(method_name: "tools/call", subject_name: "list").order(:occurred_at).last
     assert_equal "tools/call", log.method_name
     assert_equal "list", log.subject_name
     assert_equal @oauth_client.id, log.api_client_id
@@ -57,11 +57,21 @@ class McpUsageTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h3", text: "Usage"
-    assert_includes response.body, "Calls from the last 7 days."
-    assert_select "span", text: "Calls"
-    assert_select "span", text: "Failed"
-    assert_select "span", text: "list"
-    assert_select "span", text: "1"
+    assert_includes response.body, "Last 4 weeks"
+    assert_includes response.body, "/admin/screens/mcp_usage"
+    assert_select "span.text-5xl", text: "1"
+
+    get "/admin/screens/mcp_usage/table"
+
+    assert_response :success
+    assert_includes response.body, "tools/call"
+    assert_includes response.body, "list"
+    refute_includes response.body, "Secret title"
+
+    get "/admin/screens/mcp_usage/chart"
+
+    assert_response :success
+    assert_includes response.body, "Last 4 weeks"
   end
 
   test "a rejected sign in is still counted" do
