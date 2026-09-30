@@ -9,6 +9,14 @@ class ProtocolTest < Minitest::Test
     @grant = FakeGrant.new(nil)
   end
 
+  def test_server_info_names_this_server_and_gem_version
+    assert_equal "recording-studio", RecordingStudioMcp::Protocol::SERVER_NAME
+    assert_equal(
+      { name: "recording-studio", version: RecordingStudioMcp::VERSION },
+      RecordingStudioMcp::Protocol.server_info
+    )
+  end
+
   def test_initialize_returns_tree_instructions_when_types_exist
     with_isolated_api_configuration do
       register_tree_type("Page")

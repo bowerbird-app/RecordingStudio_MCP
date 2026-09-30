@@ -3,6 +3,7 @@
 module RecordingStudioMcp
   class Protocol
     JSONRPC_VERSION = "2.0"
+    SERVER_NAME = "recording-studio"
     PARSE_ERROR = -32_700
     INVALID_REQUEST = -32_600
     METHOD_NOT_FOUND = -32_601
@@ -13,6 +14,10 @@ module RecordingStudioMcp
 
     def self.handle(payload, access_grant:, idempotency_key: nil)
       new(access_grant: access_grant, idempotency_key: idempotency_key).handle(payload)
+    end
+
+    def self.server_info
+      { name: SERVER_NAME, version: RecordingStudioMcp::VERSION }
     end
 
     def initialize(access_grant:, idempotency_key: nil)
@@ -94,10 +99,7 @@ module RecordingStudioMcp
           resources: {},
           extensions: { "io.modelcontextprotocol/skills" => {} }
         },
-        serverInfo: {
-          name: "recording-studio",
-          version: RecordingStudioMcp::VERSION
-        },
+        serverInfo: self.class.server_info,
         instructions: Instructions.text(access_grant: access_grant)
       }
     end
