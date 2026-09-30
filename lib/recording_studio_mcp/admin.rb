@@ -96,8 +96,8 @@ module RecordingStudioMcp
     end
 
     def instruction_items
-      # Instructions.text builds the same tool surface as Tools.definitions.
-      [{ text: Instructions.text(access_grant: nil) }]
+      surface = ToolSurface.for(access_grant: nil)
+      [{ text: Instructions.text(access_grant: nil, surface: surface) }]
     rescue RecordingStudioApi::ConfigurationError => e
       [{ text: "Instructions could not be loaded. #{e.message}" }]
     end
