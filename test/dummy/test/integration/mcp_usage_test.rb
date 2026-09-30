@@ -23,6 +23,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
 
   test "a tool call is logged, rolled up, and shown on the mcp admin section" do
     token = issue_token
+    prior_calls = daily_call_count(method_name: "tools/call", subject_name: "list")
 
     post "/recording_studio_mcp",
          params: {
@@ -36,7 +37,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal false, body.dig("result", "isError"), response.body
-    log = RecordingStudioMcp::UsageLog.where(method_name: "tools/call", subject_name: "list").order(:occurred_at).last
+    log = RecordingStudioMcp::UsageLog.where(api_client_id: @oauth_client.id, subject_name: "list").order(:occurred_at).last
     assert_equal "tools/call", log.method_name
     assert_equal "list", log.subject_name
     assert_equal @oauth_client.id, log.api_client_id
@@ -48,7 +49,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
       method_name: "tools/call",
       subject_name: "list"
     )
-    assert_equal 1, metric.call_count
+    assert_equal prior_calls + 1, metric.call_count
     assert_equal 0, metric.failed_count
 
     sign_in @user
@@ -59,7 +60,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_select "h3", text: "Usage"
     assert_includes response.body, "Last 4 weeks"
     assert_includes response.body, "/admin/screens/mcp_usage"
-    assert_select "span.text-5xl", text: "1"
+    assert_select "span.text-5xl", text: RecordingStudioMcp::UsageWindow.total.to_s
 
     get "/admin/screens/mcp_usage/table"
 
@@ -75,12 +76,14 @@ class McpUsageTest < ActionDispatch::IntegrationTest
   end
 
   test "a rejected sign in is still counted" do
-    post "/recording_studio_mcp",
-         params: { jsonrpc: "2.0", id: 1, method: "ping" }.to_json,
-         headers: json_headers
+    assert_difference -> { RecordingStudioMcp::UsageLog.where(method_name: "ping", status_code: 401).count }, 1 do
+      post "/recording_studio_mcp",
+           params: { jsonrpc: "2.0", id: 1, method: "ping" }.to_json,
+           headers: json_headers
+    end
 
     assert_response :unauthorized
-    log = RecordingStudioMcp::UsageLog.order(:occurred_at).last
+    log = RecordingStudioMcp::UsageLog.where(method_name: "ping", status_code: 401).order(:created_at).last
     assert_equal "ping", log.method_name
     assert_equal "", log.subject_name
     assert_nil log.api_client_id
@@ -92,12 +95,13 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     token = issue_token
     RecordingStudioMcp::UsageRecorder.sink = ->(_payload) { raise "disk full" }
 
-    post "/recording_studio_mcp",
-         params: { jsonrpc: "2.0", id: 1, method: "ping" }.to_json,
-         headers: json_headers("Authorization" => "Bearer #{token}")
+    assert_no_difference -> { RecordingStudioMcp::UsageLog.count } do
+      post "/recording_studio_mcp",
+           params: { jsonrpc: "2.0", id: 1, method: "ping" }.to_json,
+           headers: json_headers("Authorization" => "Bearer #{token}")
+    end
 
     assert_response :success
-    assert_equal 0, RecordingStudioMcp::UsageLog.count
   end
 
   test "maintain usage rebuilds the day from logs and prunes old rows" do
@@ -148,6 +152,14 @@ class McpUsageTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def daily_call_count(method_name:, subject_name:)
+    RecordingStudioMcp::UsageDailyMetric.find_by(
+      metric_date: Time.zone.today,
+      method_name: method_name,
+      subject_name: subject_name
+    )&.call_count.to_i
+  end
 
   def json_headers(extra = {})
     { "Content-Type" => "application/json", "Accept" => "application/json" }.merge(extra)
