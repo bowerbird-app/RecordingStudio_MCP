@@ -13,6 +13,7 @@ class AdminTest < Minitest::Test
     assert_equal "MCP", section.title
     assert_equal "What clients are offered.", section.subtitle
     assert_equal %w[mcp.server mcp.tools mcp.skills mcp.instructions], section.widget_keys
+    assert_equal %i[oauth_apps], section.links.map(&:name)
     assert_nil RecordingStudioAdmin.screen_for("mcp")
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }
     assert_equal 1, mcp_sections
@@ -114,7 +115,10 @@ class AdminTest < Minitest::Test
 
     refute_same previous, current
     assert_equal previous.source_location, current.source_location
-    assert_equal "RecordingStudioMcp::Admin::McpSection", RecordingStudioAdmin.section_for("mcp").name
+    section = RecordingStudioAdmin.section_for("mcp")
+    assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
+    assert_equal %w[mcp.server mcp.tools mcp.skills mcp.instructions], section.widget_keys
+    assert_equal %i[oauth_apps], section.links.map(&:name)
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }
     tool_widgets = RecordingStudioAdmin.registry.widgets.keys.count { |key| key == "mcp.tools" }
     assert_equal 1, mcp_sections
