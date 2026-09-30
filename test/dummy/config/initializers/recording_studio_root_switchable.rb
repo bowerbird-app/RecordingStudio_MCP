@@ -21,7 +21,7 @@ RecordingStudioRootSwitchable.configure do |config|
 
   config.scope :all_workspaces do |scope|
     scope.label = "All workspaces"
-    scope.description = "Every workspace root in the dummy app."
+    scope.description = "Workspace roots, plus the admin home."
     scope.available_roots = lambda do |**|
       workspace_roots = Workspace.order(:name).filter_map do |workspace|
         RecordingStudio.root_recording_for(workspace)
