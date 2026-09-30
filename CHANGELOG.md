@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-30
+
+### Added
+- The gem registers a Recording Studio Admin section named MCP.
+
+### Upgrade notes
+- Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in).
+- On the admin root, allow `section :mcp`.
+- On the admin home section, link MCP to `admin_section_path("mcp")`.
+- No migration. Hosts that do not mount admin see no new page.
+
 ## [0.4.0] - 2026-09-30
 
 ### Added
@@ -99,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
+[0.5.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.0...v0.3.1

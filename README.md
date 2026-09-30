@@ -71,7 +71,7 @@ After initialize, clients send the negotiated version in `MCP-Protocol-Version`.
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.2.0` (or the `cursor/mcp-protected-resource-identity-607a` branch until tagged).
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.2.0` (or the `cursor/mcp-protected-resource-identity-607a` branch until tagged), and `recording_studio_admin ~> 2.0`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -79,7 +79,25 @@ After initialize, clients send the negotiated version in `MCP-Protocol-Version`.
 
 Host authentication stays on the host. Dummy uses Devise. Do not add Users as a dependency of this gem.
 
-This gem ships no product UI. Dummy host chrome may use Flatpack. Oauth owns Connect screens.
+This gem ships no end-user product UI. Staff admin is the MCP section when `recording_studio_admin` is mounted. Dummy host chrome may use Flatpack. Oauth owns Connect screens.
+
+## Admin
+
+Staff admin is the MCP section. It is not the `/docs/mcp` probe.
+
+1. Allow the section on the admin root.
+
+```ruby
+recording_studio_admin_sections do
+  section :mcp
+end
+```
+
+2. Link MCP from the admin home section.
+
+```ruby
+link :mcp, text: "MCP", url: ->(context) { context.admin_section_path("mcp") }
+```
 
 ## Dummy
 
@@ -89,4 +107,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.4.0
+0.5.0
