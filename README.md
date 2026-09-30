@@ -89,4 +89,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.3.2
+0.4.0
