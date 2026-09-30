@@ -25,6 +25,8 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "MCP admin"
+    assert_includes response.body, "Usage"
+    assert_includes response.body, "None yet"
     assert_includes response.body, "Registered apps"
     refute_includes response.body, "What this server can do."
     refute_includes response.body, "List records"

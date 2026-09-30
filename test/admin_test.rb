@@ -12,9 +12,14 @@ class AdminTest < Minitest::Test
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
     assert_equal "What clients are offered.", section.subtitle
-    assert_empty section.widget_keys
+    assert_equal %w[mcp.usage], section.widget_keys
     assert_equal %i[oauth_apps], section.links.map(&:name)
     assert_nil RecordingStudioAdmin.screen_for("mcp")
+
+    widget = RecordingStudioAdmin.widget_for("mcp.usage").resolve(nil)
+    assert_equal "Usage", widget.title
+    assert_equal "Calls from the last 7 days.", widget.info
+    assert_equal [{ text: "None yet" }], widget.items
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }
     assert_equal 1, mcp_sections
   end
@@ -33,7 +38,7 @@ class AdminTest < Minitest::Test
 
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
-    assert_empty section.widget_keys
+    assert_equal %w[mcp.usage], section.widget_keys
     assert_equal %i[oauth_apps], section.links.map(&:name)
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }
     assert_equal 1, mcp_sections

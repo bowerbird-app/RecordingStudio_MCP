@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_03_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -260,6 +260,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_000006) do
     t.index ["recording_id", "idempotency_key"], name: "index_recording_studio_events_on_recording_and_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["recording_id", "occurred_at", "created_at"], name: "index_rs_events_on_recording_and_timeline", order: { occurred_at: :desc, created_at: :desc }
     t.index ["recording_id"], name: "index_recording_studio_events_on_recording_id"
+  end
+
+  create_table "recording_studio_mcp_usage_daily_metrics", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "call_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "failed_count", default: 0, null: false
+    t.string "method_name", null: false
+    t.date "metric_date", null: false
+    t.integer "rate_limited_count", default: 0, null: false
+    t.string "subject_name", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["metric_date", "method_name", "subject_name"], name: "index_rs_mcp_usage_daily_on_day_method_subject", unique: true
+  end
+
+  create_table "recording_studio_mcp_usage_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "api_client_id"
+    t.datetime "created_at", null: false
+    t.integer "duration_ms", null: false
+    t.boolean "failed", default: false, null: false
+    t.string "method_name", null: false
+    t.datetime "occurred_at", null: false
+    t.boolean "rate_limited", default: false, null: false
+    t.integer "status_code", null: false
+    t.string "subject_name", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["api_client_id", "occurred_at"], name: "index_rs_mcp_usage_logs_on_client_and_time"
+    t.index ["occurred_at"], name: "index_recording_studio_mcp_usage_logs_on_occurred_at"
   end
 
   create_table "recording_studio_oauth_access_tokens", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

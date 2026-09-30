@@ -8,6 +8,7 @@ module RecordingStudioMcp
     prepend_before_action :authenticate_mcp!
     include RecordingStudioMcp::TransportSecurity
     include RecordingStudioApi::Concerns::ApiAccessControl
+    include RecordingStudioMcp::UsageLogging
 
     def handle
       return head :method_not_allowed unless request.post?

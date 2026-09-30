@@ -4,7 +4,9 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `
 
 ## 0.5.0
 
-Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin and links to Oauth's Registered apps section. No migration. Hosts that do not mount admin see no new page.
+Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin. It shows a Usage widget and links to Oauth's Registered apps section.
+
+Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate`. That adds `recording_studio_mcp_usage_logs` and `recording_studio_mcp_usage_daily_metrics`. Schedule `rake recording_studio_mcp:maintain_usage` to rebuild yesterday and today, then delete raw logs older than 30 days. Hosts that do not mount admin still record usage. They do not see the widget.
 
 ## 0.4.0
 

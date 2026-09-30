@@ -8,13 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-09-30
 
 ### Added
-- The gem registers a Recording Studio Admin section titled MCP admin. It has no widgets. Its Registered apps link opens Oauth's admin section.
+- The gem registers a Recording Studio Admin section titled MCP admin. Its Registered apps link opens Oauth's admin section.
+- MCP usage is logged per call and rolled up by day. The MCP admin section shows a Usage widget for the last 7 days.
 
 ### Upgrade notes
 - Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in).
 - On the admin root, allow `section :mcp`.
 - On the admin home section, link MCP to `admin_section_path("mcp")`.
-- No migration. Hosts that do not mount admin see no new page.
+- Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate`.
+- Schedule `rake recording_studio_mcp:maintain_usage` so raw logs older than 30 days are deleted after the daily totals are rebuilt.
+- Hosts that do not mount admin still record usage. They do not see the widget.
 
 ## [0.4.0] - 2026-09-30
 
