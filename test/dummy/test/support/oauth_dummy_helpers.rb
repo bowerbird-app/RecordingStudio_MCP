@@ -5,6 +5,21 @@ require "test_helper"
 module OauthDummyHelpers
   TEST_PASSWORD = "OauthDummyPassword!2026"
 
+  def create_admin_root_recording(name: "Admin")
+    admin_root = AdminRoot.find_or_create_by!(name: name)
+    [admin_root, RecordingStudio.root_recording_for(admin_root)]
+  end
+
+  def switch_to_root!(root_recording)
+    patch recording_studio_root_switchable.root_switch_path(scope: "all_workspaces"), params: {
+      root_switch: {
+        root_recording_id: root_recording.id,
+        return_to: "/"
+      }
+    }
+    follow_redirect! if response.redirect?
+  end
+
   def create_user(email: "oauth-user-#{SecureRandom.hex(4)}@example.com")
     User.find_or_create_by!(email: email) do |user|
       user.password = TEST_PASSWORD

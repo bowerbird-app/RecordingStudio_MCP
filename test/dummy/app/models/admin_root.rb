@@ -10,5 +10,6 @@ class AdminRoot < ApplicationRecord
   recording_studio_admin_sections do
     section :root
     section :oauth_apps
+    section :mcp
   end
 end
