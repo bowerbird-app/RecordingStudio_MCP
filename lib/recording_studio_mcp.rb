@@ -19,6 +19,7 @@ require "recording_studio_mcp/tools"
 require "recording_studio_mcp/tool_surface"
 require "recording_studio_mcp/dispatcher"
 require "recording_studio_mcp/protocol"
+require "recording_studio_mcp/admin"
 require "recording_studio_mcp/engine"
 
 module RecordingStudioMcp
