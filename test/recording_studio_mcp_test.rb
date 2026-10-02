@@ -71,7 +71,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'branch: "cursor/mcp-protected-resource-identity-607a"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.5.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/flatpack", tag: "v0.1.144"'
+    assert_includes gemfile, 'github: "bowerbird-app/flatpack", tag: "v0.1.198"'
     refute_includes gemfile, "recording_studio_users"
     refute_includes gemfile, 'tag: "v0.6.0"'
   end
