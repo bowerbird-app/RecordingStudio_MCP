@@ -53,7 +53,7 @@ Dummy-only “Try MCP” and “Sample POST” on `/docs/mcp`. No host upgrade r
 
 Dummy GitHub tags used to prove Connect then MCP:
 
-- Recording Studio `v4.2.1`
+- Recording Studio `v4.2.2`
 - Accessible `v0.9.1`
 - API `v0.5.4`
 - Oauth `v0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged)
