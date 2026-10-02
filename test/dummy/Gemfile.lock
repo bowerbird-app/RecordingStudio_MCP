@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio.git
-  revision: 0d11c15ea74cc61207bcd3bdb56058b6ee1fc990
-  tag: v4.2.1
+  revision: 036686aa4eaf4f945f920cf4b11be4e842de0aac
+  tag: v4.2.2
   specs:
     recording_studio (4.2.1)
       rails (>= 8.1.0)
