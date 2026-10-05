@@ -34,6 +34,14 @@ module OauthDummyHelpers
     ).first
     return existing if existing.present? && existing.recordable.role.to_s == role.to_s
 
+    if role.to_s == "admin"
+      bootstrap = RecordingStudioAccessible.bootstrap_owner_access!(
+        recording: recording,
+        actor: actor
+      )
+      return bootstrap.value if bootstrap.success?
+    end
+
     result = RecordingStudioAccessible.grant_access(
       recording: recording,
       actor: actor,
@@ -42,12 +50,15 @@ module OauthDummyHelpers
     )
     return result.value if result.success?
 
-    if role.to_s == "admin"
-      bootstrap = RecordingStudioAccessible.bootstrap_owner_access!(
+    seed_owner = User.find_by(email: "admin@admin.com")
+    if seed_owner && seed_owner != actor
+      result = RecordingStudioAccessible.grant_access(
         recording: recording,
-        actor: actor
+        actor: actor,
+        role: role.to_s,
+        manager_actor: seed_owner
       )
-      return bootstrap.value if bootstrap.success?
+      return result.value if result.success?
     end
 
     raise result.error
