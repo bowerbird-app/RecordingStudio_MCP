@@ -41,7 +41,9 @@ class ListenStreamTest < Minitest::Test
       assert_equal 4, ack.dig(:params, :_meta, RecordingStudioMcp::Connection::SUBSCRIPTION_ID_META)
       assert_equal ["recording://11"], ack.dig(:params, :notifications, :resourceSubscriptions)
 
-      connection.notify_updated("recording://11")
+      connection.enqueue_updated("recording://11")
+      update_payload = connection.shift_pending(timeout: 0)
+      assert connection.write_payload(sender, update_payload)
       update = sender.payloads.last
       assert_equal "notifications/resources/updated", update[:method]
       assert_equal "recording://11", update.dig(:params, :uri)
@@ -80,7 +82,9 @@ class ListenStreamTest < Minitest::Test
     connection.attach_sender(sender)
     connection.subscribe("recording://3")
 
-    refute connection.notify_updated("recording://3")
+    connection.enqueue_updated("recording://3")
+    payload = connection.shift_pending(timeout: 0)
+    refute connection.write_payload(sender, payload)
     assert connection.finished?
   end
 
@@ -92,7 +96,8 @@ class ListenStreamTest < Minitest::Test
     sender = FakeSender.new
     connection.attach_sender(sender)
     connection.subscribe("recording://3")
-    connection.notify_updated("recording://3")
+    connection.enqueue_updated("recording://3")
+    connection.write_payload(sender, connection.shift_pending(timeout: 0))
 
     refute sender.payloads.first[:params].key?(:_meta)
   end
@@ -125,8 +130,24 @@ class ListenStreamTest < Minitest::Test
 
     frames = io.string
     assert_includes frames, "notifications/subscriptions/acknowledged"
+    assert_includes frames, '"resultType":"complete"'
+    assert_includes frames, "io.modelcontextprotocol/subscriptionId"
     assert connection.finished?
     assert_nil RecordingStudioMcp::Connections.fetch(connection.id)
+  end
+
+  def test_write_timeout_drops_a_stalled_subscriber
+    connection = RecordingStudioMcp::Connections.open(
+      protocol_version: "2025-06-18",
+      access_grant: Object.new
+    )
+    sender = Object.new
+    sender.define_singleton_method(:write_json) { |_| sleep 2 }
+    connection.subscribe("recording://3")
+    connection.enqueue_updated("recording://3")
+
+    refute connection.write_payload(sender, connection.shift_pending(timeout: 0))
+    assert connection.finished?
   end
 
   def test_disconnect_drops_the_in_memory_connection

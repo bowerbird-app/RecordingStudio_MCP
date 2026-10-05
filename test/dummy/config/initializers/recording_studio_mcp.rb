@@ -6,4 +6,8 @@ RecordingStudioMcp.configure do |config|
   config.oauth_engine_mount_path = "/recording_studio_oauth"
 end
 
-RecordingStudioMcp.register_event("recording updated")
+RecordingStudioMcp.register_event("recording updated") do |event|
+  event.on :recording_updated
+end
+
+RecordingStudioMcp.register_event("page commented")

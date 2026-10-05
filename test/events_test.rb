@@ -3,13 +3,51 @@
 require "test_helper"
 
 class EventsTest < Minitest::Test
+  FakeRecording = Struct.new(:id, :recordable_type, :published)
+
   def test_register_event_stores_a_host_event
     with_isolated_mcp_configuration do
       registration = RecordingStudioMcp.register_event("recording updated")
 
       assert_equal "recording updated", registration.name
+      assert_equal :recording_updated, registration.trigger
       assert RecordingStudioMcp.event_registered?("recording updated")
       assert RecordingStudioMcp.events_registered?
+    end
+  end
+
+  def test_register_event_block_sets_trigger_types_and_filter
+    with_isolated_mcp_configuration do
+      registration = RecordingStudioMcp.register_event("recording updated") do |event|
+        event.on :recording_updated
+        event.types "Page", "Document"
+        event.if { |recording| recording.published == true }
+      end
+
+      page = FakeRecording.new(1, "Page", true)
+      hidden = FakeRecording.new(2, "Page", false)
+      other = FakeRecording.new(3, "Folder", true)
+
+      assert registration.matches_recording?(page)
+      refute registration.matches_recording?(hidden)
+      refute registration.matches_recording?(other)
+    end
+  end
+
+  def test_custom_event_has_no_built_in_trigger
+    with_isolated_mcp_configuration do
+      registration = RecordingStudioMcp.register_event("comment added")
+
+      assert_nil registration.trigger
+      refute registration.built_in_save?
+    end
+  end
+
+  def test_notify_unregistered_raises
+    with_isolated_mcp_configuration do
+      assert_raises(ArgumentError) do
+        RecordingStudioMcp.notify("comment added", recording: FakeRecording.new(1, "Page", true))
+      end
     end
   end
 

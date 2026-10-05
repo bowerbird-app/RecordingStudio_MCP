@@ -2,7 +2,7 @@
 
 module RecordingStudioMcp
   class RequestContext
-    PROTOCOL_WITH_PROGRESS_MESSAGE = %w[2025-06-18 2026-07-28].freeze
+    PROTOCOL_WITH_PROGRESS_MESSAGE = %w[2025-06-18 2025-11-25 2026-07-28].freeze
 
     attr_reader :request_id, :protocol_version, :access_grant, :progress_token, :connection
 

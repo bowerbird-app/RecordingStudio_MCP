@@ -14,7 +14,7 @@ class ConfigurationTest < Minitest::Test
     assert_equal "/recording_studio_oauth", @configuration.oauth_engine_mount_path
     assert_equal "2025-06-18", @configuration.protocol_version
     assert_equal(
-      %w[2025-03-26 2025-06-18 2026-07-28],
+      %w[2025-03-26 2025-06-18 2025-11-25 2026-07-28],
       RecordingStudioMcp::Configuration::SUPPORTED_PROTOCOL_VERSIONS
     )
     assert_equal [], @configuration.allowed_origins

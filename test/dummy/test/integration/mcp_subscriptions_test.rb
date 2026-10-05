@@ -4,6 +4,8 @@ require "test_helper"
 require "devise/test/integration_helpers"
 
 class McpSubscriptionsTest < ActionDispatch::IntegrationTest
+  self.use_transactional_tests = false
+
   include OauthDummyHelpers
   include Devise::Test::IntegrationHelpers
 
@@ -66,10 +68,10 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     assert_equal({}, JSON.parse(response.body)["result"])
 
     finisher = Thread.new do
-      sleep 0.1
+      sleep 0.2
       Current.actor = @user
       @root_recording.revise(@page_recording) { |page| page.title = "Changed for watchers" }
-      sleep 0.05
+      sleep 0.4
       RecordingStudioMcp::Connections.fetch(session)&.finish!
     end
 
@@ -95,10 +97,10 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     uri = "recording://#{@page_recording.id}"
 
     finisher = Thread.new do
-      sleep 0.15
+      sleep 0.2
       Current.actor = @user
       @root_recording.revise(@page_recording) { |page| page.title = "Modern change" }
-      sleep 0.05
+      sleep 0.4
       RecordingStudioMcp::Connections.each(&:finish!)
     end
 
@@ -130,6 +132,45 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     assert_equal 4, ack.dig("params", "_meta", "io.modelcontextprotocol/subscriptionId")
     assert_equal uri, updated.dig("params", "uri")
     assert_equal 4, updated.dig("params", "_meta", "io.modelcontextprotocol/subscriptionId")
+    completion = events.find { |event| event["id"] == 4 && event["result"] }
+    assert_equal "complete", completion.dig("result", "resultType")
+  end
+
+  test "postgres notify payload reaches a second listener then local subscribers" do
+    skip "Postgres LISTEN/NOTIFY needs a live Postgres adapter" unless RecordingStudioMcp::PostgresBus.enabled?
+
+    RecordingStudioMcp::PostgresBus.start!
+    uri = "recording://#{@page_recording.id}"
+    grant = Object.new
+    grant.define_singleton_method(:accessible_recordings) do
+      RecordingStudio::Recording.where(id: @page_recording.id)
+    end
+    connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+    connection.subscribe(uri)
+
+    received = Queue.new
+    listen_connection = ActiveRecord::Base.connection_pool.checkout
+    listen_thread = Thread.new do
+      listen_connection.execute("LISTEN #{RecordingStudioMcp::PostgresBus::CHANNEL}")
+      listen_connection.raw_connection.wait_for_notify(3) do |_channel, _pid, payload|
+        received << payload
+      end
+    end
+    sleep 0.1
+    RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: @page_recording.id)
+    listen_thread.join(4)
+    payload = received.pop(true)
+    parsed = JSON.parse(payload)
+
+    assert_equal "recording updated", parsed["event"]
+    assert_equal @page_recording.id.to_s, parsed["id"]
+    wait_until { connection.pending? }
+    assert connection.pending?
+  ensure
+    if defined?(listen_connection) && listen_connection
+      listen_connection.execute("UNLISTEN #{RecordingStudioMcp::PostgresBus::CHANNEL}")
+      ActiveRecord::Base.connection_pool.checkin(listen_connection)
+    end
   end
 
   test "initialize advertises subscribe because dummy registered recording updated" do
@@ -166,6 +207,16 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
       next unless line
 
       JSON.parse(line.delete_prefix("data: "))
+    end
+  end
+
+  def wait_until(timeout: 3)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    loop do
+      return if yield
+      raise "timed out waiting" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+      sleep 0.05
     end
   end
 

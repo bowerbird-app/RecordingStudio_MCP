@@ -40,7 +40,8 @@ module RecordingStudioMcp
       raw = case method_name
             when "tools/call"
               params["name"]
-            when "skills/get", "resources/read", "resources/subscribe", "resources/unsubscribe"
+            when "skills/get", "resources/read", "resources/subscribe", "resources/unsubscribe",
+                 "resources/templates/list"
               Skills::SkillName.from_uri(params["uri"]) || params["uri"]
             when "subscriptions/listen"
               "listen"

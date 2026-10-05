@@ -167,6 +167,27 @@ class ProtocolTest < Minitest::Test
     assert_nil result.session_id
   end
 
+  def test_initialize_accepts_2025_11_25_as_legacy
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 26,
+      protocol_version: "2025-11-25",
+      access_grant: @grant
+    )
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 26,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "2025-11-25" }
+      },
+      access_grant: @grant,
+      request_context: context
+    )
+
+    assert_equal "2025-11-25", result.body.dig(:result, :protocolVersion)
+    assert result.session_id.present?
+  end
+
   def test_server_discover_lists_supported_versions
     result = RecordingStudioMcp::Protocol.handle(
       { "jsonrpc" => "2.0", "id" => 10, "method" => "server/discover" },
@@ -174,7 +195,7 @@ class ProtocolTest < Minitest::Test
     )
 
     assert_equal(
-      %w[2025-03-26 2025-06-18 2026-07-28],
+      %w[2025-03-26 2025-06-18 2025-11-25 2026-07-28],
       result.body.dig(:result, :protocolVersions)
     )
   end
@@ -298,6 +319,37 @@ class ProtocolTest < Minitest::Test
       )
       assert_equal(-32_002, missing.body.dig(:error, :code))
 
+      modern_context = RecordingStudioMcp::RequestContext.new(
+        request_id: 27,
+        protocol_version: "2026-07-28",
+        access_grant: grant
+      )
+      modern_missing = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 27, "method" => "resources/read", "params" => { "uri" => "recording://404" } },
+        access_grant: grant,
+        request_context: modern_context
+      )
+      assert_equal(-32_602, modern_missing.body.dig(:error, :code))
+
+      templates = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 28, "method" => "resources/templates/list" },
+        access_grant: grant
+      )
+      template = templates.body.dig(:result, :resourceTemplates, 0)
+      assert_equal "recording://{id}", template[:uriTemplate]
+      assert_equal "Recording", template[:name]
+      assert_equal "application/json", template[:mimeType]
+      refute templates.body[:result].key?(:resultType)
+
+      modern_list = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 29, "method" => "resources/list" },
+        access_grant: grant,
+        request_context: modern_context
+      )
+      assert_equal "complete", modern_list.body.dig(:result, :resultType)
+      assert_equal 0, modern_list.body.dig(:result, :ttlMs)
+      assert_equal "private", modern_list.body.dig(:result, :cacheScope)
+
       invalid = RecordingStudioMcp::Protocol.handle(
         { "jsonrpc" => "2.0", "id" => 20, "method" => "resources/read", "params" => { "uri" => "nope" } },
         access_grant: grant
@@ -311,6 +363,15 @@ class ProtocolTest < Minitest::Test
       )
       opened = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
       context.attach_connection(opened)
+
+      unknown_subscribe = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 30, "method" => "resources/subscribe",
+          "params" => { "uri" => "recording://404" } },
+        access_grant: grant,
+        request_context: context
+      )
+      assert_equal(-32_002, unknown_subscribe.body.dig(:error, :code))
+      assert_equal "Resource not found", unknown_subscribe.body.dig(:error, :message)
 
       subscribed = RecordingStudioMcp::Protocol.handle(
         { "jsonrpc" => "2.0", "id" => 21, "method" => "resources/subscribe", "params" => { "uri" => "recording://8" } },

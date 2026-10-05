@@ -80,6 +80,19 @@ class ResourcesTest < Minitest::Test
     assert_equal [], listed.payload[:resources]
   end
 
+  def test_templates_list_returns_the_recording_uri
+    listed = RecordingStudioMcp::Resources.templates
+    template = listed.payload[:resourceTemplates].first
+
+    assert_equal "recording://{id}", template[:uriTemplate]
+    assert_equal "Recording", template[:name]
+    assert_equal "application/json", template[:mimeType]
+    refute listed.payload.key?(:resultType)
+
+    modern = RecordingStudioMcp::Resources.templates(protocol_version: "2026-07-28")
+    assert_equal "complete", modern.payload[:resultType]
+  end
+
   def test_unknown_uris_are_invalid
     grant = FakeGrant.new(FakeScope.new([]))
 

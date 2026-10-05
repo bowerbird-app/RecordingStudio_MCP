@@ -33,6 +33,10 @@ module RecordingStudioMcp
       store.each_value(&)
     end
 
+    def to_a
+      store.values
+    end
+
     def clear!
       store.each_value(&:finish!)
       store.clear

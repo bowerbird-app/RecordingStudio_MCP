@@ -64,6 +64,10 @@ class StreamDecisionTest < Minitest::Test
       protocol_version: "2025-06-18",
       accept_header: "text/event-stream"
     )
+    assert RecordingStudioMcp::StreamDecision.legacy_get_listen?(
+      protocol_version: "2025-11-25",
+      accept_header: "text/event-stream"
+    )
     refute RecordingStudioMcp::StreamDecision.legacy_get_listen?(
       protocol_version: "2026-07-28",
       accept_header: "text/event-stream"

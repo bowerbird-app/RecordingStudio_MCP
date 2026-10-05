@@ -256,7 +256,8 @@ module RecordingStudioMcp
       method_name = jsonrpc_method
       return true if %w[
         initialize ping tools/list skills/list skills/get server/discover
-        resources/list resources/read resources/subscribe resources/unsubscribe
+        resources/list resources/read resources/templates/list
+        resources/subscribe resources/unsubscribe
         subscriptions/listen
       ].include?(method_name)
       return false unless method_name == "tools/call"

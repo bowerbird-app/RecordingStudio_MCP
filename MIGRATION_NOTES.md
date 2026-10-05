@@ -4,11 +4,11 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0
 
 ## 0.7.0
 
-Optional `RecordingStudioMcp.register_event("recording updated")` so clients can watch items. Unregistered events never notify. `resources.subscribe` appears on initialize only after that registration.
+Optional `RecordingStudioMcp.register_event("recording updated")` so clients can watch items. A block may set `on :recording_updated`, `types`, and `if`. Custom names fire only via `RecordingStudioMcp.notify(name, recording:)`. Unregistered `notify` raises. `resources.subscribe` appears on initialize only after that registration.
 
-Recordings the grant can reach are `recording://{id}` resources. Legacy clients subscribe with `resources/subscribe` and listen on GET SSE with `Mcp-Session-Id`. `2026-07-28` clients POST `subscriptions/listen` instead. Subscriptions are in memory for that connection.
+Recordings the grant can reach are `recording://{id}` resources. Legacy clients subscribe with `resources/subscribe` and listen on GET SSE with `Mcp-Session-Id`. `2026-07-28` clients POST `subscriptions/listen` instead. Delivery is after commit, onto a per-connection queue the stream writer drains. Postgres fans out with `LISTEN`/`NOTIFY` (event name + id). Other databases notify only the saving process.
 
-`server/discover` lists `2025-03-26`, `2025-06-18`, and `2026-07-28`. `tools.listChanged` stays `false`.
+`server/discover` lists `2025-03-26`, `2025-06-18`, `2025-11-25`, and `2026-07-28`. `tools.listChanged` stays `false`.
 
 ## 0.6.0
 

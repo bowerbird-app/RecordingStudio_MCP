@@ -5,9 +5,12 @@ module RecordingStudioMcp
     SCHEME = "recording://"
     MIME_TYPE = "application/json"
     RESOURCE_NOT_FOUND = -32_002
+    URI_TEMPLATE = "recording://{id}"
+    TEMPLATE_NAME = "Recording"
 
     List = Data.define(:payload)
     Read = Data.define(:payload)
+    Templates = Data.define(:payload)
     InvalidParams = Class.new
     NotFound = Data.define(:uri)
 
@@ -27,20 +30,39 @@ module RecordingStudioMcp
       id
     end
 
-    def list(access_grant:, cursor: nil)
+    def list(access_grant:, cursor: nil, protocol_version: nil)
       return InvalidParams.new unless cursor.nil?
 
-      List.new(payload: complete(resources: listed_resources(access_grant)))
+      List.new(payload: complete({ resources: listed_resources(access_grant) }, protocol_version))
     end
 
-    def read(access_grant:, uri:)
+    def read(access_grant:, uri:, protocol_version: nil)
       recording_id = recording_id_from(uri)
       return InvalidParams.new if recording_id.nil?
 
       recording = find_accessible(access_grant, recording_id)
       return NotFound.new(uri: uri) if recording.nil?
 
-      Read.new(payload: complete(contents: [content_for(recording)]))
+      Read.new(payload: complete({ contents: [content_for(recording)] }, protocol_version))
+    end
+
+    def templates(cursor: nil, protocol_version: nil)
+      return InvalidParams.new unless cursor.nil?
+
+      Templates.new(
+        payload: complete(
+          {
+            resourceTemplates: [
+              {
+                name: TEMPLATE_NAME,
+                uriTemplate: URI_TEMPLATE,
+                mimeType: MIME_TYPE
+              }
+            ]
+          },
+          protocol_version
+        )
+      )
     end
 
     def find_accessible(access_grant, recording_id)
@@ -96,8 +118,8 @@ module RecordingStudioMcp
       RecordingCard.new(recording).content
     end
 
-    def complete(extra)
-      { resultType: "complete" }.merge(extra).merge(ttlMs: 0, cacheScope: "private")
+    def complete(extra, protocol_version)
+      ResultShape.complete(extra, protocol_version: protocol_version)
     end
     private_class_method :complete, :listed_resources, :skill_resources, :recording_resources,
                          :recordings_for, :content_for

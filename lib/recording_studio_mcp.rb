@@ -6,10 +6,14 @@ require "recording_studio_oauth"
 require "recording_studio_mcp/version"
 require "recording_studio_mcp/skills"
 require "recording_studio_mcp/events"
+require "recording_studio_mcp/result_shape"
 require "recording_studio_mcp/resources"
 require "recording_studio_mcp/recording_card"
 require "recording_studio_mcp/connection"
 require "recording_studio_mcp/connections"
+require "recording_studio_mcp/after_commit"
+require "recording_studio_mcp/postgres_bus"
+require "recording_studio_mcp/fanout"
 require "recording_studio_mcp/notifier"
 require "recording_studio_mcp/change_observer"
 require "recording_studio_mcp/listen_stream"
@@ -58,13 +62,17 @@ module RecordingStudioMcp
       registration
     end
 
-    def register_event(name)
-      parsed = Events.parse(name)
-      raise ArgumentError, "invalid event name" if parsed.nil?
-
-      registration = Events::Registration.new(name: parsed)
+    def register_event(name, &)
+      registration = Events.build_registration(name, &)
       configuration.update_event_catalog { |catalog| catalog.add(registration) }
       registration
+    end
+
+    def notify(name, recording:)
+      parsed = Events.parse(name)
+      raise ArgumentError, "unregistered event: #{name}" if parsed.nil? || !event_registered?(parsed)
+
+      Notifier.notify_named(parsed, recording: recording)
     end
 
     def event_registered?(name)

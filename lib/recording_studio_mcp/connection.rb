@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require "timeout"
+
 module RecordingStudioMcp
   class Connection
     SUBSCRIPTION_ID_META = "io.modelcontextprotocol/subscriptionId"
+    QUEUE_LIMIT = 32
+    WRITE_TIMEOUT_SECONDS = 1
 
     attr_reader :id, :protocol_version, :access_grant, :subscription_id
 
@@ -12,6 +16,7 @@ module RecordingStudioMcp
       @access_grant = access_grant
       @subscription_id = subscription_id
       @uris = Set.new
+      @queue = []
       @sender = nil
       @mutex = Mutex.new
       @wait = ConditionVariable.new
@@ -51,35 +56,62 @@ module RecordingStudioMcp
 
     def wait(timeout: 1)
       @mutex.synchronize do
-        @wait.wait(@mutex, timeout) unless @finished || sender_gone?
+        @wait.wait(@mutex, timeout) unless @finished || @queue.any?
       end
     end
 
-    def notify_updated(uri)
-      sender = sender_for(uri)
-      return false if sender.nil?
+    def pending?
+      @mutex.synchronize { @queue.any? }
+    end
 
-      sender.write_json(updated_payload(uri))
+    def enqueue_updated(uri)
+      @mutex.synchronize do
+        return false if @finished || !@uris.include?(uri.to_s)
+
+        if @queue.length >= QUEUE_LIMIT
+          @finished = true
+          @wait.broadcast
+          return false
+        end
+
+        @queue << updated_payload(uri)
+        @wait.broadcast
+        true
+      end
+    end
+
+    def shift_pending(timeout: 1)
+      @mutex.synchronize do
+        @wait.wait(@mutex, timeout) if @queue.empty? && !@finished
+        @queue.shift
+      end
+    end
+
+    def write_payload(writer, payload)
+      Timeout.timeout(WRITE_TIMEOUT_SECONDS) { writer.write_json(payload) }
       true
-    rescue *SseWriter::DISCONNECT_ERRORS
+    rescue Timeout::Error, *SseWriter::DISCONNECT_ERRORS
       finish!
       false
     end
-
-    def sender_for(uri)
-      @mutex.synchronize do
-        return if !@uris.include?(uri.to_s) || @finished || @sender.nil? || sender_gone?
-
-        @sender
-      end
-    end
-    private :sender_for
 
     def acknowledged_payload
       {
         jsonrpc: Protocol::JSONRPC_VERSION,
         method: "notifications/subscriptions/acknowledged",
         params: with_subscription_meta({ notifications: { resourceSubscriptions: subscribed_uris } })
+      }
+    end
+
+    # https://modelcontextprotocol.io/specification/2026-07-28/schema — SubscriptionsListenResult
+    def listen_completion_payload
+      {
+        jsonrpc: Protocol::JSONRPC_VERSION,
+        id: subscription_id,
+        result: {
+          resultType: "complete",
+          _meta: { SUBSCRIPTION_ID_META => subscription_id }
+        }
       }
     end
 

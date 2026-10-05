@@ -92,6 +92,8 @@ module RecordingStudioMcp
           skill_result(method_name, params, id)
         when "resources/list"
           resources_list(params, id)
+        when "resources/templates/list"
+          resources_templates(params, id)
         when "resources/read"
           resources_read(params, id)
         when "resources/subscribe"
@@ -138,10 +140,13 @@ module RecordingStudioMcp
     end
 
     def discover_result
-      {
-        protocolVersions: Configuration::SUPPORTED_PROTOCOL_VERSIONS,
-        serverInfo: self.class.server_info
-      }
+      ResultShape.complete(
+        {
+          protocolVersions: Configuration::SUPPORTED_PROTOCOL_VERSIONS,
+          serverInfo: self.class.server_info
+        },
+        protocol_version: request_protocol_version
+      )
     end
 
     def server_capabilities
@@ -168,7 +173,11 @@ module RecordingStudioMcp
     end
 
     def resources_list(params, id)
-      answer = Resources.list(access_grant: access_grant, cursor: params["cursor"])
+      answer = Resources.list(
+        access_grant: access_grant,
+        cursor: params["cursor"],
+        protocol_version: request_protocol_version
+      )
       case answer
       when Resources::InvalidParams
         rpc_error(id, INVALID_PARAMS, "Invalid params")
@@ -179,16 +188,33 @@ module RecordingStudioMcp
       end
     end
 
+    def resources_templates(params, id)
+      answer = Resources.templates(cursor: params["cursor"], protocol_version: request_protocol_version)
+      case answer
+      when Resources::InvalidParams
+        rpc_error(id, INVALID_PARAMS, "Invalid params")
+      when Resources::Templates
+        answer.payload
+      else
+        raise TypeError, "unexpected resources templates answer"
+      end
+    end
+
     def resources_read(params, id)
       uri = params["uri"]
       return skill_result("resources/read", params, id) if Skills::SkillName.from_uri(uri)
 
-      answer = Resources.read(access_grant: access_grant, uri: uri)
+      answer = Resources.read(
+        access_grant: access_grant,
+        uri: uri,
+        protocol_version: request_protocol_version
+      )
       case answer
       when Resources::InvalidParams
         rpc_error(id, INVALID_PARAMS, "Invalid params")
       when Resources::NotFound
-        rpc_error(id, RESOURCE_NOT_FOUND, "Resource not found", data: { uri: answer.uri })
+        # 2026-07-28 resources page: not found MUST be -32602. 2025 pages use -32002.
+        rpc_error(id, resource_not_found_code, "Resource not found", data: { uri: answer.uri })
       when Resources::Read
         answer.payload
       else
@@ -201,7 +227,10 @@ module RecordingStudioMcp
       return rpc_error(id, METHOD_NOT_FOUND, "Method not found") if modern_request?
 
       uri = params["uri"].to_s
-      return rpc_error(id, INVALID_PARAMS, "Invalid params") unless Resources.accessible?(access_grant, uri)
+      # 2025-06-18 resources page: unknown URI SHOULD be -32002 Resource not found.
+      unless Resources.accessible?(access_grant, uri)
+        return rpc_error(id, RESOURCE_NOT_FOUND, "Resource not found", data: { uri: uri })
+      end
 
       connection = legacy_connection
       return rpc_error(id, INVALID_PARAMS, "No listening session") if connection.nil?
@@ -260,8 +289,17 @@ module RecordingStudioMcp
       request_context&.connection
     end
 
+    def resource_not_found_code
+      modern_request? ? INVALID_PARAMS : RESOURCE_NOT_FOUND
+    end
+
     def skill_result(method_name, params, id)
-      answer = Skills.answer(method_name, params, access_grant: access_grant)
+      answer = Skills.answer(
+        method_name,
+        params,
+        access_grant: access_grant,
+        protocol_version: request_protocol_version
+      )
       case answer
       when Skills::InvalidParams
         rpc_error(id, INVALID_PARAMS, "Invalid params")

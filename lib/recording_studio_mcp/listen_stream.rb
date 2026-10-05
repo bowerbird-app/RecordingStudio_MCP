@@ -15,6 +15,7 @@ module RecordingStudioMcp
       writer.write_json(connection.acknowledged_payload) if write_ack
       park(writer)
     ensure
+      complete_listen(writer)
       close_listen
     end
 
@@ -41,9 +42,24 @@ module RecordingStudioMcp
 
     def park(writer)
       until disconnected?(writer)
-        writer.write_comment if keepalive?
-        connection.wait(timeout: KEEPALIVE_SECONDS)
+        payload = connection.shift_pending(timeout: KEEPALIVE_SECONDS)
+        if payload
+          break unless connection.write_payload(writer, payload)
+        elsif keepalive?
+          writer.write_comment
+        end
       end
+    end
+
+    def complete_listen(writer)
+      return unless write_ack
+      return if connection.subscription_id.nil?
+      return if writer.disconnected? || writer.closed?
+
+      # Server-ended listen writes SubscriptionsListenResult before close.
+      writer.write_json(connection.listen_completion_payload)
+    rescue *SseWriter::DISCONNECT_ERRORS
+      nil
     end
 
     def keepalive?

@@ -12,3 +12,10 @@ end
 
 # Optional. Register events that may notify subscribed MCP clients.
 # RecordingStudioMcp.register_event("recording updated")
+# RecordingStudioMcp.register_event("recording updated") do |event|
+#   event.on :recording_updated
+#   event.types "Page", "Document"
+#   event.if { |recording| recording.published? }
+# end
+# RecordingStudioMcp.register_event("comment added")
+# RecordingStudioMcp.notify("comment added", recording: comment.recording)

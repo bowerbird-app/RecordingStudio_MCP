@@ -23,4 +23,22 @@ class ChangeObserverTest < Minitest::Test
       assert_equal 2, notified.length
     end
   end
+
+  def test_after_record_waits_for_commit_when_a_transaction_is_open
+    skip "ActiveRecord is not connected" unless defined?(ActiveRecord::Base) && ActiveRecord::Base.connected?
+
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      notified = []
+      RecordingStudioMcp::Notifier.stub(:recording_saved, ->(event) { notified << event }) do
+        event = FakeEvent.new(Object.new)
+        ActiveRecord::Base.transaction do
+          RecordingStudioMcp::ChangeObserver.call(event)
+          assert_empty notified
+        end
+      end
+
+      assert_equal 1, notified.length
+    end
+  end
 end

@@ -3,24 +3,6 @@
 require "test_helper"
 
 class NotifierTest < Minitest::Test
-  FakeSender = Struct.new(:payloads, keyword_init: true) do
-    def initialize(payloads: [])
-      super
-    end
-
-    def write_json(payload)
-      payloads << payload
-    end
-
-    def disconnected?
-      false
-    end
-
-    def closed?
-      false
-    end
-  end
-
   FakeGrant = Struct.new(:allowed_ids) do
     def accessible_recordings
       ids = allowed_ids
@@ -31,27 +13,95 @@ class NotifierTest < Minitest::Test
     end
   end
 
-  FakeRecording = Struct.new(:id)
+  FakeRecording = Struct.new(:id, :recordable_type, :published)
   FakeEvent = Struct.new(:recording)
 
-  def test_registered_event_notifies_only_subscribed_connections
+  def test_registered_event_enqueues_only_for_subscribed_connections
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
       grant = FakeGrant.new([7])
       watching = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
       ignored = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
-      sender = FakeSender.new
-      other = FakeSender.new
-      watching.attach_sender(sender)
-      ignored.attach_sender(other)
       watching.subscribe("recording://7")
 
-      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7)))
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
 
-      assert_equal 1, sender.payloads.length
-      assert_equal "notifications/resources/updated", sender.payloads.first[:method]
-      assert_equal "recording://7", sender.payloads.first.dig(:params, :uri)
-      assert_empty other.payloads
+      payload = watching.shift_pending(timeout: 0)
+      assert_equal "notifications/resources/updated", payload[:method]
+      assert_equal "recording://7", payload.dig(:params, :uri)
+      assert_nil ignored.shift_pending(timeout: 0)
+    end
+  end
+
+  def test_save_returns_while_a_subscriber_queue_is_not_drained
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      grant = FakeGrant.new([7])
+      connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      connection.subscribe("recording://7")
+
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      assert_operator elapsed, :<, 0.2
+      assert_equal "recording://7", connection.shift_pending(timeout: 0).dig(:params, :uri)
+    end
+  end
+
+  def test_full_queue_drops_the_slow_subscriber
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      grant = FakeGrant.new([7])
+      connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      connection.subscribe("recording://7")
+
+      RecordingStudioMcp::Connection::QUEUE_LIMIT.times do
+        assert connection.enqueue_updated("recording://7")
+      end
+      refute connection.enqueue_updated("recording://7")
+      assert connection.finished?
+    end
+  end
+
+  def test_types_and_if_filters_skip_notify
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated") do |event|
+        event.on :recording_updated
+        event.types "Page"
+        event.if { |recording| recording.published == true }
+      end
+      grant = FakeGrant.new([7, 8, 9])
+      watching = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      watching.subscribe("recording://7")
+      watching.subscribe("recording://8")
+      watching.subscribe("recording://9")
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", false)))
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(8, "Folder", true)))
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(9, "Page", true)))
+
+      uris = []
+      while (payload = watching.shift_pending(timeout: 0))
+        uris << payload.dig(:params, :uri)
+      end
+      assert_equal ["recording://9"], uris
+    end
+  end
+
+  def test_custom_notify_enqueues_and_unregistered_raises
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("comment added")
+      grant = FakeGrant.new([7])
+      connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      connection.subscribe("recording://7")
+
+      RecordingStudioMcp.notify("comment added", recording: FakeRecording.new(7, "Page", true))
+      assert_equal "recording://7", connection.shift_pending(timeout: 0).dig(:params, :uri)
+
+      assert_raises(ArgumentError) do
+        RecordingStudioMcp.notify("never registered", recording: FakeRecording.new(7, "Page", true))
+      end
     end
   end
 
@@ -59,13 +109,11 @@ class NotifierTest < Minitest::Test
     with_isolated_mcp_configuration do
       grant = FakeGrant.new([7])
       connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
-      sender = FakeSender.new
-      connection.attach_sender(sender)
       connection.subscribe("recording://7")
 
-      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7)))
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
 
-      assert_empty sender.payloads
+      assert_nil connection.shift_pending(timeout: 0)
     end
   end
 
@@ -85,13 +133,11 @@ class NotifierTest < Minitest::Test
       RecordingStudioMcp.register_event("recording updated")
       grant = FakeGrant.new([])
       connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
-      sender = FakeSender.new
-      connection.attach_sender(sender)
       connection.subscribe("recording://7")
 
-      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7)))
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
 
-      assert_empty sender.payloads
+      assert_nil connection.shift_pending(timeout: 0)
     end
   end
 end

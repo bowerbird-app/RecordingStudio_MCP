@@ -15,7 +15,7 @@ module RecordingStudioMcp
     end
 
     def call(event)
-      Notifier.recording_saved(event)
+      AfterCommit.run { Notifier.recording_saved(event) }
     end
   end
 end
