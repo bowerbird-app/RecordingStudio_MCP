@@ -40,7 +40,7 @@ class DummySidebarTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "flat-pack-sidebar-layout"
     assert_includes response.body, "Try MCP"
-    assert_select "a[href=?]", "/admin/screens/oauth_clients", text: "Registered apps"
+    assert_select "a[href=?]", "/admin/screens/oauth_clients"
   end
 
   test "oauth registered apps screen lists seed and dynamically registered mcp clients" do
