@@ -9,8 +9,18 @@ module RecordingStudioMcp
     METHOD_NOT_FOUND = -32_601
     INVALID_PARAMS = -32_602
     INTERNAL_ERROR = -32_603
+    RESOURCE_NOT_FOUND = Resources::RESOURCE_NOT_FOUND
+    UNSUPPORTED_PROTOCOL_VERSION = -32_022
 
-    Result = Struct.new(:status, :body, :notification, keyword_init: true)
+    Result = Struct.new(
+      :status,
+      :body,
+      :notification,
+      :session_id,
+      :listen,
+      :listen_connection,
+      keyword_init: true
+    )
 
     def self.handle(payload, access_grant:, idempotency_key: nil, request_context: nil)
       new(
@@ -67,7 +77,9 @@ module RecordingStudioMcp
       result =
         case method_name
         when "initialize"
-          initialize_result(params)
+          initialize_result(params, id)
+        when "server/discover"
+          discover_result
         when "notifications/initialized", "notifications/cancelled"
           :ok
         when "ping"
@@ -76,8 +88,18 @@ module RecordingStudioMcp
           { tools: Tools.definitions(access_grant: access_grant) }
         when "tools/call"
           call_tool(params)
-        when "skills/list", "skills/get", "resources/read"
+        when "skills/list", "skills/get"
           skill_result(method_name, params, id)
+        when "resources/list"
+          resources_list(params, id)
+        when "resources/read"
+          resources_read(params, id)
+        when "resources/subscribe"
+          subscribe_resource(params, id)
+        when "resources/unsubscribe"
+          unsubscribe_resource(params, id)
+        when "subscriptions/listen"
+          listen_subscriptions(params, id)
         else
           return rpc_error(id, METHOD_NOT_FOUND, "Method not found")
         end
@@ -88,7 +110,7 @@ module RecordingStudioMcp
       Result.new(status: :ok, body: { jsonrpc: JSONRPC_VERSION, id: id, result: result }, notification: false)
     end
 
-    def initialize_result(params)
+    def initialize_result(params, id)
       requested = params["protocolVersion"].to_s
       version =
         if Configuration::SUPPORTED_PROTOCOL_VERSIONS.include?(requested)
@@ -97,16 +119,145 @@ module RecordingStudioMcp
           RecordingStudioMcp.configuration.protocol_version
         end
 
+      session_id = open_legacy_session(version)
+      Result.new(
+        status: :ok,
+        notification: false,
+        session_id: session_id,
+        body: {
+          jsonrpc: JSONRPC_VERSION,
+          id: id,
+          result: {
+            protocolVersion: version,
+            capabilities: server_capabilities,
+            serverInfo: self.class.server_info,
+            instructions: Instructions.text(access_grant: access_grant)
+          }
+        }
+      )
+    end
+
+    def discover_result
       {
-        protocolVersion: version,
-        capabilities: {
-          tools: { listChanged: false },
-          resources: {},
-          extensions: { "io.modelcontextprotocol/skills" => {} }
-        },
-        serverInfo: self.class.server_info,
-        instructions: Instructions.text(access_grant: access_grant)
+        protocolVersions: Configuration::SUPPORTED_PROTOCOL_VERSIONS,
+        serverInfo: self.class.server_info
       }
+    end
+
+    def server_capabilities
+      {
+        tools: { listChanged: false },
+        resources: resources_capability,
+        extensions: { "io.modelcontextprotocol/skills" => {} }
+      }
+    end
+
+    def resources_capability
+      return {} unless RecordingStudioMcp.events_registered?
+
+      { subscribe: true }
+    end
+
+    def open_legacy_session(version)
+      return unless Configuration.legacy_protocol?(version)
+      return unless request_context
+
+      connection = Connections.open(protocol_version: version, access_grant: access_grant)
+      request_context.attach_connection(connection)
+      connection.id
+    end
+
+    def resources_list(params, id)
+      answer = Resources.list(access_grant: access_grant, cursor: params["cursor"])
+      case answer
+      when Resources::InvalidParams
+        rpc_error(id, INVALID_PARAMS, "Invalid params")
+      when Resources::List
+        answer.payload
+      else
+        raise TypeError, "unexpected resources list answer"
+      end
+    end
+
+    def resources_read(params, id)
+      uri = params["uri"]
+      return skill_result("resources/read", params, id) if Skills::SkillName.from_uri(uri)
+
+      answer = Resources.read(access_grant: access_grant, uri: uri)
+      case answer
+      when Resources::InvalidParams
+        rpc_error(id, INVALID_PARAMS, "Invalid params")
+      when Resources::NotFound
+        rpc_error(id, RESOURCE_NOT_FOUND, "Resource not found", data: { uri: answer.uri })
+      when Resources::Read
+        answer.payload
+      else
+        raise TypeError, "unexpected resources read answer"
+      end
+    end
+
+    def subscribe_resource(params, id)
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") unless subscribe_enabled?
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") if modern_request?
+
+      uri = params["uri"].to_s
+      return rpc_error(id, INVALID_PARAMS, "Invalid params") unless Resources.accessible?(access_grant, uri)
+
+      connection = legacy_connection
+      return rpc_error(id, INVALID_PARAMS, "No listening session") if connection.nil?
+
+      connection.subscribe(uri)
+      {}
+    end
+
+    def unsubscribe_resource(params, id)
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") unless subscribe_enabled?
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") if modern_request?
+
+      connection = legacy_connection
+      return rpc_error(id, INVALID_PARAMS, "No listening session") if connection.nil?
+
+      connection.unsubscribe(params["uri"].to_s)
+      {}
+    end
+
+    def listen_subscriptions(params, id)
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") unless subscribe_enabled?
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") unless modern_request?
+
+      uris = Array((params["notifications"] || {})["resourceSubscriptions"]).map(&:to_s)
+      allowed = uris.select { |uri| Resources.accessible?(access_grant, uri) }
+      connection = Connections.open(
+        protocol_version: request_protocol_version,
+        access_grant: access_grant,
+        subscription_id: id
+      )
+      allowed.each { |uri| connection.subscribe(uri) }
+      request_context&.attach_connection(connection)
+
+      Result.new(
+        status: :ok,
+        body: nil,
+        notification: false,
+        listen: true,
+        listen_connection: connection
+      )
+    end
+
+    def subscribe_enabled?
+      RecordingStudioMcp.events_registered?
+    end
+
+    def modern_request?
+      Configuration.modern_protocol?(request_protocol_version)
+    end
+
+    def request_protocol_version
+      request_context&.protocol_version.presence || RecordingStudioMcp.configuration.protocol_version
+    end
+
+    def legacy_connection
+      request_context&.connection
     end
 
     def skill_result(method_name, params, id)
@@ -141,14 +292,16 @@ module RecordingStudioMcp
       raise ArgumentError, message
     end
 
-    def rpc_error(id, code, message)
+    def rpc_error(id, code, message, data: nil)
+      error = { code: code, message: message }
+      error[:data] = data if data
       Result.new(
         status: :ok,
         notification: false,
         body: {
           jsonrpc: JSONRPC_VERSION,
           id: id,
-          error: { code: code, message: message }
+          error: error
         }
       )
     end

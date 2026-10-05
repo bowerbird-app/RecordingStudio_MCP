@@ -25,6 +25,10 @@ module RecordingStudioMcp
       emit(sse_event(payload))
     end
 
+    def write_comment(text = "")
+      emit(":#{text}\n\n")
+    end
+
     def close
       should_close = false
       @mutex.synchronize do

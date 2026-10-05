@@ -13,6 +13,10 @@ class ConfigurationTest < Minitest::Test
                  @configuration.oauth_protected_resource_path
     assert_equal "/recording_studio_oauth", @configuration.oauth_engine_mount_path
     assert_equal "2025-06-18", @configuration.protocol_version
+    assert_equal(
+      %w[2025-03-26 2025-06-18 2026-07-28],
+      RecordingStudioMcp::Configuration::SUPPORTED_PROTOCOL_VERSIONS
+    )
     assert_equal [], @configuration.allowed_origins
     assert_nil @configuration.instructions_suffix
     assert_nil @configuration.skill_policy
@@ -22,7 +26,10 @@ class ConfigurationTest < Minitest::Test
     assert_nil @configuration.to_h[:instructions_suffix]
     assert_nil @configuration.to_h[:skill_policy]
     refute_includes @configuration.to_h.keys, :skill_catalog
+    refute_includes @configuration.to_h.keys, :event_catalog
     refute_respond_to @configuration, :skill_catalog=
+    refute_respond_to @configuration, :event_catalog=
+    assert @configuration.event_catalog.empty?
   end
 
   def test_merge_updates_known_attributes

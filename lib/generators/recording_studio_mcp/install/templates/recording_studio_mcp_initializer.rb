@@ -9,3 +9,6 @@ RecordingStudioMcp.configure do |config|
   # Optional String or ->(access_grant:) { ... } appended after built-in initialize instructions.
   # config.instructions_suffix = "Prefer list then show before you write."
 end
+
+# Optional. Register events that may notify subscribed MCP clients.
+# RecordingStudioMcp.register_event("recording updated")

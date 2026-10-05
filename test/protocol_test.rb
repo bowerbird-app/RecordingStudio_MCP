@@ -152,6 +152,112 @@ class ProtocolTest < Minitest::Test
     assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
   end
 
+  def test_initialize_accepts_2026_07_28
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 9,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "2026-07-28" }
+      },
+      access_grant: @grant
+    )
+
+    assert_equal "2026-07-28", result.body.dig(:result, :protocolVersion)
+    assert_nil result.session_id
+  end
+
+  def test_server_discover_lists_supported_versions
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 10, "method" => "server/discover" },
+      access_grant: @grant
+    )
+
+    assert_equal(
+      %w[2025-03-26 2025-06-18 2026-07-28],
+      result.body.dig(:result, :protocolVersions)
+    )
+  end
+
+  def test_legacy_subscribe_requires_a_registered_event_and_session
+    with_isolated_mcp_configuration do
+      missing = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 11, "method" => "resources/subscribe", "params" => { "uri" => "recording://1" } },
+        access_grant: @grant
+      )
+      assert_equal(-32_601, missing.body.dig(:error, :code))
+
+      RecordingStudioMcp.register_event("recording updated")
+      grant = Object.new
+      grant.define_singleton_method(:accessible_recordings) do
+        Object.new.tap do |scope|
+          scope.define_singleton_method(:find_by) { |*| Object.new }
+        end
+      end
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 12,
+        protocol_version: "2025-06-18",
+        access_grant: grant
+      )
+      no_session = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 12, "method" => "resources/subscribe", "params" => { "uri" => "recording://1" } },
+        access_grant: grant,
+        request_context: context
+      )
+      assert_equal(-32_602, no_session.body.dig(:error, :code))
+      assert_equal "No listening session", no_session.body.dig(:error, :message)
+    end
+  end
+
+  def test_modern_listen_opens_a_stream_for_accessible_uris
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      grant = Object.new
+      grant.define_singleton_method(:accessible_recordings) do
+        Object.new.tap do |scope|
+          scope.define_singleton_method(:find_by) { |id:| id.to_s == "5" ? Object.new : nil }
+        end
+      end
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 13,
+        protocol_version: "2026-07-28",
+        access_grant: grant
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 13,
+          "method" => "subscriptions/listen",
+          "params" => { "notifications" => { "resourceSubscriptions" => %w[recording://5 recording://9] } }
+        },
+        access_grant: grant,
+        request_context: context
+      )
+
+      assert result.listen
+      assert_equal ["recording://5"], result.listen_connection.subscribed_uris
+      assert_equal 13, result.listen_connection.subscription_id
+    end
+  end
+
+  def test_modern_clients_do_not_get_resources_subscribe
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 14,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 14, "method" => "resources/subscribe", "params" => { "uri" => "recording://1" } },
+        access_grant: @grant,
+        request_context: context
+      )
+
+      assert_equal(-32_601, result.body.dig(:error, :code))
+    end
+  end
+
   def test_tools_call_passes_idempotency_key
     captured = nil
     RecordingStudioMcp::Dispatcher.stub(:call, lambda { |**kwargs|

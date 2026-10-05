@@ -58,4 +58,32 @@ class StreamDecisionTest < Minitest::Test
       "_meta" => { "progressToken" => 7 }
     )
   end
+
+  def test_legacy_get_listen_is_sse_on_older_revisions
+    assert RecordingStudioMcp::StreamDecision.legacy_get_listen?(
+      protocol_version: "2025-06-18",
+      accept_header: "text/event-stream"
+    )
+    refute RecordingStudioMcp::StreamDecision.legacy_get_listen?(
+      protocol_version: "2026-07-28",
+      accept_header: "text/event-stream"
+    )
+    refute RecordingStudioMcp::StreamDecision.legacy_get_listen?(
+      protocol_version: "2025-06-18",
+      accept_header: "application/json"
+    )
+  end
+
+  def test_modern_listen_is_subscriptions_listen
+    assert RecordingStudioMcp::StreamDecision.listen?(
+      method_name: "subscriptions/listen",
+      protocol_version: "2026-07-28",
+      accept_header: "application/json, text/event-stream"
+    )
+    refute RecordingStudioMcp::StreamDecision.listen?(
+      method_name: "subscriptions/listen",
+      protocol_version: "2025-06-18",
+      accept_header: "text/event-stream"
+    )
+  end
 end

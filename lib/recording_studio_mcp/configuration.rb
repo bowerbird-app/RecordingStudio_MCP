@@ -3,12 +3,14 @@
 module RecordingStudioMcp
   class Configuration
     DEFAULT_PROTOCOL_VERSION = "2025-06-18"
-    SUPPORTED_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18].freeze
+    SUPPORTED_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18 2026-07-28].freeze
+    LEGACY_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18].freeze
+    MODERN_PROTOCOL_VERSION = "2026-07-28"
     DEFAULT_MCP_MOUNT_PATH = "/recording_studio_mcp"
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :skill_policy
-    attr_reader :skill_catalog
+    attr_reader :skill_catalog, :event_catalog
 
     def initialize
       @mcp_mount_path = DEFAULT_MCP_MOUNT_PATH
@@ -18,6 +20,7 @@ module RecordingStudioMcp
       @allowed_origins = []
       @instructions_suffix = nil
       @skill_catalog = Skills::SkillCatalog.empty
+      @event_catalog = Events::Catalog.empty
       @skill_policy = nil
     end
 
@@ -35,6 +38,18 @@ module RecordingStudioMcp
 
     def update_skill_catalog
       @skill_catalog = yield(@skill_catalog)
+    end
+
+    def update_event_catalog
+      @event_catalog = yield(@event_catalog)
+    end
+
+    def self.legacy_protocol?(version)
+      LEGACY_PROTOCOL_VERSIONS.include?(version.to_s)
+    end
+
+    def self.modern_protocol?(version)
+      version.to_s == MODERN_PROTOCOL_VERSION
     end
 
     def merge!(hash)

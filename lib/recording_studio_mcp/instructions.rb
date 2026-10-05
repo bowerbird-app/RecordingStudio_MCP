@@ -25,6 +25,10 @@ module RecordingStudioMcp
       Tool changes are not pushed live, so call tools/list again when you need a fresh list.
     TEXT
 
+    WATCH_BLURB = <<~TEXT.squish.freeze
+      List and read accessible items as resources. Subscribe to a resource URI to be told when that item changes, then read it again.
+    TEXT
+
     SKILLS_BLURB = "This server may provide skills containing additional guidance for completing tasks with these " \
                    "tools. Discover and use relevant skills when appropriate."
 
@@ -36,6 +40,7 @@ module RecordingStudioMcp
       parts << TREE_BLURB if surface.tree_enabled?
       parts << ENDPOINT_BLURB if surface.endpoints_enabled?
       parts << REFRESH_BLURB
+      parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
       parts << SKILLS_BLURB
       suffix = suffix_part(access_grant: access_grant)
       parts << suffix if suffix

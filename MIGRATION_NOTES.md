@@ -2,6 +2,14 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0.5.6`.
 
+## 0.7.0
+
+Optional `RecordingStudioMcp.register_event("recording updated")` so clients can watch items. Unregistered events never notify. `resources.subscribe` appears on initialize only after that registration.
+
+Recordings the grant can reach are `recording://{id}` resources. Legacy clients subscribe with `resources/subscribe` and listen on GET SSE with `Mcp-Session-Id`. `2026-07-28` clients POST `subscriptions/listen` instead. Subscriptions are in memory for that connection.
+
+`server/discover` lists `2025-03-26`, `2025-06-18`, and `2026-07-28`. `tools.listChanged` stays `false`.
+
 ## 0.6.0
 
 Pin API to `~> 0.6` and Oauth to `v0.5.6`. Streamed `tools/call` passes the per-request MCP context as API `progress_reporter`. JSON-only calls leave it `nil`. `RecordingStudioMcp.register_host_tool` is gone. Extra tools register through `RecordingStudioApi.register_endpoint`. Protocol versions stay `2025-03-26` and `2025-06-18`. `tools.listChanged` stays `false`.

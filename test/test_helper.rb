@@ -48,9 +48,17 @@ module IsolatedMcpConfiguration
   end
 end
 
+module ConnectionCleanup
+  def teardown
+    RecordingStudioMcp::Connections.clear!
+    super
+  end
+end
+
 module Minitest
   class Test
     include IsolatedApiConfiguration
     include IsolatedMcpConfiguration
+    prepend ConnectionCleanup
   end
 end

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-05
+
+### Added
+- Protocol revision `2026-07-28` alongside `2025-03-26` and `2025-06-18`. Each request uses the negotiated version.
+- `RecordingStudioMcp.register_event` lets a host name which events may notify. Unregistered events never notify. `resources.subscribe` is advertised only when at least one event is registered.
+- Recordings the AccessGrant can reach are MCP resources at stable `recording://{id}` URIs. `resources/list` and `resources/read` share those access checks with subscribe.
+- Legacy clients subscribe with `resources/subscribe` / `resources/unsubscribe` and receive `notifications/resources/updated` on the GET SSE listening stream (`Mcp-Session-Id` in memory, dropped on disconnect).
+- `2026-07-28` clients use `subscriptions/listen` with `resourceSubscriptions`. The listen POST reuses the Streamable HTTP SSE writer. The first event is `notifications/subscriptions/acknowledged`; later updates carry `io.modelcontextprotocol/subscriptionId`.
+- `server/discover` lists the versions this endpoint speaks.
+- Dummy registers `recording updated` and adds an Edit recording button that saves a page so a subscribed client is told to re-read.
+
+### Notes
+- Event registration lives in this gem, next to `register_skill`. It is not an API `register_endpoint`. The API gem has no notification registry.
+- `tools.listChanged` stays `false`. No persistent subscriptions. No OAuth dynamic client registration.
+
+### Upgrade notes
+- Bump to `0.7.0`. Optional: `RecordingStudioMcp.register_event("recording updated")` when clients should watch items.
+- Clients that want live updates must subscribe after initialize. On `2025-03-26` / `2025-06-18`, open GET with `Accept: text/event-stream` and send `Mcp-Session-Id`. On `2026-07-28`, POST `subscriptions/listen` instead of GET.
+- Any `record!` / `revise` / `log_event!` on a subscribed recording counts as updated, including content, attachments stored as events, and status.
+
 ## [0.6.0] - 2026-10-05
 
 ### Added
@@ -140,7 +160,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.2...v0.4.0

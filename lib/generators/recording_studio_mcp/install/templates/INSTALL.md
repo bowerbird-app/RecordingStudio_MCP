@@ -5,5 +5,6 @@ This gem is a protocol adapter. Mount Recording Studio API and Oauth first. Staf
 1. Review `config/initializers/recording_studio_mcp.rb`.
 2. Draw Oauth origin well-known in the host routes: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. That serves `/.well-known/oauth-protected-resource/recording_studio_mcp`. Or alias that path to `recording_studio_mcp/oauth_discoveries#protected_resource`. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
 3. Add any trusted cross-origin browser clients to `allowed_origins`. Native clients without `Origin` need no entry.
-4. Point MCP clients at the mounted MCP URL. They should send the negotiated `MCP-Protocol-Version` after initialize.
-5. If clients will stream `tools/call` progress, the process that serves MCP must not buffer the POST body. Prefer Puma. MCP already sets `X-Accel-Buffering: no`; disable gzip/ETag on that path; use `curl -N` when probing. See the README progress section.
+4. Point MCP clients at the mounted MCP URL. They should send the negotiated `MCP-Protocol-Version` after initialize. Supported versions are `2025-03-26`, `2025-06-18`, and `2026-07-28`.
+5. To let clients watch items, register `RecordingStudioMcp.register_event("recording updated")`. Leave it out and no resource update is sent.
+6. If clients will stream `tools/call` progress or listen for resource updates, the process that serves MCP must not buffer the body. Prefer Puma. MCP already sets `X-Accel-Buffering: no`; disable gzip/ETag on that path; use `curl -N` when probing. See the README.

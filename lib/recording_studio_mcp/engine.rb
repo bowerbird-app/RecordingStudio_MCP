@@ -44,6 +44,7 @@ module RecordingStudioMcp
     # aligned with this gem so authorize accepts the MCP resource identity.
     config.after_initialize do
       RecordingStudioMcp::Engine.expose_access_roles_map
+      RecordingStudioMcp::ChangeObserver.install!
       next unless defined?(RecordingStudioOauth)
 
       oauth = RecordingStudioOauth.configuration

@@ -5,6 +5,14 @@ require "recording_studio_api"
 require "recording_studio_oauth"
 require "recording_studio_mcp/version"
 require "recording_studio_mcp/skills"
+require "recording_studio_mcp/events"
+require "recording_studio_mcp/resources"
+require "recording_studio_mcp/recording_card"
+require "recording_studio_mcp/connection"
+require "recording_studio_mcp/connections"
+require "recording_studio_mcp/notifier"
+require "recording_studio_mcp/change_observer"
+require "recording_studio_mcp/listen_stream"
 require "recording_studio_mcp/configuration"
 require "recording_studio_mcp/protected_resource_metadata"
 require "recording_studio_mcp/www_authenticate"
@@ -48,6 +56,23 @@ module RecordingStudioMcp
       registration = skill_registration(name, path, available_if)
       configuration.update_skill_catalog { |catalog| catalog.add(registration) }
       registration
+    end
+
+    def register_event(name)
+      parsed = Events.parse(name)
+      raise ArgumentError, "invalid event name" if parsed.nil?
+
+      registration = Events::Registration.new(name: parsed)
+      configuration.update_event_catalog { |catalog| catalog.add(registration) }
+      registration
+    end
+
+    def event_registered?(name)
+      configuration.event_catalog.registered?(name)
+    end
+
+    def events_registered?
+      !configuration.event_catalog.empty?
     end
 
     def exposed_skills(access_grant:)

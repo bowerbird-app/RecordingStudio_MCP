@@ -44,6 +44,15 @@ class SseWriterTest < Minitest::Test
     assert_equal 7, second["id"]
   end
 
+  def test_comment_lines_are_keepalive_frames
+    io = FakeIO.new
+    writer = RecordingStudioMcp::SseWriter.new(io)
+    writer.write_comment
+    writer.close
+
+    assert_equal ":\n\n", io.chunks.first
+  end
+
   def test_writes_are_serialized_across_threads
     io = FakeIO.new
     writer = RecordingStudioMcp::SseWriter.new(io)

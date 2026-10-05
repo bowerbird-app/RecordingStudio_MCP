@@ -10,6 +10,16 @@ module RecordingStudioMcp
       method_name.to_s == "tools/call" && progress_token(params) && accept_event_stream?(accept_header)
     end
 
+    def listen?(method_name:, protocol_version:, accept_header:)
+      method_name.to_s == "subscriptions/listen" &&
+        Configuration.modern_protocol?(protocol_version) &&
+        accept_event_stream?(accept_header)
+    end
+
+    def legacy_get_listen?(protocol_version:, accept_header:)
+      Configuration.legacy_protocol?(protocol_version) && accept_event_stream?(accept_header)
+    end
+
     def progress_token(params)
       return unless params.is_a?(Hash)
 
