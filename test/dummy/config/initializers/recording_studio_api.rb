@@ -72,3 +72,15 @@ RecordingStudioApi.register_endpoint(
   },
   handler: ->(_context) { { ok: true } }
 )
+
+# API 0.5.4 still reads the old Access integer-enum map. Accessible 0.11 stores
+# role names as strings and no longer defines Access.roles.
+Rails.application.config.to_prepare do
+  next unless defined?(RecordingStudio::Access)
+  next if RecordingStudio::Access.respond_to?(:roles)
+  next unless defined?(RecordingStudio::AccessRoles::ORDER)
+
+  RecordingStudio::Access.define_singleton_method(:roles) do
+    RecordingStudio::AccessRoles::ORDER
+  end
+end

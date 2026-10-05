@@ -34,14 +34,6 @@ module OauthDummyHelpers
     ).first
     return existing if existing.present? && existing.recordable.role.to_s == role.to_s
 
-    result = RecordingStudioAccessible.grant_access(
-      recording: recording,
-      actor: actor,
-      role: role,
-      manager_actor: actor
-    )
-    return result.value if result.success?
-
     if role.to_s == "admin"
       bootstrap = RecordingStudioAccessible.bootstrap_owner_access!(
         recording: recording,
@@ -50,19 +42,26 @@ module OauthDummyHelpers
       return bootstrap.value if bootstrap.success?
     end
 
-    create_access_without_manager!(recording: recording, actor: actor, role: role)
-  end
+    result = RecordingStudioAccessible.grant_access(
+      recording: recording,
+      actor: actor,
+      role: role.to_s,
+      manager_actor: actor
+    )
+    return result.value if result.success?
 
-  def create_access_without_manager!(recording:, actor:, role:)
-    RecordingStudioAccessible::AccessCreationContext.allow do
-      access = RecordingStudio::Access.create!(actor: actor, role: role)
-      RecordingStudio.record!(
-        action: "created",
-        recordable: access,
-        root_recording: recording.root_recording || recording,
-        parent_recording: recording
-      ).recording
+    seed_owner = User.find_by(email: "admin@admin.com")
+    if seed_owner && seed_owner != actor
+      result = RecordingStudioAccessible.grant_access(
+        recording: recording,
+        actor: actor,
+        role: role.to_s,
+        manager_actor: seed_owner
+      )
+      return result.value if result.success?
     end
+
+    raise result.error
   end
 
   def create_access_recording_for(user:, workspace_name: "Workspace #{SecureRandom.hex(4)}", role: :admin)

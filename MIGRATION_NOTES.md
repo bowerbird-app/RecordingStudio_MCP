@@ -1,6 +1,6 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged).
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (dummy uses tag `v0.5.5`).
 
 ## 0.5.0
 
@@ -54,13 +54,14 @@ Dummy-only “Try MCP” and “Sample POST” on `/docs/mcp`. No host upgrade r
 Dummy GitHub tags used to prove Connect then MCP:
 
 - Recording Studio `v4.2.2`
-- Accessible `v0.9.1`
+- Accessible `v0.11.1`
 - API `v0.5.4`
-- Oauth `v0.2.0` (branch `cursor/mcp-protected-resource-identity-607a` until tagged)
-- Admin `v2.0.2`
-- Site settings `v0.1.0`
-- Attachable `v0.5.1`
-- Flatpack `v0.1.144`
+- Oauth `v0.5.5`
+- Admin `v2.0.4`
+- Site settings `v0.1.3`
+- Attachable `v0.7.1`
+- Root Switchable `v0.5.3`
+- Flatpack `v0.1.198`
 
 Dummy stays on Devise. This gem does not depend on Users.
 
