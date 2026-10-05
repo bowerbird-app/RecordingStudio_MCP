@@ -16,12 +16,17 @@ Style/StringLiterals:
 Layout/LineLength:
   Max: 120
 
+Metrics/BlockLength:
+  Exclude:
+    - 'test/**/*'
+
 # Relax metrics for test files and generators
 Metrics/ClassLength:
   Exclude:
     - 'test/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
+    - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
 
 Metrics/ModuleLength:
   Exclude:

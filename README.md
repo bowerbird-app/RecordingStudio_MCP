@@ -69,9 +69,54 @@ Native clients may omit `Origin`. When a browser sends `Origin`, it must match t
 
 After initialize, clients send the negotiated version in `MCP-Protocol-Version`. Unsupported versions return `400`. A missing header uses MCP's `2025-03-26` backwards-compatible default.
 
+Supported protocol versions are `2025-03-26` and `2025-06-18`. MCP does not advertise `2026-07-28`.
+
+## Progress notifications
+
+A `tools/call` may stream Server-Sent Events on that same POST when **both** are true:
+
+- `params._meta.progressToken` is a string or an integer
+- the `Accept` header includes `text/event-stream`
+
+Anything else, including `tools/list`, `ping`, a missing/null/wrong-type token, or a client that only sends `*/*`, stays today's single JSON body. A bad token is ignored: the tool still runs, with no progress and no error.
+
+Streamed calls share the JSON dispatcher, authorization, serializers, and error mapping. Progress messages are `notifications/progress` with **no JSON-RPC `id`**. They echo the token. The last SSE event is the JSON-RPC result or error with the original request `id`, then the stream closes.
+
+MCP uses a **Rack streaming response body** (`response_body` assigned an enumerable `SseStreamBody`), not `ActionController::Live`. Live would wrap every MCP action in an extra thread and change JSON-only calls. The enumerable runs after filters and auth, writes each SSE frame as the tool produces it, then closes. Puma emits those chunks without waiting for the handler to finish.
+
+Auth, origin checks, API availability, and rate limits run **before** the stream opens. Unauthorized or disabled-API requests stay JSON.
+
+`RecordingStudioApi` handler contexts accept an optional `progress_reporter`. MCP passes the per-request context when a `tools/call` is streaming (progress token + SSE). REST and JSON-only MCP calls leave it `nil`. Handlers call `context.progress(current:, total:, message:)` and `context.cancelled?`. Those methods no-op / return false without a reporter. MCP does not monkey-patch API classes.
+
+If the client disconnects, MCP stops writing, marks the context disconnected, and closes the writer. Handlers stop only if they check `cancelled?`. Completed work is not rolled back. `notifications/cancelled` is unchanged (accepted notification, no body).
+
+Each POST still writes **one** usage log. Streamed duration is until completion or disconnect. Tokens, tool arguments, and SSE payloads are not stored.
+
+### Host / proxy buffering
+
+Progress is useless if a proxy holds the body until the tool finishes. For the dummy app under Puma:
+
+```bash
+curl -N --no-buffer \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"demo_progress","arguments":{},"_meta":{"progressToken":"walk-1"}}}' \
+  http://127.0.0.1:3000/recording_studio_mcp
+```
+
+Use `-N` / `--no-buffer`. Set these so frames leave the process as they are written:
+
+- MCP already sends `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-store`, and `X-Accel-Buffering: no` (nginx).
+- Do not put `Rack::Deflater` or ETag middleware in front of MCP. `no-store` skips Rails ETag buffering; gzip still buffers.
+- ngrok: no extra flag. If a TLS proxy buffers, disable proxy buffering for this path.
+- Puma workers/threads: one in-flight streamed call occupies that thread until it ends.
+
+The dummy host registers `demo_progress` through `RecordingStudioApi.register_endpoint` (five delayed steps). That tool is dummy-only, not part of this gem’s production tree.
+
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.2.0` (dummy uses tag `v0.5.5`), and `recording_studio_admin ~> 2.0`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6`, Oauth `v0.5.6`, and `recording_studio_admin ~> 2.0`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -115,4 +160,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.5.0
+0.6.0

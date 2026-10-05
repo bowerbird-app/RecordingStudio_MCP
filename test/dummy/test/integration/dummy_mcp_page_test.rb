@@ -62,7 +62,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Studio Workspace"
     assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
-    refute_includes response.body, ">Try MCP<"
+    assert_select "form[action=?]", docs_mcp_test_token_path, count: 0
 
     token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
     assert token.present?
@@ -90,7 +90,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Sample POST worked. Grant resolved."
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Sign out"
-    assert_select "body[data-recording-studio-default-layout='true']", count: 1
+    assert_includes response.body, "flat-pack-sidebar-layout"
     refute_includes response.body, ">Sample POST<"
     refute_includes response.body, "Exception caught"
   end

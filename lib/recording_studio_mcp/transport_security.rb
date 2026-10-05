@@ -20,10 +20,14 @@ module RecordingStudioMcp
       render json: { error: "invalid_origin" }, status: :forbidden
     end
 
+    def effective_protocol_version
+      request.headers["MCP-Protocol-Version"].presence || "2025-03-26"
+    end
+
     def validate_protocol_version!
       return if jsonrpc_method == "initialize"
 
-      version = request.headers["MCP-Protocol-Version"].presence || "2025-03-26"
+      version = effective_protocol_version
       return if Configuration::SUPPORTED_PROTOCOL_VERSIONS.include?(version)
 
       render json: api_error_payload(

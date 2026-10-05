@@ -11,14 +11,45 @@ module RecordingStudioMcp
     private
 
     def record_mcp_usage
-      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @mcp_usage_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       yield
     ensure
-      record_finished_call(started) if request.post?
+      record_finished_call(@mcp_usage_started) if request.post? && !@mcp_stream
     end
 
     def record_finished_call(started)
       UsageRecorder.record!(usage_call(started))
+    end
+
+    def record_stream_usage(payload, api_client_id, result, disconnected: false)
+      return if @mcp_stream_usage_recorded
+
+      @mcp_stream_usage_recorded = true
+      UsageRecorder.record!(stream_usage_call(payload, api_client_id, result, disconnected))
+    end
+
+    def stream_usage_call(payload, api_client_id, result, disconnected)
+      started = @mcp_usage_started || Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      UsageCall.new(
+        request_payload: payload,
+        response_body: stream_usage_body(result, disconnected: disconnected),
+        status: 200,
+        duration_ms: elapsed_milliseconds(started),
+        rate_limited: rate_limited_call?,
+        api_client_id: api_client_id
+      )
+    end
+
+    def stream_usage_body(result, disconnected:)
+      return { "error" => { "code" => "disconnected" } } if disconnected
+      return { "error" => { "code" => "internal_error" } } if result.nil?
+
+      parsed = result.body
+      return {} unless parsed.is_a?(Hash)
+
+      JSON.parse(JSON.generate(parsed))
+    rescue JSON::GeneratorError, TypeError, JSON::ParserError
+      {}
     end
 
     def usage_call(started)

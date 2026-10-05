@@ -43,12 +43,23 @@ module RecordingStudioMcp
     # Oauth 0.2+ registers MCP via config.mcp_mount_path. Keep that path
     # aligned with this gem so authorize accepts the MCP resource identity.
     config.after_initialize do
+      RecordingStudioMcp::Engine.expose_access_roles_map
       next unless defined?(RecordingStudioOauth)
 
       oauth = RecordingStudioOauth.configuration
       next unless oauth.respond_to?(:mcp_mount_path=)
 
       oauth.mcp_mount_path = ProtectedResourceMetadata.mcp_mount_path
+    end
+
+    # API 0.6 still reads RecordingStudio::Access.roles (the old enum map).
+    # Accessible 0.11 stores string roles and exposes AccessRoles::ORDER.
+    def self.expose_access_roles_map
+      return unless defined?(RecordingStudio::Access)
+      return if RecordingStudio::Access.respond_to?(:roles)
+      return unless defined?(RecordingStudio::AccessRoles::ORDER)
+
+      RecordingStudio::Access.define_singleton_method(:roles) { RecordingStudio::AccessRoles::ORDER }
     end
   end
 end

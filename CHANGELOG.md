@@ -7,13 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-05
+
+### Added
+- Streamable HTTP progress for `tools/call` when `params._meta.progressToken` is a string or integer and `Accept` includes `text/event-stream`. Other methods stay single JSON.
+- Per-request MCP context with `progress` / `disconnected?`, a thread-safe SSE writer, and one usage log per POST (duration until completion or disconnect).
+- Dummy-only `demo_progress` registered endpoint that emits delayed progress then a final result.
+
 ### Changed
-- Dummy and development pins Accessible `v0.11.1`, Admin `v2.0.4`, Attachable `v0.7.1`, Oauth `v0.5.5`, Site settings `v0.1.3`, and Root Switchable `v0.5.3`. API stays at `v0.5.4`. Recording Studio stays at `v4.2.2`.
-- Dummy Accessible schema now includes access invitations and stores access roles as strings (`view`, `edit`, `admin`).
-- Dummy API initializer exposes `RecordingStudio::Access.roles` from Accessible's ranked names so API `v0.5.4` can still authorize member actions.
+- Pin `recording_studio_api` to `~> 0.6` (git tag `v0.6.0`).
+- Pin `recording_studio_oauth` to git tag `v0.5.6`.
+- Dummy and development also pin Accessible `v0.11.1`, Admin `v2.0.4`, Attachable `v0.7.1`, Site settings `v0.1.3`, Root Switchable `v0.5.3`, and Recording Studio `v4.2.2`.
+- Dummy Accessible schema includes access invitations and stores access roles as strings (`view`, `edit`, `admin`).
+- Streamed `tools/call` passes the per-request context as API `progress_reporter`. JSON-only calls leave it `nil`.
+- Removed `RecordingStudioMcp.register_host_tool`. Dummy `demo_progress` registers through `RecordingStudioApi.register_endpoint` and calls `context.progress` / `context.cancelled?`.
+
+### Notes
+- Protocol versions remain `2025-03-26` and `2025-06-18`. `tools.listChanged` stays `false`.
+- When Accessible 0.11 is loaded, MCP exposes `RecordingStudio::Access.roles` as `AccessRoles::ORDER` so API 0.6 can rank grants.
 
 ### Upgrade notes
-- Dummy and development only. This gem's version is unchanged. Hosts that bump Accessible to `0.11` run `bin/rails generate recording_studio_accessible:migrations` then `bin/rails db:migrate`. Keep API on `~> 0.5.4` until it ships Accessible `0.11` support.
+- Depend on `recording_studio_api ~> 0.6`. Streamed `tools/call` needs API 0.6 `progress_reporter` on endpoint and capability contexts.
+- Pin Oauth `v0.5.6` (API `>= 0.5.2, < 0.7`).
+- Stop calling `RecordingStudioMcp.register_host_tool`. Register extra tools with `RecordingStudioApi.register_endpoint`.
+- Hosts on Accessible 0.11: run Accessible migrations. MCP defines `RecordingStudio::Access.roles` from `AccessRoles::ORDER` when that map is missing.
 
 ## [0.5.0] - 2026-09-30
 
@@ -123,7 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.1...v0.3.2

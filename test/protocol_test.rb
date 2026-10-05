@@ -173,6 +173,33 @@ class ProtocolTest < Minitest::Test
     assert_equal "create-1", captured[:idempotency_key]
   end
 
+  def test_tools_call_passes_request_context
+    captured = nil
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 8,
+      protocol_version: "2025-06-18",
+      access_grant: @grant,
+      progress_token: "tok"
+    )
+    RecordingStudioMcp::Dispatcher.stub(:call, lambda { |**kwargs|
+      captured = kwargs
+      { content: [{ type: "text", text: "{}" }], structuredContent: {}, isError: false }
+    }) do
+      RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 8,
+          "method" => "tools/call",
+          "params" => { "name" => "list", "arguments" => { "type" => "Page" } }
+        },
+        access_grant: @grant,
+        request_context: context
+      )
+    end
+
+    assert_same context, captured[:request_context]
+  end
+
   def test_tools_call_dispatches
     stub_result = {
       content: [{ type: "text", text: "{}" }],

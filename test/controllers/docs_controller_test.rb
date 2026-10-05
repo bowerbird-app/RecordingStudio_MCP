@@ -136,7 +136,7 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "MCP answered"
     assert_includes response.body, "Studio Workspace"
     assert_includes response.body, "Sample POST"
-    refute_includes response.body, ">Try MCP<"
+    assert_select "form[action=?]", docs_mcp_test_token_path, count: 0
   end
 
   test "create mcp sample post posts the bearer to the mcp endpoint" do
@@ -163,13 +163,15 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
-  test "authenticated docs pages use the recording studio default layout" do
+  test "authenticated docs pages use the dummy FlatPack sidebar layout" do
     get docs_install_path
 
     assert_response :success
-    assert_select "body[data-recording-studio-default-layout='true']", count: 1
-    assert_select "nav[aria-label='Page navigation']", count: 1
-    refute_includes response.body, "flat-pack-sidebar-layout"
+    assert_includes response.body, "flat-pack-sidebar-layout"
+    refute_includes response.body, "data-recording-studio-default-layout"
+    assert_select "nav[aria-label='Main navigation']", count: 1
+    assert_select "a[href=?]", docs_mcp_path
+    assert_select "a[href=?]", "/admin/screens/oauth_clients"
   end
 
   private

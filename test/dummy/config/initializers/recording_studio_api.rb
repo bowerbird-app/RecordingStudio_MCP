@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require Rails.root.join("app/mcp/demo_progress")
+
 RecordingStudioApi.configure do |config|
   config.openapi_title = "Recording Studio API"
   config.openapi_description = "Resource server for Recording Studio. MCP calls the same actions."
@@ -73,8 +75,19 @@ RecordingStudioApi.register_endpoint(
   handler: ->(_context) { { ok: true } }
 )
 
-# API 0.5.4 still reads the old Access integer-enum map. Accessible 0.11 stores
-# role names as strings and no longer defines Access.roles.
+RecordingStudioApi.register_endpoint(
+  :demo_progress,
+  http_verb: :get,
+  path: "demo-progress",
+  openapi: {
+    summary: "Demo progress",
+    description: "Dummy-only endpoint that emits delayed progress, then a final result."
+  },
+  handler: DemoProgress
+)
+
+# API 0.6 still reads Access.roles. Accessible 0.11 stores role names as strings
+# and no longer defines that map.
 Rails.application.config.to_prepare do
   next unless defined?(RecordingStudio::Access)
   next if RecordingStudio::Access.respond_to?(:roles)

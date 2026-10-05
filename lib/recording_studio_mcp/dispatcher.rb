@@ -12,13 +12,18 @@ module RecordingStudioMcp
     }.freeze
     WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
 
-    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil)
-      new(access_grant: access_grant, idempotency_key: idempotency_key).call(tool_name, arguments)
+    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil, request_context: nil)
+      new(
+        access_grant: access_grant,
+        idempotency_key: idempotency_key,
+        request_context: request_context
+      ).call(tool_name, arguments)
     end
 
-    def initialize(access_grant:, idempotency_key: nil)
+    def initialize(access_grant:, idempotency_key: nil, request_context: nil)
       @access_grant = access_grant
       @idempotency_key = idempotency_key
+      @request_context = request_context
       @surface = ToolSurface.for(access_grant: access_grant)
       @catalog = @surface.catalog
     end
@@ -43,7 +48,7 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant, :idempotency_key, :catalog, :surface
+    attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface
 
     def dispatch_tree(name, args)
       case name
@@ -63,7 +68,8 @@ module RecordingStudioMcp
         access_recording: access_grant.access_recording,
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
-        params: endpoint_params(endpoint, args)
+        params: endpoint_params(endpoint, args),
+        progress_reporter: progress_reporter
       )
       result = endpoint.handler.call(context)
       success_result(serialize_endpoint_result(endpoint, result))
@@ -175,7 +181,8 @@ module RecordingStudioMcp
         request_params: request_params,
         scoped_recordings: access_grant.accessible_recordings,
         parent_recording: nil,
-        idempotency_key: create_idempotency_key(args, operation_name)
+        idempotency_key: create_idempotency_key(args, operation_name),
+        progress_reporter: progress_reporter
       )
     end
 
@@ -201,7 +208,8 @@ module RecordingStudioMcp
         access_recording: access_grant.access_recording,
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
-        params: params
+        params: params,
+        progress_reporter: progress_reporter
       )
     end
 
@@ -267,6 +275,10 @@ module RecordingStudioMcp
       end
 
       serializer.call(result)
+    end
+
+    def progress_reporter
+      request_context&.progress_reporter
     end
 
     def api_key

@@ -13,17 +13,104 @@ module RecordingStudioMcp
     def handle
       return head :method_not_allowed unless request.post?
 
-      result = Protocol.handle(
-        request_payload,
-        access_grant: @access_grant,
-        idempotency_key: request.headers["Idempotency-Key"].presence
-      )
+      request_context = build_request_context
+      return stream_mcp(request_context) if stream_tool_call?(request_context)
+
+      result = dispatch_protocol(request_context)
       return head :accepted if result.notification && result.body.nil?
 
       render json: result.body, status: result.status
     end
 
     private
+
+    def stream_tool_call?(request_context)
+      StreamDecision.stream?(
+        method_name: jsonrpc_method,
+        params: jsonrpc_params,
+        accept_header: request.headers["Accept"]
+      ) && request_context.progress_token
+    end
+
+    def stream_mcp(request_context)
+      @mcp_stream = true
+      assign_sse_headers
+      self.response_body = stream_body_for(request_context)
+    end
+
+    def stream_body_for(request_context)
+      payload = jsonrpc_payload
+      api_client_id = current_api_client&.id
+      call = streamed_call_for(request_context)
+      SseStreamBody.new(
+        on_disconnect: -> { request_context.disconnect! },
+        on_abort: -> { record_stream_usage(payload, api_client_id, nil, disconnected: true) },
+        on_run: ->(writer) { finish_stream(call, writer, payload, api_client_id) }
+      )
+    end
+
+    def streamed_call_for(request_context)
+      StreamedCall.new(
+        request_context: request_context,
+        access_grant: @access_grant,
+        raw_payload: request_payload,
+        idempotency_key: request.headers["Idempotency-Key"].presence
+      )
+    end
+
+    def finish_stream(call, writer, payload, api_client_id)
+      release_idle_database_connections
+      result = nil
+      result = call.perform(writer)
+    ensure
+      record_stream_usage(
+        payload,
+        api_client_id,
+        result,
+        disconnected: call.disconnected?(writer)
+      )
+    end
+
+    def dispatch_protocol(request_context)
+      Protocol.handle(
+        request_payload,
+        access_grant: @access_grant,
+        idempotency_key: request.headers["Idempotency-Key"].presence,
+        request_context: request_context
+      )
+    end
+
+    def build_request_context
+      RequestContext.new(
+        request_id: jsonrpc_payload["id"],
+        protocol_version: effective_protocol_version,
+        access_grant: @access_grant,
+        progress_token: StreamDecision.progress_token(jsonrpc_params)
+      )
+    end
+
+    def jsonrpc_params
+      params = jsonrpc_payload["params"]
+      params.is_a?(Hash) ? params : {}
+    end
+
+    def assign_sse_headers
+      response.status = 200
+      response.headers["Content-Type"] = "text/event-stream"
+      response.headers["Cache-Control"] = "no-cache, no-store"
+      response.headers["Connection"] = "keep-alive"
+      response.headers["X-Accel-Buffering"] = "no"
+      response.headers["Last-Modified"] = Time.now.httpdate
+      response.headers.delete("Content-Length")
+    end
+
+    def release_idle_database_connections
+      return unless defined?(ActiveRecord::Base)
+
+      ActiveRecord::Base.connection_handler.clear_active_connections!(:all)
+    rescue StandardError
+      nil
+    end
 
     def ensure_api_access_enabled!
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
@@ -101,10 +188,7 @@ module RecordingStudioMcp
     end
 
     def jsonrpc_tool_name
-      params = jsonrpc_payload["params"]
-      return "" unless params.is_a?(Hash)
-
-      params["name"].to_s
+      jsonrpc_params["name"].to_s
     end
 
     def jsonrpc_payload

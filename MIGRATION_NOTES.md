@@ -1,6 +1,12 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (dummy uses tag `v0.5.5`).
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0.5.6`.
+
+## 0.6.0
+
+Pin API to `~> 0.6` and Oauth to `v0.5.6`. Streamed `tools/call` passes the per-request MCP context as API `progress_reporter`. JSON-only calls leave it `nil`. `RecordingStudioMcp.register_host_tool` is gone. Extra tools register through `RecordingStudioApi.register_endpoint`. Protocol versions stay `2025-03-26` and `2025-06-18`. `tools.listChanged` stays `false`.
+
+Hosts on Accessible 0.11 run Accessible migrations. When `RecordingStudio::Access.roles` is missing, MCP exposes `AccessRoles::ORDER` so API 0.6 can rank grants.
 
 ## 0.5.0
 
@@ -55,8 +61,8 @@ Dummy GitHub tags used to prove Connect then MCP:
 
 - Recording Studio `v4.2.2`
 - Accessible `v0.11.1`
-- API `v0.5.4`
-- Oauth `v0.5.5`
+- API `v0.6.0`
+- Oauth `v0.5.6`
 - Admin `v2.0.4`
 - Site settings `v0.1.3`
 - Attachable `v0.7.1`
