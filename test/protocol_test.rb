@@ -138,6 +138,58 @@ class ProtocolTest < Minitest::Test
     assert_equal({}, result.body[:result])
   end
 
+  def test_modern_ping_and_tools_call_include_result_type
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 35,
+      protocol_version: "2026-07-28",
+      access_grant: @grant
+    )
+    ping = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 35, "method" => "ping" },
+      access_grant: @grant,
+      request_context: context
+    )
+
+    assert_equal "complete", ping.body.dig(:result, :resultType)
+    refute ping.body[:result].key?(:ttlMs)
+    assert_equal(
+      { name: "recording-studio", version: RecordingStudioMcp::VERSION },
+      ping.body.dig(:result, :_meta, "io.modelcontextprotocol/serverInfo")
+    )
+
+    stub_result = {
+      content: [{ type: "text", text: "{}" }],
+      structuredContent: {},
+      isError: false
+    }
+    RecordingStudioMcp::Dispatcher.stub(:call, stub_result) do
+      called = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 36,
+          "method" => "tools/call",
+          "params" => { "name" => "list", "arguments" => { "type" => "Workspace" } }
+        },
+        access_grant: @grant,
+        request_context: context
+      )
+
+      refute called.body.dig(:result, :isError)
+      assert_equal "complete", called.body.dig(:result, :resultType)
+      refute called.body[:result].key?(:ttlMs)
+    end
+  end
+
+  def test_tools_call_without_a_name_is_invalid_params
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 37, "method" => "tools/call", "params" => { "arguments" => {} } },
+      access_grant: @grant
+    )
+
+    assert_equal(-32_602, result.body.dig(:error, :code))
+    assert_equal "name is required", result.body.dig(:error, :message)
+  end
+
   def test_invalid_request_without_jsonrpc
     result = RecordingStudioMcp::Protocol.handle(
       { "id" => 5, "method" => "ping" },
@@ -197,16 +249,94 @@ class ProtocolTest < Minitest::Test
     assert result.session_id.present?
   end
 
-  def test_server_discover_lists_supported_versions
-    result = RecordingStudioMcp::Protocol.handle(
-      { "jsonrpc" => "2.0", "id" => 10, "method" => "server/discover" },
-      access_grant: @grant
-    )
+  def test_server_discover_returns_the_2026_07_28_discover_result
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 10, "method" => "server/discover" },
+        access_grant: @grant
+      )
+      payload = result.body[:result]
 
-    assert_equal(
-      %w[2025-03-26 2025-06-18 2025-11-25 2026-07-28],
-      result.body.dig(:result, :protocolVersions)
-    )
+      assert_equal :ok, result.status
+      assert_equal "complete", payload[:resultType]
+      assert_equal(
+        %w[2025-03-26 2025-06-18 2025-11-25 2026-07-28],
+        payload[:supportedVersions]
+      )
+      refute payload.key?(:protocolVersions)
+      refute payload.key?(:serverInfo)
+      assert_equal false, payload.dig(:capabilities, :tools, :listChanged)
+      assert_equal({}, payload.dig(:capabilities, :resources))
+      assert_equal({}, payload.dig(:capabilities, :extensions, "io.modelcontextprotocol/skills"))
+      assert_includes payload[:instructions], "Call describe before create"
+      assert_equal 0, payload[:ttlMs]
+      assert_equal "private", payload[:cacheScope]
+      assert_equal(
+        { name: "recording-studio", version: RecordingStudioMcp::VERSION },
+        payload.dig(:_meta, "io.modelcontextprotocol/serverInfo")
+      )
+    end
+  end
+
+  def test_server_discover_advertises_resource_subscribe_when_events_are_registered
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 32, "method" => "server/discover" },
+        access_grant: @grant
+      )
+
+      assert_equal true, result.body.dig(:result, :capabilities, :resources, :subscribe)
+    end
+  end
+
+  def test_chatgpt_discover_then_tools_list
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 33,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      envelope = {
+        "io.modelcontextprotocol/protocolVersion" => "2026-07-28",
+        "io.modelcontextprotocol/clientInfo" => { "name" => "openai-mcp", "version" => "0.0.1" },
+        "io.modelcontextprotocol/clientCapabilities" => {
+          "experimental" => { "openai/visibility" => {} },
+          "extensions" => { "io.modelcontextprotocol/ui" => {} }
+        }
+      }
+
+      discover = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 33,
+          "method" => "server/discover",
+          "params" => { "_meta" => envelope }
+        },
+        access_grant: @grant,
+        request_context: context
+      )
+      listed = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 34,
+          "method" => "tools/list",
+          "params" => { "_meta" => envelope }
+        },
+        access_grant: @grant,
+        request_context: context
+      )
+
+      names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
+      assert_equal "complete", discover.body.dig(:result, :resultType)
+      assert_equal false, discover.body.dig(:result, :capabilities, :tools, :listChanged)
+      assert_equal %w[list show create update capability_action describe], names
+      assert_equal "complete", listed.body.dig(:result, :resultType)
+      assert_equal 0, listed.body.dig(:result, :ttlMs)
+      assert_equal "private", listed.body.dig(:result, :cacheScope)
+    end
   end
 
   def test_legacy_subscribe_requires_a_registered_event_and_session

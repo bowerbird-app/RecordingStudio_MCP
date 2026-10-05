@@ -10,6 +10,7 @@ module RecordingStudioMcp
     INVALID_PARAMS = -32_602
     INTERNAL_ERROR = -32_603
     RESOURCE_NOT_FOUND = Resources::RESOURCE_NOT_FOUND
+    HEADER_MISMATCH = -32_020
     UNSUPPORTED_PROTOCOL_VERSION = -32_022
 
     Result = Struct.new(
@@ -83,11 +84,14 @@ module RecordingStudioMcp
         when "notifications/initialized", "notifications/cancelled"
           :ok
         when "ping"
-          {}
+          ResultShape.complete({}, protocol_version: request_protocol_version, cacheable: false)
         when "tools/list"
-          { tools: Tools.definitions(access_grant: access_grant) }
+          ResultShape.complete(
+            { tools: Tools.definitions(access_grant: access_grant) },
+            protocol_version: request_protocol_version
+          )
         when "tools/call"
-          call_tool(params)
+          call_tool(params, id)
         when "skills/list", "skills/get"
           skill_result(method_name, params, id)
         when "resources/list"
@@ -140,12 +144,15 @@ module RecordingStudioMcp
     end
 
     def discover_result
+      # server/discover is a 2026-07-28 method. The result is always DiscoverResult,
+      # including when a client omitted MCP-Protocol-Version.
       ResultShape.complete(
         {
-          protocolVersions: Configuration::SUPPORTED_PROTOCOL_VERSIONS,
-          serverInfo: self.class.server_info
+          supportedVersions: Configuration::SUPPORTED_PROTOCOL_VERSIONS,
+          capabilities: server_capabilities,
+          instructions: Instructions.text(access_grant: access_grant)
         },
-        protocol_version: request_protocol_version
+        protocol_version: Configuration::MODERN_PROTOCOL_VERSION
       )
     end
 
@@ -312,22 +319,22 @@ module RecordingStudioMcp
       end
     end
 
-    def call_tool(params)
+    def call_tool(params, id)
       name = params["name"].to_s
       arguments = params["arguments"] || {}
-      return rpc_invalid_params("name is required") if name.blank?
+      return rpc_error(id, INVALID_PARAMS, "name is required") if name.blank?
 
-      Dispatcher.call(
-        tool_name: name,
-        arguments: arguments,
-        access_grant: access_grant,
-        idempotency_key: idempotency_key,
-        request_context: request_context
+      ResultShape.complete(
+        Dispatcher.call(
+          tool_name: name,
+          arguments: arguments,
+          access_grant: access_grant,
+          idempotency_key: idempotency_key,
+          request_context: request_context
+        ),
+        protocol_version: request_protocol_version,
+        cacheable: false
       )
-    end
-
-    def rpc_invalid_params(message)
-      raise ArgumentError, message
     end
 
     def rpc_error(id, code, message, data: nil)

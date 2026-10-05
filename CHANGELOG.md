@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-05
+
+### Fixed
+- `server/discover` now returns the MCP `2026-07-28` DiscoverResult: `resultType`, `supportedVersions` (the four versions this endpoint speaks), the same `capabilities` as initialize, grant-aware `instructions`, `ttlMs` / `cacheScope`, and `serverInfo` under result `_meta["io.modelcontextprotocol/serverInfo"]`. ChatGPT (`openai-mcp`) was stopping after discover because the old body had only `protocolVersions` and top-level `serverInfo`, so it never called `tools/list`.
+- Modern `tools/list` is a cacheable complete result. Modern `ping` and `tools/call` include `resultType` (CallToolResult is not cacheable). `tools/call` without a name is `-32602`.
+- `MCP-Protocol-Version` that disagrees with `params._meta["io.modelcontextprotocol/protocolVersion"]` is JSON-RPC `-32020` with HTTP 400. A missing header still falls back to that `_meta` version, then to `2025-03-26`.
+
+### Notes
+- `supportedVersions` lists every version this server speaks, including legacy initialize revisions. Discover itself is always the `2026-07-28` result shape.
+- Oauth pin is unchanged.
+
+### Upgrade notes
+- Bump to `0.7.1`. No host config change. Clients that call `server/discover` then `tools/list` (ChatGPT) now see tools.
+
 ## [0.7.0] - 2026-10-05
 
 ### Added
@@ -165,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.4.0...v0.5.0

@@ -134,6 +134,7 @@ class ListenStreamTest < Minitest::Test
     assert_includes frames, "notifications/subscriptions/acknowledged"
     assert_includes frames, '"resultType":"complete"'
     assert_includes frames, "io.modelcontextprotocol/subscriptionId"
+    assert_includes frames, "io.modelcontextprotocol/serverInfo"
     assert connection.finished?
     assert_nil RecordingStudioMcp::Connections.fetch(connection.id)
   end

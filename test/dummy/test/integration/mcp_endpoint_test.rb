@@ -403,6 +403,89 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes body.fetch("authorization_servers").first, "/recording_studio_oauth"
   end
 
+  test "chatgpt modern discover then tools list" do
+    token = issue_delegated_token
+    envelope = chatgpt_discover_meta
+    headers = json_headers.merge(
+      "Authorization" => "Bearer #{token}",
+      "MCP-Protocol-Version" => "2026-07-28"
+    )
+
+    post "/recording_studio_mcp",
+         params: { jsonrpc: "2.0", id: 1, method: "server/discover", params: { _meta: envelope } }.to_json,
+         headers: headers
+
+    assert_response :success, response.body
+    discover = JSON.parse(response.body).fetch("result")
+    assert_equal "complete", discover.fetch("resultType")
+    assert_equal RecordingStudioMcp::Configuration::SUPPORTED_PROTOCOL_VERSIONS, discover.fetch("supportedVersions")
+    refute discover.key?("protocolVersions")
+    refute discover.key?("serverInfo")
+    assert_equal false, discover.dig("capabilities", "tools", "listChanged")
+    assert_equal true, discover.dig("capabilities", "resources", "subscribe")
+    assert_equal({}, discover.dig("capabilities", "extensions", "io.modelcontextprotocol/skills"))
+    assert discover.fetch("instructions").present?
+    assert_equal 0, discover.fetch("ttlMs")
+    assert_equal "private", discover.fetch("cacheScope")
+    assert_equal(
+      { "name" => "recording-studio", "version" => RecordingStudioMcp::VERSION },
+      discover.dig("_meta", "io.modelcontextprotocol/serverInfo")
+    )
+
+    post "/recording_studio_mcp",
+         params: { jsonrpc: "2.0", id: 2, method: "tools/list", params: { _meta: envelope } }.to_json,
+         headers: headers
+
+    assert_response :success, response.body
+    listed = JSON.parse(response.body).fetch("result")
+    names = listed.fetch("tools").map { |tool| tool.fetch("name") }
+    assert_equal "complete", listed.fetch("resultType")
+    assert_includes names, "list"
+    assert_includes names, "describe"
+    assert_includes names, "demo_progress"
+    assert_includes names, "ping"
+  end
+
+  test "tools list uses protocol version from params meta when the header is missing" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: {
+           jsonrpc: "2.0",
+           id: 4,
+           method: "tools/list",
+           params: { _meta: { "io.modelcontextprotocol/protocolVersion" => "2026-07-28" } }
+         }.to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    listed = JSON.parse(response.body).fetch("result")
+    assert_equal "complete", listed.fetch("resultType")
+    assert_equal 0, listed.fetch("ttlMs")
+  end
+
+  test "modern requests reject a protocol version header that disagrees with params meta" do
+    token = issue_delegated_token
+
+    post "/recording_studio_mcp",
+         params: {
+           jsonrpc: "2.0",
+           id: 3,
+           method: "tools/list",
+           params: { _meta: { "io.modelcontextprotocol/protocolVersion" => "2026-07-28" } }
+         }.to_json,
+         headers: json_headers.merge(
+           "Authorization" => "Bearer #{token}",
+           "MCP-Protocol-Version" => "2025-06-18"
+         )
+
+    assert_response :bad_request
+    error = JSON.parse(response.body).fetch("error")
+    assert_equal(-32_020, error.fetch("code"))
+    assert_includes error.fetch("message"), "2025-06-18"
+    assert_includes error.fetch("message"), "2026-07-28"
+  end
+
   test "cursor shaped discovery matches www authenticate resource metadata" do
     post "/recording_studio_mcp",
          params: { jsonrpc: "2.0", id: 1, method: "initialize" }.to_json,
@@ -422,6 +505,17 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
   def json_headers
     { "Content-Type" => "application/json", "Accept" => "application/json" }
+  end
+
+  def chatgpt_discover_meta
+    {
+      "io.modelcontextprotocol/protocolVersion" => "2026-07-28",
+      "io.modelcontextprotocol/clientInfo" => { "name" => "openai-mcp", "version" => "0.0.1" },
+      "io.modelcontextprotocol/clientCapabilities" => {
+        "experimental" => { "openai/visibility" => {} },
+        "extensions" => { "io.modelcontextprotocol/ui" => {} }
+      }
+    }
   end
 
   def rpc(method, **params)

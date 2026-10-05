@@ -64,6 +64,10 @@ class SkillsTest < Minitest::Test
       assert_equal "complete", result.body.dig(:result, :resultType)
       assert_equal 0, result.body.dig(:result, :ttlMs)
       assert_equal "private", result.body.dig(:result, :cacheScope)
+      assert_equal(
+        { name: "recording-studio", version: RecordingStudioMcp::VERSION },
+        result.body.dig(:result, :_meta, "io.modelcontextprotocol/serverInfo")
+      )
     end
   end
 

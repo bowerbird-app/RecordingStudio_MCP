@@ -87,9 +87,9 @@ A skill is exposed when it is registered, `available_if` allows it, and `skill_p
 
 Native clients may omit `Origin`. When a browser sends `Origin`, it must match the MCP host origin or an entry in `allowed_origins`; otherwise MCP returns `403`. Configure additional trusted browser origins in `config/initializers/recording_studio_mcp.rb`.
 
-After initialize, clients send the negotiated version in `MCP-Protocol-Version`. Unsupported versions return `400`. A missing header uses MCP's `2025-03-26` backwards-compatible default.
+After initialize, or after `server/discover`, clients send the negotiated version in `MCP-Protocol-Version`. They may repeat it in `params._meta["io.modelcontextprotocol/protocolVersion"]`. A missing header uses that `_meta` version, then MCP's `2025-03-26` backwards-compatible default. Unsupported versions return `400`. A header that disagrees with that `_meta` key returns JSON-RPC `-32020`.
 
-Supported protocol versions are `2025-03-26`, `2025-06-18`, `2025-11-25`, and `2026-07-28`. After initialize, clients send the negotiated version in `MCP-Protocol-Version`. `server/discover` lists the same set.
+`server/discover` is the `2026-07-28` DiscoverResult: `supportedVersions` lists `2025-03-26`, `2025-06-18`, `2025-11-25`, and `2026-07-28`; `capabilities` and `instructions` match initialize; `serverInfo` lives under result `_meta`.
 
 On `2025-03-26`, `2025-06-18`, and `2025-11-25`, unsolicited updates go out on the GET SSE listening stream. Initialize returns `Mcp-Session-Id`. Later POSTs and the GET send that header. Clients call `resources/subscribe` and `resources/unsubscribe` by URI. An unknown or inaccessible subscribe URI returns `-32002`.
 
@@ -221,4 +221,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.7.0
+0.7.1
