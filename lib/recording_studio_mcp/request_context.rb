@@ -22,6 +22,17 @@ module RecordingStudioMcp
       @sender = sender
     end
 
+    def progress_reporter
+      return unless @progress_token
+      return unless @sender
+
+      self
+    end
+
+    def cancelled?
+      disconnected?
+    end
+
     def progress(current:, total: nil, message: nil)
       payload = progress_payload(current: current, total: total, message: message)
       return if payload.nil? || @sender.nil?

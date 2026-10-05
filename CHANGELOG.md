@@ -10,19 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Streamable HTTP progress for `tools/call` when `params._meta.progressToken` is a string or integer and `Accept` includes `text/event-stream`. Other methods stay single JSON.
 - Per-request MCP context with `progress` / `disconnected?`, a thread-safe SSE writer, and one usage log per POST (duration until completion or disconnect).
-- Dummy-only `demo_progress` host tool that emits delayed progress then a final result.
+- Dummy-only `demo_progress` registered endpoint that emits delayed progress then a final result.
 
 ### Changed
-- Dummy and development pins Accessible `v0.11.1`, Admin `v2.0.4`, Attachable `v0.7.1`, Oauth `v0.5.5`, Site settings `v0.1.3`, and Root Switchable `v0.5.3`. API stays at `v0.5.4`. Recording Studio stays at `v4.2.2`.
-- Dummy Accessible schema now includes access invitations and stores access roles as strings (`view`, `edit`, `admin`).
-- Dummy API initializer exposes `RecordingStudio::Access.roles` from Accessible's ranked names so API `v0.5.4` can still authorize member actions.
+- Pin `recording_studio_api` to `~> 0.6` (git tag `v0.6.0`).
+- Pin `recording_studio_oauth` to git tag `v0.5.6`.
+- Dummy and development also pin Accessible `v0.11.1`, Admin `v2.0.4`, Attachable `v0.7.1`, Site settings `v0.1.3`, Root Switchable `v0.5.3`, and Recording Studio `v4.2.2`.
+- Dummy Accessible schema includes access invitations and stores access roles as strings (`view`, `edit`, `admin`).
+- Streamed `tools/call` passes the per-request context as API `progress_reporter`. JSON-only calls leave it `nil`.
+- Removed `RecordingStudioMcp.register_host_tool`. Dummy `demo_progress` registers through `RecordingStudioApi.register_endpoint` and calls `context.progress` / `context.cancelled?`.
 
 ### Notes
 - Protocol versions remain `2025-03-26` and `2025-06-18`. `tools.listChanged` stays `false`.
-- `RecordingStudioApi` contexts have no progress callback. MCP does not patch them. Host tools use `RecordingStudioMcp.register_host_tool`.
-
-### Upgrade notes
-- Dummy and development only until this release ships. Hosts that bump Accessible to `0.11` run `bin/rails generate recording_studio_accessible:migrations` then `bin/rails db:migrate`.
+- When Accessible 0.11 is loaded, MCP exposes `RecordingStudio::Access.roles` as `AccessRoles::ORDER` so API 0.6 can rank grants.
 
 ## [0.5.0] - 2026-09-30
 

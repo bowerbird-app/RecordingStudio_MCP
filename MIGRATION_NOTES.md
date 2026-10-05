@@ -1,6 +1,6 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.5.4`. Oauth `>= 0.2.0` (dummy uses tag `v0.5.5`).
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0.5.6`.
 
 ## 0.5.0
 
@@ -55,8 +55,8 @@ Dummy GitHub tags used to prove Connect then MCP:
 
 - Recording Studio `v4.2.2`
 - Accessible `v0.11.1`
-- API `v0.5.4`
-- Oauth `v0.5.5`
+- API `v0.6.0`
+- Oauth `v0.5.6`
 - Admin `v2.0.4`
 - Site settings `v0.1.3`
 - Attachable `v0.7.1`

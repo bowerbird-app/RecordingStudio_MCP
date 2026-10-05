@@ -5,6 +5,7 @@ AllCops:
     - 'test/dummy/**/*'
     - 'vendor/**/*'
     - 'bin/**/*'
+    - 'script/relax_oauth_api_pin.rb'
 
 Style/Documentation:
   Enabled: false
@@ -40,7 +41,6 @@ Metrics/MethodLength:
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/tools.rb'
-    - 'lib/recording_studio_mcp/host_tool.rb'
 
 Metrics/AbcSize:
   Exclude:
@@ -49,7 +49,6 @@ Metrics/AbcSize:
     - 'db/migrate/**/*'
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
-    - 'lib/recording_studio_mcp/host_tool.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
 
 Metrics/CyclomaticComplexity:

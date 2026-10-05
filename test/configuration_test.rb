@@ -22,9 +22,7 @@ class ConfigurationTest < Minitest::Test
     assert_nil @configuration.to_h[:instructions_suffix]
     assert_nil @configuration.to_h[:skill_policy]
     refute_includes @configuration.to_h.keys, :skill_catalog
-    refute_includes @configuration.to_h.keys, :host_tools
     refute_respond_to @configuration, :skill_catalog=
-    refute_respond_to @configuration, :host_tools=
   end
 
   def test_merge_updates_known_attributes

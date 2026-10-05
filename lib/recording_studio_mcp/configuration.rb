@@ -8,7 +8,7 @@ module RecordingStudioMcp
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :skill_policy
-    attr_reader :skill_catalog, :host_tools
+    attr_reader :skill_catalog
 
     def initialize
       @mcp_mount_path = DEFAULT_MCP_MOUNT_PATH
@@ -19,7 +19,6 @@ module RecordingStudioMcp
       @instructions_suffix = nil
       @skill_catalog = Skills::SkillCatalog.empty
       @skill_policy = nil
-      @host_tools = []
     end
 
     def to_h
@@ -36,12 +35,6 @@ module RecordingStudioMcp
 
     def update_skill_catalog
       @skill_catalog = yield(@skill_catalog)
-    end
-
-    def replace_host_tool(tool)
-      @host_tools.reject! { |existing| existing.name == tool.name }
-      @host_tools << tool
-      tool
     end
 
     def merge!(hash)

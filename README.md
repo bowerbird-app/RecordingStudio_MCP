@@ -86,9 +86,9 @@ MCP uses a **Rack streaming response body** (`response_body` assigned an enumera
 
 Auth, origin checks, API availability, and rate limits run **before** the stream opens. Unauthorized or disabled-API requests stay JSON.
 
-`RecordingStudioApi` handler contexts (`ResourceOperationContext`, `ActionContext`, `RegisteredEndpointContext`) have no progress field. This gem does not monkey-patch them. Host-only tools registered with `RecordingStudioMcp.register_host_tool` receive the MCP `RequestContext` and may call `context.progress(current:, total:, message:)` and `context.disconnected?`. Production tree/endpoint handlers cannot emit progress until API adds an extension point.
+`RecordingStudioApi` handler contexts accept an optional `progress_reporter`. MCP passes the per-request context when a `tools/call` is streaming (progress token + SSE). REST and JSON-only MCP calls leave it `nil`. Handlers call `context.progress(current:, total:, message:)` and `context.cancelled?`. Those methods no-op / return false without a reporter. MCP does not monkey-patch API classes.
 
-If the client disconnects, MCP stops writing, marks the context disconnected, and closes the writer. Handlers stop only if they check `disconnected?`. Completed work is not rolled back. `notifications/cancelled` is unchanged (accepted notification, no body).
+If the client disconnects, MCP stops writing, marks the context disconnected, and closes the writer. Handlers stop only if they check `cancelled?`. Completed work is not rolled back. `notifications/cancelled` is unchanged (accepted notification, no body).
 
 Each POST still writes **one** usage log. Streamed duration is until completion or disconnect. Tokens, tool arguments, and SSE payloads are not stored.
 
@@ -112,11 +112,11 @@ Use `-N` / `--no-buffer`. Set these so frames leave the process as they are writ
 - ngrok: no extra flag. If a TLS proxy buffers, disable proxy buffering for this path.
 - Puma workers/threads: one in-flight streamed call occupies that thread until it ends.
 
-The dummy host registers `demo_progress` (five delayed steps). That tool is not part of the gem's production tree or endpoint surface.
+The dummy host registers `demo_progress` through `RecordingStudioApi.register_endpoint` (five delayed steps). That tool is dummy-only, not part of this gem’s production tree.
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.5.4`, Oauth `>= 0.2.0` (dummy uses tag `v0.5.5`), and `recording_studio_admin ~> 2.0`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6`, Oauth `v0.5.6`, and `recording_studio_admin ~> 2.0`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.

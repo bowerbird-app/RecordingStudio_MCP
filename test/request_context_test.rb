@@ -95,6 +95,36 @@ class RequestContextTest < Minitest::Test
     assert_equal 4, sender.payloads.last.dig(:params, :progress)
   end
 
+  def test_progress_reporter_is_self_only_when_token_and_sender_exist
+    sender = FakeSender.new
+    streaming = RecordingStudioMcp::RequestContext.new(
+      request_id: 1,
+      protocol_version: "2025-06-18",
+      access_grant: Object.new,
+      progress_token: "t",
+      sender: sender
+    )
+    json_only = RecordingStudioMcp::RequestContext.new(
+      request_id: 1,
+      protocol_version: "2025-06-18",
+      access_grant: Object.new,
+      progress_token: "t"
+    )
+    no_token = RecordingStudioMcp::RequestContext.new(
+      request_id: 1,
+      protocol_version: "2025-06-18",
+      access_grant: Object.new,
+      sender: sender
+    )
+
+    assert_same streaming, streaming.progress_reporter
+    assert_equal false, streaming.cancelled?
+    streaming.disconnect!
+    assert_equal true, streaming.cancelled?
+    assert_nil json_only.progress_reporter
+    assert_nil no_token.progress_reporter
+  end
+
   def test_contexts_do_not_share_notifications
     first_sender = FakeSender.new
     second_sender = FakeSender.new

@@ -14,21 +14,6 @@ module RecordingStudioMcp
       TREE_NAMES.map { |name| public_send("#{name}_tool", catalog) }
     end
 
-    def host_definition(host_tool)
-      options = {
-        name: host_tool.name,
-        title: host_tool.title,
-        description: host_tool.description,
-        read_only: host_tool.read_only,
-        destructive: host_tool.destructive,
-        idempotent: host_tool.idempotent,
-        required: host_tool.required,
-        properties: host_tool.properties
-      }
-      options[:additional_properties] = host_tool.additional_properties unless host_tool.additional_properties.nil?
-      tool(options)
-    end
-
     def endpoint_tool(endpoint)
       schema = EndpointSchema.build(endpoint)
       options = {

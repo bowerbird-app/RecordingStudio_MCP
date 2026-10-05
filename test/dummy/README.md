@@ -11,7 +11,7 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - Site name `Studio` from Site settings
 - MCP URL at `/recording_studio_mcp`
 - Dummy-only `/docs/mcp` (mentions `describe`)
-- Dummy-only `demo_progress` MCP tool (progress notifications under Puma)
+- Dummy-only `demo_progress` MCP tool (`RecordingStudioApi.register_endpoint`, progress under Puma)
 - Signed-in “Try MCP” / “Sample POST” on `/docs/mcp` (local/dev/test only) mint a real `rsoauth_at_…` token, probe MCP, then POST `/recording_studio_mcp` so the grant resolves over HTTP
 
 Token URL stays on the API engine. MCP authenticates `rsoauth_at_` tokens through Oauth's TokenAuthenticator. The same token works with MCP and the named API on purpose; both resolve the same AccessGrant.

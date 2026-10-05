@@ -33,9 +33,7 @@ module RecordingStudioMcp
       args = stringify_keys(arguments)
       return error_result(unknown_tool_message(name)) unless surface.known?(name)
 
-      if surface.host_tool?(name)
-        dispatch_host_tool(surface.host_tool_for(name), args)
-      elsif surface.tree_tool?(name)
+      if surface.tree_tool?(name)
         dispatch_tree(name, args)
       else
         dispatch_endpoint(surface.endpoint_for(name), args)
@@ -51,11 +49,6 @@ module RecordingStudioMcp
     private
 
     attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface
-
-    def dispatch_host_tool(host_tool, args)
-      result = host_tool.handler.call(request_context, args)
-      success_result(result)
-    end
 
     def dispatch_tree(name, args)
       case name
@@ -75,7 +68,8 @@ module RecordingStudioMcp
         access_recording: access_grant.access_recording,
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
-        params: endpoint_params(endpoint, args)
+        params: endpoint_params(endpoint, args),
+        progress_reporter: progress_reporter
       )
       result = endpoint.handler.call(context)
       success_result(serialize_endpoint_result(endpoint, result))
@@ -187,7 +181,8 @@ module RecordingStudioMcp
         request_params: request_params,
         scoped_recordings: access_grant.accessible_recordings,
         parent_recording: nil,
-        idempotency_key: create_idempotency_key(args, operation_name)
+        idempotency_key: create_idempotency_key(args, operation_name),
+        progress_reporter: progress_reporter
       )
     end
 
@@ -213,7 +208,8 @@ module RecordingStudioMcp
         access_recording: access_grant.access_recording,
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
-        params: params
+        params: params,
+        progress_reporter: progress_reporter
       )
     end
 
@@ -279,6 +275,10 @@ module RecordingStudioMcp
       end
 
       serializer.call(result)
+    end
+
+    def progress_reporter
+      request_context&.progress_reporter
     end
 
     def api_key

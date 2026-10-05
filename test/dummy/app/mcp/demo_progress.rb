@@ -3,11 +3,11 @@
 class DemoProgress
   STEPS = 5
 
-  def self.call(context, _arguments)
+  def self.call(context)
     STEPS.times do |index|
-      break if context&.disconnected?
+      break if context.cancelled?
 
-      context&.progress(
+      context.progress(
         current: index + 1,
         total: STEPS,
         message: "Step #{index + 1} of #{STEPS}"
@@ -16,7 +16,7 @@ class DemoProgress
     end
 
     {
-      completed: !context&.disconnected?,
+      completed: !context.cancelled?,
       steps: STEPS
     }
   end

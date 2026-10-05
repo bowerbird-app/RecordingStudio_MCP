@@ -352,25 +352,27 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_host_tool_receives_request_context_and_returns_structured_content
-    with_isolated_mcp_configuration do
-      sender = []
-      writer = Object.new
-      writer.define_singleton_method(:write_json) { |payload| sender << payload }
-      writer.define_singleton_method(:disconnected?) { false }
-      context = RecordingStudioMcp::RequestContext.new(
-        request_id: 3,
-        protocol_version: "2025-06-18",
-        access_grant: @grant,
-        progress_token: "demo",
-        sender: writer
-      )
-      RecordingStudioMcp.register_host_tool(
-        name: "demo_progress",
-        title: "Demo progress",
-        description: "test",
-        handler: lambda { |mcp_context, _args|
-          mcp_context.progress(current: 1, total: 1, message: "go")
+  def test_endpoint_progress_reporter_is_passed_when_streaming
+    captured = nil
+    writer = Object.new
+    writer.define_singleton_method(:write_json) { |_payload| nil }
+    writer.define_singleton_method(:disconnected?) { false }
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 3,
+      protocol_version: "2025-06-18",
+      access_grant: @grant,
+      progress_token: "demo",
+      sender: writer
+    )
+
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :demo_progress,
+        http_verb: :get,
+        path: "demo-progress",
+        handler: lambda { |api_context|
+          captured = api_context
+          api_context.progress(current: 1, total: 1, message: "go")
           { done: true }
         }
       )
@@ -384,8 +386,30 @@ class DispatcherTest < Minitest::Test
 
       refute result[:isError]
       assert_equal true, result.dig(:structuredContent, "done")
-      assert_equal "demo", sender.first.dig(:params, :progressToken)
-      refute sender.first.key?(:id)
+      assert_same context, captured.progress_reporter
+      assert_equal false, captured.cancelled?
+    end
+  end
+
+  def test_endpoint_progress_reporter_is_nil_without_a_stream
+    captured = nil
+
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :demo_progress,
+        http_verb: :get,
+        path: "demo-progress",
+        handler: lambda { |api_context|
+          captured = api_context
+          { done: true }
+        }
+      )
+
+      result = dispatch("demo_progress", {})
+
+      refute result[:isError]
+      assert_nil captured.progress_reporter
+      assert_equal false, captured.cancelled?
     end
   end
 
