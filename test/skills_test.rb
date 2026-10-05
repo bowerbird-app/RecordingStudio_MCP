@@ -44,6 +44,26 @@ class SkillsTest < Minitest::Test
         success_body(contents: [content_for("research-publications", "Use the house style.\n")]),
         result.body
       )
+      refute result.body[:result].key?(:resultType)
+    end
+  end
+
+  def test_modern_skill_results_include_cache_fields
+    with_skill("research-publications", "Use the house style.\n") do |_dir, _path|
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 1,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 1, "method" => "skills/list", "params" => {} },
+        access_grant: @grant,
+        request_context: context
+      )
+
+      assert_equal "complete", result.body.dig(:result, :resultType)
+      assert_equal 0, result.body.dig(:result, :ttlMs)
+      assert_equal "private", result.body.dig(:result, :cacheScope)
     end
   end
 
@@ -555,7 +575,7 @@ class SkillsTest < Minitest::Test
     {
       jsonrpc: "2.0",
       id: id,
-      result: { resultType: "complete", **payload, ttlMs: 0, cacheScope: "private" }
+      result: payload
     }
   end
 

@@ -188,14 +188,14 @@ module RecordingStudioMcp
     Unavailable = Class.new
 
     class << self
-      def answer(method_name, params, access_grant:)
+      def answer(method_name, params, access_grant:, protocol_version: nil)
         case method_name
         when "skills/list"
-          list_answer(params, access_grant)
+          list_answer(params, access_grant, protocol_version)
         when "skills/get"
-          fetch_answer(params, access_grant) { |document| { skill: document.card } }
+          fetch_answer(params, access_grant, protocol_version) { |document| { skill: document.card } }
         when "resources/read"
-          fetch_answer(params, access_grant) { |document| { contents: [document.content] } }
+          fetch_answer(params, access_grant, protocol_version) { |document| { contents: [document.content] } }
         else
           InvalidParams.new
         end
@@ -203,23 +203,23 @@ module RecordingStudioMcp
 
       private
 
-      def list_answer(params, access_grant)
+      def list_answer(params, access_grant, protocol_version)
         return InvalidParams.new unless params.is_a?(Hash) && params["cursor"].nil?
 
         cards = cards_for(RecordingStudioMcp.exposed_skills(access_grant: access_grant))
         return Unavailable.new if cards.nil?
 
-        Result.new(payload: complete(skills: cards))
+        Result.new(payload: complete({ skills: cards }, protocol_version))
       end
 
-      def fetch_answer(params, access_grant)
+      def fetch_answer(params, access_grant, protocol_version)
         registration = exposed_registration(params, access_grant)
         return registration if registration.is_a?(InvalidParams)
 
         document = Document.read(registration)
         return Unavailable.new if document.nil?
 
-        Result.new(payload: complete(yield(document)))
+        Result.new(payload: complete(yield(document), protocol_version))
       end
 
       def exposed_registration(params, access_grant)
@@ -243,8 +243,8 @@ module RecordingStudioMcp
         cards
       end
 
-      def complete(extra)
-        { resultType: "complete" }.merge(extra).merge(ttlMs: 0, cacheScope: "private")
+      def complete(extra, protocol_version)
+        ResultShape.complete(extra, protocol_version: protocol_version)
       end
     end
   end

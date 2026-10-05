@@ -95,6 +95,15 @@ class ProtocolTest < Minitest::Test
     end
   end
 
+  def test_templates_list_rejects_a_cursor
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 31, "method" => "resources/templates/list", "params" => { "cursor" => "x" } },
+      access_grant: @grant
+    )
+
+    assert_equal(-32_602, result.body.dig(:error, :code))
+  end
+
   def test_unknown_method_is_method_not_found
     result = RecordingStudioMcp::Protocol.handle(
       { "jsonrpc" => "2.0", "id" => 3, "method" => "nope" },
@@ -150,6 +159,301 @@ class ProtocolTest < Minitest::Test
     )
 
     assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
+  end
+
+  def test_initialize_accepts_2026_07_28
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 9,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "2026-07-28" }
+      },
+      access_grant: @grant
+    )
+
+    assert_equal "2026-07-28", result.body.dig(:result, :protocolVersion)
+    assert_nil result.session_id
+  end
+
+  def test_initialize_accepts_2025_11_25_as_legacy
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 26,
+      protocol_version: "2025-11-25",
+      access_grant: @grant
+    )
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 26,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "2025-11-25" }
+      },
+      access_grant: @grant,
+      request_context: context
+    )
+
+    assert_equal "2025-11-25", result.body.dig(:result, :protocolVersion)
+    assert result.session_id.present?
+  end
+
+  def test_server_discover_lists_supported_versions
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 10, "method" => "server/discover" },
+      access_grant: @grant
+    )
+
+    assert_equal(
+      %w[2025-03-26 2025-06-18 2025-11-25 2026-07-28],
+      result.body.dig(:result, :protocolVersions)
+    )
+  end
+
+  def test_legacy_subscribe_requires_a_registered_event_and_session
+    with_isolated_mcp_configuration do
+      missing = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 11, "method" => "resources/subscribe", "params" => { "uri" => "recording://1" } },
+        access_grant: @grant
+      )
+      assert_equal(-32_601, missing.body.dig(:error, :code))
+
+      RecordingStudioMcp.register_event("recording updated")
+      grant = Object.new
+      grant.define_singleton_method(:accessible_recordings) do
+        Object.new.tap do |scope|
+          scope.define_singleton_method(:find_by) { |*| Object.new }
+        end
+      end
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 12,
+        protocol_version: "2025-06-18",
+        access_grant: grant
+      )
+      no_session = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 12, "method" => "resources/subscribe", "params" => { "uri" => "recording://1" } },
+        access_grant: grant,
+        request_context: context
+      )
+      assert_equal(-32_602, no_session.body.dig(:error, :code))
+      assert_equal "No listening session", no_session.body.dig(:error, :message)
+    end
+  end
+
+  def test_modern_listen_opens_a_stream_for_accessible_uris
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      grant = Object.new
+      grant.define_singleton_method(:accessible_recordings) do
+        Object.new.tap do |scope|
+          scope.define_singleton_method(:find_by) { |id:| id.to_s == "5" ? Object.new : nil }
+        end
+      end
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 13,
+        protocol_version: "2026-07-28",
+        access_grant: grant
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 13,
+          "method" => "subscriptions/listen",
+          "params" => { "notifications" => { "resourceSubscriptions" => %w[recording://5 recording://9] } }
+        },
+        access_grant: grant,
+        request_context: context
+      )
+
+      assert result.listen
+      assert_equal ["recording://5"], result.listen_connection.subscribed_uris
+      assert_equal 13, result.listen_connection.subscription_id
+    end
+  end
+
+  def test_legacy_initialize_opens_a_session_when_context_is_present
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 15,
+      protocol_version: "2025-06-18",
+      access_grant: @grant
+    )
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 15,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "2025-06-18" }
+      },
+      access_grant: @grant,
+      request_context: context
+    )
+
+    assert result.session_id.present?
+    assert_same context.connection, RecordingStudioMcp::Connections.fetch(result.session_id)
+  end
+
+  def test_resources_list_read_subscribe_and_unsubscribe
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      recording = Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
+                        .new(8, "Page", Struct.new(:title).new("Listed"), nil, 1)
+      scope = Object.new
+      scope.define_singleton_method(:includes) { |_| scope }
+      scope.define_singleton_method(:order) { |_| [recording] }
+      scope.define_singleton_method(:find_by) { |id:| recording if id.to_s == "8" }
+      grant = Object.new
+      grant.define_singleton_method(:accessible_recordings) { scope }
+      grant.define_singleton_method(:api_client) { nil }
+
+      listed = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 16, "method" => "resources/list" },
+        access_grant: grant
+      )
+      assert_equal "recording://8", listed.body.dig(:result, :resources, 0, :uri)
+
+      bad_list = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 17, "method" => "resources/list", "params" => { "cursor" => "x" } },
+        access_grant: grant
+      )
+      assert_equal(-32_602, bad_list.body.dig(:error, :code))
+
+      read = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 18, "method" => "resources/read", "params" => { "uri" => "recording://8" } },
+        access_grant: grant
+      )
+      assert_includes read.body.dig(:result, :contents, 0, :text), "Listed"
+
+      missing = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 19, "method" => "resources/read", "params" => { "uri" => "recording://404" } },
+        access_grant: grant
+      )
+      assert_equal(-32_002, missing.body.dig(:error, :code))
+
+      modern_context = RecordingStudioMcp::RequestContext.new(
+        request_id: 27,
+        protocol_version: "2026-07-28",
+        access_grant: grant
+      )
+      modern_missing = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 27, "method" => "resources/read", "params" => { "uri" => "recording://404" } },
+        access_grant: grant,
+        request_context: modern_context
+      )
+      assert_equal(-32_602, modern_missing.body.dig(:error, :code))
+
+      templates = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 28, "method" => "resources/templates/list" },
+        access_grant: grant
+      )
+      template = templates.body.dig(:result, :resourceTemplates, 0)
+      assert_equal "recording://{id}", template[:uriTemplate]
+      assert_equal "Recording", template[:name]
+      assert_equal "application/json", template[:mimeType]
+      refute templates.body[:result].key?(:resultType)
+
+      modern_list = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 29, "method" => "resources/list" },
+        access_grant: grant,
+        request_context: modern_context
+      )
+      assert_equal "complete", modern_list.body.dig(:result, :resultType)
+      assert_equal 0, modern_list.body.dig(:result, :ttlMs)
+      assert_equal "private", modern_list.body.dig(:result, :cacheScope)
+
+      invalid = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 20, "method" => "resources/read", "params" => { "uri" => "nope" } },
+        access_grant: grant
+      )
+      assert_equal(-32_602, invalid.body.dig(:error, :code))
+
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 21,
+        protocol_version: "2025-06-18",
+        access_grant: grant
+      )
+      opened = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      context.attach_connection(opened)
+
+      unknown_subscribe = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 30, "method" => "resources/subscribe",
+          "params" => { "uri" => "recording://404" } },
+        access_grant: grant,
+        request_context: context
+      )
+      assert_equal(-32_002, unknown_subscribe.body.dig(:error, :code))
+      assert_equal "Resource not found", unknown_subscribe.body.dig(:error, :message)
+
+      subscribed = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 21, "method" => "resources/subscribe", "params" => { "uri" => "recording://8" } },
+        access_grant: grant,
+        request_context: context
+      )
+      assert_equal({}, subscribed.body[:result])
+      assert opened.subscribed?("recording://8")
+
+      unsubscribed = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 22, "method" => "resources/unsubscribe",
+          "params" => { "uri" => "recording://8" } },
+        access_grant: grant,
+        request_context: context
+      )
+      assert_equal({}, unsubscribed.body[:result])
+      refute opened.subscribed?("recording://8")
+    end
+  end
+
+  def test_listen_and_unsubscribe_are_hidden_until_events_are_registered
+    with_isolated_mcp_configuration do
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 23,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      listen = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 23, "method" => "subscriptions/listen" },
+        access_grant: @grant,
+        request_context: context
+      )
+      assert_equal(-32_601, listen.body.dig(:error, :code))
+
+      RecordingStudioMcp.register_event("recording updated")
+      legacy = RecordingStudioMcp::RequestContext.new(
+        request_id: 24,
+        protocol_version: "2025-06-18",
+        access_grant: @grant
+      )
+      listen_legacy = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 24, "method" => "subscriptions/listen" },
+        access_grant: @grant,
+        request_context: legacy
+      )
+      assert_equal(-32_601, listen_legacy.body.dig(:error, :code))
+
+      no_session = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 25, "method" => "resources/unsubscribe",
+          "params" => { "uri" => "recording://1" } },
+        access_grant: @grant,
+        request_context: legacy
+      )
+      assert_equal(-32_602, no_session.body.dig(:error, :code))
+    end
+  end
+
+  def test_modern_clients_do_not_get_resources_subscribe
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 14,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 14, "method" => "resources/subscribe", "params" => { "uri" => "recording://1" } },
+        access_grant: @grant,
+        request_context: context
+      )
+
+      assert_equal(-32_601, result.body.dig(:error, :code))
+    end
   end
 
   def test_tools_call_passes_idempotency_key

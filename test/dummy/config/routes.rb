@@ -31,5 +31,10 @@ Rails.application.routes.draw do
   post "docs/mcp/test_token", to: "docs#create_mcp_test_token", as: :docs_mcp_test_token
   post "docs/mcp/sample_post", to: "docs#create_mcp_sample_post", as: :docs_mcp_sample_post
 
+  post "pages/save_change", to: "home#save_change", as: :save_page_change
+  resources :pages, only: %i[index update] do
+    post :comment, on: :member
+  end
+
   root "home#index"
 end

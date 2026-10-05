@@ -12,6 +12,26 @@ Authorization is Recording Studio Accessible through that AccessGrant. Same gran
 
 `tools/list` advertises the named API bound to the OauthClient. The surface depends on what that API registered.
 
+Hosts opt in to live updates with `RecordingStudioMcp.register_event`, next to skill registration. The dummy registers `recording updated` (built-in after-save trigger) and `page commented` (host `notify`). Unregistered events never notify. `notify` with an unknown name raises `ArgumentError`. Initialize advertises `resources.subscribe` only when at least one event is registered. Event registration stays in this gem; it is not an API `register_endpoint`.
+
+```ruby
+RecordingStudioMcp.register_event("recording updated") do |event|
+  event.on :recording_updated
+  event.types "Page", "Document"
+  event.if { |recording| recording.published? }
+end
+RecordingStudioMcp.register_event("comment added")
+RecordingStudioMcp.notify("comment added", recording: comment.recording)
+```
+
+`register_event("recording updated")` with no block is the built-in trigger for every recordable type.
+
+Accessible recordings are MCP resources at `recording://{id}`. `resources/list`, `resources/read`, and `resources/templates/list` use the same AccessGrant as tools. Skill files stay on `skill://…` URIs. Subscribe uses the same access check. The update notification carries the URI only.
+
+A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is delivered **after commit**, onto that connection's queue. The listening stream's own writer drains the queue. A slow or dead subscriber is dropped (bounded queue + write timeout). The save request does not write sockets.
+
+Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` with the event name and recording id. Each process re-checks access and its local subscribers. Other databases stay in-process: a save on worker B does not reach a subscriber on worker A.
+
 Tree hosts register recordable types. They get six parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `type` is an enum of those types. Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
 
 Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`.
@@ -69,7 +89,11 @@ Native clients may omit `Origin`. When a browser sends `Origin`, it must match t
 
 After initialize, clients send the negotiated version in `MCP-Protocol-Version`. Unsupported versions return `400`. A missing header uses MCP's `2025-03-26` backwards-compatible default.
 
-Supported protocol versions are `2025-03-26` and `2025-06-18`. MCP does not advertise `2026-07-28`.
+Supported protocol versions are `2025-03-26`, `2025-06-18`, `2025-11-25`, and `2026-07-28`. After initialize, clients send the negotiated version in `MCP-Protocol-Version`. `server/discover` lists the same set.
+
+On `2025-03-26`, `2025-06-18`, and `2025-11-25`, unsolicited updates go out on the GET SSE listening stream. Initialize returns `Mcp-Session-Id`. Later POSTs and the GET send that header. Clients call `resources/subscribe` and `resources/unsubscribe` by URI. An unknown or inaccessible subscribe URI returns `-32002`.
+
+On `2026-07-28`, GET is not a notification stream. Clients POST `subscriptions/listen` with `notifications.resourceSubscriptions`. The response is a long-lived SSE stream. The first event is `notifications/subscriptions/acknowledged`. Later `notifications/resources/updated` events include `io.modelcontextprotocol/subscriptionId`. When the server ends the stream, it writes the listen completion result, then closes. `resources/subscribe` is not a method on this revision. `resources/read` not found is `-32602`. Cacheable result fields are only on this revision.
 
 ## Progress notifications
 
@@ -112,7 +136,7 @@ Use `-N` / `--no-buffer`. Set these so frames leave the process as they are writ
 - ngrok: no extra flag. If a TLS proxy buffers, disable proxy buffering for this path.
 - Puma workers/threads: one in-flight streamed call occupies that thread until it ends.
 
-The dummy host registers `demo_progress` through `RecordingStudioApi.register_endpoint` (five delayed steps). That tool is dummy-only, not part of this gem’s production tree.
+The dummy host registers `demo_progress` through `RecordingStudioApi.register_endpoint` (five delayed steps). That tool is dummy-only, not part of this gem’s production tree. Dummy also registers `recording updated` and `page commented`. **Pages** lists pages the signed-in person can see. Each row has an inline save form (same `revise` path as home **Edit recording**) so a subscribed client gets `notifications/resources/updated`. **Ping watchers** fires the custom event.
 
 ## Install
 
@@ -152,6 +176,41 @@ end
 link :mcp, text: "MCP", url: ->(context) { context.admin_section_path("mcp") }
 ```
 
+## Watching a recording (dummy)
+
+Sign in, Connect Seed MCP App, mint a token on `/docs/mcp`, then:
+
+```bash
+# Legacy: initialize, subscribe, listen on GET
+curl -sS -D - -o /tmp/init.json \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl"}}}' \
+  http://127.0.0.1:3000/recording_studio_mcp
+# Copy Mcp-Session-Id from the response headers. List resources, subscribe, then:
+curl -N --no-buffer \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -H "Mcp-Session-Id: $SESSION" \
+  http://127.0.0.1:3000/recording_studio_mcp
+```
+
+On another tab, click **Edit recording** on `/`. The GET stream should emit `notifications/resources/updated`. Read the URI again.
+
+For `2026-07-28`, keep the listen POST open instead of GET:
+
+```bash
+curl -N --no-buffer \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"subscriptions/listen","params":{"notifications":{"resourceSubscriptions":["recording://ID"]}}}' \
+  http://127.0.0.1:3000/recording_studio_mcp
+```
+
 ## Dummy
 
 `test/dummy` on port 3000. Sign in with `admin@admin.com` / `Password`. Seed MCP App is a public OauthClient. Studio Workspace starts Connected. Site name `Studio` comes from Site settings when Connect needs it. Seeds also write sample MCP usage for the last 4 weeks, then roll those calls into daily totals. Loading seeds again replaces that sample.
@@ -162,4 +221,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.6.0
+0.7.0

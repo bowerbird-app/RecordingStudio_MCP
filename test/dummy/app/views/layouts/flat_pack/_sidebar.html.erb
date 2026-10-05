@@ -10,6 +10,7 @@
   <% sidebar.items do %>
     <nav class="py-4 space-y-1" aria-label="Main navigation">
       <%= dummy_sidebar_item(text: "Home", href: main_app.root_path, icon: :home) %>
+      <%= dummy_sidebar_item(text: "Pages", href: main_app.pages_path, icon: :queue_list) %>
       <%= dummy_sidebar_item(text: "Try MCP", href: main_app.docs_mcp_path, icon: :code_bracket) %>
       <%= dummy_sidebar_item(text: "Registered apps", href: dummy_registered_apps_path, icon: :key) %>
     </nav>

@@ -1,0 +1,62 @@
+<% dummy_page_nav(title: "Pages", back_url: root_path) %>
+
+<div class="flex w-full flex-col gap-6">
+  <%= render FlatPack::PageTitle::Component.new(
+    title: "Pages",
+    subtitle: "Change a title. A watching assistant is told to read it again.",
+    variant: :h1
+  ) %>
+
+  <% if @page_recordings.empty? %>
+    <p class="text-sm leading-6">
+      No pages you can see yet. Run seeds, then come back.
+    </p>
+  <% else %>
+    <% @page_recordings.each do |recording| %>
+      <% page = recording.recordable %>
+      <%= render FlatPack::Card::Component.new(style: :default) do |card| %>
+        <% card.header do %>
+          <%= render FlatPack::PageTitle::Component.new(
+            title: page&.title.presence || "Untitled page",
+            variant: :h3,
+            class: "mb-0 pb-0"
+          ) %>
+        <% end %>
+        <% card.body do %>
+          <%= form_with url: page_path(recording), method: :patch, local: true, data: { turbo: false } do %>
+            <%= render FlatPack::TextInput::Component.new(
+              name: "title",
+              label: "Title",
+              value: page&.title
+            ) %>
+            <% if page.respond_to?(:body) %>
+              <%= render FlatPack::Textarea::Component.new(
+                name: "body",
+                label: "Body",
+                value: page.body
+              ) %>
+            <% end %>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <%= render FlatPack::Button::Component.new(
+                text: "Save page",
+                style: :primary,
+                size: :md,
+                type: "submit"
+              ) %>
+            </div>
+          <% end %>
+          <%= form_with url: comment_page_path(recording), method: :post, local: true, data: { turbo: false } do %>
+            <div class="mt-2">
+              <%= render FlatPack::Button::Component.new(
+                text: "Ping watchers",
+                style: :ghost,
+                size: :md,
+                type: "submit"
+              ) %>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

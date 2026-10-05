@@ -2,9 +2,9 @@
 
 module RecordingStudioMcp
   class RequestContext
-    PROTOCOL_WITH_PROGRESS_MESSAGE = "2025-06-18"
+    PROTOCOL_WITH_PROGRESS_MESSAGE = %w[2025-06-18 2025-11-25 2026-07-28].freeze
 
-    attr_reader :request_id, :protocol_version, :access_grant, :progress_token
+    attr_reader :request_id, :protocol_version, :access_grant, :progress_token, :connection
 
     def initialize(request_id:, protocol_version:, access_grant:, progress_token: nil, sender: nil)
       @request_id = request_id
@@ -12,10 +12,15 @@ module RecordingStudioMcp
       @access_grant = access_grant
       @progress_token = progress_token
       @sender = sender
+      @connection = nil
       @mutex = Mutex.new
       @disconnected = false
       @completed = false
       @last_progress = nil
+    end
+
+    def attach_connection(connection)
+      @connection = connection
     end
 
     def attach_sender(sender)
@@ -86,7 +91,7 @@ module RecordingStudioMcp
     end
 
     def include_message?(message)
-      protocol_version == PROTOCOL_WITH_PROGRESS_MESSAGE && message.is_a?(String)
+      PROTOCOL_WITH_PROGRESS_MESSAGE.include?(protocol_version) && message.is_a?(String)
     end
   end
 end
