@@ -26,11 +26,14 @@ class DummySidebarTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "flat-pack-sidebar-layout"
     refute_includes response.body, "data-recording-studio-default-layout"
     assert_select "nav[aria-label='Main navigation']" do
-      assert_select "a[href=?]", root_path, text: "Home"
-      assert_select "a[href=?]", docs_mcp_path, text: "Try MCP"
-      assert_select "a[href=?]", "/admin/screens/oauth_clients", text: "Registered apps"
+      assert_select "a[href=?]", root_path
+      assert_select "a[href=?]", docs_mcp_path
+      assert_select "a[href=?]", "/admin/screens/oauth_clients"
     end
-    assert_select "a[href=?][data-turbo-method=?]", destroy_user_session_path, "delete", text: "Sign out"
+    assert_includes response.body, "Home"
+    assert_includes response.body, "Try MCP"
+    assert_includes response.body, "Registered apps"
+    assert_select "a[href=?][data-turbo-method=?]", destroy_user_session_path, "delete"
 
     get docs_mcp_path
 

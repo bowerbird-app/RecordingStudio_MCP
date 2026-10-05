@@ -62,7 +62,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Studio Workspace"
     assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
-    refute_includes response.body, ">Try MCP<"
+    assert_select "form[action=?]", docs_mcp_test_token_path, count: 0
 
     token = response.body[/(rsoauth_at_[A-Za-z0-9_-]+)/, 1]
     assert token.present?

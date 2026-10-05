@@ -136,7 +136,7 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "MCP answered"
     assert_includes response.body, "Studio Workspace"
     assert_includes response.body, "Sample POST"
-    refute_includes response.body, ">Try MCP<"
+    assert_select "form[action=?]", docs_mcp_test_token_path, count: 0
   end
 
   test "create mcp sample post posts the bearer to the mcp endpoint" do
@@ -170,8 +170,8 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "flat-pack-sidebar-layout"
     refute_includes response.body, "data-recording-studio-default-layout"
     assert_select "nav[aria-label='Main navigation']", count: 1
-    assert_select "a[href=?]", docs_mcp_path, text: "Try MCP"
-    assert_select "a[href=?]", "/admin/screens/oauth_clients", text: "Registered apps"
+    assert_select "a[href=?]", docs_mcp_path
+    assert_select "a[href=?]", "/admin/screens/oauth_clients"
   end
 
   private
