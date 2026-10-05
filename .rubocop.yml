@@ -5,7 +5,6 @@ AllCops:
     - 'test/dummy/**/*'
     - 'vendor/**/*'
     - 'bin/**/*'
-    - 'script/relax_oauth_api_pin.rb'
 
 Style/Documentation:
   Enabled: false

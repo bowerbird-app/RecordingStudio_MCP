@@ -1,7 +1,5 @@
 source "https://rubygems.org"
 
-require_relative "../../script/relax_oauth_api_pin"
-
 gem "recording_studio_mcp", path: "../.."
 
 gem "recording_studio", github: "bowerbird-app/RecordingStudio", tag: "v4.2.2"

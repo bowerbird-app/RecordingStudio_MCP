@@ -2,8 +2,6 @@
 
 source "https://rubygems.org"
 
-require_relative "script/relax_oauth_api_pin"
-
 gemspec
 
 gem "flat_pack", github: "bowerbird-app/flatpack", tag: "v0.1.198"

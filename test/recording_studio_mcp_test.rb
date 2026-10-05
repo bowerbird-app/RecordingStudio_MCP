@@ -74,12 +74,15 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/flatpack", tag: "v0.1.198"'
     refute_includes gemfile, "recording_studio_users"
     refute_includes gemfile, 'tag: "v0.5.4"'
+    refute_includes gemfile, "relax_oauth_api_pin"
+    refute_includes gemfile, "cursor/mcp-protected-resource-identity-607a"
   end
 
   def test_does_not_ship_example_mixin_or_copied_core
     refute File.exist?(File.expand_path("../lib/recording_studio_mcp/capabilities/example.rb", __dir__))
     refute File.exist?(File.expand_path("../lib/recording_studio_mcp/hooks.rb", __dir__))
     refute File.exist?(File.expand_path("../lib/recording_studio_mcp/host_tool.rb", __dir__))
+    refute File.exist?(File.expand_path("../script/relax_oauth_api_pin.rb", __dir__))
     refute File.exist?(File.expand_path("../lib/recording_studio_mcp/services/base_service.rb", __dir__))
   end
 
