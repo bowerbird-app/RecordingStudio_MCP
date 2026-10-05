@@ -158,6 +158,8 @@ link :mcp, text: "MCP", url: ->(context) { context.admin_section_path("mcp") }
 
 The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, and sample-POST the endpoint. It is not the product.
 
+Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with the shared RecordingStudio_* development master key. Set `RAILS_MASTER_KEY` or put that key in `test/dummy/config/master.key` (gitignored). Keep the encrypted file; do not generate a per-repo dummy key.
+
 ## Version
 
 0.6.0
