@@ -6,8 +6,14 @@ RecordingStudioMcp.configure do |config|
   config.oauth_engine_mount_path = "/recording_studio_oauth"
 end
 
-RecordingStudioMcp.register_event("recording updated") do |event|
-  event.on :recording_updated
+RecordingStudioMcp.register_event("recording updated") do |e|
+  e.on :recording_updated
+  e.types "Page"
+  e.if { |recording| recording.trashed_at.nil? }
 end
 
-RecordingStudioMcp.register_event("page commented")
+# Custom event: fired by the host with RecordingStudioMcp.notify("page commented", recording: ...)
+# (see PagesController#comment, the Ping watchers button on /pages)
+RecordingStudioMcp.register_event("page commented") do |e|
+  e.types "Page"
+end
