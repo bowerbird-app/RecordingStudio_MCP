@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0.5.6`.
 
+## 0.7.1
+
+`server/discover` returns the `2026-07-28` DiscoverResult (`supportedVersions`, capabilities, instructions, cache fields, `serverInfo` in result `_meta`). ChatGPT-style clients that discover then call `tools/list` see tools. No host config change. Oauth pin is unchanged.
+
 ## 0.7.0
 
 Optional `RecordingStudioMcp.register_event("recording updated")` so clients can watch items. A block may set `on :recording_updated`, `types`, and `if`. Custom names fire only via `RecordingStudioMcp.notify(name, recording:)`. Unregistered `notify` raises. `resources.subscribe` appears on initialize only after that registration.

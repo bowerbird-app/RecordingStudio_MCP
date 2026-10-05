@@ -96,10 +96,11 @@ module RecordingStudioMcp
       {
         jsonrpc: Protocol::JSONRPC_VERSION,
         id: subscription_id,
-        result: {
-          resultType: "complete",
-          _meta: { SUBSCRIPTION_ID_META => subscription_id }
-        }
+        result: ResultShape.complete(
+          { _meta: { SUBSCRIPTION_ID_META => subscription_id } },
+          protocol_version: protocol_version,
+          cacheable: false
+        )
       }
     end
 

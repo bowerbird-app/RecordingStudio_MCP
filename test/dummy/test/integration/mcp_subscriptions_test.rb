@@ -134,6 +134,10 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     assert_equal 4, updated.dig("params", "_meta", "io.modelcontextprotocol/subscriptionId")
     completion = events.find { |event| event["id"] == 4 && event["result"] }
     assert_equal "complete", completion.dig("result", "resultType")
+    assert_equal(
+      { "name" => "recording-studio", "version" => RecordingStudioMcp::VERSION },
+      completion.dig("result", "_meta", "io.modelcontextprotocol/serverInfo")
+    )
   end
 
   test "postgres notify payload reaches a second listener then local subscribers" do
