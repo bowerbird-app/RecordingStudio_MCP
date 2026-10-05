@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -92,12 +92,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "recording_studio_access_invitations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "recording_id", null: false
+    t.string "email", null: false
+    t.string "role", null: false
+    t.string "token_digest", limit: 64, null: false
+    t.string "manager_actor_type", null: false
+    t.uuid "manager_actor_id", null: false
+    t.string "accepted_by_actor_type"
+    t.uuid "accepted_by_actor_id"
+    t.datetime "expires_at", null: false
+    t.datetime "last_sent_at", null: false
+    t.datetime "accepted_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["recording_id", "email"], name: "idx_rs_access_invitations_one_active", unique: true, where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
+    t.index ["recording_id"], name: "index_recording_studio_access_invitations_on_recording_id"
+    t.index ["token_digest"], name: "idx_rs_access_invitations_token_digest", unique: true
+    t.check_constraint "accepted_at IS NULL OR revoked_at IS NULL", name: "access_invitations_not_accepted_and_revoked"
+  end
+
   create_table "recording_studio_accesses", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "actor_id", null: false
     t.string "actor_type", null: false
     t.datetime "created_at", null: false
     t.uuid "depends_on_recording_id"
-    t.integer "role", default: 0, null: false
+    t.string "role", default: "view", null: false
     t.index ["actor_type", "actor_id", "role"], name: "index_recording_studio_accesses_on_actor_and_role"
     t.index ["actor_type", "actor_id"], name: "index_recording_studio_accesses_on_actor"
     t.index ["depends_on_recording_id"], name: "index_recording_studio_accesses_on_depends_on_recording_id"
@@ -236,8 +257,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
     t.text "description"
     t.string "name", null: false
     t.string "original_filename", null: false
+    t.uuid "root_recording_id"
+    t.text "caption"
+    t.text "credit"
+    t.text "alt_text"
     t.index ["attachment_kind", "content_type"], name: "idx_rs_attachable_kind_type"
     t.index ["attachment_kind"], name: "idx_on_attachment_kind_d683071625"
+    t.index ["root_recording_id"], name: "index_rs_attachable_attachments_on_root_recording_id"
   end
 
   create_table "recording_studio_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -346,8 +372,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
     t.jsonb "redirect_uris", default: [], null: false
     t.datetime "revoked_at"
     t.datetime "updated_at", null: false
+    t.boolean "use_central_relay", default: false, null: false
+    t.jsonb "allowed_return_patterns", default: [], null: false
+    t.jsonb "exact_return_urls", default: [], null: false
+    t.boolean "allow_registration", default: false, null: false
+    t.string "session_token_provider"
+    t.string "session_token_audience"
+    t.text "session_token_secret_ciphertext"
     t.index ["api_key"], name: "index_recording_studio_oauth_clients_on_api_key"
     t.index ["client_id"], name: "index_recording_studio_oauth_clients_on_client_id", unique: true
+  end
+
+  create_table "recording_studio_oauth_external_installs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "oauth_client_id", null: false
+    t.string "provider", null: false
+    t.string "external_id", null: false
+    t.uuid "root_recording_id"
+    t.string "connected_by_type"
+    t.uuid "connected_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connected_by_type", "connected_by_id"], name: "index_rs_oauth_external_installs_on_connected_by"
+    t.index ["oauth_client_id", "provider", "external_id"], name: "index_rs_oauth_external_installs_on_client_provider_external", unique: true
+    t.index ["provider", "external_id"], name: "index_rs_oauth_external_installs_on_provider_external"
+    t.index ["root_recording_id"], name: "idx_on_root_recording_id_efcab19ee0"
   end
 
   create_table "recording_studio_oauth_refresh_tokens", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -428,12 +476,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "recording_studio_access_invitations", "recording_studio_recordings", column: "recording_id"
   add_foreign_key "recording_studio_api_api_access_tokens", "recording_studio_api_api_credentials", column: "api_credential_id"
   add_foreign_key "recording_studio_api_api_credentials", "recording_studio_api_api_clients", column: "api_client_id"
   add_foreign_key "recording_studio_events", "recording_studio_recordings", column: "recording_id"
   add_foreign_key "recording_studio_oauth_access_tokens", "recording_studio_oauth_authorizations", column: "oauth_authorization_id"
   add_foreign_key "recording_studio_oauth_authorization_codes", "recording_studio_oauth_authorizations", column: "oauth_authorization_id"
   add_foreign_key "recording_studio_oauth_authorizations", "recording_studio_oauth_clients", column: "oauth_client_id"
+  add_foreign_key "recording_studio_oauth_external_installs", "recording_studio_oauth_clients", column: "oauth_client_id"
+  add_foreign_key "recording_studio_oauth_external_installs", "recording_studio_recordings", column: "root_recording_id"
   add_foreign_key "recording_studio_oauth_refresh_tokens", "recording_studio_oauth_authorizations", column: "oauth_authorization_id"
   add_foreign_key "recording_studio_recordings", "recording_studio_recordings", column: "parent_recording_id"
   add_foreign_key "recording_studio_recordings", "recording_studio_recordings", column: "root_recording_id"

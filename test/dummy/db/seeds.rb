@@ -65,7 +65,7 @@ grant_or_find_access = lambda do |recording, actor, role|
   result = RecordingStudioAccessible.grant_access(
     recording: recording,
     actor: actor,
-    role: role,
+    role: role.to_s,
     manager_actor: actor
   )
   return result.value if result.success?

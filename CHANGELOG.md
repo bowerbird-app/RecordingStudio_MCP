@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Dummy and development pins Accessible `v0.11.1`, Admin `v2.0.4`, Attachable `v0.7.1`, Oauth `v0.5.5`, Site settings `v0.1.3`, and Root Switchable `v0.5.3`. API stays at `v0.5.4`. Recording Studio stays at `v4.2.2`.
+- Dummy Accessible schema now includes access invitations and stores access roles as strings (`view`, `edit`, `admin`).
+- Dummy API initializer exposes `RecordingStudio::Access.roles` from Accessible's ranked names so API `v0.5.4` can still authorize member actions.
+
+### Upgrade notes
+- Dummy and development only. This gem's version is unchanged. Hosts that bump Accessible to `0.11` run `bin/rails generate recording_studio_accessible:migrations` then `bin/rails db:migrate`. Keep API on `~> 0.5.4` until it ships Accessible `0.11` support.
+
 ## [0.5.0] - 2026-09-30
 
 ### Added
@@ -113,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.3.1...v0.3.2
