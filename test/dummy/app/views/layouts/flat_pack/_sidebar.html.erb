@@ -1,0 +1,29 @@
+<%= render FlatPack::Sidebar::Component.new(side: sidebar_side) do |sidebar| %>
+  <% sidebar.header do %>
+    <%= render FlatPack::Sidebar::Header::Component.new(
+      brand_abbr: "RS",
+      title: "MCP",
+      subtitle: "Recording Studio"
+    ) %>
+  <% end %>
+
+  <% sidebar.items do %>
+    <nav class="py-4 space-y-1" aria-label="Main navigation">
+      <%= dummy_sidebar_item(text: "Home", href: main_app.root_path, icon: :home) %>
+      <%= dummy_sidebar_item(text: "Try MCP", href: main_app.docs_mcp_path, icon: :code_bracket) %>
+      <%= dummy_sidebar_item(text: "Registered apps", href: dummy_registered_apps_path, icon: :key) %>
+    </nav>
+  <% end %>
+
+  <% sidebar.footer do %>
+    <%= render FlatPack::Sidebar::Footer::Component.new(class: "text-sm text-[var(--surface-muted-content-color)]") do %>
+      <%= render FlatPack::Sidebar::Item::Component.new(
+        text: "Sign out",
+        href: main_app.destroy_user_session_path,
+        icon: :lock,
+        class: "mx-0",
+        data: { turbo_method: :delete }
+      ) %>
+    <% end %>
+  <% end %>
+<% end %>

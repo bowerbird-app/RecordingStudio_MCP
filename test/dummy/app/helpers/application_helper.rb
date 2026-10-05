@@ -1,4 +1,19 @@
+# frozen_string_literal: true
+
 module ApplicationHelper
+  def dummy_registered_apps_path
+    "/admin/screens/oauth_clients"
+  end
+
+  def dummy_sidebar_item(text:, href:, icon:)
+    render FlatPack::Sidebar::Item::Component.new(
+      text: text,
+      href: href,
+      icon: icon,
+      active: current_page?(href)
+    )
+  end
+
   def dummy_page_nav(title:, back_url: nil, back_label: "Home")
     recording_studio_page_nav(
       title: title,
@@ -8,15 +23,6 @@ module ApplicationHelper
 
     recording_studio_page_nav_right do
       concat recording_studio_root_switch_dropdown(style: :ghost, size: :md)
-      concat render(
-        FlatPack::Button::Component.new(
-          text: "Sign out",
-          style: :ghost,
-          size: :md,
-          url: main_app.destroy_user_session_path,
-          data: { turbo_method: :delete }
-        )
-      )
     end
   end
 end

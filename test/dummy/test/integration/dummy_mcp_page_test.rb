@@ -90,7 +90,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Sample POST worked. Grant resolved."
     assert_includes response.body, "list, show, create, update, capability_action, describe"
     assert_includes response.body, "Sign out"
-    assert_select "body[data-recording-studio-default-layout='true']", count: 1
+    assert_includes response.body, "flat-pack-sidebar-layout"
     refute_includes response.body, ">Sample POST<"
     refute_includes response.body, "Exception caught"
   end

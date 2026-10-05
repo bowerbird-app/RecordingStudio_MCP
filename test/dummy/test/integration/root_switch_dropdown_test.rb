@@ -33,7 +33,7 @@ class RootSwitchDropdownTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, workspace.name
-    assert_select "body[data-recording-studio-default-layout='true']", count: 1
+    assert_includes response.body, "flat-pack-sidebar-layout"
   end
 
   test "root switch page renders with the host default layout" do
@@ -50,8 +50,7 @@ class RootSwitchDropdownTest < ActionDispatch::IntegrationTest
     get "/recording_studio_root_switchable/v1/root_switch?scope=all_workspaces"
 
     assert_response :success
-    assert_select "body[data-recording-studio-default-layout='true']", count: 1
-    refute_includes response.body, "flat-pack-sidebar-layout"
+    assert_includes response.body, "flat-pack-sidebar-layout"
   end
 
   test "switching returns to the current page when it is a valid internal route" do
