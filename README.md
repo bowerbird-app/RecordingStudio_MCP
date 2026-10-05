@@ -160,4 +160,4 @@ The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, a
 
 ## Version
 
-0.5.0
+0.6.0

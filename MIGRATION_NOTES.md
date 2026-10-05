@@ -2,6 +2,12 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0.5.6`.
 
+## 0.6.0
+
+Pin API to `~> 0.6` and Oauth to `v0.5.6`. Streamed `tools/call` passes the per-request MCP context as API `progress_reporter`. JSON-only calls leave it `nil`. `RecordingStudioMcp.register_host_tool` is gone. Extra tools register through `RecordingStudioApi.register_endpoint`. Protocol versions stay `2025-03-26` and `2025-06-18`. `tools.listChanged` stays `false`.
+
+Hosts on Accessible 0.11 run Accessible migrations. When `RecordingStudio::Access.roles` is missing, MCP exposes `AccessRoles::ORDER` so API 0.6 can rank grants.
+
 ## 0.5.0
 
 Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin. It charts usage for the last 4 weeks, links to the Usage screen, and links to Oauth's Registered apps section.
