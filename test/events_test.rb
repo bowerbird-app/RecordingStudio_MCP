@@ -43,6 +43,14 @@ class EventsTest < Minitest::Test
     end
   end
 
+  def test_if_requires_a_block
+    with_isolated_mcp_configuration do
+      assert_raises(ArgumentError) do
+        RecordingStudioMcp.register_event("recording updated", &:if)
+      end
+    end
+  end
+
   def test_notify_unregistered_raises
     with_isolated_mcp_configuration do
       assert_raises(ArgumentError) do

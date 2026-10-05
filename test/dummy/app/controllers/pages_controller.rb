@@ -43,17 +43,8 @@ class PagesController < ApplicationController
   end
 
   def accessible_page_recordings
-    roots = RecordingStudioAccessible.root_recordings_for(actor: current_user)
-    roots.flat_map { |root| pages_under(root) }
-         .select { |recording| RecordingStudioAccessible.authorized?(actor: current_user, recording: recording, role: :view) }
-         .sort_by { |recording| recording.recordable&.title.to_s }
-  end
-
-  def pages_under(root)
-    return [] unless root.respond_to?(:recordings_of)
-
-    relation = root.recordings_of("Page")
-    relation = relation.includes(:recordable) if relation.respond_to?(:includes)
-    Array(relation)
+    RecordingStudio::Recording.where(recordable_type: "Page").includes(:recordable).select do |recording|
+      RecordingStudioAccessible.authorized?(actor: current_user, recording: recording, role: :view)
+    end.sort_by { |recording| recording.recordable&.title.to_s }
   end
 end

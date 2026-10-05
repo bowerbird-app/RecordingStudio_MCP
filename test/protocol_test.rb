@@ -95,6 +95,15 @@ class ProtocolTest < Minitest::Test
     end
   end
 
+  def test_templates_list_rejects_a_cursor
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 31, "method" => "resources/templates/list", "params" => { "cursor" => "x" } },
+      access_grant: @grant
+    )
+
+    assert_equal(-32_602, result.body.dig(:error, :code))
+  end
+
   def test_unknown_method_is_method_not_found
     result = RecordingStudioMcp::Protocol.handle(
       { "jsonrpc" => "2.0", "id" => 3, "method" => "nope" },

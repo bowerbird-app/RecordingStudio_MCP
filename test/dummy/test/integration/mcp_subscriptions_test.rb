@@ -140,10 +140,11 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     skip "Postgres LISTEN/NOTIFY needs a live Postgres adapter" unless RecordingStudioMcp::PostgresBus.enabled?
 
     RecordingStudioMcp::PostgresBus.start!
-    uri = "recording://#{@page_recording.id}"
+    recording_id = @page_recording.id
+    uri = "recording://#{recording_id}"
     grant = Object.new
     grant.define_singleton_method(:accessible_recordings) do
-      RecordingStudio::Recording.where(id: @page_recording.id)
+      RecordingStudio::Recording.where(id: recording_id)
     end
     connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
     connection.subscribe(uri)

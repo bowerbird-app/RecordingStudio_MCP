@@ -49,20 +49,7 @@ module RecordingStudioMcp
     def templates(cursor: nil, protocol_version: nil)
       return InvalidParams.new unless cursor.nil?
 
-      Templates.new(
-        payload: complete(
-          {
-            resourceTemplates: [
-              {
-                name: TEMPLATE_NAME,
-                uriTemplate: URI_TEMPLATE,
-                mimeType: MIME_TYPE
-              }
-            ]
-          },
-          protocol_version
-        )
-      )
+      Templates.new(payload: complete({ resourceTemplates: [recording_template] }, protocol_version))
     end
 
     def find_accessible(access_grant, recording_id)
@@ -121,7 +108,12 @@ module RecordingStudioMcp
     def complete(extra, protocol_version)
       ResultShape.complete(extra, protocol_version: protocol_version)
     end
+
+    def recording_template
+      { name: TEMPLATE_NAME, uriTemplate: URI_TEMPLATE, mimeType: MIME_TYPE }
+    end
+
     private_class_method :complete, :listed_resources, :skill_resources, :recording_resources,
-                         :recordings_for, :content_for
+                         :recordings_for, :content_for, :recording_template
   end
 end

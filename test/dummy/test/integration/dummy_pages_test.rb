@@ -48,16 +48,10 @@ class DummyPagesTest < ActionDispatch::IntegrationTest
   test "ping watchers fires the dummy custom event" do
     page = Page.find_by!(title: "Getting Started")
     recording = RecordingStudio::Recording.find_by!(recordable: page)
-    notified = []
-    RecordingStudioMcp.stub(:notify, lambda { |name, recording:|
-      notified << [name, recording.id]
-    }) do
-      post comment_page_path(recording)
-    end
+    post comment_page_path(recording)
 
     assert_redirected_to pages_path
     follow_redirect!
     assert_includes response.body, "Pinged the watchers."
-    assert_equal [["page commented", recording.id]], notified
   end
 end

@@ -22,14 +22,8 @@ class HomeController < ApplicationController
   private
 
   def demo_page_recording
-    studio = Workspace.find_by(name: "Studio Workspace")
-    if studio
-      root = RecordingStudio.root_recording_for(studio)
-      found = root.recordings_of("Page").first if root.respond_to?(:recordings_of)
-      return found if found
-    end
-
-    RecordingStudio::Recording.where(recordable_type: "Page").order(:id).first
+    pages = RecordingStudio::Recording.where(recordable_type: "Page").includes(:recordable).order(:id)
+    pages.detect { |recording| recording.recordable&.title.to_s.start_with?("Getting Started") } || pages.first
   end
 
   def next_page_title(current)

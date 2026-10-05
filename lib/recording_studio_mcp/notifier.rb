@@ -12,7 +12,7 @@ module RecordingStudioMcp
         next unless registration.built_in_save?
         next unless registration.matches_recording?(recording)
 
-        Fanout.publish(event_name: registration.name, recording_id: recording.id)
+        Fanout.publish(event_name: registration.name, recording_id: recording.id, recording: recording)
       end
     end
 
@@ -22,26 +22,37 @@ module RecordingStudioMcp
       raise ArgumentError, "recording is required" if recording.nil?
       return unless registration.matches_recording?(recording)
 
-      Fanout.publish(event_name: registration.name, recording_id: recording.id)
+      Fanout.publish(event_name: registration.name, recording_id: recording.id, recording: recording)
     end
 
     def deliver_local(event_name:, recording_id:, recording: nil)
+      loaded = recording_for_delivery(event_name, recording_id, recording)
+      return if loaded.nil?
+
+      uri = Resources.uri_for(loaded)
+      Connections.each { |connection| enqueue_if_watching(connection, uri, loaded) }
+    end
+
+    def recording_for_delivery(event_name, recording_id, recording)
       return unless RecordingStudioMcp.event_registered?(event_name)
 
       loaded = recording || find_recording(recording_id)
       return if loaded.nil?
 
       registration = RecordingStudioMcp.configuration.event_catalog.fetch(event_name)
-      return if registration.nil? || !registration.matches_recording?(loaded)
-
-      uri = Resources.uri_for(loaded)
-      Connections.each do |connection|
-        next unless connection.subscribed?(uri)
-        next unless still_accessible?(connection, uri, loaded)
-
-        connection.enqueue_updated(uri)
-      end
+      loaded if registration&.matches_recording?(loaded)
     end
+    private_class_method :recording_for_delivery
+
+    def enqueue_if_watching(connection, uri, recording)
+      return unless connection.subscribed?(uri)
+      return unless still_accessible?(connection, uri, recording)
+
+      connection.enqueue_updated(uri)
+    rescue StandardError
+      connection.finish!
+    end
+    private_class_method :enqueue_if_watching
 
     def recording_from(event)
       return event.recording if event.respond_to?(:recording) && event.recording

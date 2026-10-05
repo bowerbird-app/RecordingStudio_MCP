@@ -23,6 +23,10 @@ module RecordingStudioMcp
       ActiveRecord::Base.connection.execute("NOTIFY #{CHANNEL}, #{quoted}")
     end
 
+    def listening?
+      mutex.synchronize { @thread&.alive? == true }
+    end
+
     def start!
       return unless enabled?
 
@@ -48,7 +52,7 @@ module RecordingStudioMcp
       return if event_name.blank? || recording_id.blank?
 
       Notifier.deliver_local(event_name: event_name, recording_id: recording_id)
-    rescue JSON::ParserError, TypeError
+    rescue StandardError
       nil
     end
 

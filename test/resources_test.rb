@@ -91,6 +91,8 @@ class ResourcesTest < Minitest::Test
 
     modern = RecordingStudioMcp::Resources.templates(protocol_version: "2026-07-28")
     assert_equal "complete", modern.payload[:resultType]
+    assert_instance_of RecordingStudioMcp::Resources::InvalidParams,
+                       RecordingStudioMcp::Resources.templates(cursor: "next")
   end
 
   def test_unknown_uris_are_invalid

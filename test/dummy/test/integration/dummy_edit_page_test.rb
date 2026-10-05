@@ -16,8 +16,9 @@ class DummyEditPageTest < ActionDispatch::IntegrationTest
   end
 
   test "home offers a flatpack edit recording button that saves a change" do
-    page = Page.find_by!(title: "Getting Started")
-    recording = RecordingStudio::Recording.find_by!(recordable: page)
+    recording = RecordingStudio::Recording.where(recordable_type: "Page").includes(:recordable).order(:id).detect do |row|
+      row.recordable&.title.to_s.start_with?("Getting Started")
+    end
     before = recording.recordable.title
 
     get root_path

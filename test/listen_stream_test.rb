@@ -125,6 +125,8 @@ class ListenStreamTest < Minitest::Test
 
     thread = Thread.new { stream.perform(writer) }
     sleep 0.05
+    connection.enqueue_updated("recording://2")
+    sleep 0.05
     connection.finish!
     thread.join(2)
 
@@ -147,6 +149,52 @@ class ListenStreamTest < Minitest::Test
     connection.enqueue_updated("recording://3")
 
     refute connection.write_payload(sender, connection.shift_pending(timeout: 0))
+    assert connection.finished?
+  end
+
+  def test_enqueue_stops_when_finished
+    connection = RecordingStudioMcp::Connections.open(
+      protocol_version: "2025-06-18",
+      access_grant: Object.new
+    )
+    connection.subscribe("recording://3")
+    connection.finish!
+
+    refute connection.enqueue_updated("recording://3")
+    refute connection.pending?
+    connection.wait(timeout: 0.01)
+    assert_equal [connection], RecordingStudioMcp::Connections.to_a
+  end
+
+  def test_listen_completion_swallows_a_dead_writer
+    grant = Object.new
+    connection = RecordingStudioMcp::Connections.open(
+      protocol_version: "2026-07-28",
+      access_grant: grant,
+      subscription_id: 3
+    )
+    connection.finish!
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 3,
+      protocol_version: "2026-07-28",
+      access_grant: grant
+    )
+    writer = Object.new
+    writes = 0
+    writer.define_singleton_method(:write_json) do |_|
+      writes += 1
+      raise IOError, "gone" if writes > 1
+    end
+    writer.define_singleton_method(:write_comment) {}
+    writer.define_singleton_method(:disconnected?) { false }
+    writer.define_singleton_method(:closed?) { false }
+    stream = RecordingStudioMcp::ListenStream.new(
+      connection: connection,
+      request_context: context,
+      write_ack: true
+    )
+
+    stream.perform(writer)
     assert connection.finished?
   end
 

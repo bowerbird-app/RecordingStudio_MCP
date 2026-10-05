@@ -8,11 +8,11 @@ module RecordingStudioMcp
     LENGTH = (1..64)
 
     class Definition
-      attr_reader :trigger, :types, :filter
+      attr_reader :trigger, :allowed_types, :filter
 
       def initialize
         @trigger = nil
-        @types = nil
+        @allowed_types = nil
         @filter = nil
       end
 
@@ -21,10 +21,10 @@ module RecordingStudioMcp
       end
 
       def types(*names)
-        @types = names.flatten.map(&:to_s)
+        @allowed_types = names.flatten.map(&:to_s)
       end
 
-      def if(&block) # rubocop:disable Naming/MethodName
+      def if(&block)
         raise ArgumentError, "if must be a block" unless block
 
         @filter = block
@@ -100,23 +100,28 @@ module RecordingStudioMcp
       name
     end
 
-    def build_registration(name)
+    def build_registration(name, &)
       parsed = parse(name)
       raise ArgumentError, "invalid event name" if parsed.nil?
 
+      definition = filled_definition(parsed, &)
+      Registration.new(
+        name: parsed,
+        trigger: definition.trigger,
+        types: definition.allowed_types,
+        filter: definition.filter
+      )
+    end
+
+    def filled_definition(parsed, &)
       definition = Definition.new
       if block_given?
         yield(definition)
       elsif parsed == RECORDING_UPDATED
         definition.on(RECORDING_UPDATED_TRIGGER)
       end
-
-      Registration.new(
-        name: parsed,
-        trigger: definition.trigger,
-        types: definition.types,
-        filter: definition.filter
-      )
+      definition
     end
+    private_class_method :filled_definition
   end
 end

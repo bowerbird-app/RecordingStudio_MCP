@@ -38,13 +38,11 @@ module RecordingStudioMcp
     def subject_name(method_name, params)
       params = {} unless params.is_a?(Hash)
       raw = case method_name
-            when "tools/call"
-              params["name"]
+            when "tools/call" then params["name"]
+            when "subscriptions/listen" then "listen"
             when "skills/get", "resources/read", "resources/subscribe", "resources/unsubscribe",
                  "resources/templates/list"
               Skills::SkillName.from_uri(params["uri"]) || params["uri"]
-            when "subscriptions/listen"
-              "listen"
             end
       raw.to_s.first(USAGE_SUBJECT_LIMIT)
     end

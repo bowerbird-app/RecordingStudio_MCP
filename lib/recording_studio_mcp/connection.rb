@@ -16,7 +16,7 @@ module RecordingStudioMcp
       @access_grant = access_grant
       @subscription_id = subscription_id
       @uris = Set.new
-      @queue = []
+      @queue = OutboundQueue.new(limit: QUEUE_LIMIT)
       @sender = nil
       @mutex = Mutex.new
       @wait = ConditionVariable.new
@@ -64,20 +64,8 @@ module RecordingStudioMcp
       @mutex.synchronize { @queue.any? }
     end
 
-    def enqueue_updated(uri)
-      @mutex.synchronize do
-        return false if @finished || !@uris.include?(uri.to_s)
-
-        if @queue.length >= QUEUE_LIMIT
-          @finished = true
-          @wait.broadcast
-          return false
-        end
-
-        @queue << updated_payload(uri)
-        @wait.broadcast
-        true
-      end
+    def enqueue_updated(uri) # rubocop:disable Naming/PredicateMethod
+      @mutex.synchronize { store_update(uri) } == :ok
     end
 
     def shift_pending(timeout: 1)
@@ -117,6 +105,19 @@ module RecordingStudioMcp
 
     private
 
+    def store_update(uri)
+      return :rejected if @finished || !@uris.include?(uri.to_s)
+
+      if @queue.push(updated_payload(uri)) == :full
+        @finished = true
+        @wait.broadcast
+        return :full
+      end
+
+      @wait.broadcast
+      :ok
+    end
+
     def updated_payload(uri)
       {
         jsonrpc: Protocol::JSONRPC_VERSION,
@@ -128,8 +129,7 @@ module RecordingStudioMcp
     def with_subscription_meta(params)
       return params if subscription_id.nil?
 
-      meta = params[:_meta] || {}
-      meta = meta.merge(SUBSCRIPTION_ID_META => subscription_id)
+      meta = (params[:_meta] || {}).merge(SUBSCRIPTION_ID_META => subscription_id)
       params.merge(_meta: meta)
     end
 

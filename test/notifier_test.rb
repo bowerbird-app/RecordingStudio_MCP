@@ -102,6 +102,9 @@ class NotifierTest < Minitest::Test
       assert_raises(ArgumentError) do
         RecordingStudioMcp.notify("never registered", recording: FakeRecording.new(7, "Page", true))
       end
+      assert_raises(ArgumentError) do
+        RecordingStudioMcp.notify("comment added", recording: nil)
+      end
     end
   end
 
@@ -117,6 +120,23 @@ class NotifierTest < Minitest::Test
     end
   end
 
+  def test_deliver_local_loads_a_recording_by_id
+    skip unless defined?(RecordingStudio::Recording)
+
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      grant = FakeGrant.new([7])
+      connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      connection.subscribe("recording://7")
+      found = FakeRecording.new(7, "Page", true)
+      RecordingStudio::Recording.stub(:find_by, found) do
+        RecordingStudioMcp::Notifier.deliver_local(event_name: "recording updated", recording_id: 7)
+      end
+
+      assert_equal "recording://7", connection.shift_pending(timeout: 0).dig(:params, :uri)
+    end
+  end
+
   def test_event_without_a_recording_is_ignored
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
@@ -125,6 +145,20 @@ class NotifierTest < Minitest::Test
       event.define_singleton_method(:recording_id) { 7 }
 
       RecordingStudioMcp::Notifier.recording_saved(event)
+    end
+  end
+
+  def test_a_broken_connection_is_dropped
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      grant = FakeGrant.new([7])
+      connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+      connection.subscribe("recording://7")
+      connection.define_singleton_method(:enqueue_updated) { |_| raise "queue down" }
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+
+      assert connection.finished?
     end
   end
 

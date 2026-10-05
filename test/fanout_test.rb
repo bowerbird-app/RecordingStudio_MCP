@@ -24,7 +24,11 @@ class FanoutTest < Minitest::Test
 
       RecordingStudioMcp::Notifier.stub(:find_recording, FakeRecording.new(4, "Page")) do
         RecordingStudioMcp::PostgresBus.stub(:enabled?, false) do
-          RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 4)
+          RecordingStudioMcp::Fanout.publish(
+            event_name: "recording updated",
+            recording_id: 4,
+            recording: FakeRecording.new(4, "Page")
+          )
         end
       end
 
@@ -37,14 +41,28 @@ class FanoutTest < Minitest::Test
       RecordingStudioMcp.register_event("recording updated")
       published = []
       RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
-        RecordingStudioMcp::PostgresBus.stub(:publish, lambda { |event_name:, recording_id:|
-          published << [event_name, recording_id]
-        }) do
-          RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 11)
+        RecordingStudioMcp::PostgresBus.stub(:listening?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:publish, lambda { |event_name:, recording_id:|
+            published << [event_name, recording_id]
+          }) do
+            RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 11)
+          end
         end
       end
 
       assert_equal [["recording updated", 11]], published
+    end
+  end
+
+  def test_bad_listen_payload_is_ignored
+    RecordingStudioMcp::PostgresBus.handle_payload("not-json")
+    RecordingStudioMcp::PostgresBus.handle_payload({ "event" => "", "id" => "" }.to_json)
+  end
+
+  def test_start_is_a_noop_when_postgres_is_disabled
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, false) do
+      RecordingStudioMcp::PostgresBus.start!
+      refute RecordingStudioMcp::PostgresBus.listening?
     end
   end
 
