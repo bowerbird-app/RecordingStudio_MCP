@@ -29,22 +29,27 @@ module RecordingStudioMcp
 
       header = header_protocol_version
       meta = meta_protocol_version
-      if header && meta && header != meta
-        render json: {
-          jsonrpc: Protocol::JSONRPC_VERSION,
-          id: jsonrpc_payload["id"],
-          error: {
-            code: Protocol::HEADER_MISMATCH,
-            message: "Header mismatch: MCP-Protocol-Version header value '#{header}' does not match " \
-                     "body value '#{meta}'"
-          }
-        }, status: :bad_request
-        return
-      end
+      return render_header_mismatch(header, meta) if header && meta && header != meta
 
       version = effective_protocol_version
       return if Configuration::SUPPORTED_PROTOCOL_VERSIONS.include?(version)
 
+      render_unsupported_protocol_version
+    end
+
+    def render_header_mismatch(header, meta)
+      render json: {
+        jsonrpc: Protocol::JSONRPC_VERSION,
+        id: jsonrpc_payload["id"],
+        error: {
+          code: Protocol::HEADER_MISMATCH,
+          message: "Header mismatch: MCP-Protocol-Version header value '#{header}' does not match " \
+                   "body value '#{meta}'"
+        }
+      }, status: :bad_request
+    end
+
+    def render_unsupported_protocol_version
       render json: api_error_payload(
         code: "unsupported_protocol_version",
         message: "MCP-Protocol-Version is not supported",
