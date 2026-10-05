@@ -105,6 +105,9 @@ class McpUsageTest < ActionDispatch::IntegrationTest
   end
 
   test "maintain usage rebuilds the day from logs and prunes old rows" do
+    RecordingStudioMcp::UsageLog.delete_all
+    RecordingStudioMcp::UsageDailyMetric.delete_all
+
     RecordingStudioMcp::UsageLog.create!(
       occurred_at: Time.zone.now,
       method_name: "ping",
