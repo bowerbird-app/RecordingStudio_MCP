@@ -355,15 +355,15 @@ class DispatcherTest < Minitest::Test
   def test_host_tool_receives_request_context_and_returns_structured_content
     with_isolated_mcp_configuration do
       sender = []
+      writer = Object.new
+      writer.define_singleton_method(:write_json) { |payload| sender << payload }
+      writer.define_singleton_method(:disconnected?) { false }
       context = RecordingStudioMcp::RequestContext.new(
         request_id: 3,
         protocol_version: "2025-06-18",
         access_grant: @grant,
         progress_token: "demo",
-        sender: Object.new.tap do |object|
-          object.define_singleton_method(:write_json) { |payload| sender << payload }
-          object.define_singleton_method(:disconnected?) { false }
-        end
+        sender: writer
       )
       RecordingStudioMcp.register_host_tool(
         name: "demo_progress",

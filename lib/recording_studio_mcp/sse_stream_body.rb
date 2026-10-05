@@ -11,24 +11,15 @@ module RecordingStudioMcp
       @mutex = Mutex.new
     end
 
-    def each
+    def each(&block)
+      return to_enum(:each) unless block
       return if closed?
 
-      @mutex.synchronize { @started = true }
-      writer = SseWriter.new(
-        ->(chunk) do
-          raise IOError, "client disconnected" if closed?
-
-          yield chunk
-        end,
-        on_disconnect: -> do
-          close
-          @on_disconnect&.call
-        end
-      )
+      mark_started
+      writer = writer_for(&block)
       @on_run.call(writer)
     ensure
-      writer&.close
+      writer&.close if block
     end
 
     def close
@@ -44,6 +35,28 @@ module RecordingStudioMcp
 
     def closed?
       @mutex.synchronize { @closed }
+    end
+
+    private
+
+    def mark_started
+      @mutex.synchronize { @started = true }
+    end
+
+    def writer_for(&write)
+      SseWriter.new(
+        lambda { |chunk|
+          raise IOError, "client disconnected" if closed?
+
+          write.call(chunk)
+        },
+        on_disconnect: method(:handle_client_disconnect)
+      )
+    end
+
+    def handle_client_disconnect
+      close
+      @on_disconnect&.call
     end
   end
 end

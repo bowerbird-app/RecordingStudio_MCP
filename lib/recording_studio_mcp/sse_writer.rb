@@ -52,20 +52,25 @@ module RecordingStudioMcp
     end
 
     def emit(chunk)
-      notify_disconnect = false
-      @mutex.synchronize do
-        return if @closed
-
-        write_chunk(chunk)
-      rescue *DISCONNECT_ERRORS
-        notify_disconnect = !@disconnected
-        @disconnected = true
-        @closed = true
-      end
+      notify_disconnect = write_or_disconnect(chunk)
       return unless notify_disconnect
 
       @on_disconnect&.call
       close_output
+    end
+
+    def write_or_disconnect(chunk)
+      @mutex.synchronize do
+        return false if @closed
+
+        write_chunk(chunk)
+        false
+      rescue *DISCONNECT_ERRORS
+        first = !@disconnected
+        @disconnected = true
+        @closed = true
+        first
+      end
     end
 
     def write_chunk(chunk)

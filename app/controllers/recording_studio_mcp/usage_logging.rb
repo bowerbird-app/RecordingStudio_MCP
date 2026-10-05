@@ -25,17 +25,18 @@ module RecordingStudioMcp
       return if @mcp_stream_usage_recorded
 
       @mcp_stream_usage_recorded = true
+      UsageRecorder.record!(stream_usage_call(payload, api_client_id, result, disconnected))
+    end
+
+    def stream_usage_call(payload, api_client_id, result, disconnected)
       started = @mcp_usage_started || Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      body = stream_usage_body(result, disconnected: disconnected)
-      UsageRecorder.record!(
-        UsageCall.new(
-          request_payload: payload,
-          response_body: body,
-          status: 200,
-          duration_ms: elapsed_milliseconds(started),
-          rate_limited: rate_limited_call?,
-          api_client_id: api_client_id
-        )
+      UsageCall.new(
+        request_payload: payload,
+        response_body: stream_usage_body(result, disconnected: disconnected),
+        status: 200,
+        duration_ms: elapsed_milliseconds(started),
+        rate_limited: rate_limited_call?,
+        api_client_id: api_client_id
       )
     end
 

@@ -116,7 +116,7 @@ class RequestContextTest < Minitest::Test
     first.progress(current: 1)
     second.progress(current: 9)
 
-    assert_equal ["a"], first_sender.payloads.map { |payload| payload.dig(:params, :progressToken) }
-    assert_equal ["b"], second_sender.payloads.map { |payload| payload.dig(:params, :progressToken) }
+    assert_equal(["a"], first_sender.payloads.map { |payload| payload.dig(:params, :progressToken) })
+    assert_equal(["b"], second_sender.payloads.map { |payload| payload.dig(:params, :progressToken) })
   end
 end

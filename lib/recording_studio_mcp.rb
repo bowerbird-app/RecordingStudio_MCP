@@ -22,6 +22,7 @@ require "recording_studio_mcp/sse_writer"
 require "recording_studio_mcp/sse_stream_body"
 require "recording_studio_mcp/request_context"
 require "recording_studio_mcp/stream_decision"
+require "recording_studio_mcp/streamed_call"
 require "recording_studio_mcp/dispatcher"
 require "recording_studio_mcp/protocol"
 require "recording_studio_mcp/usage_call"
@@ -51,7 +52,7 @@ module RecordingStudioMcp
     end
 
     def register_host_tool(**attributes)
-      configuration.replace_host_tool(HostTool.new(**attributes))
+      configuration.replace_host_tool(HostTool.new(attributes))
     end
 
     def exposed_skills(access_grant:)

@@ -35,53 +35,40 @@ module RecordingStudioMcp
     def stream_mcp(request_context)
       @mcp_stream = true
       assign_sse_headers
+      self.response_body = stream_body_for(request_context)
+    end
+
+    def stream_body_for(request_context)
       payload = jsonrpc_payload
       api_client_id = current_api_client&.id
-      access_grant = @access_grant
-      raw_payload = request_payload
-      idempotency_key = request.headers["Idempotency-Key"].presence
-
-      self.response_body = SseStreamBody.new(
+      call = streamed_call_for(request_context)
+      SseStreamBody.new(
         on_disconnect: -> { request_context.disconnect! },
         on_abort: -> { record_stream_usage(payload, api_client_id, nil, disconnected: true) },
-        on_run: lambda do |writer|
-          run_sse_call(
-            request_context: request_context,
-            writer: writer,
-            payload: payload,
-            api_client_id: api_client_id,
-            access_grant: access_grant,
-            raw_payload: raw_payload,
-            idempotency_key: idempotency_key
-          )
-        end
+        on_run: ->(writer) { finish_stream(call, writer, payload, api_client_id) }
       )
     end
 
-    def run_sse_call(request_context:, writer:, payload:, api_client_id:, access_grant:, raw_payload:,
-                     idempotency_key:)
-      request_context.attach_sender(writer)
+    def streamed_call_for(request_context)
+      StreamedCall.new(
+        request_context: request_context,
+        access_grant: @access_grant,
+        raw_payload: request_payload,
+        idempotency_key: request.headers["Idempotency-Key"].presence
+      )
+    end
+
+    def finish_stream(call, writer, payload, api_client_id)
       release_idle_database_connections
       result = nil
-      begin
-        result = Protocol.handle(
-          raw_payload,
-          access_grant: access_grant,
-          idempotency_key: idempotency_key,
-          request_context: request_context
-        )
-        if result.body && !request_context.disconnected? && !writer.disconnected?
-          writer.write_json(result.body)
-        end
-      ensure
-        request_context.complete!
-        record_stream_usage(
-          payload,
-          api_client_id,
-          result,
-          disconnected: request_context.disconnected? || writer.disconnected?
-        )
-      end
+      result = call.perform(writer)
+    ensure
+      record_stream_usage(
+        payload,
+        api_client_id,
+        result,
+        disconnected: call.disconnected?(writer)
+      )
     end
 
     def dispatch_protocol(request_context)

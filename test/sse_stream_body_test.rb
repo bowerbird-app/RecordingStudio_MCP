@@ -4,18 +4,16 @@ require "test_helper"
 
 class SseStreamBodyTest < Minitest::Test
   def test_each_yields_chunks_then_closes_the_writer
-    yielded = []
     body = RecordingStudioMcp::SseStreamBody.new(
       on_run: lambda do |writer|
         writer.write_json({ n: 1 })
         writer.write_json({ n: 2 })
       end
     )
-
-    body.each { |chunk| yielded << chunk }
+    yielded = body.each.to_a
 
     assert_equal 2, yielded.length
-    assert yielded.all? { |chunk| chunk.start_with?("event: message\n") }
+    assert(yielded.all? { |chunk| chunk.start_with?("event: message\n") })
   end
 
   def test_close_before_each_runs_abort_and_skips_work
