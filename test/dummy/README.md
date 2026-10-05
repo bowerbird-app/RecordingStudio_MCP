@@ -8,12 +8,15 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - Oauth + API + MCP stacked like a real host
 - Seed MCP App as a public PKCE OauthClient
 - Studio Workspace starts Connected
-- Site name `Studio` through Site settings
+- Site name `Studio` from Site settings
 - MCP URL at `/recording_studio_mcp`
 - Dummy-only `/docs/mcp` (mentions `describe`)
+- Dummy-only `demo_progress` MCP tool (progress notifications under Puma)
 - Signed-in “Try MCP” / “Sample POST” on `/docs/mcp` (local/dev/test only) mint a real `rsoauth_at_…` token, probe MCP, then POST `/recording_studio_mcp` so the grant resolves over HTTP
 
 Token URL stays on the API engine. MCP authenticates `rsoauth_at_` tokens through Oauth's TokenAuthenticator. The same token works with MCP and the named API on purpose; both resolve the same AccessGrant.
+
+Progress streams only for `tools/call` with a string/integer `params._meta.progressToken` and `Accept: text/event-stream`. Run the dummy with Puma (`bin/rails server` / `bin/dev`), not a buffering proxy, and probe with `curl -N`. See the gem README.
 
 ## Quick start
 

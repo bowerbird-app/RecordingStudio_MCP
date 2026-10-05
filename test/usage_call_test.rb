@@ -128,6 +128,21 @@ class UsageCallTest < Minitest::Test
     assert_equal uri, payload.fetch(:subject_name)
   end
 
+  def test_disconnected_stream_outcome_is_failed_without_storing_payloads
+    payload = attributes(
+      request_payload: { "method" => "tools/call", "params" => { "name" => "demo_progress" } },
+      response_body: { "error" => { "code" => "disconnected" } },
+      status: 200,
+      duration_ms: 40,
+      rate_limited: false,
+      api_client_id: "client-2"
+    )
+
+    assert payload.fetch(:failed)
+    assert_equal "demo_progress", payload.fetch(:subject_name)
+    assert_equal 200, payload.fetch(:status_code)
+  end
+
   def test_a_tool_name_is_truncated
     payload = attributes(
       request_payload: { "method" => "tools/call", "params" => { "name" => "n" * 300 } },

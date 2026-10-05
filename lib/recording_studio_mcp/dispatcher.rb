@@ -12,13 +12,18 @@ module RecordingStudioMcp
     }.freeze
     WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
 
-    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil)
-      new(access_grant: access_grant, idempotency_key: idempotency_key).call(tool_name, arguments)
+    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil, request_context: nil)
+      new(
+        access_grant: access_grant,
+        idempotency_key: idempotency_key,
+        request_context: request_context
+      ).call(tool_name, arguments)
     end
 
-    def initialize(access_grant:, idempotency_key: nil)
+    def initialize(access_grant:, idempotency_key: nil, request_context: nil)
       @access_grant = access_grant
       @idempotency_key = idempotency_key
+      @request_context = request_context
       @surface = ToolSurface.for(access_grant: access_grant)
       @catalog = @surface.catalog
     end
@@ -28,7 +33,9 @@ module RecordingStudioMcp
       args = stringify_keys(arguments)
       return error_result(unknown_tool_message(name)) unless surface.known?(name)
 
-      if surface.tree_tool?(name)
+      if surface.host_tool?(name)
+        dispatch_host_tool(surface.host_tool_for(name), args)
+      elsif surface.tree_tool?(name)
         dispatch_tree(name, args)
       else
         dispatch_endpoint(surface.endpoint_for(name), args)
@@ -43,7 +50,12 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant, :idempotency_key, :catalog, :surface
+    attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface
+
+    def dispatch_host_tool(host_tool, args)
+      result = host_tool.handler.call(request_context, args)
+      success_result(result)
+    end
 
     def dispatch_tree(name, args)
       case name

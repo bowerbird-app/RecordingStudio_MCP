@@ -46,6 +46,23 @@ class ToolSurfaceTest < Minitest::Test
     end
   end
 
+  def test_host_tools_are_listed_and_read_only
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_host_tool(
+        name: "demo_progress",
+        title: "Demo progress",
+        description: "test",
+        handler: ->(_context, _args) { { ok: true } }
+      )
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal true, surface.host_tool?("demo_progress")
+      assert_includes surface.tool_names, "demo_progress"
+      assert_equal true, surface.read_only_tool?("demo_progress")
+      assert_equal "demo_progress", surface.tool_definitions.last[:name]
+    end
+  end
+
   def test_endpoint_name_collision_raises
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(

@@ -12,17 +12,22 @@ module RecordingStudioMcp
 
     Result = Struct.new(:status, :body, :notification, keyword_init: true)
 
-    def self.handle(payload, access_grant:, idempotency_key: nil)
-      new(access_grant: access_grant, idempotency_key: idempotency_key).handle(payload)
+    def self.handle(payload, access_grant:, idempotency_key: nil, request_context: nil)
+      new(
+        access_grant: access_grant,
+        idempotency_key: idempotency_key,
+        request_context: request_context
+      ).handle(payload)
     end
 
     def self.server_info
       { name: SERVER_NAME, version: RecordingStudioMcp::VERSION }
     end
 
-    def initialize(access_grant:, idempotency_key: nil)
+    def initialize(access_grant:, idempotency_key: nil, request_context: nil)
       @access_grant = access_grant
       @idempotency_key = idempotency_key
+      @request_context = request_context
     end
 
     def handle(payload)
@@ -37,7 +42,7 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant, :idempotency_key
+    attr_reader :access_grant, :idempotency_key, :request_context
 
     def parse(payload)
       return payload if payload.is_a?(Hash)
@@ -127,7 +132,8 @@ module RecordingStudioMcp
         tool_name: name,
         arguments: arguments,
         access_grant: access_grant,
-        idempotency_key: idempotency_key
+        idempotency_key: idempotency_key,
+        request_context: request_context
       )
     end
 

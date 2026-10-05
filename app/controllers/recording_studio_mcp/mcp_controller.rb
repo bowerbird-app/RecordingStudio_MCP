@@ -13,17 +13,117 @@ module RecordingStudioMcp
     def handle
       return head :method_not_allowed unless request.post?
 
-      result = Protocol.handle(
-        request_payload,
-        access_grant: @access_grant,
-        idempotency_key: request.headers["Idempotency-Key"].presence
-      )
+      request_context = build_request_context
+      return stream_mcp(request_context) if stream_tool_call?(request_context)
+
+      result = dispatch_protocol(request_context)
       return head :accepted if result.notification && result.body.nil?
 
       render json: result.body, status: result.status
     end
 
     private
+
+    def stream_tool_call?(request_context)
+      StreamDecision.stream?(
+        method_name: jsonrpc_method,
+        params: jsonrpc_params,
+        accept_header: request.headers["Accept"]
+      ) && request_context.progress_token
+    end
+
+    def stream_mcp(request_context)
+      @mcp_stream = true
+      assign_sse_headers
+      payload = jsonrpc_payload
+      api_client_id = current_api_client&.id
+      access_grant = @access_grant
+      raw_payload = request_payload
+      idempotency_key = request.headers["Idempotency-Key"].presence
+
+      self.response_body = SseStreamBody.new(
+        on_disconnect: -> { request_context.disconnect! },
+        on_abort: -> { record_stream_usage(payload, api_client_id, nil, disconnected: true) },
+        on_run: lambda do |writer|
+          run_sse_call(
+            request_context: request_context,
+            writer: writer,
+            payload: payload,
+            api_client_id: api_client_id,
+            access_grant: access_grant,
+            raw_payload: raw_payload,
+            idempotency_key: idempotency_key
+          )
+        end
+      )
+    end
+
+    def run_sse_call(request_context:, writer:, payload:, api_client_id:, access_grant:, raw_payload:,
+                     idempotency_key:)
+      request_context.attach_sender(writer)
+      release_idle_database_connections
+      result = nil
+      begin
+        result = Protocol.handle(
+          raw_payload,
+          access_grant: access_grant,
+          idempotency_key: idempotency_key,
+          request_context: request_context
+        )
+        if result.body && !request_context.disconnected? && !writer.disconnected?
+          writer.write_json(result.body)
+        end
+      ensure
+        request_context.complete!
+        record_stream_usage(
+          payload,
+          api_client_id,
+          result,
+          disconnected: request_context.disconnected? || writer.disconnected?
+        )
+      end
+    end
+
+    def dispatch_protocol(request_context)
+      Protocol.handle(
+        request_payload,
+        access_grant: @access_grant,
+        idempotency_key: request.headers["Idempotency-Key"].presence,
+        request_context: request_context
+      )
+    end
+
+    def build_request_context
+      RequestContext.new(
+        request_id: jsonrpc_payload["id"],
+        protocol_version: effective_protocol_version,
+        access_grant: @access_grant,
+        progress_token: StreamDecision.progress_token(jsonrpc_params)
+      )
+    end
+
+    def jsonrpc_params
+      params = jsonrpc_payload["params"]
+      params.is_a?(Hash) ? params : {}
+    end
+
+    def assign_sse_headers
+      response.status = 200
+      response.headers["Content-Type"] = "text/event-stream"
+      response.headers["Cache-Control"] = "no-cache, no-store"
+      response.headers["Connection"] = "keep-alive"
+      response.headers["X-Accel-Buffering"] = "no"
+      response.headers["Last-Modified"] = Time.now.httpdate
+      response.headers.delete("Content-Length")
+    end
+
+    def release_idle_database_connections
+      return unless defined?(ActiveRecord::Base)
+
+      ActiveRecord::Base.connection_handler.clear_active_connections!(:all)
+    rescue StandardError
+      nil
+    end
 
     def ensure_api_access_enabled!
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
@@ -101,10 +201,7 @@ module RecordingStudioMcp
     end
 
     def jsonrpc_tool_name
-      params = jsonrpc_payload["params"]
-      return "" unless params.is_a?(Hash)
-
-      params["name"].to_s
+      jsonrpc_params["name"].to_s
     end
 
     def jsonrpc_payload

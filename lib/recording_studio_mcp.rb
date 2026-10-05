@@ -16,7 +16,12 @@ require "recording_studio_mcp/field_schema"
 require "recording_studio_mcp/catalog"
 require "recording_studio_mcp/endpoint_schema"
 require "recording_studio_mcp/tools"
+require "recording_studio_mcp/host_tool"
 require "recording_studio_mcp/tool_surface"
+require "recording_studio_mcp/sse_writer"
+require "recording_studio_mcp/sse_stream_body"
+require "recording_studio_mcp/request_context"
+require "recording_studio_mcp/stream_decision"
 require "recording_studio_mcp/dispatcher"
 require "recording_studio_mcp/protocol"
 require "recording_studio_mcp/usage_call"
@@ -43,6 +48,10 @@ module RecordingStudioMcp
       registration = skill_registration(name, path, available_if)
       configuration.update_skill_catalog { |catalog| catalog.add(registration) }
       registration
+    end
+
+    def register_host_tool(**attributes)
+      configuration.replace_host_tool(HostTool.new(**attributes))
     end
 
     def exposed_skills(access_grant:)
