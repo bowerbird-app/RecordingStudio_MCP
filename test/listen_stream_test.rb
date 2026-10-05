@@ -49,6 +49,41 @@ class ListenStreamTest < Minitest::Test
     end
   end
 
+  def test_recording_card_falls_back_when_labels_fail
+    recordable = Object.new
+    recording = Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
+                      .new(3, "Page", recordable, nil, 1)
+    RecordingStudio.stub(:recordable_name, ->(*) { raise "nope" }) do
+      card = RecordingStudioMcp::RecordingCard.new(recording)
+      assert_equal "Page", card.name
+    end
+
+    titled = Struct.new(:title).new("Fallback")
+    named = RecordingStudioMcp::RecordingCard.new(
+      Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
+        .new(4, "Page", titled, nil, 1)
+    )
+    RecordingStudio.stub(:recordable_name, ->(*) {}) do
+      assert_equal "Fallback", named.title
+    end
+  end
+
+  def test_notify_marks_finished_when_the_writer_disconnects
+    connection = RecordingStudioMcp::Connections.open(
+      protocol_version: "2025-06-18",
+      access_grant: Object.new
+    )
+    sender = Object.new
+    sender.define_singleton_method(:write_json) { |_| raise IOError, "broken" }
+    sender.define_singleton_method(:disconnected?) { false }
+    sender.define_singleton_method(:closed?) { false }
+    connection.attach_sender(sender)
+    connection.subscribe("recording://3")
+
+    refute connection.notify_updated("recording://3")
+    assert connection.finished?
+  end
+
   def test_legacy_updates_omit_subscription_id
     connection = RecordingStudioMcp::Connections.open(
       protocol_version: "2025-06-18",
@@ -60,6 +95,38 @@ class ListenStreamTest < Minitest::Test
     connection.notify_updated("recording://3")
 
     refute sender.payloads.first[:params].key?(:_meta)
+  end
+
+  def test_listen_stream_acknowledges_then_stops_on_finish
+    grant = Object.new
+    connection = RecordingStudioMcp::Connections.open(
+      protocol_version: "2026-07-28",
+      access_grant: grant,
+      subscription_id: 9
+    )
+    connection.subscribe("recording://2")
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 9,
+      protocol_version: "2026-07-28",
+      access_grant: grant
+    )
+    io = StringIO.new
+    writer = RecordingStudioMcp::SseWriter.new(io)
+    stream = RecordingStudioMcp::ListenStream.new(
+      connection: connection,
+      request_context: context,
+      write_ack: true
+    )
+
+    thread = Thread.new { stream.perform(writer) }
+    sleep 0.05
+    connection.finish!
+    thread.join(2)
+
+    frames = io.string
+    assert_includes frames, "notifications/subscriptions/acknowledged"
+    assert connection.finished?
+    assert_nil RecordingStudioMcp::Connections.fetch(connection.id)
   end
 
   def test_disconnect_drops_the_in_memory_connection

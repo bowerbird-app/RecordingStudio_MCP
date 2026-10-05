@@ -114,6 +114,19 @@ class UsageCallTest < Minitest::Test
     assert_equal "", payload.fetch(:subject_name)
   end
 
+  def test_listen_subject_is_listen
+    payload = attributes(
+      request_payload: { "method" => "subscriptions/listen", "params" => {} },
+      response_body: {},
+      status: 200,
+      duration_ms: 9,
+      rate_limited: false,
+      api_client_id: nil
+    )
+
+    assert_equal "listen", payload.fetch(:subject_name)
+  end
+
   def test_a_resource_uri_that_is_not_a_skill_is_stored_as_given
     uri = "https://example.test/notes"
     payload = attributes(

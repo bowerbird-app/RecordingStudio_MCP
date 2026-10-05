@@ -69,6 +69,17 @@ class NotifierTest < Minitest::Test
     end
   end
 
+  def test_event_without_a_recording_is_ignored
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      event = Object.new
+      event.define_singleton_method(:recording) { nil }
+      event.define_singleton_method(:recording_id) { 7 }
+
+      RecordingStudioMcp::Notifier.recording_saved(event)
+    end
+  end
+
   def test_lost_access_does_not_notify
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")

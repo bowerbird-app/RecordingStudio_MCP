@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "tmpdir"
 
 class ResourcesTest < Minitest::Test
   FakeGrant = Struct.new(:recordings) do
@@ -50,6 +51,33 @@ class ResourcesTest < Minitest::Test
 
     assert_instance_of RecordingStudioMcp::Resources::NotFound, answer
     refute RecordingStudioMcp::Resources.accessible?(grant, "recording://99")
+  end
+
+  def test_list_includes_exposed_skills
+    with_isolated_mcp_configuration do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "SKILL.md")
+        File.write(path, <<~MD)
+          ---
+          name: desk-notes
+          description: Notes.
+          ---
+          Hi
+        MD
+        RecordingStudioMcp.register_skill("desk-notes", path: path)
+        grant = FakeGrant.new(FakeScope.new([]))
+        listed = RecordingStudioMcp::Resources.list(access_grant: grant)
+
+        assert_equal "skill://desk-notes/SKILL.md", listed.payload[:resources].first[:uri]
+      end
+    end
+  end
+
+  def test_list_is_empty_when_the_grant_has_no_scope
+    grant = Object.new
+    listed = RecordingStudioMcp::Resources.list(access_grant: grant)
+
+    assert_equal [], listed.payload[:resources]
   end
 
   def test_unknown_uris_are_invalid

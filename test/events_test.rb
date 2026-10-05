@@ -20,6 +20,15 @@ class EventsTest < Minitest::Test
     end
   end
 
+  def test_event_catalog_is_enumerable
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      names = RecordingStudioMcp.configuration.event_catalog.map(&:name)
+
+      assert_equal ["recording updated"], names
+    end
+  end
+
   def test_invalid_event_names_are_rejected
     with_isolated_mcp_configuration do
       assert_raises(ArgumentError) { RecordingStudioMcp.register_event("RecordingUpdated") }
