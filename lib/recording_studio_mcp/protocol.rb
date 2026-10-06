@@ -106,6 +106,8 @@ module RecordingStudioMcp
           unsubscribe_resource(params, id)
         when "subscriptions/listen"
           listen_subscriptions(params, id)
+        when "events/list", "events/subscribe", "events/unsubscribe"
+          events_result(method_name, params, id)
         else
           return rpc_error(id, METHOD_NOT_FOUND, "Method not found")
         end
@@ -157,11 +159,13 @@ module RecordingStudioMcp
     end
 
     def server_capabilities
-      {
+      capabilities = {
         tools: { listChanged: false },
         resources: resources_capability,
         extensions: { "io.modelcontextprotocol/skills" => {} }
       }
+      capabilities[:events] = {} if RecordingStudioMcp.configuration.events_enabled
+      capabilities
     end
 
     def resources_capability
@@ -278,6 +282,29 @@ module RecordingStudioMcp
         listen: true,
         listen_connection: connection
       )
+    end
+
+    def events_result(method_name, params, id)
+      return rpc_error(id, METHOD_NOT_FOUND, "Method not found") unless RecordingStudioMcp.configuration.events_enabled
+
+      answer =
+        case method_name
+        when "events/list"
+          EventRpc.list(params: params, protocol_version: request_protocol_version)
+        when "events/subscribe"
+          EventRpc.subscribe(params: params, access_grant: access_grant, protocol_version: request_protocol_version)
+        else
+          EventRpc.unsubscribe(params: params, access_grant: access_grant)
+        end
+
+      case answer
+      when EventRpc::Error
+        rpc_error(id, answer.code, answer.message, data: answer.data)
+      when EventRpc::Answer
+        answer.payload
+      else
+        raise TypeError, "unexpected events answer"
+      end
     end
 
     def subscribe_enabled?

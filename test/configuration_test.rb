@@ -25,6 +25,11 @@ class ConfigurationTest < Minitest::Test
     assert_includes @configuration.to_h.keys, :skill_policy
     assert_nil @configuration.to_h[:instructions_suffix]
     assert_nil @configuration.to_h[:skill_policy]
+    assert_equal false, @configuration.events_enabled
+    assert_equal 24.hours, @configuration.event_subscription_ttl
+    assert_equal 50, @configuration.event_subscriptions_per_principal
+    assert_nil @configuration.event_callback_host_allowed
+    assert_includes @configuration.to_h.keys, :events_enabled
     refute_includes @configuration.to_h.keys, :skill_catalog
     refute_includes @configuration.to_h.keys, :event_catalog
     refute_respond_to @configuration, :skill_catalog=

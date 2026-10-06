@@ -8,6 +8,11 @@ RecordingStudioMcp.configure do |config|
   # config.allowed_origins = ["https://assistant.example"]
   # Optional String or ->(access_grant:) { ... } appended after built-in initialize instructions.
   # config.instructions_suffix = "Prefer list then show before you write."
+  # ChatGPT MCP Events (webhook delivery). Off by default. Generate migrations, migrate, then enable.
+  # config.events_enabled = true
+  # config.event_subscription_ttl = 24.hours
+  # config.event_subscriptions_per_principal = 50
+  # config.event_callback_host_allowed = ->(host) { host.end_with?(".example") }
 end
 
 # Optional. Register events that may notify subscribed MCP clients.

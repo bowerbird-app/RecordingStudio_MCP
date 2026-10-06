@@ -36,6 +36,11 @@ module Dummy
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
+    # Dummy fixture keys for Active Record encryption (event webhook secrets).
+    config.active_record.encryption.primary_key = "dummyPrimaryKeyBytes32charsxx"
+    config.active_record.encryption.deterministic_key = "dummyDeterministicKey32charsxx"
+    config.active_record.encryption.key_derivation_salt = "dummyKeyDerivationSalt32charsx"
+
     # Configure generators to use UUID primary keys
     config.generators do |g|
       g.orm :active_record, primary_key_type: :uuid

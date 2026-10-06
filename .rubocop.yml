@@ -27,11 +27,14 @@ Metrics/ClassLength:
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/connection.rb'
+    - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
 
 Metrics/ModuleLength:
   Exclude:
     - 'lib/recording_studio_mcp/tools.rb'
+    - 'lib/recording_studio_mcp/events.rb'
+    - 'lib/recording_studio_mcp/event_rpc.rb'
 
 Metrics/MethodLength:
   Exclude:
@@ -41,6 +44,15 @@ Metrics/MethodLength:
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/tools.rb'
+    - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp/callback_http.rb'
+    - 'lib/recording_studio_mcp/callback_url.rb'
+    - 'lib/recording_studio_mcp/callback_verifier.rb'
+    - 'lib/recording_studio_mcp/configuration.rb'
+    - 'lib/recording_studio_mcp/webhook_delivery.rb'
+    - 'lib/recording_studio_mcp/webhook_dispatch.rb'
+    - 'lib/recording_studio_mcp/json_object_schema.rb'
+    - 'lib/recording_studio_mcp/events.rb'
 
 Metrics/AbcSize:
   Exclude:
@@ -50,10 +62,26 @@ Metrics/AbcSize:
     - 'lib/recording_studio_mcp/dispatcher.rb'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
+    - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp/callback_http.rb'
+    - 'lib/recording_studio_mcp/callback_url.rb'
+    - 'lib/recording_studio_mcp/webhook_dispatch.rb'
 
 Metrics/CyclomaticComplexity:
   Exclude:
     - 'lib/recording_studio_mcp/protocol.rb'
+    - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp/callback_url.rb'
+    - 'lib/recording_studio_mcp/json_object_schema.rb'
+    - 'lib/recording_studio_mcp/webhook_dispatch.rb'
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - 'lib/recording_studio_mcp/event_rpc.rb'
+
+Metrics/ParameterLists:
+  Exclude:
+    - 'lib/recording_studio_mcp/event_rpc.rb'
 
 # Allow empty blocks in tests (common for stubs/mocks)
 Lint/EmptyBlock:

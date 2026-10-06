@@ -11,6 +11,7 @@ class EventsTest < Minitest::Test
 
       assert_equal "recording updated", registration.name
       assert_equal :recording_updated, registration.trigger
+      assert_equal "recording.updated", registration.webhook.name
       assert RecordingStudioMcp.event_registered?("recording updated")
       assert RecordingStudioMcp.events_registered?
     end
@@ -40,6 +41,7 @@ class EventsTest < Minitest::Test
 
       assert_nil registration.trigger
       refute registration.built_in_save?
+      assert_nil registration.webhook
     end
   end
 
@@ -72,6 +74,32 @@ class EventsTest < Minitest::Test
       names = RecordingStudioMcp.configuration.event_catalog.map(&:name)
 
       assert_equal ["recording updated"], names
+    end
+  end
+
+  def test_hosts_can_register_a_webhook_event_schema
+    with_isolated_mcp_configuration do
+      registration = RecordingStudioMcp.register_event("comment added") do |event|
+        event.webhook_event(
+          "comment.created",
+          description: "A comment was added.",
+          arguments: {
+            "type" => "object",
+            "properties" => { "recording_id" => { "type" => "string" } },
+            "required" => ["recording_id"],
+            "additionalProperties" => false
+          },
+          payload: {
+            "type" => "object",
+            "properties" => { "recording_id" => { "type" => "string" } },
+            "required" => ["recording_id"],
+            "additionalProperties" => false
+          }
+        )
+      end
+
+      assert_equal "comment.created", registration.webhook.name
+      assert_equal ["recording_id"], registration.webhook.arguments_schema["required"]
     end
   end
 

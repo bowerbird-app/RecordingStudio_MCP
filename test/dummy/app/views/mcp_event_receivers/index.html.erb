@@ -1,0 +1,30 @@
+<% dummy_page_nav(title: "Webhook inbox", back_url: root_path) %>
+
+<div class="flex w-full flex-col gap-6">
+  <%= render FlatPack::PageTitle::Component.new(
+    title: "Webhook inbox",
+    subtitle: "Local signed deliveries. Save a page to send recording.updated here.",
+    variant: :h1
+  ) %>
+
+  <% if @deliveries.empty? %>
+    <p class="text-sm leading-6">
+      Nothing in the inbox yet. Subscribe, then save a page.
+    </p>
+  <% else %>
+    <% @deliveries.reverse_each do |delivery| %>
+      <%= render FlatPack::Card::Component.new(style: :default) do |card| %>
+        <% card.header do %>
+          <%= render FlatPack::PageTitle::Component.new(
+            title: delivery.verified ? "Signed delivery" : "Bad signature",
+            variant: :h3,
+            class: "mb-0 pb-0"
+          ) %>
+        <% end %>
+        <% card.body do %>
+          <p class="text-sm leading-6"><%= delivery.body.inspect %></p>
+        <% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

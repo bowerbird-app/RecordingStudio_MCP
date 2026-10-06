@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_011812) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -286,6 +286,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_011812) do
     t.index ["recording_id", "idempotency_key"], name: "index_recording_studio_events_on_recording_and_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["recording_id", "occurred_at", "created_at"], name: "index_rs_events_on_recording_and_timeline", order: { occurred_at: :desc, created_at: :desc }
     t.index ["recording_id"], name: "index_recording_studio_events_on_recording_id"
+  end
+
+  create_table "recording_studio_mcp_event_subscriptions", id: :string, force: :cascade do |t|
+    t.string "owner_principal_id", null: false
+    t.uuid "access_recording_id"
+    t.string "event_name", null: false
+    t.jsonb "arguments", default: {}, null: false
+    t.string "callback_url", null: false
+    t.text "callback_secret", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "last_delivered_at"
+    t.string "last_error"
+    t.integer "failure_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_name", "status"], name: "index_rs_mcp_event_subs_on_event_and_status"
+    t.index ["owner_principal_id"], name: "index_rs_mcp_event_subs_on_owner"
   end
 
   create_table "recording_studio_mcp_usage_daily_metrics", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

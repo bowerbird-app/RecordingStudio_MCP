@@ -19,7 +19,7 @@ class DummySidebarTest < ActionDispatch::IntegrationTest
     Current.actor = nil if defined?(Current)
   end
 
-  test "signed in pages use a FlatPack sidebar with home, pages, try mcp, registered apps, and sign out" do
+  test "signed in pages use a FlatPack sidebar with home, pages, webhook inbox, try mcp, registered apps, and sign out" do
     get root_path
 
     assert_response :success
@@ -28,11 +28,13 @@ class DummySidebarTest < ActionDispatch::IntegrationTest
     assert_select "nav[aria-label='Main navigation']" do
       assert_select "a[href=?]", root_path
       assert_select "a[href=?]", pages_path
+      assert_select "a[href=?]", mcp_event_receiver_path
       assert_select "a[href=?]", docs_mcp_path
       assert_select "a[href=?]", "/admin/screens/oauth_clients"
     end
     assert_includes response.body, "Home"
     assert_includes response.body, "Pages"
+    assert_includes response.body, "Webhook inbox"
     assert_includes response.body, "Try MCP"
     assert_includes response.body, "Registered apps"
     assert_select "a[href=?][data-turbo-method=?]", destroy_user_session_path, "delete"
