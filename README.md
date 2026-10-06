@@ -24,7 +24,7 @@ RecordingStudioMcp.register_event("comment added")
 RecordingStudioMcp.notify("comment added", recording: comment.recording)
 ```
 
-`register_event("recording updated")` with no block is the built-in trigger for every recordable type. That same registration is the `recording.updated` MCP Event (filter `recording_id`) when `config.events_enabled` is true.
+`register_event("recording updated")` with no block is the built-in trigger for every recordable type. That same registration is the `recording.updated` MCP Event (filter `recording_id`) when `config.events_enabled` is true. In this release only `recording.updated` is fully supported as an MCP Event.
 
 ChatGPT can subscribe with `events/list`, `events/subscribe`, and `events/unsubscribe` on the same authenticated MCP endpoint. Deliveries are signed Standard Webhooks POSTs. SSE progress, `resources/subscribe`, and `notifications/resources/updated` stay as they are. Hosts add more events with `event.webhook_event(name, description:, arguments:, payload:)`.
 
@@ -37,7 +37,7 @@ RecordingStudioMcp.configure do |config|
 end
 ```
 
-Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate` so `recording_studio_mcp_event_subscriptions` exists. Secrets use Active Record encryption.
+Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate` so `recording_studio_mcp_event_subscriptions` exists. Configure Active Record encryption keys before setting `config.events_enabled = true`; callback secrets are encrypted.
 
 Accessible recordings are MCP resources at `recording://{id}`. `resources/list`, `resources/read`, and `resources/templates/list` use the same AccessGrant as tools. Skill files stay on `skill://…` URIs. Subscribe uses the same access check. The update notification carries the URI only.
 
