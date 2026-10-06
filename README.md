@@ -24,7 +24,20 @@ RecordingStudioMcp.register_event("comment added")
 RecordingStudioMcp.notify("comment added", recording: comment.recording)
 ```
 
-`register_event("recording updated")` with no block is the built-in trigger for every recordable type.
+`register_event("recording updated")` with no block is the built-in trigger for every recordable type. That same registration is the `recording.updated` MCP Event (filter `recording_id`) when `config.events_enabled` is true. In this release only `recording.updated` is fully supported as an MCP Event.
+
+ChatGPT can subscribe with `events/list`, `events/subscribe`, and `events/unsubscribe` on the same authenticated MCP endpoint. Deliveries are signed Standard Webhooks POSTs. SSE progress, `resources/subscribe`, and `notifications/resources/updated` stay as they are. Hosts add more events with `event.webhook_event(name, description:, arguments:, payload:)`.
+
+```ruby
+RecordingStudioMcp.configure do |config|
+  config.events_enabled = true
+  # config.event_subscription_ttl = 24.hours
+  # config.event_subscriptions_per_principal = 50
+  # config.event_callback_host_allowed = ->(host) { host.end_with?(".example") }
+end
+```
+
+Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate` so `recording_studio_mcp_event_subscriptions` exists. Configure Active Record encryption keys before setting `config.events_enabled = true`; callback secrets are encrypted.
 
 Accessible recordings are MCP resources at `recording://{id}`. `resources/list`, `resources/read`, and `resources/templates/list` use the same AccessGrant as tools. Skill files stay on `skill://…` URIs. Subscribe uses the same access check. The update notification carries the URI only.
 
@@ -136,7 +149,7 @@ Use `-N` / `--no-buffer`. Set these so frames leave the process as they are writ
 - ngrok: no extra flag. If a TLS proxy buffers, disable proxy buffering for this path.
 - Puma workers/threads: one in-flight streamed call occupies that thread until it ends.
 
-The dummy host registers `demo_progress` through `RecordingStudioApi.register_endpoint` (five delayed steps). That tool is dummy-only, not part of this gem’s production tree. Dummy also registers `recording updated` and `page commented`. **Pages** lists pages the signed-in person can see. Each row has an inline save form (same `revise` path as home **Edit recording**) so a subscribed client gets `notifications/resources/updated`. **Ping watchers** fires the custom event.
+The dummy host registers `demo_progress` through `RecordingStudioApi.register_endpoint` (five delayed steps). That tool is dummy-only, not part of this gem’s production tree. Dummy also registers `recording updated` and `page commented`, and sets `events_enabled`. **Pages** lists pages the signed-in person can see. Each row has an inline save form (same `revise` path as home **Edit recording**) so a subscribed client gets `notifications/resources/updated` and ChatGPT webhook subscribers get `recording.updated`. **Ping watchers** fires the custom SSE event. **Webhook inbox** at `/mcp_event_receiver` is a local signed receiver.
 
 ## Install
 
@@ -221,4 +234,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.7.2
+0.8.0

@@ -9,7 +9,8 @@ module RecordingStudioMcp
     DEFAULT_MCP_MOUNT_PATH = "/recording_studio_mcp"
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
-                  :allowed_origins, :instructions_suffix, :skill_policy
+                  :allowed_origins, :instructions_suffix, :skill_policy, :events_enabled,
+                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
     attr_reader :skill_catalog, :event_catalog
 
     def initialize
@@ -22,6 +23,10 @@ module RecordingStudioMcp
       @skill_catalog = Skills::SkillCatalog.empty
       @event_catalog = Events::Catalog.empty
       @skill_policy = nil
+      @events_enabled = false
+      @event_subscription_ttl = 24.hours
+      @event_subscriptions_per_principal = 50
+      @event_callback_host_allowed = nil
     end
 
     def to_h
@@ -32,7 +37,11 @@ module RecordingStudioMcp
         protocol_version: protocol_version,
         allowed_origins: allowed_origins,
         instructions_suffix: instructions_suffix,
-        skill_policy: skill_policy
+        skill_policy: skill_policy,
+        events_enabled: events_enabled,
+        event_subscription_ttl: event_subscription_ttl,
+        event_subscriptions_per_principal: event_subscriptions_per_principal,
+        event_callback_host_allowed: event_callback_host_allowed
       }
     end
 

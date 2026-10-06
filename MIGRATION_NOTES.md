@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.0`.
 
+## 0.8.0
+
+ChatGPT MCP Events (webhook delivery). Generate MCP migrations and migrate (`recording_studio_mcp_event_subscriptions`). Set `config.events_enabled = true`. The first event is `recording.updated` from the existing `register_event("recording updated")` catalog. Optional: `event_subscription_ttl`, `event_subscriptions_per_principal`, `event_callback_host_allowed`. SSE progress and resource notifications stay as they are.
+
 ## 0.7.2
 
 Pin API `v0.6.1` and Oauth `v0.6.0`. MCP no longer defines `RecordingStudio::Access.roles`; API 0.6.1 ranks grants through `AccessRoles`. Dummy sets Oauth `config.allow_self_registered_apps = true` so MCP Inspector can register. Hosts that want the same run Oauth migrations and set that flag. Keep `draw_origin_well_known`.

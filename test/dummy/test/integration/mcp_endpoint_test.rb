@@ -424,6 +424,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_equal false, discover.dig("capabilities", "tools", "listChanged")
     assert_equal true, discover.dig("capabilities", "resources", "subscribe")
     assert_equal({}, discover.dig("capabilities", "extensions", "io.modelcontextprotocol/skills"))
+    assert_equal({}, discover.dig("capabilities", "events"))
     assert discover.fetch("instructions").present?
     assert_equal 0, discover.fetch("ttlMs")
     assert_equal "private", discover.fetch("cacheScope")

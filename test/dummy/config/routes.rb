@@ -35,6 +35,8 @@ Rails.application.routes.draw do
   resources :pages, only: %i[index update] do
     post :comment, on: :member
   end
+  get "mcp_event_receiver", to: "mcp_event_receivers#index", as: :mcp_event_receiver
+  post "mcp_event_receiver", to: "mcp_event_callbacks#create"
 
   root "home#index"
 end

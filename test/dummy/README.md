@@ -12,10 +12,11 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - MCP URL at `/recording_studio_mcp`
 - Dummy-only `/docs/mcp` (mentions `describe`)
 - Dummy-only `demo_progress` MCP tool (`RecordingStudioApi.register_endpoint`, progress under Puma)
-- Dummy registers `recording updated` and `page commented`
-- `/pages` lists pages the signed-in person can see, each with an inline save form; **Ping watchers** fires the custom event
+- Dummy registers `recording updated` and `page commented`, and enables MCP Events
+- `/pages` lists pages the signed-in person can see, each with an inline save form; **Ping watchers** fires the custom event; saving also fires `recording.updated` webhooks
+- `/mcp_event_receiver` is a local signed webhook inbox
 - Home still has an **Edit recording** button that saves a page so a subscribed client is notified
-- Signed-in FlatPack sidebar: Home, Pages, Try MCP, Oauth registered apps, Sign out
+- Signed-in FlatPack sidebar: Home, Pages, Webhook inbox, Try MCP, Oauth registered apps, Sign out
 - Oauth registered apps at `/admin/screens/oauth_clients` (Oauth gem admin UI; lists DCR clients too)
 - Dummy Oauth sets `config.allow_self_registered_apps = true` so MCP Inspector can RFC 7591 register after RFC 8414 discovery
 - Signed-in “Try MCP” / “Sample POST” on `/docs/mcp` (local/dev/test only) mint a real `rsoauth_at_…` token, probe MCP, then POST `/recording_studio_mcp` so the grant resolves over HTTP
@@ -39,6 +40,7 @@ Open port 3000. Sign in with `admin@admin.com` / `Password`.
 
 - `/` dummy home
 - `/pages` pages the signed-in person can edit
+- `/mcp_event_receiver` local signed webhook inbox
 - `/docs/mcp` Try MCP
 - `/admin/screens/oauth_clients` Oauth registered apps (switch to Admin first)
 - `/recording_studio_mcp` MCP endpoint
