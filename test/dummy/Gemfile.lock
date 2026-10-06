@@ -8,10 +8,10 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: a07cf0e9a2fab76c17b2ef9acc5294a069de4f4b
-  tag: v0.5.6
+  revision: a7b57430facb9accfc30e5eda7489aac22560e56
+  tag: v0.6.0
   specs:
-    recording_studio_oauth (0.5.6)
+    recording_studio_oauth (0.6.0)
       flat_pack (~> 0.1.144)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
@@ -41,13 +41,13 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: 91cd1e328032af27361f5384b54209300d434fb3
-  tag: v0.6.0
+  revision: c2e45b57285bf767082a3a981537e268d027a1ee
+  tag: v0.6.1
   specs:
-    recording_studio_api (0.6.0)
+    recording_studio_api (0.6.1)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
-      recording_studio_accessible (~> 0.9)
+      recording_studio_accessible (~> 0.11)
       redis (~> 5.3)
 
 GIT
@@ -98,12 +98,12 @@ GIT
 PATH
   remote: ../..
   specs:
-    recording_studio_mcp (0.7.1)
+    recording_studio_mcp (0.7.2)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (~> 0.6)
-      recording_studio_oauth (>= 0.2.0)
+      recording_studio_api (~> 0.6.1)
+      recording_studio_oauth (~> 0.6)
 
 GEM
   remote: https://rubygems.org/
@@ -389,7 +389,7 @@ GEM
       tsort
     redis (5.4.1)
       redis-client (>= 0.22.0)
-    redis-client (0.30.1)
+    redis-client (0.31.0)
       connection_pool
     regexp_parser (2.11.3)
     reline (0.7.0)
@@ -665,14 +665,14 @@ CHECKSUMS
   recording_studio (4.2.1)
   recording_studio_accessible (0.11.0)
   recording_studio_admin (2.0.2)
-  recording_studio_api (0.6.0)
+  recording_studio_api (0.6.1)
   recording_studio_attachable (0.7.0)
-  recording_studio_mcp (0.7.1)
-  recording_studio_oauth (0.5.6)
+  recording_studio_mcp (0.7.2)
+  recording_studio_oauth (0.6.0)
   recording_studio_root_switchable (0.5.1)
   recording_studio_site_settings (0.1.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae
-  redis-client (0.30.1) sha256=5151bc5c7bbfe48623732cdae3b900d8a22dc691cc7cdfacfb351ac55116522d
+  redis-client (0.31.0) sha256=6820cb2a21e6795a823141f50fd25e655de2b8dc8ff833b43509a27b0263fd75
   regexp_parser (2.11.3) sha256=ca13f381a173b7a93450e53459075c9b76a10433caadcb2f1180f2c741fc55a4
   reline (0.7.0) sha256=5b012d8e55dbf9d450f12bde2cf7d15ff546ae80b3f8f3b30e570d431815583d
   responders (3.2.0) sha256=89c2d6ac0ae16f6458a11524cae4a8efdceba1a3baea164d28ee9046bd3df55a

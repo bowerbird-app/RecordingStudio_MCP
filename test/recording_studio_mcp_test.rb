@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_7_1
-    assert_equal "0.7.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_7_2
+    assert_equal "0.7.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -16,8 +16,8 @@ class RecordingStudioMcpTest < Minitest::Test
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", "~> 0.6"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", ">= 0.2.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", "~> 0.6.1"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", "~> 0.6"'
     refute_includes gemspec, "recording_studio_users"
     refute_includes gemspec, "doorkeeper"
     refute_includes gemspec, "omniauth"
@@ -66,8 +66,8 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.2.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.11.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.4"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.5.6"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.1"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.6.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.7.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.5.3"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.3"'
@@ -84,13 +84,14 @@ class RecordingStudioMcpTest < Minitest::Test
     refute File.exist?(File.expand_path("../lib/recording_studio_mcp/host_tool.rb", __dir__))
     refute File.exist?(File.expand_path("../script/relax_oauth_api_pin.rb", __dir__))
     refute File.exist?(File.expand_path("../lib/recording_studio_mcp/services/base_service.rb", __dir__))
+    refute RecordingStudioMcp::Engine.respond_to?(:expose_access_roles_map)
   end
 
   def test_product_readme_is_not_the_template
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "0.7.1"
+    assert_includes readme, "0.7.2"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."

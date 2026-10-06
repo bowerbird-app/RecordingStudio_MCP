@@ -17,6 +17,7 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - Home still has an **Edit recording** button that saves a page so a subscribed client is notified
 - Signed-in FlatPack sidebar: Home, Pages, Try MCP, Oauth registered apps, Sign out
 - Oauth registered apps at `/admin/screens/oauth_clients` (Oauth gem admin UI; lists DCR clients too)
+- Dummy Oauth sets `config.allow_self_registered_apps = true` so MCP Inspector can RFC 7591 register after RFC 8414 discovery
 - Signed-in “Try MCP” / “Sample POST” on `/docs/mcp` (local/dev/test only) mint a real `rsoauth_at_…` token, probe MCP, then POST `/recording_studio_mcp` so the grant resolves over HTTP
 
 Token URL stays on the API engine. MCP authenticates `rsoauth_at_` tokens through Oauth's TokenAuthenticator. The same token works with MCP and the named API on purpose; both resolve the same AccessGrant.
@@ -47,6 +48,8 @@ Open port 3000. Sign in with `admin@admin.com` / `Password`.
 - `/.well-known/oauth-protected-resource/recording_studio_mcp` MCP metadata
 - `/.well-known/oauth-protected-resource/recording_studio_api/api` API metadata
 - `/recording_studio_oauth/.well-known/oauth-protected-resource` Oauth engine API metadata
+- `/.well-known/oauth-authorization-server/recording_studio_oauth` RFC 8414 path-inserted Oauth metadata
+- `POST /recording_studio_oauth/register` RFC 7591 self-registration (dummy has it on)
 - `/docs/mcp` dummy-only MCP try-it page
 - `POST /docs/mcp/test_token` dummy-only mint + MCP probe (signed in, local only)
 - `POST /docs/mcp/sample_post` dummy-only HTTP sample POST with Bearer (signed in, local only)

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-06
+
+### Changed
+- Pin `recording_studio_oauth` to git tag `v0.6.0` (`~> 0.6`).
+- Pin `recording_studio_api` to git tag `v0.6.1` (`~> 0.6.1`).
+- Remove the temporary `RecordingStudio::Access.roles` shim. API 0.6.1 ranks grants through `AccessRoles` (Accessible 0.11).
+
+### Notes
+- Dummy turns on Oauth self-registered apps (`config.allow_self_registered_apps = true`) so MCP Inspector can RFC 7591 register after RFC 8414 discovery. Hosts stay off until they set the same flag and run Oauth migrations.
+
+### Upgrade notes
+- Bump to `0.7.2`. Pin Oauth `v0.6.0` and API `v0.6.1`.
+- Run `bin/rails generate recording_studio_oauth:migrations` and `bin/rails db:migrate`.
+- To let MCP Inspector self-register, set `config.allow_self_registered_apps = true` in the Oauth initializer. Keep `draw_origin_well_known`.
+
 ## [0.7.1] - 2026-10-05
 
 ### Fixed
@@ -179,7 +194,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.5.0...v0.6.0

@@ -9,4 +9,5 @@ RecordingStudioOauth.configure do |config|
   config.mcp_mount_path = "/recording_studio_mcp"
   config.register_origin_as_protected_resource = false
   config.extra_protected_resource_paths = []
+  config.allow_self_registered_apps = true
 end
