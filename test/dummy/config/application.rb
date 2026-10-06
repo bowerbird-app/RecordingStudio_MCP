@@ -43,5 +43,17 @@ module Dummy
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    # Oauth 0.6.0 appends db/migrate/20261005000001_add_self_registered_apps_*.
+    # Dummy already has 20261005000001_dummy_add_oauth_central_relay_rules.rb.
+    # Keep that dummy filename. The generator copy of self-registered apps lives
+    # at 20261006011812_*. Drop the engine migrate path so versions do not clash.
+    # Oauth creates stay in schema.rb; later Oauth deltas are dummy copies.
+    initializer "dummy.omit_oauth_engine_migrations",
+                after: "recording_studio_oauth.append_migrations" do |app|
+      migrate = app.config.paths["db/migrate"]
+      kept = migrate.to_a.reject { |path| path.to_s.include?("RecordingStudio_Oauth") }
+      migrate.instance_variable_set(:@paths, kept)
+    end
   end
 end

@@ -1,6 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6`. Oauth `v0.5.6`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.0`.
+
+## 0.7.2
+
+Pin API `v0.6.1` and Oauth `v0.6.0`. MCP no longer defines `RecordingStudio::Access.roles`; API 0.6.1 ranks grants through `AccessRoles`. Dummy sets Oauth `config.allow_self_registered_apps = true` so MCP Inspector can register. Hosts that want the same run Oauth migrations and set that flag. Keep `draw_origin_well_known`.
 
 ## 0.7.1
 
@@ -73,8 +77,8 @@ Dummy GitHub tags used to prove Connect then MCP:
 
 - Recording Studio `v4.2.2`
 - Accessible `v0.11.1`
-- API `v0.6.0`
-- Oauth `v0.5.6`
+- API `v0.6.1`
+- Oauth `v0.6.0`
 - Admin `v2.0.4`
 - Site settings `v0.1.3`
 - Attachable `v0.7.1`

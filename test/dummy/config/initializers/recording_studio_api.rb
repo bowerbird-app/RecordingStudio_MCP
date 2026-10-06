@@ -85,15 +85,3 @@ RecordingStudioApi.register_endpoint(
   },
   handler: DemoProgress
 )
-
-# API 0.6 still reads Access.roles. Accessible 0.11 stores role names as strings
-# and no longer defines that map.
-Rails.application.config.to_prepare do
-  next unless defined?(RecordingStudio::Access)
-  next if RecordingStudio::Access.respond_to?(:roles)
-  next unless defined?(RecordingStudio::AccessRoles::ORDER)
-
-  RecordingStudio::Access.define_singleton_method(:roles) do
-    RecordingStudio::AccessRoles::ORDER
-  end
-end
