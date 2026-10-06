@@ -8,7 +8,7 @@ require "net/http"
 class EventRpcTest < Minitest::Test
   FakeRecording = Struct.new(:id, :recordable_type)
   FakeClient = Struct.new(:id)
-  FakeGrant = Struct.new(:api_client, :accessible_recordings)
+  FakeGrant = Struct.new(:api_client, :accessible_recordings, :access_recording)
   Row = Struct.new(
     :id, :owner_principal_id, :access_recording_id, :event_name, :arguments, :callback_url, :callback_secret,
     :status, :expires_at, :last_error, :failure_count, keyword_init: true
@@ -117,6 +117,17 @@ class EventRpcTest < Minitest::Test
         assert second.body.dig(:result, :refreshBefore).present?
         assert_nil second.body.dig(:result, :cursor)
         assert_equal false, second.body.dig(:result, :truncated)
+      end
+    end
+  end
+
+  def test_ttl_ms_caps_granted_expiry
+    with_events do
+      RecordingStudioMcp::CallbackVerifier.stub(:verify!, true) do
+        result = call_subscribe(subscribe_params.merge("ttlMs" => 120_000))
+        refresh = Time.iso8601(result.body.dig(:result, :refreshBefore))
+        assert_operator refresh, :<=, 3.minutes.from_now
+        assert_operator refresh, :>=, 90.seconds.from_now
       end
     end
   end

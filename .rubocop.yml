@@ -35,6 +35,7 @@ Metrics/ModuleLength:
     - 'lib/recording_studio_mcp/tools.rb'
     - 'lib/recording_studio_mcp/events.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp/webhook_dispatch.rb'
 
 Metrics/MethodLength:
   Exclude:
@@ -78,6 +79,7 @@ Metrics/CyclomaticComplexity:
 Metrics/PerceivedComplexity:
   Exclude:
     - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp/webhook_dispatch.rb'
 
 Metrics/ParameterLists:
   Exclude:

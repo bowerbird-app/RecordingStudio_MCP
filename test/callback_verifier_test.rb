@@ -56,4 +56,23 @@ class CallbackVerifierTest < Minitest::Test
       assert_equal :timeout, error.reason
     end
   end
+
+  def test_rejects_non_json_challenge_bodies
+    RecordingStudioMcp::CallbackHttp.stub(:post, lambda { |*|
+      ok = Net::HTTPOK.new("1.1", "200", "OK")
+      ok.instance_variable_set(:@read, true)
+      ok.define_singleton_method(:body) { "not-json" }
+      ok
+    }) do
+      error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+        RecordingStudioMcp::CallbackVerifier.verify!(
+          principal_id: "client-1",
+          url: "https://receiver.example.test/hook",
+          secret: @secret,
+          subscription_id: "sub_1"
+        )
+      end
+      assert_equal :challenge_failed, error.reason
+    end
+  end
 end

@@ -45,6 +45,30 @@ class WebhookSecretTest < Minitest::Test
   end
 end
 
+class JsonObjectSchemaTest < Minitest::Test
+  def test_accepts_typed_values_and_rejects_unknown_types
+    schema = {
+      "type" => "object",
+      "properties" => {
+        "count" => { "type" => "integer" },
+        "ratio" => { "type" => "number" },
+        "on" => { "type" => "boolean" },
+        "nested" => { "type" => "object" },
+        "items" => { "type" => "array" },
+        "open" => {},
+        "weird" => { "type" => "nope" }
+      },
+      "additionalProperties" => false
+    }
+
+    assert RecordingStudioMcp::JsonObjectSchema.valid?(
+      schema,
+      { "count" => 1, "ratio" => 1.5, "on" => true, "nested" => {}, "items" => [], "open" => "x" }
+    )
+    assert_equal "invalid weird", RecordingStudioMcp::JsonObjectSchema.error_for(schema, { "weird" => "x" })
+  end
+end
+
 class CanonicalJsonTest < Minitest::Test
   def test_sorts_object_keys
     dumped = RecordingStudioMcp::CanonicalJson.dump("b" => 1, "a" => 2)
@@ -93,6 +117,61 @@ class CallbackUrlTest < Minitest::Test
       assert_equal :host_not_allowed, error.reason
     end
   end
+
+  def test_resolves_a_public_address
+    Resolv.stub(:getaddresses, ["1.1.1.1"]) do
+      parsed = RecordingStudioMcp::CallbackUrl.resolve!("https://receiver.example.test/hook")
+      assert_equal ["1.1.1.1"], parsed.addresses
+    end
+  end
+
+  def test_rejects_userinfo_and_invalid_urls
+    error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+      RecordingStudioMcp::CallbackUrl.parse!("https://user:pass@receiver.example.test/hook")
+    end
+    assert_equal :invalid_url, error.reason
+
+    error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+      RecordingStudioMcp::CallbackUrl.parse!("::::")
+    end
+    assert_equal :invalid_url, error.reason
+  end
+
+  def test_dns_failure_is_a_callback_error
+    Resolv.stub(:getaddresses, []) do
+      error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+        RecordingStudioMcp::CallbackUrl.resolve!("https://receiver.example.test/hook")
+      end
+      assert_equal :dns_failure, error.reason
+    end
+  end
+
+  def test_resolv_errors_are_dns_failures
+    Resolv.stub(:getaddresses, ->(*) { raise Resolv::ResolvError }) do
+      error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+        RecordingStudioMcp::CallbackUrl.resolve!("https://receiver.example.test/hook")
+      end
+      assert_equal :dns_failure, error.reason
+    end
+  end
+
+  def test_mapped_ipv6_private_addresses_are_blocked
+    Resolv.stub(:getaddresses, ["::ffff:10.0.0.4"]) do
+      error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+        RecordingStudioMcp::CallbackUrl.resolve!("https://receiver.example.test/hook")
+      end
+      assert_equal :private_address, error.reason
+    end
+  end
+
+  def test_invalid_resolved_addresses_are_rejected
+    Resolv.stub(:getaddresses, ["not-an-ip"]) do
+      error = assert_raises(RecordingStudioMcp::CallbackUrl::Error) do
+        RecordingStudioMcp::CallbackUrl.resolve!("https://receiver.example.test/hook")
+      end
+      assert_equal :invalid_url, error.reason
+    end
+  end
 end
 
 class CallbackHttpTest < Minitest::Test
@@ -118,6 +197,32 @@ class CallbackHttpTest < Minitest::Test
           )
         end
         assert_equal :redirect, error.reason
+      end
+    end
+  end
+
+  def test_posts_to_the_resolved_address
+    parsed = RecordingStudioMcp::CallbackUrl::Parsed.new(
+      uri: URI.parse("https://receiver.example.test/hook"),
+      addresses: ["1.1.1.1"]
+    )
+    ok = Net::HTTPOK.new("1.1", "200", "OK")
+    http = Object.new
+    seen = {}
+    %i[ipaddr= hostname= use_ssl= verify_mode= open_timeout= read_timeout= write_timeout= max_retries=].each do |setter|
+      http.define_singleton_method(setter) { |value| seen[setter] = value }
+    end
+    http.define_singleton_method(:request) { |_req| ok }
+
+    RecordingStudioMcp::CallbackUrl.stub(:resolve!, parsed) do
+      Net::HTTP.stub(:new, http) do
+        result = RecordingStudioMcp::CallbackHttp.post(
+          "https://receiver.example.test/hook",
+          body: "{}",
+          headers: { "Content-Type" => "application/json" }
+        )
+        assert_equal ok, result
+        assert_equal "1.1.1.1", seen[:ipaddr=]
       end
     end
   end

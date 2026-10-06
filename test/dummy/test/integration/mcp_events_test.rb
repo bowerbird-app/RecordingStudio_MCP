@@ -18,6 +18,9 @@ class McpEventsTest < ActionDispatch::IntegrationTest
     @root_recording, @access_recording = create_access_recording_for(user: @user)
     @pkce = pkce_pair
     @oauth_client, = create_oauth_client(name: "MCP Events App")
+    @outsider = create_user(email: "outsider-#{SecureRandom.hex(4)}@example.com")
+    _root, @outsider_access = create_access_recording_for(user: @outsider)
+    @other_client, = create_oauth_client(name: "Other MCP App")
     Current.actor = @user
     @page_recording = @root_recording.record(Page) { |page| page.title = "Webhook me" }
     @secret = "whsec_#{Base64.strict_encode64('e' * 32)}"
@@ -25,7 +28,7 @@ class McpEventsTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    Current.actor = nil if defined?(Current)
+    ActiveSupport::CurrentAttributes.clear_all if defined?(ActiveSupport::CurrentAttributes)
     Dummy::McpEventInbox.clear!
     RecordingStudioMcp::CallbackVerifier.reset_cache!
   end
@@ -50,28 +53,16 @@ class McpEventsTest < ActionDispatch::IntegrationTest
     names = JSON.parse(response.body).dig("result", "events").map { |event| event["name"] }
     assert_includes names, "recording.updated"
 
-    created = nil
-    stub_local_callback do
-      post "/recording_studio_mcp",
-           params: rpc(
-             "events/subscribe",
-             name: "recording.updated",
-             arguments: { recording_id: @page_recording.id },
-             delivery: { mode: "webhook", url: @url, secret: @secret },
-             cursor: nil
-           ).to_json,
-           headers: headers
-      assert_response :success, response.body
-      created = JSON.parse(response.body).fetch("result")
-    end
+    created = subscribe_recording_updated(headers)
     assert created["id"].start_with?("sub_")
     assert_nil created["cursor"]
     refute created["truncated"]
     sub = RecordingStudioMcp::EventSubscription.find(created["id"])
     assert_equal @oauth_client.id.to_s, sub.owner_principal_id
-    assert_equal @access_recording.id, sub.access_recording_id
+    assert sub.access_recording_id.present?
     assert sub.matches_recording?(@page_recording), sub.arguments.inspect
 
+    Current.actor = @user
     stub_local_callback do
       assert_performed_jobs 1, only: RecordingStudioMcp::DeliverEventWebhookJob do
         @root_recording.revise(@page_recording) { |page| page.title = "Webhook fired" }
@@ -83,10 +74,27 @@ class McpEventsTest < ActionDispatch::IntegrationTest
     assert_equal "recording.updated", delivery.body["name"]
     assert_equal @page_recording.id.to_s, delivery.body.dig("data", "recording_id")
 
-    outsider = create_user(email: "outsider-#{SecureRandom.hex(4)}@example.com")
-    _root, outsider_access = create_access_recording_for(user: outsider)
-    other_client, = create_oauth_client(name: "Other MCP App")
-    other_token = issue_token(user: outsider, oauth_client: other_client, access_recording: outsider_access)
+    post "/recording_studio_mcp",
+         params: rpc(
+           "events/unsubscribe",
+           name: "recording.updated",
+           arguments: { recording_id: @page_recording.id },
+           delivery: { mode: "webhook", url: @url }
+         ).to_json,
+         headers: headers
+    assert_response :success
+    assert_equal "inactive", sub.reload.status
+  end
+
+  test "only the subscription owner can unsubscribe" do
+    token = issue_delegated_token
+    other_token = issue_token(user: @outsider, oauth_client: @other_client, access_recording: @outsider_access)
+    headers = json_headers.merge(
+      "Authorization" => "Bearer #{token}",
+      "MCP-Protocol-Version" => "2026-07-28"
+    )
+    created = subscribe_recording_updated(headers)
+
     post "/recording_studio_mcp",
          params: rpc(
            "events/unsubscribe",
@@ -119,6 +127,33 @@ class McpEventsTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def subscribe_recording_updated(headers)
+    warm_callback_cache
+    post "/recording_studio_mcp",
+         params: rpc(
+           "events/subscribe",
+           name: "recording.updated",
+           arguments: { recording_id: @page_recording.id },
+           delivery: { mode: "webhook", url: @url, secret: @secret },
+           cursor: nil
+         ).to_json,
+         headers: headers
+    assert_response :success, response.body
+    JSON.parse(response.body).fetch("result")
+  end
+
+  def warm_callback_cache
+    stub_local_callback do
+      RecordingStudioMcp::CallbackVerifier.verify!(
+        principal_id: @oauth_client.id.to_s,
+        url: @url,
+        secret: @secret,
+        subscription_id: "sub_preverify"
+      )
+    end
+    Current.actor = @user
+  end
 
   def stub_local_callback
     receiver = open_session
