@@ -1,6 +1,6 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25; do not merge that PR) until a tag ships.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.2`.
 
 ## 0.9.0
 

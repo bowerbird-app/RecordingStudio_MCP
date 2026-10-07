@@ -18,12 +18,12 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 
 ### Notes
 - `api_key: "operations"` is the named API label, not a secret.
-- Dummy (and the development Gemfile) pin `recording_studio_oauth` to GitHub branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25). Do not merge that Oauth PR from this work.
+- Dummy and the development Gemfile pin `recording_studio_oauth` to git tag `v0.6.2` (ops clients + AdminRoot Connect).
 - Oauth named-API registries still list only the API identifier, not MCP. Ops authorize/token should omit `resource` until Oauth registers `{mcp_mount}/apis/{api_key}`. Public MCP `resource` stays registered.
 
 ### Upgrade notes
 - Bump to `0.9.0`.
-- Pin Oauth to `cursor/ops-oauth-admin-connect-b6ce` while Phase 1 is still a draft.
+- Pin Oauth `v0.6.2`.
 - Call `RecordingStudioMcp.draw_named_api_well_known(self)` in host routes before Oauth origin well-known.
 - Hosts that want ops MCP: define `config.api :operations`, register an operations OauthClient, Connect at `/recording_studio_oauth/apis/operations/oauth/authorize`, and point the MCP client at `/recording_studio_mcp/apis/operations`.
 

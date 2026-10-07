@@ -11,7 +11,7 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - Site name `Studio` from Site settings
 - MCP URL at `/recording_studio_mcp`
 - Ops MCP at `/recording_studio_mcp/apis/operations` (operations named API; `api_key` is that label, not a secret)
-- Temporary Oauth pin: branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25, not merged)
+- Oauth `v0.6.2` (ops clients can Connect on Admin)
 - Dummy-only `/docs/mcp` (mentions `describe`)
 - Dummy-only `demo_progress` MCP tool (`RecordingStudioApi.register_endpoint`, progress under Puma)
 - Dummy registers `recording updated` and `page commented`, and enables MCP Events

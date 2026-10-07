@@ -157,7 +157,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6.1`, Oauth to branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25; do not merge that PR) until that work ships a tag, and `recording_studio_admin ~> 2.0`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6.1`, Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.

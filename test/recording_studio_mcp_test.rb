@@ -67,8 +67,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.11.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.4"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.1"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth"'
-    assert_includes gemfile, 'branch: "cursor/ops-oauth-admin-connect-b6ce"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.6.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.7.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.5.3"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.3"'
@@ -77,6 +76,7 @@ class RecordingStudioMcpTest < Minitest::Test
     refute_includes gemfile, 'tag: "v0.5.4"'
     refute_includes gemfile, "relax_oauth_api_pin"
     refute_includes gemfile, "cursor/mcp-protected-resource-identity-607a"
+    refute_includes gemfile, "ops-oauth-admin-connect-b6ce"
   end
 
   def test_does_not_ship_example_mixin_or_copied_core

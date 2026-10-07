@@ -72,7 +72,7 @@ class OpsMcpAuthorizeTest < ActionDispatch::IntegrationTest
     unless RecordingStudioOauth.protected_resources(api_key: "operations").permit?(
       resource, base_url: "http://www.example.com"
     )
-      # Oauth #25 still registers only the operations API identifier, not MCP.
+      # Oauth 0.6.2 still registers only the operations API identifier, not MCP.
       params.delete(:resource)
     end
 
