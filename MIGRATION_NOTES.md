@@ -2,7 +2,7 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.2`.
 
-## Unreleased
+## 0.9.1
 
 MCP admin (`:mcp`) shows ops MCP URL and well-known paths. Register ChatGPT and Grok Bot by hand in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. Public MCP and Workspace stay as they are.
 
