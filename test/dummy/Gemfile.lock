@@ -8,10 +8,10 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: 652b9aff230098cf7774a22c6f9fd7c1c7a8bea5
-  branch: cursor/ops-oauth-admin-connect-b6ce
+  revision: 7c4ae902c3125929a3de35caa251f4daa46d50d8
+  tag: v0.6.2
   specs:
-    recording_studio_oauth (0.6.1)
+    recording_studio_oauth (0.6.2)
       flat_pack (~> 0.1.198)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
@@ -668,7 +668,7 @@ CHECKSUMS
   recording_studio_api (0.6.1)
   recording_studio_attachable (0.7.0)
   recording_studio_mcp (0.9.0)
-  recording_studio_oauth (0.6.1)
+  recording_studio_oauth (0.6.2)
   recording_studio_root_switchable (0.5.1)
   recording_studio_site_settings (0.1.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae
