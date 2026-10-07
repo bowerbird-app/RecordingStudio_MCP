@@ -30,6 +30,7 @@ require "recording_studio_mcp/notifier"
 require "recording_studio_mcp/change_observer"
 require "recording_studio_mcp/listen_stream"
 require "recording_studio_mcp/configuration"
+require "recording_studio_mcp/named_api"
 require "recording_studio_mcp/protected_resource_metadata"
 require "recording_studio_mcp/www_authenticate"
 require "recording_studio_mcp/authenticator"
@@ -66,6 +67,16 @@ module RecordingStudioMcp
     def configure
       yield(configuration) if block_given?
       configuration
+    end
+
+    # Origin RFC 9728 documents for named-API MCP identities
+    # (`/.well-known/oauth-protected-resource{mcp_mount}/apis/{api_key}`).
+    # Draw this before Oauth's glob so those paths are not 404.
+    # Public MCP metadata stays on Oauth `draw_origin_well_known`.
+    def draw_named_api_well_known(mapper)
+      mount = ProtectedResourceMetadata.mcp_mount_path.delete_prefix("/")
+      mapper.get "/.well-known/oauth-protected-resource/#{mount}/apis/:api_key",
+                 to: "recording_studio_mcp/oauth_discoveries#protected_resource"
     end
 
     def register_skill(name, path:, available_if: nil)

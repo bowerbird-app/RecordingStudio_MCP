@@ -6,7 +6,11 @@ People Connect an app. The app gets its own Accessible grant. MCP then uses that
 
 ## What you get
 
-A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at MCP's own RFC 9728 protected-resource metadata (`/.well-known/oauth-protected-resource/recording_studio_mcp`). That document sets `resource` to the MCP URL and `authorization_servers` to Oauth. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`. The issued Bearer intentionally works for both the named API and MCP; both resolve the same AccessGrant.
+A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at MCP's own RFC 9728 protected-resource metadata (`/.well-known/oauth-protected-resource/recording_studio_mcp`). That document sets `resource` to the MCP URL and `authorization_servers` to Oauth. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`. The issued Bearer intentionally works for both that named API and that MCP path; both resolve the same AccessGrant.
+
+Ops MCP uses the same Oauth + API stack, not a second OAuth server. An OauthClient with `api_key: "operations"` (a named API label, not a secret) authorizes at `/recording_studio_oauth/apis/operations/oauth/authorize`. The ops MCP resource is `/recording_studio_mcp/apis/operations`. Its well-known document points `authorization_servers` at `/recording_studio_oauth/apis/operations`. Token exchange is `POST /recording_studio_api/apis/operations/oauth/token`. A public token does not work on the ops MCP path, and an operations token does not work on `/recording_studio_mcp`. Public authorize, metadata, and `/recording_studio_mcp` stay as they are.
+
+Oauth's named-API protected-resource registry still advertises only the operations API identifier. Until Oauth also registers `{mcp_mount}/apis/{api_key}` as an MCP identity, omit `resource` on ops authorize and token (blank `resource` is allowed). Public MCP `resource` is already registered and should be sent as today.
 
 Authorization is Recording Studio Accessible through that AccessGrant. Same grant as API. No Pundit. No OAuth scopes.
 
@@ -153,11 +157,11 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6.1`, Oauth `v0.6.0`, and `recording_studio_admin ~> 2.0`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6.1`, Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
-4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
-5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token.
+4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
+5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token. For staff/ops MCP, register an operations OauthClient (`api_key: "operations"`) and Connect at `/recording_studio_oauth/apis/operations/oauth/authorize`. Point the client at `/recording_studio_mcp/apis/operations`.
 
 Host authentication stays on the host. Dummy uses Devise. Do not add Users as a dependency of this gem.
 
@@ -234,4 +238,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.8.0
+0.9.0

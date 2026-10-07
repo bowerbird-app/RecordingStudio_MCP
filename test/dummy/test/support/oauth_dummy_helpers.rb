@@ -139,6 +139,18 @@ module OauthDummyHelpers
     result.value.merge(pkce: pkce, redirect_uri: redirect_uri)
   end
 
+  def named_authorize_path(api)
+    "/recording_studio_oauth/apis/#{api}/oauth/authorize"
+  end
+
+  def named_api_token_path(api)
+    "/recording_studio_api/apis/#{api}/oauth/token"
+  end
+
+  def named_mcp_path(api)
+    "/recording_studio_mcp/apis/#{api}"
+  end
+
   def switch_to_root!(root_recording)
     patch recording_studio_root_switchable.root_switch_path(scope: "all_workspaces"), params: {
       root_switch: {

@@ -28,10 +28,25 @@ class ProtectedResourceMetadataTest < Minitest::Test
     assert_equal ["header"], document.fetch(:bearer_methods_supported)
   end
 
+  def test_operations_resource_points_at_ops_mcp_and_ops_authorize
+    request = Request.new("https://studio.example")
+
+    document = RecordingStudioMcp::ProtectedResourceMetadata.document(request, api_key: "operations")
+
+    assert_equal "https://studio.example/recording_studio_mcp/apis/operations", document.fetch(:resource)
+    refute_includes document.fetch(:resource), "recording_studio_api"
+    assert_equal ["https://studio.example/recording_studio_oauth/apis/operations"],
+                 document.fetch(:authorization_servers)
+  end
+
   def test_well_known_path_follows_rfc_9728_suffix
     assert_equal(
       "/.well-known/oauth-protected-resource/recording_studio_mcp",
       RecordingStudioMcp::ProtectedResourceMetadata.well_known_path
+    )
+    assert_equal(
+      "/.well-known/oauth-protected-resource/recording_studio_mcp/apis/operations",
+      RecordingStudioMcp::ProtectedResourceMetadata.well_known_path(api_key: "operations")
     )
   end
 end
