@@ -38,9 +38,7 @@ module RecordingStudioMcp
 
     def from_request(request)
       params = request.respond_to?(:params) ? request.params : nil
-      if params.respond_to?(:[]) && params[:api_key].present?
-        return normalize(params[:api_key])
-      end
+      return normalize(params[:api_key]) if params.respond_to?(:[]) && params[:api_key].present?
 
       from_path(request.respond_to?(:path) ? request.path : "")
     end

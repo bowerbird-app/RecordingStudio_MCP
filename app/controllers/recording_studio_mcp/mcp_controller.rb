@@ -202,7 +202,8 @@ module RecordingStudioMcp
 
       assign_access_grant(auth.access_grant)
       unless token_matches_named_api?
-        return render_unauthorized(Authenticator::Result.new(success?: false, access_grant: nil, error: :invalid_token))
+        mismatch = Authenticator::Result.new(success?: false, access_grant: nil, error: :invalid_token)
+        return render_unauthorized(mismatch)
       end
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
 
