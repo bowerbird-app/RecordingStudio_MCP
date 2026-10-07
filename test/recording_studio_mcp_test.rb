@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_8_0
-    assert_equal "0.8.0", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_9_0
+    assert_equal "0.9.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -67,7 +67,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.11.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.4"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.1"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.6.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", branch: "cursor/ops-oauth-admin-connect-b6ce"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.7.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.5.3"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.3"'
@@ -91,13 +91,16 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "0.8.0"
+    assert_includes readme, "0.9.0"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."
     assert_includes readme, "Streamable HTTP"
     assert_includes readme, "WWW-Authenticate"
     assert_includes readme, "register_endpoint"
+    assert_includes readme, "draw_named_api_well_known"
+    assert_includes readme, "/recording_studio_mcp/apis/operations"
+    assert_includes readme, "/recording_studio_oauth/apis/operations/oauth/authorize"
     assert_includes readme, "Catalog-only"
     refute_includes readme, "Internal template"
     refute_includes readme, "GemTemplate"

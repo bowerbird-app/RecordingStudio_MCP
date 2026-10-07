@@ -40,8 +40,9 @@ module RecordingStudioMcp
       end
     end
 
-    # Oauth 0.2+ registers MCP via config.mcp_mount_path. Keep that path
-    # aligned with this gem so authorize accepts the MCP resource identity.
+    # Oauth 0.2+ registers public MCP via config.mcp_mount_path. Keep that path
+    # aligned with this gem so public authorize accepts the MCP resource identity.
+    # Named-API MCP identities live at `{mcp_mount_path}/apis/{api_key}`.
     config.after_initialize do
       RecordingStudioMcp::ChangeObserver.install!
       RecordingStudioMcp::PostgresBus.start!

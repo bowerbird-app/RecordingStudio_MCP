@@ -14,6 +14,12 @@ RecordingStudioApi.configure do |config|
   config.rate_limit_api_enabled = false if config.respond_to?(:rate_limit_api_enabled=)
   config.api_request_logging_enabled = false if config.respond_to?(:api_request_logging_enabled=)
   config.api_management_authorization_required = false if config.respond_to?(:api_management_authorization_required=)
+
+  # Named API label, not a secret. Ops MCP authorize and tokens use this surface.
+  config.api :operations do |api|
+    api.openapi_title = "Operations API"
+    api.openapi_description = "Staff Admin API. operations is a named API label, not a secret."
+  end
 end
 
 RecordingStudioApi.register_recordable_type_api(
@@ -73,6 +79,18 @@ RecordingStudioApi.register_endpoint(
     description: "Confirm this named API can reach a registered endpoint."
   },
   handler: ->(_context) { { ok: true } }
+)
+
+RecordingStudioApi.register_endpoint(
+  :ops_ping,
+  api: :operations,
+  http_verb: :get,
+  path: "ping",
+  openapi: {
+    summary: "Ops ping",
+    description: "Confirm the operations named API can reach a registered endpoint."
+  },
+  handler: ->(_context) { { ok: true, api: "operations" } }
 )
 
 RecordingStudioApi.register_endpoint(

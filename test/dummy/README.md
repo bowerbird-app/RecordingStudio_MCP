@@ -10,6 +10,8 @@ This Rails host proves `recording_studio_mcp` as a remote MCP HTTP endpoint.
 - Studio Workspace starts Connected
 - Site name `Studio` from Site settings
 - MCP URL at `/recording_studio_mcp`
+- Ops MCP at `/recording_studio_mcp/apis/operations` (operations named API; `api_key` is that label, not a secret)
+- Temporary Oauth pin: branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25, not merged)
 - Dummy-only `/docs/mcp` (mentions `describe`)
 - Dummy-only `demo_progress` MCP tool (`RecordingStudioApi.register_endpoint`, progress under Puma)
 - Dummy registers `recording updated` and `page commented`, and enables MCP Events
@@ -43,11 +45,15 @@ Open port 3000. Sign in with `admin@admin.com` / `Password`.
 - `/mcp_event_receiver` local signed webhook inbox
 - `/docs/mcp` Try MCP
 - `/admin/screens/oauth_clients` Oauth registered apps (switch to Admin first)
-- `/recording_studio_mcp` MCP endpoint
-- `/recording_studio_oauth/oauth/authorize` Connect
+- `/recording_studio_mcp` MCP endpoint (public)
+- `/recording_studio_mcp/apis/operations` ops MCP endpoint
+- `/recording_studio_oauth/oauth/authorize` Connect (public apps)
+- `/recording_studio_oauth/apis/operations/oauth/authorize` Connect (operations apps)
 - `/recording_studio_api/oauth/token` API token URL
+- `/recording_studio_api/apis/operations/oauth/token` operations token URL
 - `/.well-known/oauth-protected-resource` 404 by default (origin unsuffixed)
-- `/.well-known/oauth-protected-resource/recording_studio_mcp` MCP metadata
+- `/.well-known/oauth-protected-resource/recording_studio_mcp` MCP metadata (public)
+- `/.well-known/oauth-protected-resource/recording_studio_mcp/apis/operations` ops MCP metadata
 - `/.well-known/oauth-protected-resource/recording_studio_api/api` API metadata
 - `/recording_studio_oauth/.well-known/oauth-protected-resource` Oauth engine API metadata
 - `/.well-known/oauth-authorization-server/recording_studio_oauth` RFC 8414 path-inserted Oauth metadata

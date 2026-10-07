@@ -1,6 +1,12 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.0`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25; do not merge that PR) until a tag ships.
+
+## 0.9.0
+
+Ops MCP authorize uses the operations named API. Draw `RecordingStudioMcp.draw_named_api_well_known(self)` before Oauth origin well-known. Public MCP stays at `/recording_studio_mcp` and `/recording_studio_oauth/oauth/authorize`. Ops MCP is `/recording_studio_mcp/apis/operations` and `/recording_studio_oauth/apis/operations/oauth/authorize`. Token exchange is `/recording_studio_api/apis/operations/oauth/token`. `api_key: "operations"` is a named API label, not a secret.
+
+Oauth still does not register MCP on named-API protected-resource registries. Omit `resource` on ops authorize and token until Oauth adds `{mcp_mount}/apis/{api_key}` as an MCP identity. Public MCP `resource` is unchanged.
 
 ## 0.8.0
 

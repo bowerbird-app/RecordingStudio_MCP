@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   get "/.well-known/oauth-authorization-server",
       to: "recording_studio_oauth/oauth_discoveries#authorization_server",
       defaults: { api_key: "public" }
+  RecordingStudioMcp.draw_named_api_well_known(self)
   RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)
 
   recording_studio_admin_for :admin, at: "/admin", root_section: :root

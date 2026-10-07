@@ -29,6 +29,18 @@ class WwwAuthenticateTest < Minitest::Test
     )
     assert_includes value, "recording_studio_mcp"
     refute_includes value, 'resource_metadata="https://studio.example/.well-known/oauth-protected-resource"'
+    refute_includes value, "/apis/operations"
+  end
+
+  def test_operations_challenge_points_at_ops_mcp_metadata
+    request = Request.new("https://studio.example")
+
+    value = RecordingStudioMcp::WwwAuthenticate.header_value(request, api_key: "operations")
+
+    assert_equal(
+      'Bearer resource_metadata="https://studio.example/.well-known/oauth-protected-resource/recording_studio_mcp/apis/operations"',
+      value
+    )
   end
 
   def test_adds_invalid_token_error

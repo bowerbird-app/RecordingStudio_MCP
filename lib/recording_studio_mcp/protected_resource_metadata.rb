@@ -4,20 +4,21 @@ module RecordingStudioMcp
   module ProtectedResourceMetadata
     module_function
 
-    def document(request)
+    def document(request, api_key: nil)
+      key = NamedApi.normalize(api_key || NamedApi.from_request(request))
       {
-        resource: resource_identifier(request),
-        authorization_servers: [authorization_server_issuer(request)],
+        resource: resource_identifier(request, api_key: key),
+        authorization_servers: [authorization_server_issuer(request, api_key: key)],
         bearer_methods_supported: ["header"]
       }
     end
 
-    def resource_identifier(request)
-      "#{request.base_url}#{mcp_mount_path}"
+    def resource_identifier(request, api_key: NamedApi::DEFAULT)
+      "#{request.base_url}#{NamedApi.mcp_path(api_key)}"
     end
 
-    def authorization_server_issuer(request)
-      "#{request.base_url}#{oauth_engine_mount_path}"
+    def authorization_server_issuer(request, api_key: NamedApi::DEFAULT)
+      "#{request.base_url}#{NamedApi.authorization_server_path(api_key)}"
     end
 
     def mcp_mount_path
@@ -34,9 +35,13 @@ module RecordingStudioMcp
       path.chomp("/")
     end
 
-    def well_known_path
-      path = RecordingStudioMcp.configuration.oauth_protected_resource_path.to_s
-      path = "/.well-known/oauth-protected-resource#{mcp_mount_path}" if path.blank?
+    def well_known_path(api_key: NamedApi::DEFAULT)
+      path = if NamedApi.public?(api_key)
+               RecordingStudioMcp.configuration.oauth_protected_resource_path.to_s
+             else
+               ""
+             end
+      path = NamedApi.well_known_path(api_key) if path.blank?
       path = "/#{path}" unless path.start_with?("/")
       path
     end

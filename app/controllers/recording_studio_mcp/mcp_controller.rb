@@ -6,6 +6,7 @@ module RecordingStudioMcp
     include RecordingStudioApi::Concerns::RequestLogging
 
     prepend_before_action :authenticate_mcp!
+    prepend_before_action :require_known_named_api!
     include RecordingStudioMcp::TransportSecurity
     include RecordingStudioApi::Concerns::ApiAccessControl
     include RecordingStudioMcp::UsageLogging
@@ -200,9 +201,26 @@ module RecordingStudioMcp
       return render_unauthorized(auth) unless auth.success?
 
       assign_access_grant(auth.access_grant)
+      unless token_matches_named_api?
+        return render_unauthorized(Authenticator::Result.new(success?: false, access_grant: nil, error: :invalid_token))
+      end
       return if RecordingStudioApi::ApiSetting.api_access_enabled?(api: current_api_key)
 
       render_api_disabled
+    end
+
+    def require_known_named_api!
+      return if NamedApi.known?(request_api_key)
+
+      head :not_found
+    end
+
+    def request_api_key
+      NamedApi.from_request(request)
+    end
+
+    def token_matches_named_api?
+      current_api_key.to_s == request_api_key.to_s
     end
 
     def assign_access_grant(grant)
@@ -217,7 +235,10 @@ module RecordingStudioMcp
 
     def render_unauthorized(auth)
       error = auth.error == :missing_token ? nil : "invalid_token"
-      response.set_header("WWW-Authenticate", WwwAuthenticate.header_value(request, error: error))
+      response.set_header(
+        "WWW-Authenticate",
+        WwwAuthenticate.header_value(request, error: error, api_key: request_api_key)
+      )
       render json: { error: "unauthorized" }, status: :unauthorized
     end
 

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-07
+
+Staff/ops MCP clients authorize on the operations named API. Public MCP authorize is unchanged.
+
+### Added
+- Named-API MCP resource identities at `{mcp_mount_path}/apis/{api_key}` (for example `/recording_studio_mcp/apis/operations`). RFC 9728 metadata and `WWW-Authenticate` point `authorization_servers` at `/recording_studio_oauth/apis/{api_key}`.
+- `RecordingStudioMcp.draw_named_api_well_known` for origin well-known on those paths. Draw it before Oauth `draw_origin_well_known`.
+- Dummy names an `operations` API, registers `ops_ping` there, and covers ops MCP authorize with an operations OauthClient.
+
+### Notes
+- `api_key: "operations"` is the named API label, not a secret.
+- Dummy (and the development Gemfile) pin `recording_studio_oauth` to GitHub branch `cursor/ops-oauth-admin-connect-b6ce` (RecordingStudio_Oauth #25). Do not merge that Oauth PR from this work.
+- Oauth named-API registries still list only the API identifier, not MCP. Ops authorize/token should omit `resource` until Oauth registers `{mcp_mount}/apis/{api_key}`. Public MCP `resource` stays registered.
+
+### Upgrade notes
+- Bump to `0.9.0`.
+- Pin Oauth to `cursor/ops-oauth-admin-connect-b6ce` while Phase 1 is still a draft.
+- Call `RecordingStudioMcp.draw_named_api_well_known(self)` in host routes before Oauth origin well-known.
+- Hosts that want ops MCP: define `config.api :operations`, register an operations OauthClient, Connect at `/recording_studio_oauth/apis/operations/oauth/authorize`, and point the MCP client at `/recording_studio_mcp/apis/operations`.
+
 ## [0.8.0] - 2026-10-06
 
 ### Added
@@ -210,7 +230,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.0...v0.7.1
