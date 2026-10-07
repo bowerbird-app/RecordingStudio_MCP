@@ -25,6 +25,12 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "MCP admin"
+    assert_includes response.body, "Ops MCP"
+    assert_includes response.body, "/recording_studio_mcp/apis/operations"
+    assert_includes response.body, "/.well-known/oauth-protected-resource/recording_studio_mcp/apis/operations"
+    assert_includes response.body, "ChatGPT"
+    assert_includes response.body, "Grok Bot"
+    assert_match(/api_key:\s*&quot;operations&quot;|api_key:\s*"operations"/, response.body)
     assert_includes response.body, "Usage"
     assert_includes response.body, "Last 4 weeks"
     assert_includes response.body, "Calls from the last 4 weeks."
@@ -64,6 +70,11 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     assert_includes admin_root, "section :mcp"
     refute_includes admin_root, "McpSection"
     assert_includes AdminRoot.recording_studio_admin_section_keys_for(nil, nil, nil), "mcp"
+
+    seeds = File.read(Rails.root.join("db/seeds.rb"))
+    refute_includes seeds, "ChatGPT"
+    refute_includes seeds, "Grok Bot"
+    refute_match(/api_key\s*=\s*"operations"/, seeds)
   end
 
   test "admin home links mcp beside registered apps" do
