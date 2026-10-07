@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.2`.
 
+## Unreleased
+
+MCP admin (`:mcp`) shows ops MCP URL and well-known paths. Register ChatGPT and Grok Bot by hand in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. Public MCP and Workspace stay as they are.
+
 ## 0.9.0
 
 Ops MCP authorize uses the operations named API. Draw `RecordingStudioMcp.draw_named_api_well_known(self)` before Oauth origin well-known. Public MCP stays at `/recording_studio_mcp` and `/recording_studio_oauth/oauth/authorize`. Ops MCP is `/recording_studio_mcp/apis/operations` and `/recording_studio_oauth/apis/operations/oauth/authorize`. Token exchange is `/recording_studio_api/apis/operations/oauth/token`. `api_key: "operations"` is a named API label, not a secret.
@@ -36,7 +40,7 @@ Hosts on Accessible 0.11 run Accessible migrations. When `RecordingStudio::Acces
 
 ## 0.5.0
 
-Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin. It charts usage for the last 4 weeks, links to the Usage screen, and links to Oauth's Registered apps section.
+Depend on `recording_studio_admin ~> 2.0` (Oauth 0.2 already pulls it in). On the admin root, allow `section :mcp`. On the admin home section, link MCP to `admin_section_path("mcp")`. The section is titled MCP admin. It lists ops MCP URL and well-known paths, reminds staff to register ChatGPT and Grok Bot in Registered apps with `api_key: "operations"` (do not seed those apps), charts usage for the last 4 weeks, links to the Usage screen, and links to Oauth's Registered apps section.
 
 Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate`. That adds `recording_studio_mcp_usage_logs` and `recording_studio_mcp_usage_daily_metrics`. Schedule `rake recording_studio_mcp:maintain_usage` to rebuild yesterday and today, then delete raw logs older than 30 days. Hosts that do not mount admin still record usage. They do not see the widget.
 

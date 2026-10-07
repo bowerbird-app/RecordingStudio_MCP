@@ -11,8 +11,8 @@ class AdminTest < Minitest::Test
 
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
-    assert_equal "What clients are offered.", section.subtitle
-    assert_equal %w[mcp.usage], section.widget_keys
+    assert_equal "Ops MCP connection paths and usage.", section.subtitle
+    assert_equal %w[mcp.ops_connection mcp.usage], section.widget_keys
     assert_equal %i[oauth_apps usage], section.links.map(&:name)
     assert_nil RecordingStudioAdmin.screen_for("mcp")
 
@@ -25,7 +25,25 @@ class AdminTest < Minitest::Test
       def admin_screen_path(key)
         "/admin/screens/#{key}"
       end
+
+      def admin_section_path(key)
+        "/admin/sections/#{key}"
+      end
     end.new
+    ops = RecordingStudioAdmin.widget_for("mcp.ops_connection").resolve(context)
+    assert_equal :list, ops.type
+    assert_equal "Ops MCP", ops.title
+    assert_equal "Named API label, not a secret. Do not seed those OauthClients.", ops.info
+    assert_equal "Registered apps", ops.link_label
+    assert_equal "/admin/sections/oauth_apps", ops.link_to
+    assert_equal(
+      [
+        { text: "MCP URL #{RecordingStudioMcp::NamedApi.mcp_path('operations')}" },
+        { text: "Well-known #{RecordingStudioMcp::NamedApi.well_known_path('operations')}" },
+        { text: "Register ChatGPT and Grok Bot in Registered apps with api_key: \"operations\"." }
+      ],
+      ops.items
+    )
     widget = RecordingStudioAdmin.widget_for("mcp.usage").resolve(context)
     assert_equal :chart, widget.type
     assert_equal :column, widget.chart_type
@@ -61,7 +79,7 @@ class AdminTest < Minitest::Test
 
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
-    assert_equal %w[mcp.usage], section.widget_keys
+    assert_equal %w[mcp.ops_connection mcp.usage], section.widget_keys
     assert_equal %i[oauth_apps usage], section.links.map(&:name)
     assert_equal %i[date_range group_by], screen.filters.map(&:key)
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }

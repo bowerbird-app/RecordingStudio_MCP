@@ -4,6 +4,28 @@ require "recording_studio_admin"
 
 module RecordingStudioMcp
   module Admin
+    OPS_API_KEY = "operations"
+
+    OpsConnectionWidget = RecordingStudioAdmin::Widget.new("mcp.ops_connection") do
+      type :list
+      title "Ops MCP"
+      info "Named API label, not a secret. Do not seed those OauthClients."
+      hide_change
+      hide_period
+      hide_metric
+      blast_radius :site
+      list_options divider: true
+      items do
+        [
+          { text: "MCP URL #{NamedApi.mcp_path(OPS_API_KEY)}" },
+          { text: "Well-known #{NamedApi.well_known_path(OPS_API_KEY)}" },
+          { text: "Register ChatGPT and Grok Bot in Registered apps with api_key: \"operations\"." }
+        ]
+      end
+      link_to { |context| context.admin_section_path("oauth_apps") }
+      link_label "Registered apps"
+    end
+
     UsageWidget = RecordingStudioAdmin::Widget.new("mcp.usage") do
       type :chart
       title "Usage"
@@ -35,8 +57,9 @@ module RecordingStudioMcp
 
       key "mcp"
       title "MCP admin"
-      subtitle "What clients are offered."
+      subtitle "Ops MCP connection paths and usage."
       blast_radius :site
+      widget "mcp.ops_connection"
       widget "mcp.usage"
       link :oauth_apps, text: "Registered apps", url: ->(context) { context.admin_section_path("oauth_apps") }
       link :usage, text: "Usage", url: ->(context) { context.admin_screen_path("mcp_usage") }
@@ -45,6 +68,7 @@ module RecordingStudioMcp
     module_function
 
     def register!
+      RecordingStudioAdmin.register_widget(OpsConnectionWidget)
       RecordingStudioAdmin.register_widget(UsageWidget)
       RecordingStudioAdmin.register_screen(UsageScreen)
       RecordingStudioAdmin.register_section(McpSection)

@@ -169,7 +169,7 @@ This gem ships no end-user product UI. Staff admin is the MCP section when `reco
 
 ## Admin
 
-Staff admin is the MCP admin section. The Usage widget charts calls from the last 4 weeks and opens the Usage screen. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe.
+Staff admin is the MCP admin section. Ops MCP lists `/recording_studio_mcp/apis/operations` and its well-known path, and reminds staff to register ChatGPT and Grok Bot in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. The Usage widget charts calls from the last 4 weeks and opens the Usage screen. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe. Public MCP and Workspace stay unchanged.
 
 Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics`.
 
