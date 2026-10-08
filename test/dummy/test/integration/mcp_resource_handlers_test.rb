@@ -45,8 +45,14 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
     assert_equal ["SupportPage"], delete.dig("inputSchema", "properties", "type", "enum")
     assert_equal true, delete.dig("annotations", "destructiveHint")
 
-    %w[list show create update delete].each do |tool|
-      arguments = { type: "SupportPage", id: @outside_id, q: "help", title: "Hi" }
+    tool_arguments = {
+      "list" => { type: "SupportPage", q: "help" },
+      "show" => { type: "SupportPage", id: @outside_id },
+      "create" => { type: "SupportPage", title: "Hi" },
+      "update" => { type: "SupportPage", id: @outside_id, title: "Hi" },
+      "delete" => { type: "SupportPage", id: @outside_id }
+    }
+    tool_arguments.each do |tool, arguments|
       post named_mcp_path("operations"),
            params: rpc("tools/call", name: tool, arguments: arguments).to_json,
            headers: headers
@@ -56,7 +62,7 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
       refute payload.dig("result", "isError"), "#{tool}: #{payload}"
       body = tool_payload(payload)
       assert_equal tool, body["handled"]
-      assert_equal @outside_id, body["id"] if tool != "list"
+      assert_equal @outside_id, body["id"] if %w[show update delete].include?(tool)
     end
 
     post named_mcp_path("operations"),
@@ -106,6 +112,14 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
   def register_operations_support_surface!
     RecordingStudioApi.register_default_resource_actions!(api: :operations)
     RecordingStudioApi.register_default_capability_actions!(api: :operations)
+    if RecordingStudioApi.capability_action(:move, api: :operations).nil?
+      RecordingStudioApi.register_capability_action(
+        :move,
+        capability: :movable,
+        api: :operations,
+        handler: ->(_context) { { json: { fallback: true } } }
+      )
+    end
     RecordingStudioApi.register_recordable_type_api(
       "SupportPage",
       api: :operations,
