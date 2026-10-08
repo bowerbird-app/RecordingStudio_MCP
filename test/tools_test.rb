@@ -4,7 +4,7 @@ require "test_helper"
 
 class ToolsTest < Minitest::Test
   def test_tree_names_are_the_parameterized_set
-    assert_equal %w[list show create update capability_action describe], RecordingStudioMcp::Tools::TREE_NAMES
+    assert_equal %w[list show create update delete capability_action describe], RecordingStudioMcp::Tools::TREE_NAMES
   end
 
   def test_definitions_with_types_include_tree_tools
@@ -12,7 +12,7 @@ class ToolsTest < Minitest::Test
       register_tree_type("Page")
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal RecordingStudioMcp::Tools::TREE_NAMES, names
+      assert_equal %w[list show create update capability_action describe], names
     end
   end
 
@@ -58,7 +58,7 @@ class ToolsTest < Minitest::Test
 
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal RecordingStudioMcp::Tools::TREE_NAMES + %w[alpha zeta], names
+      assert_equal %w[list show create update capability_action describe] + %w[alpha zeta], names
     end
   end
 
@@ -126,6 +126,25 @@ class ToolsTest < Minitest::Test
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
       assert_includes action[:description], "destructively change data"
+    end
+  end
+
+  def test_delete_is_listed_only_when_a_type_supports_destroy
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      refute_includes RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }, "delete"
+
+      register_tree_type("SupportPage", operations: %i[index show create update destroy])
+      tools = RecordingStudioMcp::Tools.definitions
+      delete = tools.find { |tool| tool[:name] == "delete" }
+
+      assert delete
+      assert_equal "Delete a record", delete[:title]
+      assert_equal false, delete.dig(:annotations, :readOnlyHint)
+      assert_equal true, delete.dig(:annotations, :destructiveHint)
+      assert_equal false, delete.dig(:annotations, :idempotentHint)
+      assert_includes delete[:description], "destructively change data"
+      assert_equal ["SupportPage"], delete.dig(:inputSchema, :properties, :type, :enum)
     end
   end
 

@@ -2,7 +2,7 @@
 
 module RecordingStudioMcp
   module Tools
-    TREE_NAMES = %w[list show create update capability_action describe].freeze
+    TREE_NAMES = %w[list show create update delete capability_action describe].freeze
 
     module_function
 
@@ -10,8 +10,14 @@ module RecordingStudioMcp
       ToolSurface.for(access_grant: access_grant, api: api).tool_definitions
     end
 
+    def advertised_tree_names(catalog)
+      names = %w[list show create update]
+      names << "delete" if catalog.destroy_type_names.any?
+      names + %w[capability_action describe]
+    end
+
     def tree_definitions(catalog)
-      TREE_NAMES.map { |name| public_send("#{name}_tool", catalog) }
+      advertised_tree_names(catalog).map { |name| public_send("#{name}_tool", catalog) }
     end
 
     def endpoint_tool(endpoint)
@@ -112,6 +118,23 @@ module RecordingStudioMcp
         required: %w[type id],
         properties: {
           type: catalog.type_schema,
+          id: { type: "string", description: "Recording id." }
+        }
+      )
+    end
+
+    def delete_tool(catalog)
+      tool(
+        name: "delete",
+        title: "Delete a record",
+        description: "May destructively change data by running the named API destroy operation. " \
+                     "Use describe to see which types allow destroy. Returns the delete result.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+        required: %w[type id],
+        properties: {
+          type: catalog.destroy_type_schema,
           id: { type: "string", description: "Recording id." }
         }
       )

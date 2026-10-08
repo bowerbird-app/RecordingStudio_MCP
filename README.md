@@ -49,13 +49,15 @@ A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is 
 
 Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` with the event name and recording id. Each process re-checks access and its local subscribers. Other databases stay in-process: a save on worker B does not reach a subscriber on worker A.
 
-Tree hosts register recordable types. They get six parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `type` is an enum of those types. Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
+Tree hosts register recordable types. They get parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `delete` is included when a type on that named API enables destroy. `type` is an enum of the types registered on the OauthClient's named API (public vs operations). Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
+
+When `RecordingStudioApi.register_resource_handler` is set for a type and operation, MCP calls that handler the same way API 0.6.9 does. The handler owns lookup and access. Types without a handler still load through the grant's scoped recordings.
 
 Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`.
 
 Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens and `input_contract` fields become `inputSchema` arguments. There is no `describe` hop and no empty tree tool list.
 
-Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `capability_action`, or `describe`.
+Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `delete`, `capability_action`, or `describe`.
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
 
@@ -157,7 +159,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6.1`, Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.9`), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.

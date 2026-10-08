@@ -13,7 +13,8 @@ class ToolSurfaceTest < Minitest::Test
       assert_equal true, surface.known?("describe")
       assert_equal true, surface.tree_tool?("list")
       assert_equal false, surface.known?("ping")
-      assert_equal RecordingStudioMcp::Tools::TREE_NAMES, surface.tool_names
+      assert_equal %w[list show create update capability_action describe], surface.tool_names
+      assert_equal false, surface.known?("delete")
       assert_equal true, surface.read_only_tool?("list")
       assert_equal false, surface.read_only_tool?("create")
     end

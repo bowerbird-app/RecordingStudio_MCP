@@ -23,13 +23,14 @@ module IsolatedApiConfiguration
     end
   end
 
-  def register_tree_type(name = "Page")
+  def register_tree_type(name = "Page", api: :public, operations: %i[index show create update])
     RecordingStudioApi.register_recordable_type_api(
       name,
+      api: api,
       serializer: ->(*) { { title: "Title" } },
       output_keys: %i[title],
       writable_attributes: %i[title],
-      operations: %i[index show create update]
+      operations: operations
     )
   end
 end
