@@ -131,7 +131,7 @@ module RecordingStudioMcp
       handler = RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
       if handler
         return render_handler_result(
-          handler.call(handler_resource_context(recordable_type, args, operation_name: operation_name))
+          handler.call(resource_context(recordable_type, args, recording: nil, operation_name: operation_name))
         )
       end
 
@@ -158,7 +158,9 @@ module RecordingStudioMcp
       end
 
       handler = RecordingStudioApi.resource_handler(recordable_type, action.name, api: api_key)
-      return render_handler_result(handler.call(handler_action_context(args, action, recordable_type))) if handler
+      if handler
+        return render_handler_result(handler.call(action_context(nil, args, action, recordable_type: recordable_type)))
+      end
 
       recording = load_recording(recordable_type, args["id"])
       context = action_context(recording, args, action)
@@ -182,45 +184,6 @@ module RecordingStudioMcp
       when :destroy
         load_recording(recordable_type, id, include_trashed: true)
       end
-    end
-
-    def handler_resource_context(recordable_type, args, operation_name:)
-      params = ActionController::Parameters.new(resource_params(recordable_type, args)).permit!
-      request_params = ActionController::Parameters.new(write_params(recordable_type, args, operation_name)).permit!
-
-      RecordingStudioApi::ResourceOperationContext.new(
-        recording: nil,
-        recordable_type: recordable_type,
-        resource_name: RecordingStudioApi.resource_name_for(recordable_type),
-        api_client: access_grant.api_client,
-        credential: access_grant.credential,
-        access_recording: access_grant.access_recording,
-        access_grant: access_grant,
-        root_recording: access_grant.root_recording,
-        api_version: api_version,
-        params: params,
-        request_params: request_params,
-        scoped_recordings: access_grant.accessible_recordings,
-        parent_recording: nil,
-        idempotency_key: create_idempotency_key(args, operation_name),
-        id: args["id"],
-        parent_id: args["parent_id"],
-        relationship_id: nil
-      )
-    end
-
-    def handler_action_context(args, action, recordable_type)
-      RecordingStudioApi::ActionContext.new(
-        recording: nil,
-        api_client: access_grant.api_client,
-        credential: access_grant.credential,
-        access_recording: access_grant.access_recording,
-        access_grant: access_grant,
-        root_recording: access_grant.root_recording,
-        params: capability_input_params(args, action),
-        id: args["id"],
-        recordable_type: recordable_type
-      )
     end
 
     def render_handler_result(result)
@@ -261,11 +224,14 @@ module RecordingStudioMcp
         scoped_recordings: access_grant.accessible_recordings,
         parent_recording: nil,
         idempotency_key: create_idempotency_key(args, operation_name),
-        progress_reporter: progress_reporter
+        progress_reporter: progress_reporter,
+        id: args["id"],
+        parent_id: args["parent_id"],
+        relationship_id: nil
       )
     end
 
-    def action_context(recording, args, action)
+    def action_context(recording, args, action, recordable_type: nil)
       params = capability_input_params(args, action)
 
       RecordingStudioApi::ActionContext.new(
@@ -276,7 +242,9 @@ module RecordingStudioMcp
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
         params: params,
-        progress_reporter: progress_reporter
+        progress_reporter: progress_reporter,
+        id: args["id"],
+        recordable_type: recordable_type
       )
     end
 

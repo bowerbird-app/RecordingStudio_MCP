@@ -60,8 +60,8 @@ class DispatcherTest < Minitest::Test
       %w[Folder Page Workspace]
     end
 
-    def destroy_supported?
-      false
+    def destroy_type_names
+      []
     end
 
     def registered_endpoints
@@ -70,8 +70,8 @@ class DispatcherTest < Minitest::Test
   end
 
   class DestroyCatalog < FakeCatalog
-    def destroy_supported?
-      true
+    def destroy_type_names
+      %w[Page]
     end
 
     def destroy_type_schema

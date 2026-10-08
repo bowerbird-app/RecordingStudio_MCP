@@ -12,7 +12,7 @@ module RecordingStudioMcp
 
     def advertised_tree_names(catalog)
       names = %w[list show create update]
-      names << "delete" if catalog.destroy_supported?
+      names << "delete" if catalog.destroy_type_names.any?
       names + %w[capability_action describe]
     end
 

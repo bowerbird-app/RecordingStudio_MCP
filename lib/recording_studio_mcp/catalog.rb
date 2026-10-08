@@ -29,24 +29,16 @@ module RecordingStudioMcp
     end
 
     def destroy_type_names
-      type_names.select { |type| destroy_supported_for?(type) }
-    end
-
-    def destroy_supported?
-      destroy_type_names.any?
-    end
-
-    def destroy_supported_for?(type)
-      registration = RecordingStudioApi.recordable_registration_for(type, api: api)
-      registration&.supports_operation?(:destroy)
+      type_names.select do |type|
+        RecordingStudioApi.recordable_registration_for(type, api: api)&.supports_operation?(:destroy)
+      end
     end
 
     def destroy_type_schema
-      {
-        type: "string",
+      type_schema.merge(
         enum: destroy_type_names,
         description: "Type on this named API that allows destroy. Call describe for operations."
-      }
+      )
     end
 
     def describe(type_name)
@@ -85,11 +77,8 @@ module RecordingStudioMcp
     end
 
     def allowed_types_sentence
-      if type_names.any?
-        "Allowed types: #{type_names.join(', ')}"
-      else
-        "Allowed types: (none)"
-      end
+      suffix = type_names.any? ? type_names.join(", ") : "(none)"
+      "Allowed types: #{suffix}"
     end
 
     def enabled_capability_action_names(recordable_type)
