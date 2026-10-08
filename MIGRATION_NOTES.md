@@ -1,6 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6.1`. Oauth `v0.6.2`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6` and `>= 0.6.9`. Oauth `v0.6.2`.
+
+## 0.10.0
+
+Pin API `v0.6.9`. MCP calls gem-registered resource handlers the same way the API does, so Support (and similar) types can live outside the OauthClient tree. `delete` appears when a type enables destroy.
 
 ## 0.9.1
 

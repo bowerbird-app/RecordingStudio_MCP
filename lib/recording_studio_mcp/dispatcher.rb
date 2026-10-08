@@ -8,9 +8,11 @@ module RecordingStudioMcp
       "list" => :index,
       "show" => :show,
       "create" => :create,
-      "update" => :update
+      "update" => :update,
+      "delete" => :destroy
     }.freeze
     WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
+    SUCCESS_STATUS_RANGE = (200..299)
 
     def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil, request_context: nil)
       new(
@@ -126,12 +128,19 @@ module RecordingStudioMcp
         raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{recordable_type}"
       end
 
+      handler = RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
+      if handler
+        return render_handler_result(
+          handler.call(handler_resource_context(recordable_type, args, operation_name: operation_name))
+        )
+      end
+
       operation = RecordingStudioApi.resource_action(operation_name, version: api_version, api: api_key)
       if operation.nil?
         raise RecordingStudioApi::UnsupportedActionError, "Unknown API resource operation #{operation_name}"
       end
 
-      recording = load_recording(recordable_type, args["id"]) if %i[show update].include?(operation_name)
+      recording = builtin_member_recording_for(operation_name, recordable_type, args["id"])
       result = operation.handler.call(
         resource_context(recordable_type, args, recording: recording, operation_name: operation_name)
       )
@@ -148,6 +157,9 @@ module RecordingStudioMcp
         raise RecordingStudioApi::UnsupportedActionError, catalog.unknown_action_message(action_name, recordable_type)
       end
 
+      handler = RecordingStudioApi.resource_handler(recordable_type, action.name, api: api_key)
+      return render_handler_result(handler.call(handler_action_context(args, action, recordable_type))) if handler
+
       recording = load_recording(recordable_type, args["id"])
       context = action_context(recording, args, action)
       required_role = RecordingStudioApi.configuration.capability_action_role_for(
@@ -161,6 +173,73 @@ module RecordingStudioMcp
       result = action.handler.call(context)
       payload = serialize_capability_result(action, result)
       success_result(payload)
+    end
+
+    def builtin_member_recording_for(operation_name, recordable_type, id)
+      case operation_name
+      when :show, :update
+        load_recording(recordable_type, id)
+      when :destroy
+        load_recording(recordable_type, id, include_trashed: true)
+      end
+    end
+
+    def handler_resource_context(recordable_type, args, operation_name:)
+      params = ActionController::Parameters.new(resource_params(recordable_type, args)).permit!
+      request_params = ActionController::Parameters.new(write_params(recordable_type, args, operation_name)).permit!
+
+      RecordingStudioApi::ResourceOperationContext.new(
+        recording: nil,
+        recordable_type: recordable_type,
+        resource_name: RecordingStudioApi.resource_name_for(recordable_type),
+        api_client: access_grant.api_client,
+        credential: access_grant.credential,
+        access_recording: access_grant.access_recording,
+        access_grant: access_grant,
+        root_recording: access_grant.root_recording,
+        api_version: api_version,
+        params: params,
+        request_params: request_params,
+        scoped_recordings: access_grant.accessible_recordings,
+        parent_recording: nil,
+        idempotency_key: create_idempotency_key(args, operation_name),
+        id: args["id"],
+        parent_id: args["parent_id"],
+        relationship_id: nil
+      )
+    end
+
+    def handler_action_context(args, action, recordable_type)
+      RecordingStudioApi::ActionContext.new(
+        recording: nil,
+        api_client: access_grant.api_client,
+        credential: access_grant.credential,
+        access_recording: access_grant.access_recording,
+        access_grant: access_grant,
+        root_recording: access_grant.root_recording,
+        params: capability_input_params(args, action),
+        id: args["id"],
+        recordable_type: recordable_type
+      )
+    end
+
+    def render_handler_result(result)
+      json = result.fetch(:json)
+      status = result.fetch(:status, :ok)
+      return success_result(json) if SUCCESS_STATUS_RANGE.cover?(Rack::Utils.status_code(status))
+
+      error_result(handler_error_message(json))
+    end
+
+    def handler_error_message(json)
+      payload = stringify_payload(json)
+      if payload.is_a?(Hash)
+        message = payload.dig("error", "message") || payload["message"]
+        return message if message.present?
+        return payload["error"] if payload["error"].is_a?(String)
+      end
+
+      payload.is_a?(Hash) ? JSON.generate(payload) : payload.to_s
     end
 
     def resource_context(recordable_type, args, recording: nil, operation_name: nil)
@@ -187,19 +266,7 @@ module RecordingStudioMcp
     end
 
     def action_context(recording, args, action)
-      raw = stringify_keys(args["params"]).presence || {}
-      normalized = raw.respond_to?(:deep_symbolize_keys) ? raw.deep_symbolize_keys : raw
-      params =
-        if action.input_contract.nil?
-          normalized
-        else
-          contract_result = action.input_contract.call(normalized)
-          unless contract_result.success?
-            raise RecordingStudioApi::InvalidActionInputError, "Invalid input for action #{action.name}"
-          end
-
-          contract_result.value
-        end
+      params = capability_input_params(args, action)
 
       RecordingStudioApi::ActionContext.new(
         recording: recording,
@@ -254,10 +321,29 @@ module RecordingStudioMcp
       args["idempotency_key"].presence || idempotency_key
     end
 
-    def load_recording(recordable_type, id)
+    def capability_input_params(args, action)
+      raw = stringify_keys(args["params"]).presence || {}
+      normalized = raw.respond_to?(:deep_symbolize_keys) ? raw.deep_symbolize_keys : raw
+      return normalized if action.input_contract.nil?
+
+      contract_result = action.input_contract.call(normalized)
+      unless contract_result.success?
+        raise RecordingStudioApi::InvalidActionInputError, "Invalid input for action #{action.name}"
+      end
+
+      contract_result.value
+    end
+
+    def load_recording(recordable_type, id, include_trashed: false)
       raise RecordingStudioApi::InvalidActionInputError, "id is required" if id.blank?
 
-      recording = access_grant.accessible_recordings.find_by(id: id)
+      recordings =
+        if include_trashed
+          access_grant.accessible_recordings(include_trashed: true)
+        else
+          access_grant.accessible_recordings
+        end
+      recording = recordings.find_by(id: id)
       raise RecordingStudioApi::NotFoundError, "Resource was not found in this API scope" if recording.nil?
       unless recording.recordable_type == recordable_type
         raise RecordingStudioApi::NotFoundError, "Resource type does not match #{recordable_type}"

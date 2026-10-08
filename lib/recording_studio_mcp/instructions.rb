@@ -15,7 +15,7 @@ module RecordingStudioMcp
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
       the available endpoint tools. An endpoint-only grant has no tree or recordable tools
-      such as list, show, create, update, capability_action, or describe. When an endpoint
+      such as list, show, create, update, delete, capability_action, or describe. When an endpoint
       returns a catalog or list and another returns detail for an item, fetch the detail
       before generating UI. Do not invent recordable types or assume those tree tools exist
       unless tools/list advertises them.

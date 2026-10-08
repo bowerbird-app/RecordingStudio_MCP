@@ -5,7 +5,7 @@ require "test_helper"
 
 class DispatcherTest < Minitest::Test
   FakeGrant = Struct.new(
-    :api_client, :credential, :access_recording, :root_recording, :accessible_recordings,
+    :api_client, :credential, :access_recording, :root_recording, :accessible_recordings, :actor,
     keyword_init: true
   )
   FakeClient = Struct.new(:api_key)
@@ -60,8 +60,44 @@ class DispatcherTest < Minitest::Test
       %w[Folder Page Workspace]
     end
 
+    def destroy_supported?
+      false
+    end
+
     def registered_endpoints
       []
+    end
+  end
+
+  class DestroyCatalog < FakeCatalog
+    def destroy_supported?
+      true
+    end
+
+    def destroy_type_schema
+      {
+        type: "string",
+        enum: %w[Page],
+        description: "Type on this named API that allows destroy."
+      }
+    end
+  end
+
+  class CallTrackingScope
+    def initialize(recording)
+      @recording = recording
+      @calls = []
+    end
+
+    attr_reader :calls
+
+    def find_by(id:)
+      @recording if @recording&.id.to_s == id.to_s
+    end
+
+    def accessible_recordings(include_trashed: false)
+      @calls << { include_trashed: include_trashed }
+      self
     end
   end
 
@@ -134,6 +170,187 @@ class DispatcherTest < Minitest::Test
       assert_includes result.dig(:content, 0, :text), "Unknown type Nope"
       assert_includes result.dig(:content, 0, :text), "Folder"
       assert_includes result.dig(:content, 0, :text), "Page"
+    end
+  end
+
+  def test_show_outside_scope_is_not_found
+    @grant.accessible_recordings = FakeRelation.new(nil)
+    operation = FakeOperation.new(FakeHandler.new({ json: { title: "Nope" } }))
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, nil) do
+          RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :show ? operation : nil }) do
+            RecordingStudioApi.stub(:resource_name_for, "pages") do
+              RecordingStudioApi.stub(:default_api_version, "v1") do
+                result = dispatch("show", { type: "Page", id: "outside" })
+
+                assert result[:isError]
+                assert_includes result.dig(:content, 0, :text), "Resource was not found in this API scope"
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_registered_handler_show_skips_scoped_lookup
+    captured = nil
+    @grant.accessible_recordings = FakeRelation.new(nil)
+    handler = lambda { |context|
+      captured = context
+      { json: { title: "Support", id: context.id }, status: :ok }
+    }
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, ->(_type, action, **) { action == :show ? handler : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "support_pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("show", { type: "Page", id: "support-1" })
+
+              refute result[:isError]
+              assert_equal "Support", result.dig(:structuredContent, "title")
+              assert_nil captured.recording
+              assert_nil captured.parent_recording
+              assert_equal "support-1", captured.id
+              assert_equal @grant, captured.access_grant
+              assert_nil captured.actor
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_registered_handler_list_create_update_delete_and_capability
+    captured = {}
+    @grant.accessible_recordings = FakeRelation.new(nil)
+    resource_handler = lambda { |context|
+      captured[:resource] = context
+      { json: { handled: true, id: context.id, q: context.params["q"] }, status: :ok }
+    }
+    action = FakeAction.new(
+      name: :move,
+      handler: FakeHandler.new({ json: { should: "not-run" } }),
+      input_contract: nil,
+      serializer: nil
+    )
+    capability_handler = lambda { |context|
+      captured[:action] = context
+      { json: { moved: true, id: context.id, type: context.recordable_type }, status: :accepted }
+    }
+
+    RecordingStudioMcp::Catalog.stub(:for, DestroyCatalog.new("public")) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_name_for, "support_pages") do
+          RecordingStudioApi.stub(:default_api_version, "v1") do
+            RecordingStudioApi.stub(:resource_action, ->(*) { raise "builtin should not run" }) do
+              {
+                "list" => { type: "Page", q: "help" },
+                "show" => { type: "Page", id: "support-1" },
+                "create" => { type: "Page", title: "Hi", parent_id: "section-1" },
+                "update" => { type: "Page", id: "support-1", title: "Hi" },
+                "delete" => { type: "Page", id: "support-1" }
+              }.each do |tool, args|
+                RecordingStudioApi.stub(:resource_handler, ->(*) { resource_handler }) do
+                  result = dispatch(tool, args)
+
+                  refute result[:isError], tool
+                  assert_equal true, result.dig(:structuredContent, "handled")
+                  assert_nil captured[:resource].recording
+                end
+              end
+            end
+
+            RecordingStudioApi.stub(:capability_action, action) do
+              RecordingStudioApi.stub(:capability_action_enabled_for?, true) do
+                move_handler = ->(_type, name, **) { name == :move ? capability_handler : nil }
+                RecordingStudioApi.stub(:resource_handler, move_handler) do
+                  result = dispatch(
+                    "capability_action",
+                    { type: "Page", id: "support-1", action: "move", params: { parent_id: "section-1" } }
+                  )
+
+                  refute result[:isError]
+                  assert_equal true, result.dig(:structuredContent, "moved")
+                  assert_nil captured[:action].recording
+                  assert_equal "support-1", captured[:action].id
+                  assert_equal "Page", captured[:action].recordable_type
+                  assert_equal "section-1", captured[:action].params[:parent_id]
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_handler_non_success_status_is_tool_error
+    handler = ->(_context) { { json: { error: { message: "Support page missing" } }, status: :not_found } }
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, ->(*) { handler }) do
+          RecordingStudioApi.stub(:resource_name_for, "support_pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("show", { type: "Page", id: "missing" })
+
+              assert result[:isError]
+              assert_equal "Support page missing", result.dig(:content, 0, :text)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_delete_uses_builtin_destroy_and_includes_trashed
+    recording = FakeRecording.new("rec-1", "Page")
+    scope = CallTrackingScope.new(recording)
+    grant = FakeGrant.new(
+      api_client: FakeClient.new("public"),
+      credential: nil,
+      access_recording: nil,
+      root_recording: nil,
+      accessible_recordings: scope
+    )
+    grant.define_singleton_method(:accessible_recordings) do |include_trashed: false|
+      scope.accessible_recordings(include_trashed: include_trashed)
+    end
+    operation = FakeOperation.new(FakeHandler.new({ json: { deleted: true, id: "rec-1" } }))
+
+    RecordingStudioMcp::Catalog.stub(:for, DestroyCatalog.new("public")) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, nil) do
+          RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :destroy ? operation : nil }) do
+            RecordingStudioApi.stub(:resource_name_for, "pages") do
+              RecordingStudioApi.stub(:default_api_version, "v1") do
+                result = RecordingStudioMcp::Dispatcher.call(
+                  tool_name: "delete",
+                  arguments: { type: "Page", id: "rec-1" },
+                  access_grant: grant
+                )
+
+                refute result[:isError]
+                assert_equal true, result.dig(:structuredContent, "deleted")
+                assert_includes scope.calls, { include_trashed: true }
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_delete_hidden_when_destroy_is_not_supported
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = dispatch("delete", { type: "Page", id: "rec-1" })
+
+      assert result[:isError]
+      assert_includes result.dig(:content, 0, :text), "Unknown tool delete"
     end
   end
 

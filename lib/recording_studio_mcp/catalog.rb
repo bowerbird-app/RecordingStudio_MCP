@@ -28,6 +28,27 @@ module RecordingStudioMcp
       }
     end
 
+    def destroy_type_names
+      type_names.select { |type| destroy_supported_for?(type) }
+    end
+
+    def destroy_supported?
+      destroy_type_names.any?
+    end
+
+    def destroy_supported_for?(type)
+      registration = RecordingStudioApi.recordable_registration_for(type, api: api)
+      registration&.supports_operation?(:destroy)
+    end
+
+    def destroy_type_schema
+      {
+        type: "string",
+        enum: destroy_type_names,
+        description: "Type on this named API that allows destroy. Call describe for operations."
+      }
+    end
+
     def describe(type_name)
       recordable_type = resolve_type!(type_name)
       registration = RecordingStudioApi.recordable_registration_for(recordable_type, api: api)

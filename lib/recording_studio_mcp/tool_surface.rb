@@ -35,8 +35,12 @@ module RecordingStudioMcp
       tree_tool?(name) || @endpoint_by_name.key?(name.to_s)
     end
 
+    def tree_tool_names
+      Tools.advertised_tree_names(catalog)
+    end
+
     def tree_tool?(name)
-      tree_enabled? && Tools::TREE_NAMES.include?(name.to_s)
+      tree_enabled? && tree_tool_names.include?(name.to_s)
     end
 
     def endpoint_for(name)
@@ -54,7 +58,7 @@ module RecordingStudioMcp
 
     def tool_names
       names = []
-      names.concat(Tools::TREE_NAMES) if tree_enabled?
+      names.concat(tree_tool_names) if tree_enabled?
       names.concat(endpoints.map { |endpoint| endpoint.name.to_s })
       names
     end

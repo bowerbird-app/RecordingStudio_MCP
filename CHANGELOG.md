@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-08
+
+### Added
+- Tree tool `delete` when a type on the OauthClient's named API enables `destroy`. It is marked destructive. Types without destroy keep the previous tool list.
+- Gem-registered `RecordingStudioApi.resource_handler` dispatch for `list`, `show`, `create`, `update`, `delete`, and `capability_action`. When a handler is registered, MCP skips scoped `load_recording` / authorize and calls the handler the same way Recording Studio API 0.6.9 does (`recording` and `parent_recording` nil, `id` set, handler owns lookup). Non-2xx handler statuses become MCP tool errors.
+
+### Changed
+- Require `recording_studio_api ~> 0.6` and `>= 0.6.9` (git tag `v0.6.9`).
+- `type` enums stay the named API's `register_recordable_type_api` registry so operations MCP can list Support types that public MCP does not.
+
+### Notes
+- Types without a resource handler still use scoped lookup. A record outside the grant still 404s.
+
+### Upgrade notes
+- Bump to `0.10.0`. Pin API `v0.6.9`.
+- Hosts that register Support (or other) resource handlers get those types on the named API's MCP. Ops clients bound under AdminRoot can list/show/create/update/delete/move Support content that lives under a Workspace.
+- Clients see `delete` only when at least one advertised type enables destroy.
+
 ## [0.9.1] - 2026-10-07
 
 ### Added
@@ -238,7 +256,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.2...v0.10.0
 [0.9.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.2...v0.8.0
