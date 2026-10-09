@@ -161,7 +161,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.11`, branch `cursor/mcp-ui-api-metadata-ae0b` until tagged), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.11`, git tag `v0.6.11`), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.

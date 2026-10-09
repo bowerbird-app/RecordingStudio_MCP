@@ -20,10 +20,10 @@ Optional MCP Apps widgets when RecordingStudio MCP UI is loaded.
 - MCP UI is optional. This gem does not depend on it. Without that constant, tools and resources stay as they were.
 - Widget buttons call the real API tool name. MCP does not dispatch aliases.
 - Provider-agnostic MCP Apps metadata only. Clients that cannot load `ui://` still get the structured tool result.
-- API `0.6.11` is not released yet. Hosts must pin branch `cursor/mcp-ui-api-metadata-ae0b` until it is tagged. MCP UI is the same: pin `cursor/mcp-ui-engine-6ec3` (PR #1) when you want widgets.
+- Requires `recording_studio_api` `>= 0.6.11` (`v0.6.11`). MCP UI is optional: pin `cursor/mcp-ui-engine-6ec3` (PR #1) when you want widgets.
 
 ### Upgrade notes
-- Bump to `0.11.0`. Pin API to branch `cursor/mcp-ui-api-metadata-ae0b` (version `0.6.11`) until that gem is released.
+- Bump to `0.11.0`. Pin API `v0.6.11` (`~> 0.6`, `>= 0.6.11`).
 - MCP UI is optional. Do not add it unless the host wants widgets.
 - Register `ui:` on the API operation and the matching widget in MCP UI. No other wiring.
 
