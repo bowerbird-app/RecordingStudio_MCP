@@ -43,6 +43,8 @@ require "recording_studio_mcp/endpoint_schema"
 require "recording_studio_mcp/tools"
 require "recording_studio_mcp/tool_surface"
 require "recording_studio_mcp/mcp_ui"
+require "recording_studio_mcp/ui_resources"
+require "recording_studio_mcp/widget_result"
 require "recording_studio_mcp/widget_actions"
 require "recording_studio_mcp/sse_writer"
 require "recording_studio_mcp/sse_stream_body"
@@ -114,18 +116,8 @@ module RecordingStudioMcp
       catalog.select { |registration| expose_skill?(registration, policy, access_grant) }
     end
 
-    def dispatch_widget_action(widget_id:, alias_name:, arguments:, access_grant:, api: nil, version: nil,
-                               idempotency_key: nil, request_context: nil)
-      WidgetActions.call(
-        widget_id: widget_id,
-        alias_name: alias_name,
-        arguments: arguments,
-        access_grant: access_grant,
-        api: api,
-        version: version,
-        idempotency_key: idempotency_key,
-        request_context: request_context
-      )
+    def dispatch_widget_action(**call)
+      WidgetActions.call(call)
     end
 
     private

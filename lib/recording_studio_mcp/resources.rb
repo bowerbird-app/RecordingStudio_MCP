@@ -37,7 +37,7 @@ module RecordingStudioMcp
     end
 
     def read(access_grant:, uri:, protocol_version: nil)
-      return read_ui(access_grant: access_grant, uri: uri, protocol_version: protocol_version) if ui_uri?(uri)
+      return UiResources.read(access_grant: access_grant, uri: uri, protocol_version: protocol_version) if ui_uri?(uri)
 
       recording_id = recording_id_from(uri)
       return InvalidParams.new if recording_id.nil?
@@ -62,7 +62,7 @@ module RecordingStudioMcp
     end
 
     def accessible?(access_grant, uri)
-      return ui_accessible?(access_grant, uri) if ui_uri?(uri)
+      return UiResources.accessible?(access_grant, uri) if ui_uri?(uri)
 
       recording_id = recording_id_from(uri)
       return false if recording_id.nil?
@@ -71,44 +71,15 @@ module RecordingStudioMcp
     end
 
     def listed_resources(access_grant)
-      skill_resources(access_grant) + recording_resources(access_grant) + ui_resources(access_grant)
+      skill_resources(access_grant) + recording_resources(access_grant) + UiResources.listed(access_grant)
     end
 
     def ui_uri?(uri)
       McpUi.widget_id_from_uri(uri).present?
     end
 
-    def read_ui(access_grant:, uri:, protocol_version:)
-      widget_id = McpUi.widget_id_from_uri(uri)
-      return NotFound.new(uri: uri) unless ui_accessible?(access_grant, uri)
-
-      document = McpUi.package(widget_id, data: {})
-      return NotFound.new(uri: uri) if document.nil?
-
-      Read.new(payload: complete({ contents: [document.to_mcp_resource] }, protocol_version))
-    end
-
-    def ui_accessible?(access_grant, uri)
-      widget_id = McpUi.widget_id_from_uri(uri)
-      return false if widget_id.blank?
-
-      api = Catalog.api_from(access_grant)
-      version = RecordingStudioApi.default_api_version(api: api)
-      McpUi.available?(widget_id, access_grant: access_grant, api: api, version: version)
-    end
-
-    def ui_resources(access_grant)
-      api = Catalog.api_from(access_grant)
-      version = RecordingStudioApi.default_api_version(api: api)
-      McpUi.list.filter_map do |widget|
-        next unless McpUi.available?(widget.id, access_grant: access_grant, api: api, version: version)
-
-        {
-          uri: widget.resource_uri,
-          name: widget.id,
-          mimeType: McpUi::MIME_TYPE
-        }
-      end
+    def complete(extra, protocol_version)
+      ResultShape.complete(extra, protocol_version: protocol_version)
     end
 
     def skill_resources(access_grant)
@@ -146,16 +117,11 @@ module RecordingStudioMcp
       RecordingCard.new(recording).content
     end
 
-    def complete(extra, protocol_version)
-      ResultShape.complete(extra, protocol_version: protocol_version)
-    end
-
     def recording_template
       { name: TEMPLATE_NAME, uriTemplate: URI_TEMPLATE, mimeType: MIME_TYPE }
     end
 
-    private_class_method :complete, :listed_resources, :skill_resources, :recording_resources,
-                         :recordings_for, :content_for, :recording_template, :ui_uri?, :read_ui,
-                         :ui_accessible?, :ui_resources
+    private_class_method :listed_resources, :skill_resources, :recording_resources,
+                         :recordings_for, :content_for, :recording_template, :ui_uri?
   end
 end

@@ -49,6 +49,7 @@ module RecordingStudioMcp
     end
 
     def widget_id_from_uri(uri)
+      return unless loaded?
       return unless uri.is_a?(String)
       return unless uri.start_with?(UI_SCHEME)
 
@@ -66,7 +67,7 @@ module RecordingStudioMcp
       find(widget_id)&.resource_uri
     end
 
-    def visibility_check(widget:, access_grant:, api:, version:)
+    def operation_visible?(widget:, access_grant:, api:, version:)
       return false if access_grant.nil?
       return false unless RecordingStudioApi.respond_to?(:actions_for_ui)
 
@@ -80,7 +81,7 @@ module RecordingStudioMcp
       return unless loaded?
 
       config = RecordingStudio::MCP_UI.configuration
-      config.visibility_checker ||= method(:visibility_check)
+      config.visibility_checker ||= method(:operation_visible?)
       config.action_executor ||= default_action_executor
     end
 
@@ -93,6 +94,15 @@ module RecordingStudioMcp
           access_grant: request.access_grant
         )
       end
+    end
+
+    def resource_uri(meta)
+      return unless meta.is_a?(Hash)
+
+      ui = meta["ui"] || meta[:ui]
+      return unless ui.is_a?(Hash)
+
+      ui["resourceUri"] || ui[:resourceUri]
     end
 
     def unknown_widget_error?(error)
