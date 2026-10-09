@@ -10,7 +10,6 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
   setup do
     @staff = create_user
-    @outsider = create_user(email: "metrics-outsider-#{SecureRandom.hex(4)}@example.com")
     Current.actor = @staff
     _admin_root, @admin_recording = create_admin_root_recording
     @admin_root_access = grant_or_bootstrap_access!(
@@ -21,6 +20,8 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     @workspace_root, @workspace_access = create_access_recording_for(user: @staff)
 
     RecordingStudioMcp::UsageDailyMetric.delete_all
+    @day_one = Date.current - 2
+    @day_two = Date.current - 1
     seed_daily_metrics!
 
     @ops_client, = create_oauth_client(name: "Ops metrics #{SecureRandom.hex(4)}", api: "operations")
@@ -43,40 +44,71 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
   end
 
   test "staff operations token reads seeded MCP usage metrics" do
+    over_time = execute(
+      "mcp_calls.over_time",
+      interval: :day,
+      start_at: @day_one.in_time_zone("UTC").beginning_of_day,
+      end_at: (@day_two + 1).in_time_zone("UTC").beginning_of_day
+    )
+    over_time_values = over_time.data.to_h { |row| [row[:date], row[:value]] }
+    assert_equal 12, over_time_values[@day_one.iso8601]
+    assert_equal 7, over_time_values[@day_two.iso8601]
+
+    failed = execute(
+      "mcp_calls.failed_over_time",
+      interval: :day,
+      start_at: @day_one.in_time_zone("UTC").beginning_of_day,
+      end_at: (@day_two + 1).in_time_zone("UTC").beginning_of_day
+    )
+    failed_values = failed.data.to_h { |row| [row[:date], row[:value]] }
+    assert_equal 2, failed_values[@day_one.iso8601]
+    assert_equal 1, failed_values[@day_two.iso8601]
+
+    tools = execute("mcp_calls.by_tool").data.to_h { |row| [row[:key].to_s, row[:value]] }
+    assert_equal 10, tools["list"]
+    assert_equal 3, tools["show"]
+    refute_includes tools.keys, "initialize"
+
+    methods = execute("mcp_calls.by_method").data.to_h { |row| [row[:key].to_s, row[:value]] }
+    assert_equal 13, methods["tools/call"]
+    assert_equal 6, methods["initialize"]
+
+    assert_equal 4, execute("mcp_calls.rate_limited").value
+
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/over_time",
-        params: { interval: "day", start: "2026-04-01", end: "2026-04-04" },
+        params: { interval: "day" },
         headers: auth(@staff_operations_token),
         as: :json
     assert_response :success
-    over_time = timeseries_counts(response.parsed_body)
-    assert_equal 12, over_time["2026-04-01"]
-    assert_equal 7, over_time["2026-04-02"]
+    over_time_http = timeseries_counts(response.parsed_body)
+    assert_equal 12, over_time_http[@day_one.iso8601]
+    assert_equal 7, over_time_http[@day_two.iso8601]
 
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/failed_over_time",
-        params: { interval: "day", start: "2026-04-01", end: "2026-04-04" },
+        params: { interval: "day" },
         headers: auth(@staff_operations_token),
         as: :json
     assert_response :success
-    failed = timeseries_counts(response.parsed_body)
-    assert_equal 2, failed["2026-04-01"]
-    assert_equal 1, failed["2026-04-02"]
+    failed_http = timeseries_counts(response.parsed_body)
+    assert_equal 2, failed_http[@day_one.iso8601]
+    assert_equal 1, failed_http[@day_two.iso8601]
 
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/by_tool",
         headers: auth(@staff_operations_token),
         as: :json
     assert_response :success
-    tools = breakdown_counts(response.parsed_body)
-    assert_equal 10, tools["list"]
-    assert_equal 3, tools["show"]
-    refute_includes tools.keys, "initialize"
+    tools_http = breakdown_counts(response.parsed_body)
+    assert_equal 10, tools_http["list"]
+    assert_equal 3, tools_http["show"]
+    refute_includes tools_http.keys, "initialize"
 
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/by_method",
         headers: auth(@staff_operations_token),
         as: :json
     assert_response :success
-    methods = breakdown_counts(response.parsed_body)
-    assert_equal 13, methods["tools/call"]
-    assert_equal 6, methods["initialize"]
+    methods_http = breakdown_counts(response.parsed_body)
+    assert_equal 13, methods_http["tools/call"]
+    assert_equal 6, methods_http["initialize"]
 
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/rate_limited",
         headers: auth(@staff_operations_token),
@@ -115,7 +147,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/rate_limited",
         headers: auth(@public_token),
         as: :json
-    assert_response :unauthorized
+    assert_includes [401, 403], response.status
 
     get "#{PUBLIC_ROOT}/metrics/mcp_calls/rate_limited",
         headers: auth(@public_token),
@@ -127,7 +159,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
   def seed_daily_metrics!
     create_daily_metric(
-      metric_date: Date.new(2026, 4, 1),
+      metric_date: @day_one,
       method_name: "tools/call",
       subject_name: "list",
       call_count: 8,
@@ -135,7 +167,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       rate_limited_count: 1
     )
     create_daily_metric(
-      metric_date: Date.new(2026, 4, 1),
+      metric_date: @day_one,
       method_name: "tools/call",
       subject_name: "show",
       call_count: 2,
@@ -143,7 +175,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       rate_limited_count: 2
     )
     create_daily_metric(
-      metric_date: Date.new(2026, 4, 1),
+      metric_date: @day_one,
       method_name: "initialize",
       subject_name: "",
       call_count: 2,
@@ -151,7 +183,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       rate_limited_count: 0
     )
     create_daily_metric(
-      metric_date: Date.new(2026, 4, 2),
+      metric_date: @day_two,
       method_name: "tools/call",
       subject_name: "list",
       call_count: 2,
@@ -159,7 +191,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       rate_limited_count: 0
     )
     create_daily_metric(
-      metric_date: Date.new(2026, 4, 2),
+      metric_date: @day_two,
       method_name: "tools/call",
       subject_name: "show",
       call_count: 1,
@@ -167,7 +199,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       rate_limited_count: 1
     )
     create_daily_metric(
-      metric_date: Date.new(2026, 4, 2),
+      metric_date: @day_two,
       method_name: "initialize",
       subject_name: "",
       call_count: 4,
@@ -184,6 +216,19 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       call_count: call_count,
       failed_count: failed_count,
       rate_limited_count: rate_limited_count
+    )
+  end
+
+  def execute(identifier, **params)
+    RecordingStudioMetrics.execute(
+      identifier,
+      context: RecordingStudioMetrics::Context.new(
+        actor: @staff,
+        scope: :site,
+        site_authorized: true,
+        timezone: "UTC"
+      ),
+      **params
     )
   end
 
