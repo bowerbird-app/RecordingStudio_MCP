@@ -40,6 +40,10 @@ module RecordingStudioMcp
       end
     end
 
+    initializer "recording_studio_mcp.metrics" do
+      config.to_prepare { RecordingStudioMcp::Metrics.register! }
+    end
+
     # Oauth 0.2+ registers public MCP via config.mcp_mount_path. Keep that path
     # aligned with this gem so public authorize accepts the MCP resource identity.
     # Named-API MCP identities live at `{mcp_mount_path}/apis/{api_key}`.

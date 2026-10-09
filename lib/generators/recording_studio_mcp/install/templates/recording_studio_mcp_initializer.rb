@@ -18,6 +18,9 @@ end
 # Optional. MCP UI is not a dependency of this gem. Pass ui: on the API
 # operation and register the widget in MCP UI. Nothing else to wire.
 
+# Host-owned. This gem registers MCP usage metrics; expose them once:
+# RecordingStudioMetrics::Api.register!(api: :operations)
+
 # Optional. Register events that may notify subscribed MCP clients.
 # RecordingStudioMcp.register_event("recording updated")
 # RecordingStudioMcp.register_event("recording updated") do |event|
