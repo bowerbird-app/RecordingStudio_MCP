@@ -27,11 +27,25 @@ class MetricsTest < Minitest::Test
     assert_includes metrics, "expose: EXPOSE"
     assert_includes metrics, "api: [API]"
     assert_includes metrics, "API = :operations"
-    assert_includes metrics, "site_admin_recording_resolver"
-    assert_includes metrics, "RecordingStudioAccessible.authorized?"
+    assert_includes metrics, "Api::Access.can_view?"
+    refute_includes metrics, "RecordingStudioAccessible.authorized?"
+    refute_includes metrics, "access_recording_resolver"
+    refute_includes metrics, "site_admin_recording_resolver"
+    refute_includes metrics, "ADMIN_CONTEXT"
+    refute_includes metrics, "Struct.new"
     refute_includes metrics, "RecordingStudioMetrics::Api.register!"
     refute_includes metrics, "respond_to?"
     refute_includes metrics, "rescue"
+
+    access = File.read(File.expand_path("../lib/recording_studio_mcp/api/access.rb", __dir__))
+    assert_includes access, "def can_view?"
+    assert_includes access, "RecordingStudioAccessible.authorized?"
+    assert_includes access, "role: :view"
+    assert_includes access, "access_recording_resolver"
+    refute_includes access, "Struct.new"
+    refute_includes access, "ADMIN_CONTEXT"
+    refute_includes access, "respond_to?"
+    refute_includes access, "rescue"
 
     assert_includes engine, 'initializer "recording_studio_mcp.metrics"'
     assert_includes engine, "RecordingStudioMcp::Metrics.register!"

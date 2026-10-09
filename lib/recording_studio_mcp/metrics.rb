@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "api/access"
 require "recording_studio_metrics"
 
 module RecordingStudioMcp
@@ -8,8 +9,7 @@ module RecordingStudioMcp
     API = :operations
     EXPOSE = { api: [API] }.freeze
     TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call") }
-    ADMIN_CONTEXT = Struct.new(:controller)
-    AUTHORIZE = ->(context) { RecordingStudioMcp::Metrics.admin_view?(context) }
+    AUTHORIZE = ->(context) { RecordingStudioMcp::Api::Access.can_view?(context) }
 
     module_function
 
@@ -69,17 +69,6 @@ module RecordingStudioMcp
 
     def define_rate_limited(dsl)
       dsl.sum :rate_limited, title: "Rate limited MCP calls", field: :rate_limited_count, expose: EXPOSE
-    end
-
-    def admin_view?(context)
-      actor = context.access_grant.actor
-      recording = site_admin_recording
-      actor.present? && recording.present? &&
-        RecordingStudioAccessible.authorized?(actor: actor, recording: recording, role: :view)
-    end
-
-    def site_admin_recording
-      RecordingStudioAdmin.configuration.site_admin_recording_resolver.call(ADMIN_CONTEXT.new(nil))
     end
   end
 end

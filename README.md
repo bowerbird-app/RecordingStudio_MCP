@@ -177,7 +177,7 @@ Staff admin is the MCP admin section. Ops MCP lists `/recording_studio_mcp/apis/
 
 Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics`.
 
-The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on that same daily table. `api_authorize` reuses Admin's site-admin Accessible `:view` check. This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
+The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on that same daily table. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
 
 ```ruby
 RecordingStudioMetrics::Api.register!(api: :operations)

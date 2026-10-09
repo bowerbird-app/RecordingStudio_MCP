@@ -21,8 +21,8 @@ operations API.
   `subject_name`), `mcp_calls.by_method` (sum of `call_count` by
   `method_name`), and `mcp_calls.rate_limited` (sum of
   `rate_limited_count`). Each is exposed on `:operations` only.
-  `api_authorize` reuses Admin's site-admin Accessible `:view` check
-  (the same recording that gates the MCP admin section and ops widget).
+  `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?`
+  (AdminRoot Accessible `:view`, the same check as the MCP admin section).
 - Runtime dependency `recording_studio_metrics` `~> 0.2` (GitHub tag `v0.2.0`).
 
 ### Upgrade notes
