@@ -11,6 +11,7 @@ class McpUiTest < Minitest::Test
   def setup
     McpUiSupport.install_fake_mcp_ui
     RecordingStudio::MCP_UI.reset!
+    RecordingStudioMcp::McpUi.instance_variable_set(:@content_digests, {})
     @grant = FakeGrant.new(api_client: FakeClient.new("public"), accessible_recordings: [])
   end
 
@@ -44,9 +45,53 @@ class McpUiTest < Minitest::Test
       RecordingStudio::MCP_UI.register("presskits.editor")
       tools = RecordingStudioMcp::Tools.definitions
       edit = tools.find { |tool| tool[:name] == "presskits.edit" }
-      assert_equal "ui://presskits/editor", edit.dig(:_meta, :ui, :resourceUri)
+      uri = edit.dig(:_meta, :ui, :resourceUri)
+      assert_match(%r{\Aui://presskits/editor\?v=[0-9a-f]{12}\z}, uri)
       ping = tools.find { |tool| tool[:name] == "ping" }
       refute ping.key?(:_meta)
+    end
+  end
+
+  def test_tools_list_succeeds_with_tree_tools_and_ui_endpoint
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioApi.register_endpoint(
+        "presskits.edit",
+        http_verb: :patch,
+        path: "presskits/:id",
+        handler: ->(_context) { { id: "1" } },
+        ui: "presskits.editor"
+      )
+      RecordingStudio::MCP_UI.register("presskits.editor")
+
+      tools = RecordingStudioMcp::Tools.definitions
+      list = tools.find { |tool| tool[:name] == "list" }
+      refute_nil list
+      refute list.key?(:_meta)
+      edit = tools.find { |tool| tool[:name] == "presskits.edit" }
+      assert_match(%r{\Aui://presskits/editor\?v=}, edit.dig(:_meta, :ui, :resourceUri))
+    end
+  end
+
+  def test_resource_uri_digest_changes_when_packaged_html_changes
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        "presskits.edit",
+        http_verb: :patch,
+        path: "presskits/:id",
+        handler: ->(_context) { { id: "1" } },
+        ui: "presskits.editor"
+      )
+      RecordingStudio::MCP_UI.register("presskits.editor")
+
+      first = RecordingStudioMcp::McpUi.resource_uri_for(action_name: "presskits.edit", api: :public)
+      RecordingStudio::MCP_UI.html_extra = "changed"
+      RecordingStudioMcp::McpUi.instance_variable_set(:@content_digests, {})
+      second = RecordingStudioMcp::McpUi.resource_uri_for(action_name: "presskits.edit", api: :public)
+
+      assert_includes first, "?v="
+      assert_includes second, "?v="
+      refute_equal first, second
     end
   end
 
@@ -63,15 +108,27 @@ class McpUiTest < Minitest::Test
       RecordingStudio::MCP_UI.register("secret.editor")
 
       listed = RecordingStudioMcp::Resources.list(access_grant: @grant)
-      uris = listed.payload[:resources].map { |entry| entry[:uri] }
-      assert_equal ["ui://presskits/editor"], uris
-      assert_equal "text/html;profile=mcp-app", listed.payload[:resources].first[:mimeType]
+      listed_uri = listed.payload[:resources].map { |entry| entry[:uri] }.find { |uri| uri.start_with?("ui://") }
+      assert_match(%r{\Aui://presskits/editor\?v=[0-9a-f]{12}\z}, listed_uri)
+      assert_equal "text/html;profile=mcp-app", listed.payload[:resources].find { |entry|
+        entry[:uri] == listed_uri
+      }[:mimeType]
 
-      read = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://presskits/editor")
-      content = read.payload[:contents].first
-      assert_equal "text/html;profile=mcp-app", content[:mimeType]
-      assert_includes content[:text], "presskits.editor"
-      assert content.dig(:_meta, :ui, :csp)
+      edit = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "presskits.edit" }
+      tool_uri = edit.dig(:_meta, :ui, :resourceUri)
+      assert_equal listed_uri, tool_uri
+
+      versioned = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: listed_uri)
+      versioned_content = versioned.payload[:contents].first
+      assert_equal listed_uri, versioned_content[:uri]
+      assert_equal "text/html;profile=mcp-app", versioned_content[:mimeType]
+      assert_includes versioned_content[:text], "presskits.editor"
+      assert versioned_content.dig(:_meta, :ui, :csp)
+
+      bare = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://presskits/editor")
+      bare_content = bare.payload[:contents].first
+      assert_equal "ui://presskits/editor", bare_content[:uri]
+      assert_includes bare_content[:text], "presskits.editor"
 
       hidden = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://secret/editor")
       assert_instance_of RecordingStudioMcp::Resources::NotFound, hidden

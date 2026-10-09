@@ -18,10 +18,11 @@ module McpUiSupport
       end
 
       class << self
-        attr_accessor :widgets
+        attr_accessor :widgets, :html_extra
 
         def reset!
           self.widgets = {}
+          self.html_extra = nil
         end
 
         def register(id, description: nil)
@@ -43,7 +44,7 @@ module McpUiSupport
               uri: widget.resource_uri,
               name: widget.id,
               mimeType: "text/html;profile=mcp-app",
-              text: "<html data-widget=\"#{widget.id}\">#{data}</html>",
+              text: "<html data-widget=\"#{widget.id}\">#{data}#{html_extra}</html>",
               _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] } } }
             }
           )

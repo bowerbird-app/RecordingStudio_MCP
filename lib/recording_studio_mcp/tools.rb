@@ -209,6 +209,8 @@ module RecordingStudioMcp
     end
 
     def attach_ui_meta(payload, action_name, api)
+      return if action_name.blank? || TREE_NAMES.include?(action_name.to_s)
+
       uri = McpUi.resource_uri_for(action_name: action_name, api: api)
       return if uri.blank?
 

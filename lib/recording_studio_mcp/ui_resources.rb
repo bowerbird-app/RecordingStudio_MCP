@@ -10,7 +10,7 @@ module RecordingStudioMcp
       McpUi.list.filter_map do |widget|
         next unless visible?(widget.id, access_grant)
 
-        { uri: widget.resource_uri, name: widget.id, mimeType: McpUi::MIME_TYPE }
+        { uri: McpUi.resource_uri(widget), name: widget.id, mimeType: McpUi::MIME_TYPE }
       end
     end
 
@@ -21,7 +21,10 @@ module RecordingStudioMcp
       return Resources::NotFound.new(uri: uri) if document.nil?
 
       Resources::Read.new(
-        payload: ResultShape.complete({ contents: [document.to_mcp_resource] }, protocol_version: protocol_version)
+        payload: ResultShape.complete(
+          { contents: [document.to_mcp_resource.merge(uri: uri)] },
+          protocol_version: protocol_version
+        )
       )
     end
 

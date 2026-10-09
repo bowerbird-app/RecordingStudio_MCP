@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Optional MCP Apps widgets when RecordingStudio MCP UI is loaded.
 
 ### Added
-- Endpoint tools include MCP Apps `_meta.ui.resourceUri` when `RecordingStudioApi.ui_for` names a widget that `RecordingStudio::MCP_UI.find` resolves.
-- `resources/list` and `resources/read` serve `ui://` documents from `RecordingStudio::MCP_UI.package(...).to_mcp_resource`. A grant sees a widget only when `actions_for_ui` finds an action on that grant's named API.
+- Endpoint tools include MCP Apps `_meta.ui.resourceUri` when `RecordingStudioApi.ui_for` names a widget that `RecordingStudio::MCP_UI.find` resolves. The URI is `ui://…?v=<digest>` of the packaged widget HTML, memoized per process per widget id so hosts that cache `ui://` by URI pick up HTML changes.
+- `resources/list` and `resources/read` serve those same versioned `ui://` documents from `RecordingStudio::MCP_UI.package(...).to_mcp_resource`. `resources/read` accepts the versioned URI and the bare one. A grant sees a widget only when `actions_for_ui` finds an action on that grant's named API.
+- Tree tools do not get UI meta. `tools/list` skips attach when the tool has no API endpoint name.
 
 ### Notes
 - MCP UI is optional. This gem does not depend on it. Without that constant, tools and resources stay as they were.
