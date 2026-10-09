@@ -66,7 +66,7 @@ class RecordingStudioMcpTest < Minitest::Test
 
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.4.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.13.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.0.7"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.1.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.11"'
     refute_includes gemfile, "recording_studio_mcp_ui"
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.6.2"'
