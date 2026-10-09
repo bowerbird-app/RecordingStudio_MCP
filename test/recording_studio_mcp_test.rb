@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_9_0
-    assert_equal "0.11.0", ::RecordingStudioMcp::VERSION
+    assert_equal "0.12.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -17,6 +17,7 @@ class RecordingStudioMcpTest < Minitest::Test
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_api", "~> 0.6", ">= 0.6.11"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", "~> 0.2"'
     refute_includes gemspec, "recording_studio_mcp_ui"
     assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", "~> 0.6"'
     refute_includes gemspec, "recording_studio_users"
@@ -68,6 +69,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.13.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.1.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.11"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.2.0"'
     refute_includes gemfile, "recording_studio_mcp_ui"
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.6.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.13.0"'
@@ -94,7 +96,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "0.11.0"
+    assert_includes readme, "0.12.0"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."
@@ -105,6 +107,8 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "draw_named_api_well_known"
     assert_includes readme, "/recording_studio_mcp/apis/operations"
     assert_includes readme, "/recording_studio_oauth/apis/operations/oauth/authorize"
+    assert_includes readme, "RecordingStudioMetrics::Api.register!(api: :operations)"
+    assert_includes readme, "/metrics/mcp_calls/"
     assert_includes readme, "Catalog-only"
     refute_includes readme, "Internal template"
     refute_includes readme, "GemTemplate"

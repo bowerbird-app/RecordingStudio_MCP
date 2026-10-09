@@ -61,6 +61,15 @@ GIT
       recording_studio (~> 4.2)
 
 GIT
+  remote: https://github.com/bowerbird-app/RecordingStudio_metrics.git
+  revision: 6e02b6b75a8a9dad2bd80c6ba2d30f7444e67b9e
+  tag: v0.2.0
+  specs:
+    recording_studio_metrics (0.2.0)
+      rails (~> 8.1.0)
+      recording_studio (~> 4.2)
+
+GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_site_settings.git
   revision: f1598d974b29125cea9b42eda962396635edba1a
   tag: v0.1.3
@@ -87,11 +96,12 @@ GIT
 PATH
   remote: .
   specs:
-    recording_studio_mcp (0.11.0)
+    recording_studio_mcp (0.12.0)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_admin (~> 2.0)
       recording_studio_api (~> 0.6, >= 0.6.11)
+      recording_studio_metrics (~> 0.2)
       recording_studio_oauth (~> 0.6)
 
 GEM
@@ -400,6 +410,7 @@ DEPENDENCIES
   recording_studio_api!
   recording_studio_attachable!
   recording_studio_mcp!
+  recording_studio_metrics!
   recording_studio_oauth!
   recording_studio_site_settings!
   rubocop
@@ -488,7 +499,8 @@ CHECKSUMS
   recording_studio_admin (2.1.0)
   recording_studio_api (0.6.11)
   recording_studio_attachable (0.13.0)
-  recording_studio_mcp (0.11.0)
+  recording_studio_mcp (0.12.0)
+  recording_studio_metrics (0.2.0)
   recording_studio_oauth (0.6.2)
   recording_studio_site_settings (0.1.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-09
+
+Site-wide MCP usage metrics register with Recording Studio Metrics for the
+operations API.
+
+### Added
+- `RecordingStudioMcp::Metrics.register!` registers `:mcp_calls` on the
+  existing `UsageDailyMetric` table (`blast_radius: :site`). Metrics:
+  `mcp_calls.over_time` (sum of `call_count` by `metric_date`),
+  `mcp_calls.failed_over_time` (sum of `failed_count` by `metric_date`),
+  `mcp_calls.by_tool` (sum of `call_count` for `tools/call` by
+  `subject_name`), `mcp_calls.by_method` (sum of `call_count` by
+  `method_name`), and `mcp_calls.rate_limited` (sum of
+  `rate_limited_count`). Each is exposed on `:operations` only.
+  `api_authorize` reuses Admin's site-admin Accessible `:view` check
+  (the same recording that gates the MCP admin section and ops widget).
+- Runtime dependency `recording_studio_metrics` `~> 0.2` (GitHub tag `v0.2.0`).
+
+### Upgrade notes
+- Bump to `0.12.0`. No migration. Usage logging is unchanged.
+- Add `recording_studio_metrics` at tag `v0.2.0`.
+- Keep `recording_studio_api` at tag `v0.6.11` (`~> 0.6`, `>= 0.6.11`, `< 0.7`).
+- This gem does not call `RecordingStudioMetrics::Api.register!`. The host
+  registers Metrics endpoints once:
+
+```ruby
+RecordingStudioMetrics::Api.register!(api: :operations)
+```
+
 ## [0.11.0] - 2026-10-09
 
 Optional MCP Apps widgets when RecordingStudio MCP UI is loaded.
