@@ -44,8 +44,6 @@ require "recording_studio_mcp/tools"
 require "recording_studio_mcp/tool_surface"
 require "recording_studio_mcp/mcp_ui"
 require "recording_studio_mcp/ui_resources"
-require "recording_studio_mcp/widget_result"
-require "recording_studio_mcp/widget_actions"
 require "recording_studio_mcp/sse_writer"
 require "recording_studio_mcp/sse_stream_body"
 require "recording_studio_mcp/request_context"
@@ -114,10 +112,6 @@ module RecordingStudioMcp
       catalog = configuration.skill_catalog
       policy = configuration.skill_policy
       catalog.select { |registration| expose_skill?(registration, policy, access_grant) }
-    end
-
-    def dispatch_widget_action(**call)
-      WidgetActions.call(call)
     end
 
     private

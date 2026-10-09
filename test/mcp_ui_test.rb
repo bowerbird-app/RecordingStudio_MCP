@@ -38,11 +38,10 @@ class McpUiTest < Minitest::Test
       tools = RecordingStudioMcp::Tools.definitions
       ping = tools.find { |tool| tool[:name] == "ping" }
       refute ping.key?(:_meta)
-
       edit = tools.find { |tool| tool[:name] == "presskits.edit" }
       refute edit.key?(:_meta)
 
-      RecordingStudio::MCP_UI.register("presskits.editor", actions: { save: "presskits.update" })
+      RecordingStudio::MCP_UI.register("presskits.editor")
       tools = RecordingStudioMcp::Tools.definitions
       edit = tools.find { |tool| tool[:name] == "presskits.edit" }
       assert_equal "ui://presskits/editor", edit.dig(:_meta, :ui, :resourceUri)
@@ -51,7 +50,7 @@ class McpUiTest < Minitest::Test
     end
   end
 
-  def test_resources_read_packages_html_and_hides_unauthorized
+  def test_resources_list_and_read_ui_and_hide_unauthorized
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(
         "presskits.edit",
@@ -60,10 +59,12 @@ class McpUiTest < Minitest::Test
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
-      RecordingStudio::MCP_UI.register("presskits.editor", actions: { save: "presskits.update" })
+      RecordingStudio::MCP_UI.register("presskits.editor")
+      RecordingStudio::MCP_UI.register("secret.editor")
 
       listed = RecordingStudioMcp::Resources.list(access_grant: @grant)
-      assert_equal "ui://presskits/editor", listed.payload[:resources].first[:uri]
+      uris = listed.payload[:resources].map { |entry| entry[:uri] }
+      assert_equal ["ui://presskits/editor"], uris
       assert_equal "text/html;profile=mcp-app", listed.payload[:resources].first[:mimeType]
 
       read = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://presskits/editor")
@@ -72,47 +73,9 @@ class McpUiTest < Minitest::Test
       assert_includes content[:text], "presskits.editor"
       assert content.dig(:_meta, :ui, :csp)
 
-      RecordingStudio::MCP_UI.hidden << "presskits.editor"
-      hidden = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://presskits/editor")
+      hidden = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://secret/editor")
       assert_instance_of RecordingStudioMcp::Resources::NotFound, hidden
-      refute RecordingStudioMcp::Resources.accessible?(@grant, "ui://presskits/editor")
-      listed = RecordingStudioMcp::Resources.list(access_grant: @grant)
-      refute(listed.payload[:resources].any? { |entry| entry[:uri].to_s.start_with?("ui://") })
-    end
-  end
-
-  def test_widget_dispatch_maps_alias_rejects_unknown_and_unauthorized
-    with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
-        "presskits.update",
-        http_verb: :patch,
-        path: "presskits/:id",
-        handler: ->(context) { { id: context.params[:id], title: context.params[:title] } },
-        ui: "presskits.editor"
-      )
-      RecordingStudio::MCP_UI.register("presskits.editor", actions: { save: "presskits.update" })
-
-      result = tool_result("save", { "id" => "kit-1", "title" => "Studio" })
-      refute result[:isError]
-      assert_equal true, result.dig(:structuredContent, "ok")
-      assert_equal "Studio", result.dig(:structuredContent, "data", "title")
-      assert_equal({}, result.dig(:structuredContent, "errors"))
-      refute result[:structuredContent].key?("contextUpdate")
-
-      unknown = tool_result("delete", { "id" => "kit-1" })
-      assert unknown[:isError]
-      assert_equal false, unknown.dig(:structuredContent, "ok")
-      assert unknown.dig(:structuredContent, "errors", "alias")
-
-      invalid = tool_result("save", { "title" => "Studio" })
-      assert invalid[:isError]
-      assert_equal false, invalid.dig(:structuredContent, "ok")
-      assert invalid.dig(:structuredContent, "errors", "base")
-
-      RecordingStudio::MCP_UI.hidden << "presskits.editor"
-      denied = tool_result("save", { "id" => "kit-1", "title" => "Studio" })
-      assert denied[:isError]
-      assert_includes denied.dig(:structuredContent, "errors", "base").first, "not available"
+      refute RecordingStudioMcp::Resources.accessible?(@grant, "ui://secret/editor")
     end
   end
 
@@ -137,96 +100,32 @@ class McpUiTest < Minitest::Test
 
       answer = RecordingStudioMcp::Resources.read(access_grant: @grant, uri: "ui://presskits/editor")
       assert_instance_of RecordingStudioMcp::Resources::InvalidParams, answer
-
-      result = RecordingStudioMcp::Dispatcher.call(
-        tool_name: "save",
-        arguments: { id: "kit-1" },
-        access_grant: @grant
-      )
-      assert result[:isError]
-      assert_includes result.dig(:content, 0, :text), "Unknown tool save"
-      refute result.key?(:structuredContent)
     end
   end
 
-  def test_install_host_hooks_sets_empty_slots_and_visibility
+  def test_normal_tools_call_is_unchanged
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(
-        "presskits.update",
-        http_verb: :patch,
-        path: "presskits/:id",
+        :ping,
+        http_verb: :get,
+        path: "ping",
         handler: ->(_context) { { ok: true } },
-        ui: "presskits.editor"
+        ui: "status.ping"
       )
-      RecordingStudio::MCP_UI.register("presskits.editor", actions: { save: "presskits.update" })
-      widget = RecordingStudio::MCP_UI.find("presskits.editor")
-
-      RecordingStudioMcp::McpUi.install_host_hooks
-      checker = RecordingStudio::MCP_UI.configuration.visibility_checker
-      assert checker.call(widget: widget, access_grant: @grant, api: "public", version: nil)
-      refute checker.call(widget: widget, access_grant: nil, api: "public", version: nil)
-      refute checker.call(widget: widget, access_grant: @grant, api: "operations", version: nil)
-
-      request = Struct.new(:widget, :alias_name, :arguments, :access_grant).new(
-        widget, "save", { "id" => "kit-1" }, @grant
-      )
-      executed = RecordingStudio::MCP_UI.configuration.action_executor.call(request)
-      assert_equal true, executed.dig(:structuredContent, "ok")
-
-      custom = ->(*) { false }
-      RecordingStudio::MCP_UI.configuration.visibility_checker = custom
-      RecordingStudioMcp::McpUi.install_host_hooks
-      assert_same custom, RecordingStudio::MCP_UI.configuration.visibility_checker
-    end
-  end
-
-  def test_normal_tools_call_matching_a_widget_alias_stays_a_normal_tool
-    with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
-        :save,
-        http_verb: :post,
-        path: "save",
-        handler: ->(_context) { { saved: true } }
-      )
-      RecordingStudioApi.register_endpoint(
-        "presskits.update",
-        http_verb: :patch,
-        path: "presskits/:id",
-        handler: ->(_context) { { id: "widget" } },
-        ui: "presskits.editor"
-      )
-      RecordingStudio::MCP_UI.register("presskits.editor", actions: { save: "presskits.update" })
+      RecordingStudio::MCP_UI.register("status.ping")
 
       answer = RecordingStudioMcp::Protocol.handle(
         {
           "jsonrpc" => "2.0",
           "id" => 1,
           "method" => "tools/call",
-          "params" => { "name" => "save", "arguments" => {} }
+          "params" => { "name" => "ping", "arguments" => {} }
         },
         access_grant: @grant
       )
       result = answer.body.fetch(:result)
       refute result[:isError]
-      assert_equal true, result.dig(:structuredContent, "saved")
-      refute result[:structuredContent].key?("ok")
+      assert_equal true, result.dig(:structuredContent, "ok")
     end
-  end
-
-  def tool_result(name, arguments)
-    answer = RecordingStudioMcp::Protocol.handle(
-      {
-        "jsonrpc" => "2.0",
-        "id" => 1,
-        "method" => "tools/call",
-        "params" => {
-          "name" => name,
-          "arguments" => arguments,
-          "_meta" => { "ui" => { "resourceUri" => "ui://presskits/editor" } }
-        }
-      },
-      access_grant: @grant
-    )
-    answer.body.fetch(:result)
   end
 end

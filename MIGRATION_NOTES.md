@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6` and `>= 0.
 
 ## 0.11.0
 
-API `0.6.11` is not tagged yet. Pin `recording_studio_api` to branch `cursor/mcp-ui-api-metadata-ae0b`. MCP UI is optional and not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3`. Register `ui:` on the API operation and the widget in MCP UI. This gem wires `visibility_checker` and `action_executor` when those slots are empty.
+API `0.6.11` is not tagged yet. Pin `recording_studio_api` to branch `cursor/mcp-ui-api-metadata-ae0b`. MCP UI is optional and not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3`. Register `ui:` on the API operation and the widget in MCP UI. Nothing else to wire. Widget buttons call the real API tool name.
 
 ## 0.10.0
 

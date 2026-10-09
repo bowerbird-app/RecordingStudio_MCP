@@ -352,30 +352,15 @@ module RecordingStudioMcp
       return rpc_error(id, INVALID_PARAMS, "name is required") if name.blank?
 
       ResultShape.complete(
-        execute_tool(name, arguments, params),
-        protocol_version: request_protocol_version,
-        cacheable: false
-      )
-    end
-
-    def execute_tool(name, arguments, params)
-      meta = params["_meta"] || params[:_meta]
-      if WidgetActions.from_tools_call?(meta)
-        return RecordingStudioMcp.dispatch_widget_action(
-          widget_id: WidgetActions.widget_id_for(meta),
-          alias_name: name,
+        Dispatcher.call(
+          tool_name: name,
           arguments: arguments,
           access_grant: access_grant,
-          extras: { idempotency_key: idempotency_key, request_context: request_context }
-        )
-      end
-
-      Dispatcher.call(
-        tool_name: name,
-        arguments: arguments,
-        access_grant: access_grant,
-        idempotency_key: idempotency_key,
-        request_context: request_context
+          idempotency_key: idempotency_key,
+          request_context: request_context
+        ),
+        protocol_version: request_protocol_version,
+        cacheable: false
       )
     end
 

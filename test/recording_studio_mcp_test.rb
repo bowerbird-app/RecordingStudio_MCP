@@ -102,7 +102,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "Streamable HTTP"
     assert_includes readme, "WWW-Authenticate"
     assert_includes readme, "register_endpoint"
-    assert_includes readme, "dispatch_widget_action"
+    assert_includes readme, "actions_for_ui"
     assert_includes readme, "draw_named_api_well_known"
     assert_includes readme, "/recording_studio_mcp/apis/operations"
     assert_includes readme, "/recording_studio_oauth/apis/operations/oauth/authorize"

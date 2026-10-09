@@ -13,20 +13,18 @@ Optional MCP Apps widgets when RecordingStudio MCP UI is loaded.
 
 ### Added
 - Endpoint tools include MCP Apps `_meta.ui.resourceUri` when `RecordingStudioApi.ui_for` names a widget that `RecordingStudio::MCP_UI.find` resolves.
-- `resources/list` and `resources/read` serve `ui://` documents from `RecordingStudio::MCP_UI.package(...).to_mcp_resource` for widgets the current grant may see.
-- Widget `tools/call` aliases resolve through `widget.action_for` and run the existing API handler. Structured content is `ok`, `data`, `errors`, and optional `contextUpdate`.
-- `RecordingStudioMcp.dispatch_widget_action` for hosts that wire `RecordingStudio::MCP_UI.configuration.action_executor`.
+- `resources/list` and `resources/read` serve `ui://` documents from `RecordingStudio::MCP_UI.package(...).to_mcp_resource`. A grant sees a widget only when `actions_for_ui` finds an action on that grant's named API.
 
 ### Notes
 - MCP UI is optional. This gem does not depend on it. Without that constant, tools and resources stay as they were.
+- Widget buttons call the real API tool name. MCP does not dispatch aliases.
 - Provider-agnostic MCP Apps metadata only. Clients that cannot load `ui://` still get the structured tool result.
 - API `0.6.11` is not released yet. Hosts must pin branch `cursor/mcp-ui-api-metadata-ae0b` until it is tagged. MCP UI is the same: pin `cursor/mcp-ui-engine-6ec3` (PR #1) when you want widgets.
 
 ### Upgrade notes
 - Bump to `0.11.0`. Pin API to branch `cursor/mcp-ui-api-metadata-ae0b` (version `0.6.11`) until that gem is released.
 - MCP UI is optional. Do not add it unless the host wants widgets.
-- When MCP UI is loaded, this gem sets `visibility_checker` and `action_executor` if they are still empty. `visibility_checker` is true only when `actions_for_ui` finds an operation on the grant's named API. Hosts may replace either hook.
-- Register `ui:` on the API operation and the matching widget in MCP UI. Do not invent a second association table.
+- Register `ui:` on the API operation and the matching widget in MCP UI. No other wiring.
 
 ## [0.10.0] - 2026-10-08
 

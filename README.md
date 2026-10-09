@@ -57,7 +57,7 @@ Create and update send writable fields at the request root (`title`, not `attrib
 
 Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens and `input_contract` fields become `inputSchema` arguments. There is no `describe` hop and no empty tree tool list.
 
-When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri`. `resources/list` and `resources/read` serve that `ui://` HTML in-process. A widget `tools/call` is dispatched only when the request carries `_meta.ui.resourceUri`. MCP UI's `mcpUI.execute` currently sends `{ name: alias, arguments }` only, so the host or MCP Apps SDK must attach that uri. Without it, the name is a normal tool. MCP UI is optional. Without it, tools and resources stay the same.
+When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri`. `resources/list` and `resources/read` serve that `ui://` HTML in-process for widgets `actions_for_ui` allows on the grant's named API. Widget buttons call the real API tool name. MCP UI is optional. Without it, tools and resources stay the same.
 
 Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `delete`, `capability_action`, or `describe`.
 
@@ -161,7 +161,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.11`, branch `cursor/mcp-ui-api-metadata-ae0b` until tagged), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. When that constant is loaded, this gem fills empty `visibility_checker` and `action_executor` slots. Hosts may replace them. `action_executor` should call `RecordingStudioMcp.dispatch_widget_action`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.11`, branch `cursor/mcp-ui-api-metadata-ae0b` until tagged), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
