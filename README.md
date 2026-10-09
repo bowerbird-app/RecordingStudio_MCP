@@ -57,6 +57,8 @@ Create and update send writable fields at the request root (`title`, not `attrib
 
 Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens and `input_contract` fields become `inputSchema` arguments. There is no `describe` hop and no empty tree tool list.
 
+When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri` as `ui://…?v=<digest>` of the packaged HTML. `resources/list` and `resources/read` serve that same URI. `resources/read` also accepts the bare `ui://` path. A grant sees a widget only when `actions_for_ui` allows it on that named API. Widget buttons call the real API tool name. MCP UI is optional. Without it, tools and resources stay the same.
+
 Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `delete`, `capability_action`, or `describe`.
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
@@ -159,7 +161,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.9`), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `~> 0.6` (`>= 0.6.11`, git tag `v0.6.11`), Oauth `v0.6.2`, and `recording_studio_admin ~> 2.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -240,4 +242,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.9.1
+0.11.0

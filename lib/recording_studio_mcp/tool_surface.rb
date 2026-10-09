@@ -52,7 +52,7 @@ module RecordingStudioMcp
     def tool_definitions
       definitions = []
       definitions.concat(Tools.tree_definitions(catalog)) if tree_enabled?
-      definitions.concat(endpoints.map { |endpoint| Tools.endpoint_tool(endpoint) })
+      definitions.concat(endpoints.map { |endpoint| Tools.endpoint_tool(endpoint, api: catalog.api) })
       definitions
     end
 

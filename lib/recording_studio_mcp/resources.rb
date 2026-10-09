@@ -37,6 +37,8 @@ module RecordingStudioMcp
     end
 
     def read(access_grant:, uri:, protocol_version: nil)
+      return UiResources.read(access_grant: access_grant, uri: uri, protocol_version: protocol_version) if ui_uri?(uri)
+
       recording_id = recording_id_from(uri)
       return InvalidParams.new if recording_id.nil?
 
@@ -60,6 +62,8 @@ module RecordingStudioMcp
     end
 
     def accessible?(access_grant, uri)
+      return UiResources.accessible?(access_grant, uri) if ui_uri?(uri)
+
       recording_id = recording_id_from(uri)
       return false if recording_id.nil?
 
@@ -67,7 +71,15 @@ module RecordingStudioMcp
     end
 
     def listed_resources(access_grant)
-      skill_resources(access_grant) + recording_resources(access_grant)
+      skill_resources(access_grant) + recording_resources(access_grant) + UiResources.listed(access_grant)
+    end
+
+    def ui_uri?(uri)
+      McpUi.widget_id_from_uri(uri).present?
+    end
+
+    def complete(extra, protocol_version)
+      ResultShape.complete(extra, protocol_version: protocol_version)
     end
 
     def skill_resources(access_grant)
@@ -105,15 +117,11 @@ module RecordingStudioMcp
       RecordingCard.new(recording).content
     end
 
-    def complete(extra, protocol_version)
-      ResultShape.complete(extra, protocol_version: protocol_version)
-    end
-
     def recording_template
       { name: TEMPLATE_NAME, uriTemplate: URI_TEMPLATE, mimeType: MIME_TYPE }
     end
 
     private_class_method :complete, :listed_resources, :skill_resources, :recording_resources,
-                         :recordings_for, :content_for, :recording_template
+                         :recordings_for, :content_for, :recording_template, :ui_uri?
   end
 end

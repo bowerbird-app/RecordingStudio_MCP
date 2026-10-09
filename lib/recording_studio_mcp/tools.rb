@@ -20,7 +20,7 @@ module RecordingStudioMcp
       advertised_tree_names(catalog).map { |name| public_send("#{name}_tool", catalog) }
     end
 
-    def endpoint_tool(endpoint)
+    def endpoint_tool(endpoint, api: nil)
       schema = EndpointSchema.build(endpoint)
       options = {
         name: endpoint.name,
@@ -33,6 +33,7 @@ module RecordingStudioMcp
         properties: schema.fetch(:properties)
       }
       options[:additional_properties] = schema[:additionalProperties] if schema.key?(:additionalProperties)
+      options[:api] = api
       tool(options)
     end
 
@@ -203,8 +204,18 @@ module RecordingStudioMcp
         idempotentHint: options.fetch(:idempotent, false),
         openWorldHint: false
       }
+      attach_ui_meta(payload, options[:name], options[:api])
       payload
     end
-    private_class_method :tool, :endpoint_title, :endpoint_description
+
+    def attach_ui_meta(payload, action_name, api)
+      return if action_name.blank? || TREE_NAMES.include?(action_name.to_s)
+
+      uri = McpUi.resource_uri_for(action_name: action_name, api: api)
+      return if uri.blank?
+
+      payload[:_meta] = { ui: { resourceUri: uri } }
+    end
+    private_class_method :tool, :endpoint_title, :endpoint_description, :attach_ui_meta
   end
 end
