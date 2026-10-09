@@ -41,10 +41,10 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: 0e98ca8d251d1a2a7053b80a18aa5a0fdffa3cdc
-  tag: v0.6.9
+  revision: 81f709cf3abf73ddc02a412d669de15d279ab353
+  branch: cursor/mcp-ui-api-metadata-ae0b
   specs:
-    recording_studio_api (0.6.9)
+    recording_studio_api (0.6.11)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
@@ -87,11 +87,11 @@ GIT
 PATH
   remote: .
   specs:
-    recording_studio_mcp (0.10.0)
+    recording_studio_mcp (0.11.0)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (~> 0.6, >= 0.6.9)
+      recording_studio_api (~> 0.6, >= 0.6.11)
       recording_studio_oauth (~> 0.6)
 
 GEM
@@ -486,9 +486,9 @@ CHECKSUMS
   recording_studio (4.3.0)
   recording_studio_accessible (0.11.0)
   recording_studio_admin (2.0.7)
-  recording_studio_api (0.6.9)
+  recording_studio_api (0.6.11)
   recording_studio_attachable (0.7.0)
-  recording_studio_mcp (0.10.0)
+  recording_studio_mcp (0.11.0)
   recording_studio_oauth (0.6.2)
   recording_studio_site_settings (0.1.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae

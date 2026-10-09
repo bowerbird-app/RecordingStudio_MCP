@@ -14,18 +14,23 @@ module RecordingStudioMcp
     WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
     SUCCESS_STATUS_RANGE = (200..299)
 
-    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil, request_context: nil)
+    def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil, request_context: nil, meta: nil,
+                  widget_dispatch: false)
       new(
         access_grant: access_grant,
         idempotency_key: idempotency_key,
-        request_context: request_context
+        request_context: request_context,
+        meta: meta,
+        widget_dispatch: widget_dispatch
       ).call(tool_name, arguments)
     end
 
-    def initialize(access_grant:, idempotency_key: nil, request_context: nil)
+    def initialize(access_grant:, idempotency_key: nil, request_context: nil, meta: nil, widget_dispatch: false)
       @access_grant = access_grant
       @idempotency_key = idempotency_key
       @request_context = request_context
+      @meta = meta
+      @widget_dispatch = widget_dispatch
       @surface = ToolSurface.for(access_grant: access_grant)
       @catalog = @surface.catalog
     end
@@ -33,6 +38,17 @@ module RecordingStudioMcp
     def call(tool_name, arguments)
       name = tool_name.to_s
       args = stringify_keys(arguments)
+      if !widget_dispatch && WidgetActions.from_tools_call?(name, meta: meta, access_grant: access_grant)
+        return RecordingStudioMcp.dispatch_widget_action(
+          widget_id: WidgetActions.widget_id_for(name, meta: meta, access_grant: access_grant),
+          alias_name: name,
+          arguments: args,
+          access_grant: access_grant,
+          idempotency_key: idempotency_key,
+          request_context: request_context
+        )
+      end
+
       return error_result(unknown_tool_message(name)) unless surface.known?(name)
 
       if surface.tree_tool?(name)
@@ -50,7 +66,7 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface
+    attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface, :meta, :widget_dispatch
 
     def dispatch_tree(name, args)
       case name

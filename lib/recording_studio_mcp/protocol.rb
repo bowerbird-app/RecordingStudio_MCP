@@ -357,7 +357,8 @@ module RecordingStudioMcp
           arguments: arguments,
           access_grant: access_grant,
           idempotency_key: idempotency_key,
-          request_context: request_context
+          request_context: request_context,
+          meta: params["_meta"] || params[:_meta]
         ),
         protocol_version: request_protocol_version,
         cacheable: false

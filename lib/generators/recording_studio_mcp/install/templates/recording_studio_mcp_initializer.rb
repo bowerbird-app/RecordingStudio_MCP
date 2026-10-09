@@ -15,6 +15,11 @@ RecordingStudioMcp.configure do |config|
   # config.event_callback_host_allowed = ->(host) { host.end_with?(".example") }
 end
 
+# Optional. MCP UI is not a dependency of this gem. When RecordingStudio::MCP_UI
+# is loaded, MCP fills empty visibility_checker and action_executor hooks.
+# Hosts may replace them. action_executor should call
+# RecordingStudioMcp.dispatch_widget_action.
+
 # Optional. Register events that may notify subscribed MCP clients.
 # RecordingStudioMcp.register_event("recording updated")
 # RecordingStudioMcp.register_event("recording updated") do |event|

@@ -44,6 +44,7 @@ module RecordingStudioMcp
     # aligned with this gem so public authorize accepts the MCP resource identity.
     # Named-API MCP identities live at `{mcp_mount_path}/apis/{api_key}`.
     config.after_initialize do
+      RecordingStudioMcp::McpUi.install_host_hooks
       RecordingStudioMcp::ChangeObserver.install!
       RecordingStudioMcp::PostgresBus.start!
       next unless defined?(RecordingStudioOauth)
