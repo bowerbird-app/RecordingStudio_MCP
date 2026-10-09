@@ -97,7 +97,7 @@ class McpUiTest < Minitest::Test
       assert_equal true, result.dig(:structuredContent, "ok")
       assert_equal "Studio", result.dig(:structuredContent, "data", "title")
       assert_equal({}, result.dig(:structuredContent, "errors"))
-      assert_equal "Studio", result.dig(:structuredContent, "contextUpdate", "title")
+      refute result[:structuredContent].key?("contextUpdate")
 
       unknown = tool_result("delete", { "id" => "kit-1" })
       assert unknown[:isError]
@@ -180,13 +180,19 @@ class McpUiTest < Minitest::Test
     end
   end
 
-  def test_unique_alias_without_resource_uri_still_dispatches
+  def test_normal_tools_call_matching_a_widget_alias_stays_a_normal_tool
     with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :save,
+        http_verb: :post,
+        path: "save",
+        handler: ->(_context) { { saved: true } }
+      )
       RecordingStudioApi.register_endpoint(
         "presskits.update",
         http_verb: :patch,
         path: "presskits/:id",
-        handler: ->(context) { { id: context.params[:id] } },
+        handler: ->(_context) { { id: "widget" } },
         ui: "presskits.editor"
       )
       RecordingStudio::MCP_UI.register("presskits.editor", actions: { save: "presskits.update" })
@@ -196,12 +202,14 @@ class McpUiTest < Minitest::Test
           "jsonrpc" => "2.0",
           "id" => 1,
           "method" => "tools/call",
-          "params" => { "name" => "save", "arguments" => { "id" => "kit-9" } }
+          "params" => { "name" => "save", "arguments" => {} }
         },
         access_grant: @grant
       )
-      assert_equal true, answer.body.dig(:result, :structuredContent, "ok")
-      assert_equal "kit-9", answer.body.dig(:result, :structuredContent, "data", "id")
+      result = answer.body.fetch(:result)
+      refute result[:isError]
+      assert_equal true, result.dig(:structuredContent, "saved")
+      refute result[:structuredContent].key?("ok")
     end
   end
 

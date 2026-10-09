@@ -121,7 +121,7 @@ module RecordingStudioMcp
       { name: TEMPLATE_NAME, uriTemplate: URI_TEMPLATE, mimeType: MIME_TYPE }
     end
 
-    private_class_method :listed_resources, :skill_resources, :recording_resources,
+    private_class_method :complete, :listed_resources, :skill_resources, :recording_resources,
                          :recordings_for, :content_for, :recording_template, :ui_uri?
   end
 end

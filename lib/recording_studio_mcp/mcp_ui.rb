@@ -18,9 +18,7 @@ module RecordingStudioMcp
       return if widget_id.blank?
 
       RecordingStudio::MCP_UI.find(widget_id)
-    rescue StandardError => e
-      raise unless unknown_widget_error?(e)
-
+    rescue RecordingStudio::MCP_UI::UnknownWidgetError
       nil
     end
 
@@ -61,18 +59,27 @@ module RecordingStudioMcp
 
     def resource_uri_for(action_name:, api:, version: nil)
       return unless loaded?
-      return unless RecordingStudioApi.respond_to?(:ui_for)
 
-      widget_id = RecordingStudioApi.ui_for(action_name, api: api, version: version)
-      find(widget_id)&.resource_uri
+      find(RecordingStudioApi.ui_for(action_name, api: api, version: version))&.resource_uri
+    end
+
+    def resource_uri(meta)
+      return unless meta.is_a?(Hash)
+
+      ui = meta["ui"] || meta[:ui]
+      return unless ui.is_a?(Hash)
+
+      ui["resourceUri"] || ui[:resourceUri]
+    end
+
+    def grant_scope(access_grant)
+      api = Catalog.api_from(access_grant)
+      [api, RecordingStudioApi.default_api_version(api: api)]
     end
 
     def operation_visible?(widget:, access_grant:, api:, version:)
       return false if access_grant.nil?
-      return false unless RecordingStudioApi.respond_to?(:actions_for_ui)
-
-      grant_api = Catalog.api_from(access_grant).to_s
-      return false unless grant_api == api.to_s
+      return false unless Catalog.api_from(access_grant).to_s == api.to_s
 
       RecordingStudioApi.actions_for_ui(widget.id, api: api, version: version).any?
     end
@@ -95,19 +102,6 @@ module RecordingStudioMcp
         )
       end
     end
-
-    def resource_uri(meta)
-      return unless meta.is_a?(Hash)
-
-      ui = meta["ui"] || meta[:ui]
-      return unless ui.is_a?(Hash)
-
-      ui["resourceUri"] || ui[:resourceUri]
-    end
-
-    def unknown_widget_error?(error)
-      error.class.name.end_with?("UnknownWidgetError")
-    end
-    private_class_method :unknown_widget_error?, :default_action_executor
+    private_class_method :default_action_executor
   end
 end

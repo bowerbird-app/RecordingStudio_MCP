@@ -57,7 +57,7 @@ Create and update send writable fields at the request root (`title`, not `attrib
 
 Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens and `input_contract` fields become `inputSchema` arguments. There is no `describe` hop and no empty tree tool list.
 
-When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri`. `resources/list` and `resources/read` serve that `ui://` HTML in-process. A widget `tools/call` uses the action alias on the widget, never a client-supplied API tool name. MCP UI is optional. Without it, tools and resources stay the same.
+When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri`. `resources/list` and `resources/read` serve that `ui://` HTML in-process. A widget `tools/call` is dispatched only when the request carries `_meta.ui.resourceUri`. MCP UI's `mcpUI.execute` currently sends `{ name: alias, arguments }` only, so the host or MCP Apps SDK must attach that uri. Without it, the name is a normal tool. MCP UI is optional. Without it, tools and resources stay the same.
 
 Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `delete`, `capability_action`, or `describe`.
 

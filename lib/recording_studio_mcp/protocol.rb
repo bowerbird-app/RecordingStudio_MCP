@@ -360,9 +360,9 @@ module RecordingStudioMcp
 
     def execute_tool(name, arguments, params)
       meta = params["_meta"] || params[:_meta]
-      if WidgetActions.from_tools_call?(name, meta: meta, access_grant: access_grant)
+      if WidgetActions.from_tools_call?(meta)
         return RecordingStudioMcp.dispatch_widget_action(
-          widget_id: WidgetActions.widget_id_for(name, meta: meta, access_grant: access_grant),
+          widget_id: WidgetActions.widget_id_for(meta),
           alias_name: name,
           arguments: arguments,
           access_grant: access_grant,
