@@ -260,7 +260,120 @@ class PostgresBusProcessTest < Minitest::Test
     FileUtils.rm_f(script) if defined?(script) && script
   end
 
-  # Standalone bin/jobs: $PROGRAM_NAME basename is "jobs". MCP fan-out stays on web.
+  # Non-listening publisher (rails runner) NOTIFYs; Puma LISTENER delivers once.
+  def test_non_listening_publisher_reaches_puma_listener_once
+    counter = File.join(DUMMY_ROOT, "tmp/fanout_delivery_count.txt")
+    init = File.join(DUMMY_ROOT, "config/initializers/zzz_fanout_delivery_probe.rb")
+    FileUtils.mkdir_p(File.dirname(counter))
+    FileUtils.mkdir_p(File.dirname(init))
+    FileUtils.rm_f(counter)
+    File.write(init, <<~RUBY)
+      # frozen_string_literal: true
+
+      Rails.application.config.after_initialize do
+        next unless ENV["FANOUT_DELIVERY_PROBE"] == "1"
+
+        path = Rails.root.join("tmp/fanout_delivery_count.txt")
+        notifier = RecordingStudioMcp::Notifier
+        original = notifier.method(:deliver_local)
+        notifier.define_singleton_method(:deliver_local) do |**kwargs|
+          File.open(path, "a") do |file|
+            file.puts("deliver \#{kwargs[:event_name]} \#{kwargs[:recording_id]} pid=\#{Process.pid}")
+          end
+          original.call(**kwargs)
+        end
+      end
+    RUBY
+
+    with_puma_process(workers: 0, solid_queue: false, plugin: true,
+                      extra_env: { "FANOUT_DELIVERY_PROBE" => "1" }) do |ctx|
+      assert_includes ctx[:log], "Listening on", ctx[:log]
+      await(15, "LISTEN ready", log_path: ctx[:log_path]) { bus_owner_pids.any? }
+      File.write(counter, "")
+
+      stdout, status = run_dummy(
+        "bin/rails", "runner",
+        <<~RUBY
+          bus = RecordingStudioMcp::PostgresBus
+          raise "publisher must not listen" if bus.listening?
+          RecordingStudioMcp::Fanout.publish(
+            event_name: "recording updated",
+            recording_id: "fanout-cross-process"
+          )
+          puts "PUBLISHER listening=\#{bus.listening?} enabled=\#{bus.enabled?}"
+        RUBY
+      )
+      assert status.success?, stdout
+      assert_includes stdout, "PUBLISHER listening=false"
+      assert_includes stdout, "enabled=true"
+
+      await(15, "one fanout delivery", log_path: ctx[:log_path]) do
+        File.exist?(counter) && File.readlines(counter).grep(/fanout-cross-process/).size == 1
+      end
+      lines = File.readlines(counter).map(&:strip).reject(&:empty?)
+      assert_equal 1, lines.size, "expected exactly one delivery, got #{lines.inspect}\n#{ctx[:combined]}"
+      assert_match(/fanout-cross-process/, lines.first)
+      assert_match(/pid=#{ctx[:pid]}\b/, lines.first)
+    end
+  ensure
+    FileUtils.rm_f(init) if defined?(init) && init
+    FileUtils.rm_f(counter) if defined?(counter) && counter
+  end
+
+  # Listening process NOTIFYs and receives via LISTEN — must not also deliver_local.
+  def test_listening_process_fanout_does_not_double_deliver
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_fanout_once_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      require "timeout"
+
+      ENV["RAILS_ENV"] ||= "test"
+      require "rails"
+      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
+      require_relative "../config/environment"
+
+      bus = RecordingStudioMcp::PostgresBus
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      until bus.listening? || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        sleep 0.05
+      end
+      raise "bus not listening" unless bus.listening?
+
+      deliveries = []
+      notifier = RecordingStudioMcp::Notifier
+      original = notifier.method(:deliver_local)
+      notifier.define_singleton_method(:deliver_local) do |**kwargs|
+        deliveries << [kwargs[:event_name].to_s, kwargs[:recording_id].to_s]
+        original.call(**kwargs)
+      end
+
+      RecordingStudioMcp::Fanout.publish(
+        event_name: "recording updated",
+        recording_id: "fanout-once"
+      )
+
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      until deliveries.any? || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        sleep 0.05
+      end
+      sleep 0.3
+
+      puts "DELIVER_COUNT=\#{deliveries.size}"
+      puts "DELIVERIES=\#{deliveries.inspect}"
+      bus.stop!
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+    assert status.success?, stdout
+    assert_includes stdout, "DELIVER_COUNT=1"
+    assert_includes stdout, '["recording updated", "fanout-once"]'
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
+  end
+
+  # Standalone bin/jobs: $PROGRAM_NAME basename is "jobs". LISTEN stays off; NOTIFY still works via Fanout.
   def test_bin_jobs_program_name_skips_auto_start
     script = File.join(DUMMY_ROOT, "tmp/postgres_bus_bin_jobs_probe.rb")
     FileUtils.mkdir_p(File.dirname(script))
@@ -339,7 +452,7 @@ class PostgresBusProcessTest < Minitest::Test
     flunk "timed out waiting for #{label} after #{seconds}s#{detail}"
   end
 
-  def with_puma_process(workers:, solid_queue:, plugin:, preload: false)
+  def with_puma_process(workers:, solid_queue:, plugin:, preload: false, extra_env: {})
     port = free_port
     log_path = File.join(DUMMY_ROOT, "tmp/postgres_bus_puma_#{workers}_#{solid_queue}_#{plugin}.log")
     rails_log = File.join(DUMMY_ROOT, "log/test.log")
@@ -370,6 +483,7 @@ class PostgresBusProcessTest < Minitest::Test
         env.delete("SOLID_QUEUE_CONFIG")
         env.delete("SOLID_QUEUE_RECURRING_SCHEDULE")
       end
+      env.merge!(extra_env)
       pid = Process.spawn(
         env,
         "bundle", "exec", "puma", "-C", config_path, "-b", "tcp://127.0.0.1:#{port}",

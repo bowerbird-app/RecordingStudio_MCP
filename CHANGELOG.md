@@ -16,18 +16,20 @@ Postgres LISTEN bus auto-starts on server boot without a prior Active Record que
 - Boot logs one info line: `PostgresBus listening on recording_studio_mcp_events`.
 - After fork, `start!` drops inherited listen state without touching the parent's sockets so workers can start cleanly.
 - Puma plugin uses public `launcher.options[:workers]` (not private `clustered?`) and guards hooks with `defined?(RecordingStudioMcp::PostgresBus)`.
-- Auto-start skips when `PRE_DEPLOY` is set and when the process is standalone Solid Queue `bin/jobs`.
+- Auto-start skips when `PRE_DEPLOY` is truthy (`0` / `false` / empty count as unset) and when the process is standalone Solid Queue `bin/jobs`.
+- `Fanout` always `NOTIFY`s when the adapter is Postgres, including from `bin/jobs`, Solid Queue children, rake, and runner. Local deliver runs only when this process is not listening (avoids double delivery).
+- Cluster boot warning reads `workers` / `preload_app` from `Puma.cli_config` and does not fire for clusters without preload.
 
 ### Added
 - Optional Puma plugin `recording_studio_mcp_postgres_bus`: in cluster mode stops the bus in the master before fork and starts it in each worker; in single mode `after_booted` start! is idempotent with `after_initialize`.
 - LISTEN backends set `application_name` to `recording_studio_mcp_bus:<pid>` for ops and tests.
-- Boot warning when `WEB_CONCURRENCY` looks like a Puma cluster unless `plugin :recording_studio_mcp_postgres_bus` is loaded.
+- Boot warning when Puma is a preloaded cluster unless `plugin :recording_studio_mcp_postgres_bus` is loaded.
 
 ### Upgrade notes
 - Bump to `0.12.2`. No migration.
-- Single-mode Puma (including `SOLID_QUEUE_IN_PUMA`) needs no host change: `after_initialize` starts the bus and the pid guard keeps Solid Queue children inert.
-- Cluster mode (`workers` / `WEB_CONCURRENCY` > 0): add `plugin :recording_studio_mcp_postgres_bus` to `config/puma.rb`, or the equivalent `before_fork` / `before_worker_boot` hooks from the README.
-- Pre-deploy / release steps that set `PRE_DEPLOY` no longer start the bus. Force with `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` if needed.
+- Single-mode Puma (including `SOLID_QUEUE_IN_PUMA`) needs no host change: `after_initialize` starts the bus and the pid guard keeps Solid Queue children inert. Job processes still `NOTIFY` so web listeners get updates.
+- Preloaded cluster mode (`workers` > 0 and `preload_app`): add `plugin :recording_studio_mcp_postgres_bus` to `config/puma.rb`, or the equivalent `before_fork` / `before_worker_boot` hooks from the README. Clusters without preload do not need the plugin.
+- Pre-deploy / release steps that set a truthy `PRE_DEPLOY` no longer start LISTEN. Force with `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` if needed.
 
 ## [0.12.1] - 2026-10-12
 

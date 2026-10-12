@@ -7,8 +7,9 @@ module RecordingStudioMcp
   #
   # The listen thread is started only in long-lived server or worker processes.
   # Rake tasks, rails console, rails runner, standalone bin/jobs, and pre-deploy
-  # jobs (PRE_DEPLOY) skip it unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set.
-  # Set that same variable to 0 to force the bus off in a server process.
+  # jobs (truthy PRE_DEPLOY) skip LISTEN unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1
+  # is set. Set that same variable to 0 to force LISTEN off in a server process.
+  # NOTIFY still runs from any Postgres process via Fanout whenever enabled?.
   module PostgresBus
     CHANNEL = "recording_studio_mcp_events"
     APPLICATION_NAME_PREFIX = "recording_studio_mcp_bus"
@@ -147,8 +148,13 @@ module RecordingStudioMcp
 
     # DigitalOcean App Platform (and similar hosts) set PRE_DEPLOY during
     # release/migrate steps that are not always detected as Rake.
+    # Empty / 0 / false / no are treated as unset.
     def pre_deploy?
-      ENV.key?("PRE_DEPLOY")
+      flag = ENV.fetch("PRE_DEPLOY", nil)&.strip&.downcase
+      return false if flag.nil? || flag.empty?
+      return false if START_OFF.include?(flag)
+
+      true
     end
     private_class_method :pre_deploy?
 
@@ -159,30 +165,45 @@ module RecordingStudioMcp
     end
     private_class_method :solid_queue_jobs?
 
-    # Hint when after_initialize starts the bus in a Puma cluster master.
-    # Cluster hosts should load plugin :recording_studio_mcp_postgres_bus.
+    # Hint when after_initialize starts the bus in a preloaded Puma cluster
+    # master. Without preload, each worker loads the app and starts LISTEN on
+    # its own — no plugin needed. Cluster + preload hosts should load
+    # plugin :recording_studio_mcp_postgres_bus.
     def warn_cluster_without_plugin_once!
       return if @cluster_plugin_warned
       return if defined?(RecordingStudioMcp::PostgresBusPumaPlugin)
-      return unless puma_cluster_hint?
+      return unless puma_preloaded_cluster?
 
       @cluster_plugin_warned = true
+      workers = puma_cli_options&.[](:workers)
       log_warn(
-        "Puma cluster (WEB_CONCURRENCY=#{ENV.fetch('WEB_CONCURRENCY', nil).inspect}): " \
+        "Puma cluster (workers=#{workers.inspect}): " \
         "add `plugin :recording_studio_mcp_postgres_bus` so LISTEN starts per worker, " \
         "not only in the preloaded master"
       )
     end
     private_class_method :warn_cluster_without_plugin_once!
 
-    def puma_cluster_hint?
-      flag = ENV.fetch("WEB_CONCURRENCY", nil).to_s.strip
-      return false if flag.empty?
-      return true if flag == "auto"
+    # True only for cluster + preload_app. Reads Puma.cli_config (set by
+    # Launcher before the app is preloaded). Clusters without preload do not
+    # need the plugin — each worker boots the app after fork.
+    def puma_preloaded_cluster?
+      options = puma_cli_options
+      return false unless options
 
-      flag.to_i > 1
+      options[:workers].to_i.positive? && options[:preload_app]
     end
-    private_class_method :puma_cluster_hint?
+    private_class_method :puma_preloaded_cluster?
+
+    def puma_cli_options
+      return nil unless defined?(Puma) && Puma.respond_to?(:cli_config)
+      return nil unless Puma.cli_config.respond_to?(:options)
+
+      Puma.cli_config.options
+    rescue StandardError
+      nil
+    end
+    private_class_method :puma_cli_options
 
     def register_shutdown_hook!
       return if @shutdown_hook_registered
@@ -372,7 +393,7 @@ module RecordingStudioMcp
 
       connection.execute("UNLISTEN #{CHANNEL}")
       # Clear the bus tag so pooled connections are not mistaken for LISTENers.
-      connection.execute("SET application_name = #{connection.quote('')}")
+      connection.execute("RESET application_name")
     rescue StandardError
       nil
     end

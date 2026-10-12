@@ -36,21 +36,51 @@ class FanoutTest < Minitest::Test
     end
   end
 
-  def test_postgres_path_notifies_without_local_enqueue
+  def test_postgres_listening_path_notifies_without_local_enqueue
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
       published = []
+      local = []
       RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
         RecordingStudioMcp::PostgresBus.stub(:listening?, true) do
           RecordingStudioMcp::PostgresBus.stub(:publish, lambda { |event_name:, recording_id:|
             published << [event_name, recording_id]
           }) do
-            RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 11)
+            RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+              local << kwargs
+            }) do
+              RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 11)
+            end
           end
         end
       end
 
       assert_equal [["recording updated", 11]], published
+      assert_empty local
+    end
+  end
+
+  def test_postgres_non_listening_publisher_notifies_and_delivers_local
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      published = []
+      local = []
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:listening?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:publish, lambda { |event_name:, recording_id:|
+            published << [event_name, recording_id]
+          }) do
+            RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+              local << [kwargs[:event_name], kwargs[:recording_id]]
+            }) do
+              RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 12)
+            end
+          end
+        end
+      end
+
+      assert_equal [["recording updated", 12]], published
+      assert_equal [["recording updated", 12]], local
     end
   end
 

@@ -243,6 +243,24 @@ class PostgresBusTest < Minitest::Test
     end
   end
 
+  def test_pre_deploy_zero_false_or_empty_is_treated_as_unset
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+            ["0", "false", "no", "", "  "].each do |value|
+              ENV["PRE_DEPLOY"] = value
+              assert RecordingStudioMcp::PostgresBus.start_allowed?,
+                     "PRE_DEPLOY=#{value.inspect} should allow start"
+            end
+          end
+        end
+      end
+    end
+  end
+
   def test_start_allowed_is_false_for_bin_jobs
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     ENV.delete("PRE_DEPLOY")
@@ -275,19 +293,20 @@ class PostgresBusTest < Minitest::Test
     $PROGRAM_NAME = previous
   end
 
-  def test_warns_once_for_cluster_without_plugin
+  def test_warns_once_for_preloaded_cluster_without_plugin
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     ENV.delete("PRE_DEPLOY")
-    ENV["WEB_CONCURRENCY"] = "2"
     io = StringIO.new
     logger = Logger.new(io)
 
     RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
       RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
-        RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
-          Rails.stub(:logger, logger) do
-            RecordingStudioMcp::PostgresBus.start!
-            RecordingStudioMcp::PostgresBus.start!
+        RecordingStudioMcp::PostgresBus.stub(:puma_preloaded_cluster?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
+            Rails.stub(:logger, logger) do
+              RecordingStudioMcp::PostgresBus.start!
+              RecordingStudioMcp::PostgresBus.start!
+            end
           end
         end
       end
@@ -295,6 +314,30 @@ class PostgresBusTest < Minitest::Test
 
     warnings = io.string.lines.select { |line| line.include?("plugin :recording_studio_mcp_postgres_bus") }
     assert_equal 1, warnings.size, io.string
+  ensure
+    RecordingStudioMcp::PostgresBus.stop!
+  end
+
+  def test_does_not_warn_for_cluster_without_preload
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete("PRE_DEPLOY")
+    io = StringIO.new
+    logger = Logger.new(io)
+    options = { workers: 2, preload_app: false }
+
+    with_puma_cli_config(options) do
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
+            Rails.stub(:logger, logger) do
+              RecordingStudioMcp::PostgresBus.start!
+            end
+          end
+        end
+      end
+    end
+
+    refute_match(/plugin :recording_studio_mcp_postgres_bus/, io.string)
   ensure
     RecordingStudioMcp::PostgresBus.stop!
   end
@@ -610,6 +653,26 @@ class PostgresBusTest < Minitest::Test
     end
 
     assert_equal 1, stop_calls
+  end
+
+  def with_puma_cli_config(options)
+    puma_defined = Object.const_defined?(:Puma)
+    Object.const_set(:Puma, Module.new) unless puma_defined
+    previous = Puma.respond_to?(:cli_config) ? Puma.cli_config : :absent
+    config = Object.new
+    config.define_singleton_method(:options) { options }
+    Puma.singleton_class.attr_accessor :cli_config unless Puma.respond_to?(:cli_config)
+    Puma.cli_config = config
+    yield
+  ensure
+    if Object.const_defined?(:Puma)
+      if previous == :absent
+        Puma.cli_config = nil if Puma.respond_to?(:cli_config=)
+      else
+        Puma.cli_config = previous
+      end
+      Object.send(:remove_const, :Puma) unless puma_defined
+    end
   end
 
   def stub_listen_connection(raw:, active: true)
