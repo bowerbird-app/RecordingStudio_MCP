@@ -405,27 +405,48 @@ class PostgresBusProcessTest < Minitest::Test
 
       threads 3, 3
       workers #{workers}
-      #{"preload_app!" if preload || workers.positive?}
+      #{'preload_app!' if preload || workers.positive?}
       plugin :tmp_restart
-      #{"plugin :solid_queue" if solid_queue}
-      #{"plugin :recording_studio_mcp_postgres_bus" if plugin}
+      #{'plugin :solid_queue' if solid_queue}
+      #{'plugin :recording_studio_mcp_postgres_bus' if plugin}
     RUBY
   end
 
   def ensure_solid_queue_schema!
-    return if solid_queue_table_present?
-
     write_solid_queue_config_files!
-    stdout, status = run_dummy(
-      "bin/rails", "runner",
-      <<~RUBY
-        path = Gem.loaded_specs.fetch("solid_queue").full_gem_path
-        load File.join(path, "lib/generators/solid_queue/install/templates/db/queue_schema.rb")
-        puts "SOLID_QUEUE_SCHEMA_OK"
-      RUBY
-    )
-    assert status.success?, "failed to load Solid Queue schema:\n#{stdout}"
-    assert solid_queue_table_present?, "solid_queue_processes missing after schema load"
+    unless solid_queue_table_present?
+      stdout, status = run_dummy(
+        "bin/rails", "runner",
+        <<~RUBY
+          path = Gem.loaded_specs.fetch("solid_queue").full_gem_path
+          load File.join(path, "lib/generators/solid_queue/install/templates/db/queue_schema.rb")
+          # Schema.define stamps schema_migrations (version 1). That makes a later
+          # dummy db:prepare skip schema.rb, where Oauth create tables live.
+          conn = ActiveRecord::Base.connection
+          conn.drop_table(:schema_migrations, if_exists: true)
+          conn.drop_table(:ar_internal_metadata, if_exists: true)
+          puts "SOLID_QUEUE_SCHEMA_OK"
+        RUBY
+      )
+      assert status.success?, "failed to load Solid Queue schema:\n#{stdout}"
+      assert solid_queue_table_present?, "solid_queue_processes missing after schema load"
+    end
+    clear_solid_queue_schema_migration_stamp!
+  end
+
+  # Undo a Schema.define(version: 1) stamp left by queue_schema.rb so
+  # test:dummy's db:prepare still loads schema.rb on a fresh CI database.
+  def clear_solid_queue_schema_migration_stamp!
+    sql = <<~SQL.tr("\n", " ")
+      SELECT COALESCE(string_agg(version, ',' ORDER BY version), '')
+      FROM schema_migrations
+    SQL
+    stdout, status = Open3.capture2e(psql_env, "psql", database_url, "-At", "-c", sql)
+    return unless status.success?
+    return unless stdout.strip == "1"
+
+    Open3.capture2e(psql_env, "psql", database_url, "-c",
+                    "DROP TABLE IF EXISTS schema_migrations, ar_internal_metadata CASCADE")
   end
 
   # Minimal Solid Queue config so SOLID_QUEUE_IN_PUMA can fork a supervisor.
