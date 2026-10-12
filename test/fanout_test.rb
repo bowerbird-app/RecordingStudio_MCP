@@ -181,4 +181,140 @@ class FanoutTest < Minitest::Test
       assert_equal "recording://5", connection.shift_pending(timeout: 0).dig(:params, :uri)
     end
   end
+
+  # Real Postgres: Fanout defers NOTIFY until commit, so a rejected NOTIFY cannot
+  # abort later host SQL. Delivery falls back locally exactly once after commit.
+  # Belt-and-braces: also force an in-transaction NOTIFY failure through the
+  # savepoint path and confirm the outer transaction still commits.
+  def test_failing_notify_inside_host_transaction_still_commits_and_delivers_once
+    ensure_active_record_connection!
+    create_fanout_probe_table!
+
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      local = []
+      failing_notify = lambda { |_|
+        ActiveRecord::Base.connection.execute("SELECT 1/0")
+      }
+
+      RecordingStudioMcp::PostgresBus.stub(:listening?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:publish_payload, failing_notify) do
+          RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+            local << [kwargs[:event_name], kwargs[:recording_id]]
+          }) do
+            ActiveRecord::Base.transaction do
+              insert_fanout_probe("before")
+              RecordingStudioMcp::Fanout.publish(
+                event_name: "recording updated",
+                recording_id: 91
+              )
+              assert_empty local, "local deliver must wait for commit"
+              insert_fanout_probe("after")
+            end
+          end
+        end
+      end
+
+      assert_equal %w[after before], fanout_probe_labels.sort
+      assert_equal [["recording updated", 91]], local
+
+      # Savepoint path: delivery runs inside the open transaction and NOTIFY
+      # fails on the caller connection; later statements must still commit.
+      create_fanout_probe_table!
+      local.clear
+      RecordingStudioMcp::AfterCommit.stub(:run, ->(&block) { block.call }) do
+        RecordingStudioMcp::PostgresBus.stub(:listening?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:publish_payload, failing_notify) do
+            RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+              local << [kwargs[:event_name], kwargs[:recording_id]]
+            }) do
+              ActiveRecord::Base.transaction do
+                insert_fanout_probe("savepoint-before")
+                RecordingStudioMcp::Fanout.publish(
+                  event_name: "recording updated",
+                  recording_id: 93
+                )
+                insert_fanout_probe("savepoint-after")
+              end
+            end
+          end
+        end
+      end
+
+      assert_equal %w[savepoint-after savepoint-before], fanout_probe_labels.sort
+      assert_equal [["recording updated", 93]], local
+    end
+  end
+
+  def test_rolled_back_transaction_delivers_nothing
+    ensure_active_record_connection!
+    create_fanout_probe_table!
+
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      local = []
+      notify_attempts = []
+
+      RecordingStudioMcp::PostgresBus.stub(:listening?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:publish_payload, lambda { |payload|
+          notify_attempts << payload
+        }) do
+          RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+            local << [kwargs[:event_name], kwargs[:recording_id]]
+          }) do
+            ActiveRecord::Base.transaction do
+              insert_fanout_probe("rolled-back")
+              RecordingStudioMcp::Fanout.publish(
+                event_name: "recording updated",
+                recording_id: 92
+              )
+              assert_empty local, "local deliver must wait for commit"
+              assert_empty notify_attempts, "NOTIFY must wait for commit"
+              raise ActiveRecord::Rollback
+            end
+          end
+        end
+      end
+
+      assert_empty fanout_probe_labels
+      assert_empty local
+      assert_empty notify_attempts
+    end
+  end
+
+  private
+
+  def ensure_active_record_connection!
+    return if ActiveRecord::Base.connected? && postgres_adapter?
+
+    url = ENV["DATABASE_URL"].to_s.strip
+    skip "DATABASE_URL is not set" if url.empty?
+
+    ActiveRecord::Base.establish_connection(url)
+    ActiveRecord::Base.connection.verify!
+    skip "DATABASE_URL is not Postgres" unless postgres_adapter?
+  end
+
+  def postgres_adapter?
+    ActiveRecord::Base.connection_db_config.adapter.to_s.match?(/postg/i)
+  end
+
+  def create_fanout_probe_table!
+    conn = ActiveRecord::Base.connection
+    conn.execute("DROP TABLE IF EXISTS fanout_txn_probe")
+    conn.execute("CREATE TABLE fanout_txn_probe (label text NOT NULL)")
+  end
+
+  def insert_fanout_probe(label)
+    quoted = ActiveRecord::Base.connection.quote(label)
+    ActiveRecord::Base.connection.execute(
+      "INSERT INTO fanout_txn_probe (label) VALUES (#{quoted})"
+    )
+  end
+
+  def fanout_probe_labels
+    ActiveRecord::Base.connection.select_values(
+      "SELECT label FROM fanout_txn_probe ORDER BY label"
+    )
+  end
 end

@@ -19,6 +19,7 @@ Postgres LISTEN bus auto-starts on server boot without a prior Active Record que
 - Auto-start skips when `PRE_DEPLOY` is truthy (`0` / `false` / empty count as unset) and when the process is standalone Solid Queue `bin/jobs`.
 - `Fanout` always `NOTIFY`s when the adapter is Postgres, including from `bin/jobs`, Solid Queue children, rake, and runner. Local deliver runs only when this process is not listening (avoids double delivery).
 - `Fanout` rescues `ActiveRecord::ActiveRecordError`, `PG::Error`, and `IOError` from NOTIFY, logs a warning, and falls back to local delivery so publish never raises into `record!` or the caller's transaction. Payloads of 8000+ bytes skip NOTIFY the same way (Postgres limit).
+- `Fanout.publish` runs NOTIFY and local delivery through `AfterCommit` (immediate when no transaction is open), so rolled-back changes are never fanned out. When NOTIFY still runs inside an open transaction, it uses a savepoint (`transaction(requires_new: true)`) so a rescued failure cannot leave the host connection in `InFailedSqlTransaction`.
 - Cluster boot warning reads `workers` / `preload_app` from `Puma.cli_config` and does not fire for clusters without preload.
 
 ### Added
