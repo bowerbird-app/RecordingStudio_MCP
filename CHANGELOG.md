@@ -18,6 +18,7 @@ Postgres LISTEN bus auto-starts on server boot without a prior Active Record que
 - Puma plugin uses public `launcher.options[:workers]` (not private `clustered?`) and guards hooks with `defined?(RecordingStudioMcp::PostgresBus)`.
 - Auto-start skips when `PRE_DEPLOY` is truthy (`0` / `false` / empty count as unset) and when the process is standalone Solid Queue `bin/jobs`.
 - `Fanout` always `NOTIFY`s when the adapter is Postgres, including from `bin/jobs`, Solid Queue children, rake, and runner. Local deliver runs only when this process is not listening (avoids double delivery).
+- `Fanout` rescues `ActiveRecord::ActiveRecordError`, `PG::Error`, and `IOError` from NOTIFY, logs a warning, and falls back to local delivery so publish never raises into `record!` or the caller's transaction. Payloads of 8000+ bytes skip NOTIFY the same way (Postgres limit).
 - Cluster boot warning reads `workers` / `preload_app` from `Puma.cli_config` and does not fire for clusters without preload.
 
 ### Added

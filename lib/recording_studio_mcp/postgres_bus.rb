@@ -50,8 +50,15 @@ module RecordingStudioMcp
       !(rails_console? || rake_task? || rails_runner?)
     end
 
+    def notify_payload(event_name:, recording_id:)
+      JSON.generate({ "event" => event_name.to_s, "id" => recording_id.to_s })
+    end
+
     def publish(event_name:, recording_id:)
-      payload = JSON.generate({ "event" => event_name.to_s, "id" => recording_id.to_s })
+      publish_payload(notify_payload(event_name: event_name, recording_id: recording_id))
+    end
+
+    def publish_payload(payload)
       quoted = ActiveRecord::Base.connection.quote(payload)
       ActiveRecord::Base.connection.execute("NOTIFY #{CHANNEL}, #{quoted}")
     end

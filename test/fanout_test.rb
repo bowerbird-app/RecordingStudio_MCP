@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "logger"
+require "stringio"
+require "active_record"
 
 class FanoutTest < Minitest::Test
   FakeGrant = Struct.new(:allowed_ids) do
@@ -43,8 +46,8 @@ class FanoutTest < Minitest::Test
       local = []
       RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
         RecordingStudioMcp::PostgresBus.stub(:listening?, true) do
-          RecordingStudioMcp::PostgresBus.stub(:publish, lambda { |event_name:, recording_id:|
-            published << [event_name, recording_id]
+          RecordingStudioMcp::PostgresBus.stub(:publish_payload, lambda { |payload|
+            published << payload
           }) do
             RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
               local << kwargs
@@ -55,7 +58,9 @@ class FanoutTest < Minitest::Test
         end
       end
 
-      assert_equal [["recording updated", 11]], published
+      assert_equal 1, published.size
+      assert_includes published.first, '"event":"recording updated"'
+      assert_includes published.first, '"id":"11"'
       assert_empty local
     end
   end
@@ -67,8 +72,8 @@ class FanoutTest < Minitest::Test
       local = []
       RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
         RecordingStudioMcp::PostgresBus.stub(:listening?, false) do
-          RecordingStudioMcp::PostgresBus.stub(:publish, lambda { |event_name:, recording_id:|
-            published << [event_name, recording_id]
+          RecordingStudioMcp::PostgresBus.stub(:publish_payload, lambda { |payload|
+            published << payload
           }) do
             RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
               local << [kwargs[:event_name], kwargs[:recording_id]]
@@ -79,8 +84,74 @@ class FanoutTest < Minitest::Test
         end
       end
 
-      assert_equal [["recording updated", 12]], published
+      assert_equal 1, published.size
+      assert_includes published.first, "recording updated"
       assert_equal [["recording updated", 12]], local
+    end
+  end
+
+  def test_notify_failure_falls_back_to_local_delivery
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      local = []
+      io = StringIO.new
+      logger = Logger.new(io)
+
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:listening?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:publish_payload, lambda { |_|
+            raise ActiveRecord::ConnectionNotEstablished, "database down"
+          }) do
+            RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+              local << [kwargs[:event_name], kwargs[:recording_id]]
+            }) do
+              Rails.stub(:logger, logger) do
+                RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: 13)
+              end
+            end
+          end
+        end
+      end
+
+      assert_equal [["recording updated", 13]], local
+      assert_includes io.string, "NOTIFY failed"
+      assert_includes io.string, "ConnectionNotEstablished"
+      assert_includes io.string, "delivering locally"
+    end
+  end
+
+  def test_oversize_notify_payload_falls_back_to_local_delivery
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      published = []
+      local = []
+      io = StringIO.new
+      logger = Logger.new(io)
+      huge_id = "x" * RecordingStudioMcp::Fanout::NOTIFY_PAYLOAD_MAX_BYTES
+
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:listening?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:publish_payload, lambda { |payload|
+            published << payload
+          }) do
+            RecordingStudioMcp::Notifier.stub(:deliver_local, lambda { |**kwargs|
+              local << [kwargs[:event_name], kwargs[:recording_id]]
+            }) do
+              Rails.stub(:logger, logger) do
+                RecordingStudioMcp::Fanout.publish(
+                  event_name: "recording updated",
+                  recording_id: huge_id
+                )
+              end
+            end
+          end
+        end
+      end
+
+      assert_empty published
+      assert_equal [["recording updated", huge_id]], local
+      assert_includes io.string, "exceeds #{RecordingStudioMcp::Fanout::NOTIFY_PAYLOAD_MAX_BYTES}"
+      assert_includes io.string, "delivering locally"
     end
   end
 
