@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-12
+
+Postgres LISTEN bus no longer starts during rake, console, or runner, and shuts down cleanly before connection teardown.
+
+### Fixed
+- `PostgresBus` skips auto-start in Rake tasks (including `db:migrate`), `rails console`, and `rails runner`. Server and worker processes still start as before. Set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` to force start, or `0` to force off.
+- `PostgresBus.stop!` signals the LISTEN loop, wakes it, joins the thread with a timeout, then releases the listen connection. Registered via `at_exit` so it runs before ActiveRecord disconnects the pool.
+- `wait_for_notify` uses a timeout, treats `IOError` / `PG::Error` ("stream closed") as quiet shutdown, and `release_listen_connection` skips `UNLISTEN` on a dead connection so rake exit cannot race into a segfault.
+
+### Upgrade notes
+- Bump to `0.12.1`. No migration.
+- Hosts that need the bus inside console, runner, or a Rake task must set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1`.
+
 ## [0.12.0] - 2026-10-09
+
 
 Site-wide MCP usage metrics register with Recording Studio Metrics for the
 operations API.
