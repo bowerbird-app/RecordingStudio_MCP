@@ -262,6 +262,9 @@ class PostgresBusProcessTest < Minitest::Test
 
   # Non-listening publisher (rails runner) NOTIFYs; Puma LISTENER delivers once.
   def test_non_listening_publisher_reaches_puma_listener_once
+    # Gem suite runs before test:dummy's db:prepare; Fanout's local deliver path
+    # may touch Active Record, so load schema first.
+    ensure_dummy_schema!
     counter = File.join(DUMMY_ROOT, "tmp/fanout_delivery_count.txt")
     init = File.join(DUMMY_ROOT, "config/initializers/zzz_fanout_delivery_probe.rb")
     FileUtils.mkdir_p(File.dirname(counter))
@@ -322,6 +325,7 @@ class PostgresBusProcessTest < Minitest::Test
 
   # Listening process NOTIFYs and receives via LISTEN — must not also deliver_local.
   def test_listening_process_fanout_does_not_double_deliver
+    ensure_dummy_schema!
     script = File.join(DUMMY_ROOT, "tmp/postgres_bus_fanout_once_probe.rb")
     FileUtils.mkdir_p(File.dirname(script))
     File.write(script, <<~RUBY)
@@ -524,6 +528,20 @@ class PostgresBusProcessTest < Minitest::Test
       #{'plugin :solid_queue' if solid_queue}
       #{'plugin :recording_studio_mcp_postgres_bus' if plugin}
     RUBY
+  end
+
+  def ensure_dummy_schema!
+    return if recordings_table_present?
+
+    stdout, status = run_dummy("bin/rails", "db:schema:load")
+    assert status.success?, "failed to load dummy schema:\n#{stdout}"
+    assert recordings_table_present?, "recording_studio_recordings missing after schema:load"
+  end
+
+  def recordings_table_present?
+    sql = "SELECT 1 FROM information_schema.tables WHERE table_name = 'recording_studio_recordings'"
+    stdout, status = Open3.capture2e(psql_env, "psql", database_url, "-At", "-c", sql)
+    status.success? && stdout.strip == "1"
   end
 
   def ensure_solid_queue_schema!
