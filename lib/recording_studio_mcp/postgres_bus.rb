@@ -22,11 +22,13 @@ module RecordingStudioMcp
 
     module_function
 
+    # True when the primary DB config is Postgres. Does not require an open
+    # connection — server boot often reaches after_initialize before the first
+    # query, and gating on connected? made auto-start a no-op under Puma.
     def enabled?
       return false unless defined?(ActiveRecord::Base)
-      return false unless ActiveRecord::Base.connected?
 
-      ActiveRecord::Base.connection.adapter_name.match?(/postg/i)
+      ActiveRecord::Base.connection_db_config.adapter.to_s.match?(/postg/i)
     rescue StandardError
       false
     end
@@ -57,11 +59,13 @@ module RecordingStudioMcp
       return unless start_allowed?
 
       mutex.synchronize do
+        abandon_inherited_state_if_forked!
         return if @thread&.alive?
 
         @owner_pid = Process.pid
         register_shutdown_hook!
         @running = true
+        @listen_announced = false
         @thread = Thread.new { listen_loop }
       end
     end
@@ -227,9 +231,36 @@ module RecordingStudioMcp
     def open_listen_socket
       connection = listen_connection
       connection.execute("LISTEN #{CHANNEL}")
+      announce_listening!
       connection.raw_connection
     end
     private_class_method :open_listen_socket
+
+    # Drop refs copied across fork without touching the parent's sockets.
+    # Solid Queue's Puma plugin forks after boot; cluster workers also fork.
+    # Callers in the child must start! again (after_initialize already ran in
+    # the parent). Puma cluster hosts should use before_worker_boot or the
+    # recording_studio_mcp_postgres_bus Puma plugin — see README.
+    def abandon_inherited_state_if_forked!
+      return if @owner_pid.nil? || @owner_pid == Process.pid
+
+      @listen_connection = nil
+      @thread = nil
+      @running = false
+      @shutdown_hook_registered = false
+      @listen_announced = false
+    end
+    private_class_method :abandon_inherited_state_if_forked!
+
+    def announce_listening!
+      mutex.synchronize do
+        return if @listen_announced
+
+        @listen_announced = true
+      end
+      log_info("listening on #{CHANNEL}")
+    end
+    private_class_method :announce_listening!
 
     # Returns the updated attempts counter. A successful wait_for_notify resets it.
     def poll_notifications(raw, attempts)
@@ -356,5 +387,12 @@ module RecordingStudioMcp
       Rails.logger.warn("[RecordingStudioMcp::PostgresBus] #{message}")
     end
     private_class_method :log_warn
+
+    def log_info(message)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.info("[RecordingStudioMcp::PostgresBus] #{message}")
+    end
+    private_class_method :log_info
   end
 end

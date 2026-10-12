@@ -23,17 +23,29 @@ class PostgresBusTest < Minitest::Test
     end
   end
 
-  def test_enabled_is_false_when_not_connected
+  def test_enabled_does_not_require_an_open_connection
+    db_config = Object.new
+    db_config.define_singleton_method(:adapter) { "postgresql" }
+
     ActiveRecord::Base.stub(:connected?, false) do
+      ActiveRecord::Base.stub(:connection_db_config, db_config) do
+        assert RecordingStudioMcp::PostgresBus.enabled?
+      end
+    end
+  end
+
+  def test_enabled_is_false_when_adapter_is_not_postgres
+    db_config = Object.new
+    db_config.define_singleton_method(:adapter) { "sqlite3" }
+
+    ActiveRecord::Base.stub(:connection_db_config, db_config) do
       refute RecordingStudioMcp::PostgresBus.enabled?
     end
   end
 
   def test_enabled_is_false_when_the_adapter_check_raises
-    ActiveRecord::Base.stub(:connected?, true) do
-      ActiveRecord::Base.stub(:connection, -> { raise "gone" }) do
-        refute RecordingStudioMcp::PostgresBus.enabled?
-      end
+    ActiveRecord::Base.stub(:connection_db_config, -> { raise "gone" }) do
+      refute RecordingStudioMcp::PostgresBus.enabled?
     end
   end
 
@@ -41,6 +53,56 @@ class PostgresBusTest < Minitest::Test
     RecordingStudioMcp::PostgresBus.stub(:enabled?, false) do
       refute RecordingStudioMcp::PostgresBus.enabled?
     end
+  end
+
+  def test_start_abandons_inherited_state_after_fork
+    parent_connection = Object.new
+    # After fork only the forking thread survives; simulate a dead inherited thread.
+    stale_thread = Thread.new { sleep 60 }
+    stale_thread.kill
+    stale_thread.join(1)
+
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, Process.pid + 99)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_connection, parent_connection)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@thread, stale_thread)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@running, true)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@shutdown_hook_registered, true)
+
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
+            RecordingStudioMcp::PostgresBus.start!
+            assert_equal Process.pid, RecordingStudioMcp::PostgresBus.instance_variable_get(:@owner_pid)
+            assert_nil RecordingStudioMcp::PostgresBus.instance_variable_get(:@listen_connection)
+            assert RecordingStudioMcp::PostgresBus.listening?
+            RecordingStudioMcp::PostgresBus.stop!
+          end
+        end
+      end
+    end
+  ensure
+    thread = RecordingStudioMcp::PostgresBus.instance_variable_get(:@thread)
+    thread&.kill
+    thread&.join(1)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@thread, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_connection, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@running, false)
+  end
+
+  def test_announce_listening_logs_once
+    io = StringIO.new
+    logger = Logger.new(io)
+
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_announced, false)
+    Rails.stub(:logger, logger) do
+      RecordingStudioMcp::PostgresBus.send(:announce_listening!)
+      RecordingStudioMcp::PostgresBus.send(:announce_listening!)
+    end
+
+    lines = io.string.lines.select { |line| line.include?("listening on") }
+    assert_equal 1, lines.size
+    assert_includes lines.first, RecordingStudioMcp::PostgresBus::CHANNEL
   end
 
   def test_publish_notifies_the_channel

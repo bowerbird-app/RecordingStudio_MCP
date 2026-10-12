@@ -96,3 +96,5 @@ jobs:
         run: bundle exec rake test:all
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/recording_studio_mcp_test
+          # Print each test name, including skips, so CI logs show what was skipped.
+          TESTOPTS: "--verbose"
