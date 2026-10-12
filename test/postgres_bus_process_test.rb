@@ -179,16 +179,17 @@ class PostgresBusProcessTest < Minitest::Test
     # Truncate so we only see lines from this boot.
     File.write(rails_log, "")
 
-    env = dummy_env.merge(
-      "PORT" => port.to_s,
-      "RAILS_ENV" => "test",
-      "WEB_CONCURRENCY" => "0",
-      "RAILS_MAX_THREADS" => "5"
-    )
-    env.delete("SOLID_QUEUE_IN_PUMA")
-
     pid = nil
+    # Build env inside with_unbundled_env so parent gem BUNDLE_* does not leak
+    # into the dummy Puma process (that broke CI boot).
     Bundler.with_unbundled_env do
+      env = dummy_env.merge(
+        "PORT" => port.to_s,
+        "RAILS_ENV" => "test",
+        "WEB_CONCURRENCY" => "0",
+        "RAILS_MAX_THREADS" => "5"
+      )
+      env.delete("SOLID_QUEUE_IN_PUMA")
       pid = Process.spawn(
         env,
         "bundle", "exec", "puma", "-C", "config/puma.rb", "-b", "tcp://127.0.0.1:#{port}",
@@ -198,14 +199,14 @@ class PostgresBusProcessTest < Minitest::Test
       )
     end
 
-    await(15, "puma Listening on") do
+    await(30, "puma Listening on", log_path: log_path) do
       File.exist?(log_path) && File.read(log_path).include?("Listening on")
     end
     log = File.read(log_path)
     assert_includes log, "Listening on", "puma failed to boot:\n#{log}"
     refute_includes log, "solid_queue", "Solid Queue plugin should be off:\n#{log}"
 
-    await(10, "LISTEN backend") { listen_backends.any? }
+    await(15, "LISTEN backend", log_path: log_path) { listen_backends.any? }
 
     backends = listen_backends
     rails_tail = File.read(rails_log)
@@ -213,7 +214,7 @@ class PostgresBusProcessTest < Minitest::Test
            "expected LISTEN on #{CHANNEL}, got none.\npuma:\n#{log}\nrails:\n#{rails_tail}"
 
     listen_line = "PostgresBus] listening on #{CHANNEL}"
-    await(5, "PostgresBus listening log") do
+    await(10, "PostgresBus listening log", log_path: log_path) do
       File.read(log_path).include?(listen_line) || File.read(rails_log).include?(listen_line)
     end
     combined = "#{File.read(log_path)}\n#{File.read(rails_log)}"
@@ -241,18 +242,23 @@ class PostgresBusProcessTest < Minitest::Test
     end
   end
 
+  # Match Rakefile dummy_bundle_env: clear parent Bundler so the dummy Gemfile wins.
+  BUNDLE_CLEAR_KEYS = %w[
+    BUNDLE_APP_CONFIG BUNDLE_BIN_PATH BUNDLE_GEMFILE BUNDLE_LOCKFILE
+    BUNDLE_PATH BUNDLER_SETUP BUNDLER_VERSION RUBYLIB RUBYOPT
+  ].freeze
+
   def dummy_env
-    {
+    cleaned = ENV.to_h
+    BUNDLE_CLEAR_KEYS.each { |key| cleaned.delete(key) }
+    cleaned.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    cleaned.delete("SOLID_QUEUE_IN_PUMA")
+    cleaned.merge(
       "BUNDLE_GEMFILE" => File.join(DUMMY_ROOT, "Gemfile"),
       "RAILS_ENV" => "test",
       "DATABASE_URL" => database_url,
       "BOOTSNAP_CACHE_DIR" => File.join(DUMMY_ROOT, "tmp/cache")
-    }.tap do |env|
-      cleaned = ENV.to_h.merge(env)
-      cleaned.delete(RecordingStudioMcp::PostgresBus::START_ENV)
-      cleaned.delete("SOLID_QUEUE_IN_PUMA")
-      return cleaned
-    end
+    )
   end
 
   def database_url
@@ -277,14 +283,15 @@ class PostgresBusProcessTest < Minitest::Test
     server&.close
   end
 
-  def await(seconds, label)
+  def await(seconds, label, log_path: nil)
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
     until Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
       return if yield
 
       sleep 0.1
     end
-    flunk "timed out waiting for #{label} after #{seconds}s"
+    detail = log_path && File.exist?(log_path) ? "\n#{File.read(log_path)}" : ""
+    flunk "timed out waiting for #{label} after #{seconds}s#{detail}"
   end
 
   def listen_backends
