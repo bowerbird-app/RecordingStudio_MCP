@@ -14,6 +14,11 @@ class PostgresBusProcessTest < Minitest::Test
   DUMMY_ROOT = File.expand_path("dummy", __dir__)
   PROBE_LINE = /PROBE allowed=(true|false) listening=(true|false) enabled=(true|false)/
   CHANNEL = RecordingStudioMcp::PostgresBus::CHANNEL
+  # Match Rakefile dummy_bundle_env: clear parent Bundler so the dummy Gemfile wins.
+  BUNDLE_CLEAR_KEYS = %w[
+    BUNDLE_APP_CONFIG BUNDLE_BIN_PATH BUNDLE_GEMFILE BUNDLE_LOCKFILE
+    BUNDLE_PATH BUNDLER_SETUP BUNDLER_VERSION RUBYLIB RUBYOPT
+  ].freeze
 
   def test_rails_runner_does_not_start_postgres_bus
     code = [
@@ -241,12 +246,6 @@ class PostgresBusProcessTest < Minitest::Test
       Open3.capture2e(dummy_env, "bundle", "exec", *command, chdir: DUMMY_ROOT, stdin_data: stdin_data)
     end
   end
-
-  # Match Rakefile dummy_bundle_env: clear parent Bundler so the dummy Gemfile wins.
-  BUNDLE_CLEAR_KEYS = %w[
-    BUNDLE_APP_CONFIG BUNDLE_BIN_PATH BUNDLE_GEMFILE BUNDLE_LOCKFILE
-    BUNDLE_PATH BUNDLER_SETUP BUNDLER_VERSION RUBYLIB RUBYOPT
-  ].freeze
 
   def dummy_env
     cleaned = ENV.to_h
