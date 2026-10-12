@@ -49,6 +49,8 @@ A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is 
 
 Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` with the event name and recording id. Each process re-checks access and its local subscribers. Other databases stay in-process: a save on worker B does not reach a subscriber on worker A.
 
+The Postgres LISTEN thread starts only in server or worker processes. It does not start in `rails console`, `rails runner`, or Rake tasks (including `db:migrate`). Set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` to force it on in those processes, or `RECORDING_STUDIO_MCP_POSTGRES_BUS=0` to keep it off in a server. On process exit the bus stops the thread and releases its connection before ActiveRecord tears down the pool (skipped in forked children). Dropped LISTEN connections log and reconnect with bounded backoff until `stop!`.
+
 Tree hosts register recordable types. They get parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `delete` is included when a type on that named API enables destroy. `type` is an enum of the types registered on the OauthClient's named API (public vs operations). Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
 
 When `RecordingStudioApi.register_resource_handler` is set for a type and operation, MCP calls that handler the same way API 0.6.9 does. The handler owns lookup and access. Types without a handler still load through the grant's scoped recordings.
@@ -250,4 +252,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.12.0
+0.12.1

@@ -143,6 +143,7 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
   test "postgres notify payload reaches a second listener then local subscribers" do
     skip "Postgres LISTEN/NOTIFY needs a live Postgres adapter" unless RecordingStudioMcp::PostgresBus.enabled?
 
+    ENV["RECORDING_STUDIO_MCP_POSTGRES_BUS"] = "1"
     RecordingStudioMcp::PostgresBus.start!
     recording_id = @page_recording.id
     uri = "recording://#{recording_id}"
@@ -172,11 +173,18 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     wait_until { connection.pending? }
     assert connection.pending?
   ensure
+    RecordingStudioMcp::PostgresBus.stop!
+    ENV.delete("RECORDING_STUDIO_MCP_POSTGRES_BUS")
     if defined?(listen_connection) && listen_connection
-      listen_connection.execute("UNLISTEN #{RecordingStudioMcp::PostgresBus::CHANNEL}")
+      begin
+        listen_connection.execute("UNLISTEN #{RecordingStudioMcp::PostgresBus::CHANNEL}")
+      rescue StandardError
+        nil
+      end
       ActiveRecord::Base.connection_pool.checkin(listen_connection)
     end
   end
+
 
   test "initialize advertises subscribe because dummy registered recording updated" do
     token = issue_delegated_token
