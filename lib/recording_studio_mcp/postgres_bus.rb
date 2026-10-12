@@ -14,9 +14,9 @@ module RecordingStudioMcp
     START_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS"
     STOP_JOIN_TIMEOUT = 5
     WAIT_TIMEOUT_SECONDS = 1
-    MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_BASE_SECONDS = 0.5
     RECONNECT_MAX_SECONDS = 5
+    WARN_INTERVAL_SECONDS = 5
     START_ON = %w[1 true yes].freeze
     START_OFF = %w[0 false no].freeze
 
@@ -156,12 +156,12 @@ module RecordingStudioMcp
       while running?
         begin
           raw = open_listen_socket
-          attempts = 0
-          poll_notifications(raw)
+          # Reset attempts only after a successful wait, not merely on reconnect.
+          attempts = poll_notifications(raw, attempts)
         rescue StandardError => e
-          raise unless listen_notify_error?(e)
+          raise unless listen_recoverable_error?(e)
 
-          handle_listen_failure(e)
+          handle_listen_failure(e, attempts)
           break unless running?
 
           attempts += 1
@@ -173,40 +173,56 @@ module RecordingStudioMcp
     end
     private_class_method :listen_loop
 
-    def handle_listen_failure(error)
-      log_warn("LISTEN wait failed: #{error.class}: #{error.message}")
+    def handle_listen_failure(error, attempts)
+      log_warn_rate_limited(
+        :listen_failure,
+        "LISTEN failed (attempt #{attempts + 1}): #{error.class}: #{error.message}"
+      )
       release_listen_connection
     end
     private_class_method :handle_listen_failure
 
+    # Retry indefinitely with exponential backoff capped at RECONNECT_MAX_SECONDS
+    # until stop! clears @running.
     def reconnect_after_failure?(attempts)
-      if attempts > MAX_RECONNECT_ATTEMPTS
-        log_warn("LISTEN reconnect gave up after #{MAX_RECONNECT_ATTEMPTS} attempts")
-        return false
-      end
-
       delay = reconnect_delay(attempts)
-      log_warn("LISTEN reconnecting in #{delay}s (attempt #{attempts}/#{MAX_RECONNECT_ATTEMPTS})")
+      log_warn_rate_limited(
+        :reconnect,
+        "LISTEN reconnecting in #{delay}s (attempt #{attempts})"
+      )
       interruptible_sleep(delay)
       running?
     end
     private_class_method :reconnect_after_failure?
 
     def reconnect_delay(attempts)
-      [RECONNECT_BASE_SECONDS * (2**(attempts - 1)), RECONNECT_MAX_SECONDS].min
+      # 0.5 * 2^3 = 4; 0.5 * 2^4 = 8 > 5s cap. Avoid huge exponents.
+      return RECONNECT_MAX_SECONDS if attempts >= 5
+
+      RECONNECT_BASE_SECONDS * (2**(attempts - 1))
     end
     private_class_method :reconnect_delay
 
     def interruptible_sleep(seconds)
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+      deadline = monotonic_now + seconds
       while running?
-        remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        remaining = deadline - monotonic_now
         break if remaining <= 0
 
-        sleep([remaining, 0.1].min)
+        sleep_wait([remaining, 0.1].min)
       end
     end
     private_class_method :interruptible_sleep
+
+    def monotonic_now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+    private_class_method :monotonic_now
+
+    def sleep_wait(seconds)
+      sleep(seconds)
+    end
+    private_class_method :sleep_wait
 
     def open_listen_socket
       connection = listen_connection
@@ -215,8 +231,13 @@ module RecordingStudioMcp
     end
     private_class_method :open_listen_socket
 
-    def poll_notifications(raw)
-      wait_once(raw) while running?
+    # Returns the updated attempts counter. A successful wait_for_notify resets it.
+    def poll_notifications(raw, attempts)
+      while running?
+        wait_once(raw)
+        attempts = 0
+      end
+      attempts
     end
     private_class_method :poll_notifications
 
@@ -307,13 +328,27 @@ module RecordingStudioMcp
     end
     private_class_method :checkin_or_disconnect
 
-    def listen_notify_error?(error)
+    def listen_recoverable_error?(error)
       return true if error.is_a?(IOError)
       return true if defined?(PG::Error) && error.is_a?(PG::Error)
+      return true if defined?(ActiveRecord::ActiveRecordError) && error.is_a?(ActiveRecord::ActiveRecordError)
 
       false
     end
-    private_class_method :listen_notify_error?
+    private_class_method :listen_recoverable_error?
+
+    def log_warn_rate_limited(key, message)
+      now = monotonic_now
+      mutex.synchronize do
+        @last_warn_at ||= {}
+        last = @last_warn_at[key]
+        return if last && (now - last) < WARN_INTERVAL_SECONDS
+
+        @last_warn_at[key] = now
+      end
+      log_warn(message)
+    end
+    private_class_method :log_warn_rate_limited
 
     def log_warn(message)
       return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger

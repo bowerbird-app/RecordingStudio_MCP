@@ -14,7 +14,7 @@ Postgres LISTEN bus no longer starts during rake, console, or runner, and shuts 
 ### Fixed
 - `PostgresBus` skips auto-start in Rake tasks (including `db:migrate`), `rails console`, and `rails runner`. Runner detection uses `defined?(Rails::Command::RunnerCommand)` (railties loads that class before `boot_application!`; `ARGV` no longer contains `"runner"` by then). Server and worker processes still start as before. Set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` to force start, or `0` to force off.
 - `PostgresBus.stop!` signals the LISTEN loop, wakes it, and joins with a timeout. If the join times out, the listen connection is left for process exit (not released while the thread may still use it). `at_exit` is pid-guarded so forked children (e.g. Solid Queue) do not stop the parent's bus.
-- `wait_for_notify` uses a timeout. `IOError` / `PG::Error` are logged and, while the bus should keep running, reconnect with bounded backoff. `release_listen_connection` skips `UNLISTEN` on a dead connection so rake exit cannot race into a segfault.
+- `wait_for_notify` uses a timeout. `IOError`, `PG::Error`, and `ActiveRecord::ActiveRecordError` are logged and reconnect indefinitely with backoff capped at 5s until `stop!`. Attempt counters reset only after a successful wait; warnings are rate-limited. `release_listen_connection` skips `UNLISTEN` on a dead connection so rake exit cannot race into a segfault.
 
 ### Upgrade notes
 - Bump to `0.12.1`. No migration.

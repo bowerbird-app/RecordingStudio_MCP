@@ -9,11 +9,13 @@ class PostgresBusTest < Minitest::Test
     @previous_start_env = ENV.fetch(RecordingStudioMcp::PostgresBus::START_ENV, nil)
     RecordingStudioMcp::PostgresBus.stop!
     RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@last_warn_at, nil)
   end
 
   def teardown
     RecordingStudioMcp::PostgresBus.stop!
     RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@last_warn_at, nil)
     if @previous_start_env.nil?
       ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     else
@@ -146,6 +148,43 @@ class PostgresBusTest < Minitest::Test
     end
   end
 
+  def test_starts_under_rails_server_process
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    raw = Object.new
+    raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { true }
+
+    pool = Object.new
+    pool.define_singleton_method(:checkout) { listen_connection }
+    pool.define_singleton_method(:checkin) { |_| }
+
+    with_rails_server_defined do
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+              RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+                ActiveRecord::Base.stub(:connection_pool, pool) do
+                  assert RecordingStudioMcp::PostgresBus.start_allowed?
+                  assert Rails.const_defined?(:Server)
+                  RecordingStudioMcp::PostgresBus.start!
+                  sleep 0.1
+                  assert RecordingStudioMcp::PostgresBus.listening?
+                  RecordingStudioMcp::PostgresBus.stop!
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    refute RecordingStudioMcp::PostgresBus.listening?
+  end
+
   def test_start_is_a_noop_when_not_allowed
     RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
       RecordingStudioMcp::PostgresBus.stub(:start_allowed?, false) do
@@ -224,6 +263,7 @@ class PostgresBusTest < Minitest::Test
     log_io = StringIO.new
     logger = Logger.new(log_io)
     opens = 0
+    clock = 0.0
     raw = Object.new
     raw.define_singleton_method(:wait_for_notify) do |*_args|
       raise IOError, "stream closed in another thread"
@@ -244,13 +284,15 @@ class PostgresBusTest < Minitest::Test
     RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
       RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
         RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
-          RecordingStudioMcp::PostgresBus.stub(:interruptible_sleep, nil) do
-            ActiveRecord::Base.stub(:connection_pool, pool) do
-              Rails.stub(:logger, logger) do
-                RecordingStudioMcp::PostgresBus.start!
-                thread = RecordingStudioMcp::PostgresBus.instance_variable_get(:@thread)
-                thread&.join(2)
-                RecordingStudioMcp::PostgresBus.stop!
+          RecordingStudioMcp::PostgresBus.stub(:monotonic_now, -> { clock }) do
+            RecordingStudioMcp::PostgresBus.stub(:interruptible_sleep, ->(*) { clock += 10 }) do
+              ActiveRecord::Base.stub(:connection_pool, pool) do
+                Rails.stub(:logger, logger) do
+                  RecordingStudioMcp::PostgresBus.start!
+                  deadline = monotonic_deadline(1)
+                  sleep 0.01 while opens < 3 && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+                  RecordingStudioMcp::PostgresBus.stop!
+                end
               end
             end
           end
@@ -259,11 +301,121 @@ class PostgresBusTest < Minitest::Test
     end
 
     log = log_io.string
-    assert_includes log, "LISTEN wait failed: IOError: stream closed in another thread"
+    assert_includes log, "LISTEN failed"
+    assert_includes log, "IOError: stream closed in another thread"
     assert_includes log, "LISTEN reconnecting"
-    assert_operator opens, :>, 1
+    assert_operator opens, :>=, 3
     refute RecordingStudioMcp::PostgresBus.listening?
     assert_includes checked_in, listen_connection
+  end
+
+  def test_activerecord_errors_during_reconnect_are_recovered
+    require "active_record"
+
+    log_io = StringIO.new
+    logger = Logger.new(log_io)
+    opens = 0
+    clock = 0.0
+    waits = 0
+    raw = Object.new
+    raw.define_singleton_method(:wait_for_notify) do |*_args|
+      waits += 1
+      sleep 0.05
+    end
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { true }
+
+    pool = Object.new
+    pool.define_singleton_method(:checkout) do
+      opens += 1
+      raise ActiveRecord::ConnectionNotEstablished, "database down" if opens <= 3
+
+      listen_connection
+    end
+    pool.define_singleton_method(:checkin) { |_| }
+
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          RecordingStudioMcp::PostgresBus.stub(:monotonic_now, -> { clock }) do
+            RecordingStudioMcp::PostgresBus.stub(:interruptible_sleep, ->(*) { clock += 10 }) do
+              ActiveRecord::Base.stub(:connection_pool, pool) do
+                Rails.stub(:logger, logger) do
+                  RecordingStudioMcp::PostgresBus.start!
+                  deadline = monotonic_deadline(2)
+                  sleep 0.01 while waits < 1 && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+                  assert RecordingStudioMcp::PostgresBus.listening?
+                  RecordingStudioMcp::PostgresBus.stop!
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    assert_operator opens, :>=, 4
+    assert_operator waits, :>=, 1
+    assert_includes log_io.string, "ActiveRecord::ConnectionNotEstablished"
+    refute RecordingStudioMcp::PostgresBus.listening?
+  end
+
+  def test_long_outage_keeps_retrying_then_recovers
+    require "active_record"
+
+    opens = 0
+    clock = 0.0
+    waits = 0
+    failure_count = 12
+    raw = Object.new
+    raw.define_singleton_method(:wait_for_notify) do |*_args|
+      waits += 1
+      sleep 0.05
+    end
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { true }
+
+    pool = Object.new
+    pool.define_singleton_method(:checkout) do
+      opens += 1
+      raise ActiveRecord::ConnectionTimeoutError, "pool dry" if opens <= failure_count
+
+      listen_connection
+    end
+    pool.define_singleton_method(:checkin) { |_| }
+
+    delays = []
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          RecordingStudioMcp::PostgresBus.stub(:monotonic_now, -> { clock }) do
+            RecordingStudioMcp::PostgresBus.stub(:interruptible_sleep, lambda { |delay|
+              delays << delay
+              clock += 10
+            }) do
+              ActiveRecord::Base.stub(:connection_pool, pool) do
+                RecordingStudioMcp::PostgresBus.start!
+                deadline = monotonic_deadline(3)
+                sleep 0.01 while waits < 1 && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+                assert RecordingStudioMcp::PostgresBus.listening?,
+                       "expected recovery after #{failure_count} failures (opens=#{opens}, waits=#{waits})"
+                RecordingStudioMcp::PostgresBus.stop!
+              end
+            end
+          end
+        end
+      end
+    end
+
+    assert_operator opens, :>, failure_count
+    assert_operator delays.size, :>=, failure_count
+    assert_equal RecordingStudioMcp::PostgresBus::RECONNECT_MAX_SECONDS, delays.last
+    assert_operator delays.count(RecordingStudioMcp::PostgresBus::RECONNECT_MAX_SECONDS), :>=, 5
+    refute RecordingStudioMcp::PostgresBus.listening?
   end
 
   def test_stop_does_not_release_connection_when_join_times_out
@@ -355,5 +507,21 @@ class PostgresBusTest < Minitest::Test
     if !runner_defined && Rails.const_defined?(:Command) && Rails::Command.const_defined?(:RunnerCommand)
       Rails::Command.send(:remove_const, :RunnerCommand)
     end
+  end
+
+  def with_rails_server_defined
+    already = defined?(Rails) && Rails.const_defined?(:Server)
+    return yield if already
+
+    # Mirror railties: `rails server` defines Rails::Server before boot.
+    # Avoid requiring railties' server command in the gem unit suite.
+    Rails.const_set(:Server, Class.new)
+    yield
+  ensure
+    Rails.send(:remove_const, :Server) if !already && defined?(Rails) && Rails.const_defined?(:Server)
+  end
+
+  def monotonic_deadline(seconds)
+    Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
   end
 end

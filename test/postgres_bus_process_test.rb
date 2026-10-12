@@ -67,6 +67,37 @@ class PostgresBusProcessTest < Minitest::Test
     assert_probe stdout, allowed: false, listening: false, enabled: true
   end
 
+  def test_server_like_boot_starts_postgres_bus
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_server_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      ENV["RAILS_ENV"] ||= "test"
+      require "rails"
+      # Same constant `rails server` defines before boot (railties ServerCommand).
+      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
+      require_relative "../config/environment"
+
+      ActiveRecord::Base.connection.select_value("SELECT 1")
+      RecordingStudioMcp::PostgresBus.start!
+      bus = RecordingStudioMcp::PostgresBus
+      puts "PROBE allowed=\#{bus.start_allowed?} listening=\#{bus.listening?} enabled=\#{bus.enabled?}"
+      puts "SERVER=\#{Rails.const_defined?(:Server)}"
+      puts "RUNNER=\#{defined?(Rails::Command::RunnerCommand).inspect}"
+      bus.stop!
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+
+    assert status.success?, stdout
+    assert_includes stdout, "SERVER=true"
+    assert_includes stdout, "RUNNER=nil"
+    assert_probe stdout, allowed: true, listening: true, enabled: true
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
+  end
+
   private
 
   def run_dummy(*command, stdin_data: nil)
