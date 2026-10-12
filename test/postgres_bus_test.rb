@@ -802,9 +802,9 @@ class PostgresBusTest < Minitest::Test
     Rails.send(:remove_const, :Server) if !already && defined?(Rails) && Rails.const_defined?(:Server)
   end
 
-  def with_rails_env(name, &block)
+  def with_rails_env(name, &)
     env = ActiveSupport::StringInquirer.new(name.to_s)
-    Rails.stub(:env, env, &block)
+    Rails.stub(:env, env, &)
   end
 
   def monotonic_deadline(seconds)
