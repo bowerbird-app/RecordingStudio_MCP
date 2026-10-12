@@ -14,6 +14,9 @@ module RecordingStudioMcp
     START_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS"
     STOP_JOIN_TIMEOUT = 5
     WAIT_TIMEOUT_SECONDS = 1
+    MAX_RECONNECT_ATTEMPTS = 5
+    RECONNECT_BASE_SECONDS = 0.5
+    RECONNECT_MAX_SECONDS = 5
     START_ON = %w[1 true yes].freeze
     START_OFF = %w[0 false no].freeze
 
@@ -29,8 +32,9 @@ module RecordingStudioMcp
     end
 
     # Whether this process should open a LISTEN thread on boot.
-    # Public Rails signals only: Console, Rake top-level tasks, runner ARGV,
-    # plus START_ENV.
+    # Public Rails signals only: Console, Rake top-level tasks,
+    # Rails::Command::RunnerCommand (loaded before boot_application! for
+    # `rails runner` — ARGV no longer contains "runner" by then), plus START_ENV.
     def start_allowed?
       override = env_start_override
       return override unless override.nil?
@@ -55,6 +59,7 @@ module RecordingStudioMcp
       mutex.synchronize do
         return if @thread&.alive?
 
+        @owner_pid = Process.pid
         register_shutdown_hook!
         @running = true
         @thread = Thread.new { listen_loop }
@@ -62,7 +67,8 @@ module RecordingStudioMcp
     end
 
     # Signal the LISTEN loop to exit, wake it, join the thread, then release the
-    # dedicated connection. Safe to call more than once.
+    # dedicated connection. Safe to call more than once. If the join times out,
+    # the connection is left alone — the thread may still be using it.
     def stop!
       thread = nil
       mutex.synchronize do
@@ -72,7 +78,15 @@ module RecordingStudioMcp
       end
 
       wake_listen_loop
-      thread&.join(STOP_JOIN_TIMEOUT)
+      return if thread.nil?
+
+      finished = thread.join(STOP_JOIN_TIMEOUT)
+      if finished.nil? && thread.alive?
+        log_warn("listen thread did not stop within #{STOP_JOIN_TIMEOUT}s; " \
+                 "leaving connection for process exit")
+        return
+      end
+
       release_listen_connection
     end
 
@@ -113,9 +127,10 @@ module RecordingStudioMcp
     end
     private_class_method :rake_task?
 
+    # railties 8.1 RunnerCommand#perform calls boot_application! after the
+    # command class is loaded; commands.rb has already shifted "runner" off ARGV.
     def rails_runner?
-      program = File.basename($PROGRAM_NAME.to_s)
-      %w[rails rake].include?(program) && ARGV.first.to_s == "runner"
+      defined?(Rails::Command::RunnerCommand)
     end
     private_class_method :rails_runner?
 
@@ -124,18 +139,74 @@ module RecordingStudioMcp
 
       @shutdown_hook_registered = true
       # at_exit runs LIFO: register after ActiveRecord so we stop before it
-      # disconnects the pool on process exit.
-      at_exit { stop! }
+      # disconnects the pool on process exit. Skip in forked children.
+      at_exit { shutdown_if_owner! }
     end
     private_class_method :register_shutdown_hook!
 
+    def shutdown_if_owner!
+      return unless @owner_pid == Process.pid
+
+      stop!
+    end
+    private_class_method :shutdown_if_owner!
+
     def listen_loop
-      raw = open_listen_socket
-      poll_notifications(raw)
+      attempts = 0
+      while running?
+        begin
+          raw = open_listen_socket
+          attempts = 0
+          poll_notifications(raw)
+        rescue StandardError => e
+          raise unless listen_notify_error?(e)
+
+          handle_listen_failure(e)
+          break unless running?
+
+          attempts += 1
+          break unless reconnect_after_failure?(attempts)
+        end
+      end
     ensure
       release_listen_connection
     end
     private_class_method :listen_loop
+
+    def handle_listen_failure(error)
+      log_warn("LISTEN wait failed: #{error.class}: #{error.message}")
+      release_listen_connection
+    end
+    private_class_method :handle_listen_failure
+
+    def reconnect_after_failure?(attempts)
+      if attempts > MAX_RECONNECT_ATTEMPTS
+        log_warn("LISTEN reconnect gave up after #{MAX_RECONNECT_ATTEMPTS} attempts")
+        return false
+      end
+
+      delay = reconnect_delay(attempts)
+      log_warn("LISTEN reconnecting in #{delay}s (attempt #{attempts}/#{MAX_RECONNECT_ATTEMPTS})")
+      interruptible_sleep(delay)
+      running?
+    end
+    private_class_method :reconnect_after_failure?
+
+    def reconnect_delay(attempts)
+      [RECONNECT_BASE_SECONDS * (2**(attempts - 1)), RECONNECT_MAX_SECONDS].min
+    end
+    private_class_method :reconnect_delay
+
+    def interruptible_sleep(seconds)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+      while running?
+        remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        break if remaining <= 0
+
+        sleep([remaining, 0.1].min)
+      end
+    end
+    private_class_method :interruptible_sleep
 
     def open_listen_socket
       connection = listen_connection
@@ -153,11 +224,6 @@ module RecordingStudioMcp
       raw.wait_for_notify(WAIT_TIMEOUT_SECONDS) do |_channel, _pid, payload|
         handle_payload(payload)
       end
-    rescue StandardError => e
-      # Stream closed during shutdown or pool teardown — exit quietly.
-      raise unless listen_notify_error?(e)
-
-      mutex.synchronize { @running = false }
     end
     private_class_method :wait_once
 
@@ -248,5 +314,12 @@ module RecordingStudioMcp
       false
     end
     private_class_method :listen_notify_error?
+
+    def log_warn(message)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.warn("[RecordingStudioMcp::PostgresBus] #{message}")
+    end
+    private_class_method :log_warn
   end
 end

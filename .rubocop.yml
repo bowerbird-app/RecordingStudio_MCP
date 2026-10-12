@@ -55,6 +55,7 @@ Metrics/MethodLength:
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
     - 'lib/recording_studio_mcp/json_object_schema.rb'
     - 'lib/recording_studio_mcp/events.rb'
+    - 'lib/recording_studio_mcp/postgres_bus.rb'
 
 Metrics/AbcSize:
   Exclude:
@@ -71,6 +72,7 @@ Metrics/AbcSize:
 
 Metrics/CyclomaticComplexity:
   Exclude:
+    - 'test/**/*'
     - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/callback_url.rb'
@@ -79,6 +81,7 @@ Metrics/CyclomaticComplexity:
 
 Metrics/PerceivedComplexity:
   Exclude:
+    - 'test/**/*'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
 

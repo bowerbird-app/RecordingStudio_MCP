@@ -1,15 +1,19 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "logger"
+require "stringio"
 
 class PostgresBusTest < Minitest::Test
   def setup
     @previous_start_env = ENV.fetch(RecordingStudioMcp::PostgresBus::START_ENV, nil)
     RecordingStudioMcp::PostgresBus.stop!
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, nil)
   end
 
   def teardown
     RecordingStudioMcp::PostgresBus.stop!
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, nil)
     if @previous_start_env.nil?
       ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     else
@@ -75,6 +79,35 @@ class PostgresBusTest < Minitest::Test
         end
       end
     end
+  end
+
+  def test_start_allowed_is_false_when_runner_command_is_defined
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rails_runner?, true) do
+          refute RecordingStudioMcp::PostgresBus.start_allowed?
+        end
+      end
+    end
+  end
+
+  def test_rails_runner_detects_command_constant_not_argv
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    previous_argv = ARGV.dup
+    ARGV.replace([])
+
+    with_runner_command_defined do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          assert RecordingStudioMcp::PostgresBus.send(:rails_runner?)
+          refute RecordingStudioMcp::PostgresBus.start_allowed?
+        end
+      end
+    end
+  ensure
+    ARGV.replace(previous_argv)
   end
 
   def test_start_allowed_is_true_when_env_flag_is_set
@@ -187,7 +220,10 @@ class PostgresBusTest < Minitest::Test
     assert_nil RecordingStudioMcp::PostgresBus.instance_variable_get(:@listen_connection)
   end
 
-  def test_wait_for_notify_stream_closed_does_not_leak_ioerror
+  def test_wait_for_notify_stream_closed_logs_and_reconnects
+    log_io = StringIO.new
+    logger = Logger.new(log_io)
+    opens = 0
     raw = Object.new
     raw.define_singleton_method(:wait_for_notify) do |*_args|
       raise IOError, "stream closed in another thread"
@@ -199,33 +235,93 @@ class PostgresBusTest < Minitest::Test
 
     pool = Object.new
     checked_in = []
-    pool.define_singleton_method(:checkout) { listen_connection }
+    pool.define_singleton_method(:checkout) do
+      opens += 1
+      listen_connection
+    end
     pool.define_singleton_method(:checkin) { |connection| checked_in << connection }
 
-    thread_error = nil
     RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
       RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
         RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
-          ActiveRecord::Base.stub(:connection_pool, pool) do
-            RecordingStudioMcp::PostgresBus.start!
-            thread = RecordingStudioMcp::PostgresBus.instance_variable_get(:@thread)
-            if thread
-              begin
-                thread.join(2)
-                thread.value
-              rescue IOError => e
-                thread_error = e
+          RecordingStudioMcp::PostgresBus.stub(:interruptible_sleep, nil) do
+            ActiveRecord::Base.stub(:connection_pool, pool) do
+              Rails.stub(:logger, logger) do
+                RecordingStudioMcp::PostgresBus.start!
+                thread = RecordingStudioMcp::PostgresBus.instance_variable_get(:@thread)
+                thread&.join(2)
+                RecordingStudioMcp::PostgresBus.stop!
               end
             end
-            RecordingStudioMcp::PostgresBus.stop!
           end
         end
       end
     end
 
-    assert_nil thread_error
+    log = log_io.string
+    assert_includes log, "LISTEN wait failed: IOError: stream closed in another thread"
+    assert_includes log, "LISTEN reconnecting"
+    assert_operator opens, :>, 1
     refute RecordingStudioMcp::PostgresBus.listening?
     assert_includes checked_in, listen_connection
+  end
+
+  def test_stop_does_not_release_connection_when_join_times_out
+    connection = Object.new
+    connection.define_singleton_method(:raw_connection) { nil }
+    connection.define_singleton_method(:active?) { true }
+    connection.define_singleton_method(:execute) { |_| flunk "should not UNLISTEN while thread alive" }
+
+    checked_in = []
+    pool = Object.new
+    pool.define_singleton_method(:checkin) { |conn| checked_in << conn }
+
+    stuck = Object.new
+    stuck.define_singleton_method(:join) { |*_args| nil }
+    stuck.define_singleton_method(:alive?) { true }
+
+    log_io = StringIO.new
+    logger = Logger.new(log_io)
+
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@running, true)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@thread, stuck)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_connection, connection)
+
+    RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+      ActiveRecord::Base.stub(:connection_pool, pool) do
+        Rails.stub(:logger, logger) do
+          RecordingStudioMcp::PostgresBus.stop!
+        end
+      end
+    end
+
+    assert_empty checked_in
+    assert_same connection, RecordingStudioMcp::PostgresBus.instance_variable_get(:@listen_connection)
+    assert_includes log_io.string, "did not stop within"
+  ensure
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_connection, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@thread, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@running, false)
+  end
+
+  def test_shutdown_hook_skips_forked_child_pid
+    stop_calls = 0
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, Process.pid + 99)
+    RecordingStudioMcp::PostgresBus.stub(:stop!, -> { stop_calls += 1 }) do
+      RecordingStudioMcp::PostgresBus.send(:shutdown_if_owner!)
+    end
+
+    assert_equal 0, stop_calls
+  end
+
+  def test_shutdown_hook_runs_for_owner_pid
+    stop_calls = 0
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, Process.pid)
+    RecordingStudioMcp::PostgresBus.stub(:stop!, -> { stop_calls += 1 }) do
+      RecordingStudioMcp::PostgresBus.send(:shutdown_if_owner!)
+    end
+
+    assert_equal 1, stop_calls
   end
 
   def stub_rake_application(rake_app)
@@ -241,5 +337,23 @@ class PostgresBusTest < Minitest::Test
   ensure
     Object.send(:remove_const, :Rake) if Object.const_defined?(:Rake)
     Object.const_set(:Rake, original) if rake_defined && original
+  end
+
+  def with_runner_command_defined
+    rails_defined = Object.const_defined?(:Rails)
+    command_defined = rails_defined && Rails.const_defined?(:Command)
+    runner_defined = command_defined && Rails::Command.const_defined?(:RunnerCommand)
+
+    return yield if runner_defined
+
+    Object.const_set(:Rails, Module.new) unless rails_defined
+    Rails.const_set(:Command, Module.new) unless Rails.const_defined?(:Command)
+    Rails::Command.const_set(:RunnerCommand, Class.new)
+
+    yield
+  ensure
+    if !runner_defined && Rails.const_defined?(:Command) && Rails::Command.const_defined?(:RunnerCommand)
+      Rails::Command.send(:remove_const, :RunnerCommand)
+    end
   end
 end
