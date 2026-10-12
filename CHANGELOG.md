@@ -21,6 +21,7 @@ Postgres LISTEN bus auto-starts on server boot without a prior Active Record que
 - `Fanout` rescues `ActiveRecord::ActiveRecordError`, `PG::Error`, and `IOError` from NOTIFY, logs a warning, and falls back to local delivery so publish never raises into `record!` or the caller's transaction. Payloads of 8000+ bytes skip NOTIFY the same way (Postgres limit).
 - `Fanout.publish` runs NOTIFY and local delivery through `AfterCommit` (immediate when no transaction is open), so rolled-back changes are never fanned out. When NOTIFY still runs inside an open transaction, it uses a savepoint (`transaction(requires_new: true)`) so a rescued failure cannot leave the host connection in `InFailedSqlTransaction`.
 - `PostgresBus` skips LISTEN auto-start when `Rails.env.test?` unless `RECORDING_STUDIO_MCP_POSTGRES_BUS=1`. Auto-LISTEN under transactional fixtures skipped local delivery (process was listening) while NOTIFY never committed, so host tests saw zero MCP updates.
+- Process probes that boot with `RAILS_ENV=test` may set `RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST=1` to lift only the test-env gate; runner, console, rake, `PRE_DEPLOY`, and `bin/jobs` gates still apply.
 - Cluster boot warning reads `workers` / `preload_app` from `Puma.cli_config` and does not fire for clusters without preload.
 
 ### Added
@@ -33,7 +34,7 @@ Postgres LISTEN bus auto-starts on server boot without a prior Active Record que
 - Single-mode Puma (including `SOLID_QUEUE_IN_PUMA`) needs no host change: `after_initialize` starts the bus and the pid guard keeps Solid Queue children inert. Job processes still `NOTIFY` so web listeners get updates.
 - Preloaded cluster mode (`workers` > 0 and `preload_app`): add `plugin :recording_studio_mcp_postgres_bus` to `config/puma.rb`, or the equivalent `before_fork` / `before_worker_boot` hooks from the README. Clusters without preload do not need the plugin.
 - Pre-deploy / release steps that set a truthy `PRE_DEPLOY` no longer start LISTEN. Force with `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` if needed.
-- Host `bin/rails test` no longer auto-starts LISTEN. Process / bus integration tests that need the listen thread must set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1`.
+- Host `bin/rails test` no longer auto-starts LISTEN. Process probes use `RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST=1` to exercise other gates under `RAILS_ENV=test`. Force LISTEN in any process with `RECORDING_STUDIO_MCP_POSTGRES_BUS=1`.
 
 ## [0.12.1] - 2026-10-12
 

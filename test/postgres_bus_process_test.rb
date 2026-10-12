@@ -114,8 +114,7 @@ class PostgresBusProcessTest < Minitest::Test
       require "json"
 
       ENV["RAILS_ENV"] ||= "test"
-      # Test env skips LISTEN unless forced — process probes opt in explicitly.
-      ENV["RECORDING_STUDIO_MCP_POSTGRES_BUS"] = "1"
+      # IN_TEST_ENV (from dummy_env) lifts only the Rails.env.test? gate.
       require "rails"
       # Same constant `rails server` defines before boot (railties ServerCommand).
       Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
@@ -336,7 +335,6 @@ class PostgresBusProcessTest < Minitest::Test
       require "timeout"
 
       ENV["RAILS_ENV"] ||= "test"
-      ENV["RECORDING_STUDIO_MCP_POSTGRES_BUS"] = "1"
       require "rails"
       Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
       require_relative "../config/environment"
@@ -421,6 +419,8 @@ class PostgresBusProcessTest < Minitest::Test
     cleaned.merge(
       "BUNDLE_GEMFILE" => File.join(DUMMY_ROOT, "Gemfile"),
       "RAILS_ENV" => "test",
+      # Lift only Rails.env.test? so negative process gates (runner/rake/…) are real.
+      RecordingStudioMcp::PostgresBus::IN_TEST_ENV => "1",
       "DATABASE_URL" => database_url,
       "BOOTSNAP_CACHE_DIR" => File.join(DUMMY_ROOT, "tmp/cache")
     )
@@ -475,8 +475,6 @@ class PostgresBusProcessTest < Minitest::Test
       env = dummy_env.merge(
         "PORT" => port.to_s,
         "RAILS_ENV" => "test",
-        # RAILS_ENV=test skips LISTEN unless forced; Puma probes need the bus.
-        RecordingStudioMcp::PostgresBus::START_ENV => "1",
         "WEB_CONCURRENCY" => workers.to_s,
         "RAILS_MAX_THREADS" => "5"
       )

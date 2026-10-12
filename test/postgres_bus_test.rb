@@ -8,6 +8,7 @@ require "stringio"
 class PostgresBusTest < Minitest::Test
   def setup
     @previous_start_env = ENV.fetch(RecordingStudioMcp::PostgresBus::START_ENV, nil)
+    @previous_in_test_env = ENV.fetch(RecordingStudioMcp::PostgresBus::IN_TEST_ENV, nil)
     @previous_pre_deploy = ENV.key?("PRE_DEPLOY") ? ENV.fetch("PRE_DEPLOY") : :absent
     @previous_web_concurrency = ENV.key?("WEB_CONCURRENCY") ? ENV.fetch("WEB_CONCURRENCY") : :absent
     RecordingStudioMcp::PostgresBus.stop!
@@ -25,6 +26,11 @@ class PostgresBusTest < Minitest::Test
       ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     else
       ENV[RecordingStudioMcp::PostgresBus::START_ENV] = @previous_start_env
+    end
+    if @previous_in_test_env.nil?
+      ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
+    else
+      ENV[RecordingStudioMcp::PostgresBus::IN_TEST_ENV] = @previous_in_test_env
     end
     if @previous_pre_deploy == :absent
       ENV.delete("PRE_DEPLOY")
@@ -232,9 +238,10 @@ class PostgresBusTest < Minitest::Test
 
   def test_start_allowed_is_false_in_test_env_without_flag
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
     ENV.delete("PRE_DEPLOY")
 
-    RecordingStudioMcp::PostgresBus.stub(:rails_test?, true) do
+    with_rails_env("test") do
       RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
         RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
           RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
@@ -249,9 +256,46 @@ class PostgresBusTest < Minitest::Test
 
   def test_start_allowed_is_true_in_test_env_with_flag
     ENV[RecordingStudioMcp::PostgresBus::START_ENV] = "1"
+    ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
 
-    RecordingStudioMcp::PostgresBus.stub(:rails_test?, true) do
+    with_rails_env("test") do
       assert RecordingStudioMcp::PostgresBus.start_allowed?
+    end
+  end
+
+  def test_in_test_flag_lifts_only_rails_test_gate
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV[RecordingStudioMcp::PostgresBus::IN_TEST_ENV] = "1"
+    ENV.delete("PRE_DEPLOY")
+
+    with_rails_env("test") do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              assert RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_in_test_flag_does_not_lift_runner_gate
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV[RecordingStudioMcp::PostgresBus::IN_TEST_ENV] = "1"
+    ENV.delete("PRE_DEPLOY")
+
+    with_rails_env("test") do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, true) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              refute RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
     end
   end
 
@@ -756,6 +800,11 @@ class PostgresBusTest < Minitest::Test
     yield
   ensure
     Rails.send(:remove_const, :Server) if !already && defined?(Rails) && Rails.const_defined?(:Server)
+  end
+
+  def with_rails_env(name)
+    env = ActiveSupport::StringInquirer.new(name.to_s)
+    Rails.stub(:env, env) { yield }
   end
 
   def monotonic_deadline(seconds)

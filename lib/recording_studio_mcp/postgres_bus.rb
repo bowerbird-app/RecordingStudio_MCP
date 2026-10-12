@@ -9,12 +9,16 @@ module RecordingStudioMcp
   # Rake tasks, rails console, rails runner, Rails test (`Rails.env.test?`),
   # standalone bin/jobs, and pre-deploy jobs (truthy PRE_DEPLOY) skip LISTEN
   # unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set. Set that same variable to
-  # 0 to force LISTEN off in a server process. NOTIFY still runs from any
+  # 0 to force LISTEN off in a server process. Process probes that boot with
+  # RAILS_ENV=test may set RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST=1 to lift
+  # only the test-env gate (other gates still apply). NOTIFY still runs from any
   # Postgres process via Fanout whenever enabled?.
   module PostgresBus
     CHANNEL = "recording_studio_mcp_events"
     APPLICATION_NAME_PREFIX = "recording_studio_mcp_bus"
     START_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS"
+    # Lifts only Rails.env.test? — never runner/console/rake/PRE_DEPLOY/bin/jobs.
+    IN_TEST_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST"
     STOP_JOIN_TIMEOUT = 5
     WAIT_TIMEOUT_SECONDS = 1
     RECONNECT_BASE_SECONDS = 0.5
@@ -145,10 +149,19 @@ module RecordingStudioMcp
     # Host `bin/rails test` boots with Rails.env.test?. Auto-LISTEN there breaks
     # transactional fixtures: AfterCommit runs during the test, NOTIFY sits in a
     # never-committed transaction, and local delivery is skipped while listening.
+    # IN_TEST_ENV lifts only this gate for process probes that also use RAILS_ENV=test.
     def rails_test?
+      return false if allow_start_in_test?
+
       defined?(Rails) && Rails.respond_to?(:env) && Rails.env.test?
     end
     private_class_method :rails_test?
+
+    def allow_start_in_test?
+      flag = ENV.fetch(IN_TEST_ENV, nil)&.strip&.downcase
+      START_ON.include?(flag)
+    end
+    private_class_method :allow_start_in_test?
 
     def rake_task?
       defined?(Rake) &&

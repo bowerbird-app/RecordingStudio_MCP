@@ -12,6 +12,7 @@ class McpFanoutTransactionalTest < ActiveSupport::TestCase
   setup do
     RecordingStudioMcp::PostgresBus.stop!
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
     @user = create_user
     Current.actor = @user
     @root_recording, = create_access_recording_for(user: @user)
