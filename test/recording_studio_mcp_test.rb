@@ -65,7 +65,7 @@ class RecordingStudioMcpTest < Minitest::Test
   def test_dummy_gemfile_pins_live_github_tags
     gemfile = File.read(File.expand_path("dummy/Gemfile", __dir__))
 
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.4.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.5.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.13.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.1.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.6.11"'
@@ -73,7 +73,7 @@ class RecordingStudioMcpTest < Minitest::Test
     refute_includes gemfile, "recording_studio_mcp_ui"
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.6.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.13.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.6.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.8.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.1.3"'
     assert_includes gemfile, 'github: "bowerbird-app/flatpack", tag: "v0.1.213"'
     refute_includes gemfile, "recording_studio_users"
