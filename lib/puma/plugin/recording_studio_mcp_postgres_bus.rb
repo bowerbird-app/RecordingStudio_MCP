@@ -14,12 +14,27 @@ require "puma/plugin"
 # In config/puma.rb:
 #   plugin :recording_studio_mcp_postgres_bus
 #
+# Uses launcher.options[:workers] (public). Does not call private
+# Launcher#clustered? (NoMethodError on Puma 7/8).
+#
+# Hooks guard with defined?(RecordingStudioMcp::PostgresBus) so they are safe
+# when the app is not preloaded and constants are not loaded yet.
+#
 # Solid Queue's plugin may also fork after_booted. Those children keep the
 # parent's @owner_pid, so PostgresBus at_exit is inert there. Do not start
 # the bus again in Solid Queue children.
+# Marker so PostgresBus can skip the cluster boot warning when this plugin is loaded.
+module RecordingStudioMcp
+  module PostgresBusPumaPlugin
+    def self.active?
+      true
+    end
+  end
+end
+
 Puma::Plugin.create do
   def start(launcher)
-    if launcher.clustered?
+    if workers?(launcher)
       install_cluster_hooks(launcher)
     else
       install_single_hooks(launcher)
@@ -28,18 +43,36 @@ Puma::Plugin.create do
 
   private
 
+  # Public API: options is attr_reader on Launcher; :workers is the DSL value.
+  # Verified private clustered? raises NoMethodError on Puma 7.1 and 8.0.2.
+  def workers?(launcher)
+    launcher.options[:workers].to_i.positive?
+  end
+
   def install_cluster_hooks(launcher)
-    append_hook(launcher, :before_fork) { RecordingStudioMcp::PostgresBus.stop! }
-    append_hook(launcher, :before_worker_boot) { RecordingStudioMcp::PostgresBus.start! }
+    append_hook(launcher, :before_fork) { stop_bus_if_loaded }
+    append_hook(launcher, :before_worker_boot) { start_bus_if_loaded }
   end
 
   def install_single_hooks(launcher)
     events = launcher.events
     if events.respond_to?(:after_booted)
-      events.after_booted { RecordingStudioMcp::PostgresBus.start! }
+      events.after_booted { start_bus_if_loaded }
     elsif events.respond_to?(:on_booted)
-      events.on_booted { RecordingStudioMcp::PostgresBus.start! }
+      events.on_booted { start_bus_if_loaded }
     end
+  end
+
+  def start_bus_if_loaded
+    return unless defined?(RecordingStudioMcp::PostgresBus)
+
+    RecordingStudioMcp::PostgresBus.start!
+  end
+
+  def stop_bus_if_loaded
+    return unless defined?(RecordingStudioMcp::PostgresBus)
+
+    RecordingStudioMcp::PostgresBus.stop!
   end
 
   # launcher.options is Puma::UserFileDefaultOptions (public). Hooks are

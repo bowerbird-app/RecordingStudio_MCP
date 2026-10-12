@@ -6,11 +6,12 @@ module RecordingStudioMcp
   # Cross-process MCP subscription fan-out via Postgres LISTEN/NOTIFY.
   #
   # The listen thread is started only in long-lived server or worker processes.
-  # Rake tasks, rails console, and rails runner skip it unless
-  # RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set. Set that same variable to 0 to
-  # force the bus off in a server process.
+  # Rake tasks, rails console, rails runner, standalone bin/jobs, and pre-deploy
+  # jobs (PRE_DEPLOY) skip it unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set.
+  # Set that same variable to 0 to force the bus off in a server process.
   module PostgresBus
     CHANNEL = "recording_studio_mcp_events"
+    APPLICATION_NAME_PREFIX = "recording_studio_mcp_bus"
     START_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS"
     STOP_JOIN_TIMEOUT = 5
     WAIT_TIMEOUT_SECONDS = 1
@@ -36,10 +37,14 @@ module RecordingStudioMcp
     # Whether this process should open a LISTEN thread on boot.
     # Public Rails signals only: Console, Rake top-level tasks,
     # Rails::Command::RunnerCommand (loaded before boot_application! for
-    # `rails runner` — ARGV no longer contains "runner" by then), plus START_ENV.
+    # `rails runner` — ARGV no longer contains "runner" by then), standalone
+    # Solid Queue `bin/jobs` ($PROGRAM_NAME), PRE_DEPLOY hosts, plus START_ENV.
     def start_allowed?
       override = env_start_override
       return override unless override.nil?
+
+      return false if pre_deploy?
+      return false if solid_queue_jobs?
 
       !(rails_console? || rake_task? || rails_runner?)
     end
@@ -57,6 +62,8 @@ module RecordingStudioMcp
     def start!
       return unless enabled?
       return unless start_allowed?
+
+      warn_cluster_without_plugin_once!
 
       mutex.synchronize do
         abandon_inherited_state_if_forked!
@@ -137,6 +144,45 @@ module RecordingStudioMcp
       defined?(Rails::Command::RunnerCommand)
     end
     private_class_method :rails_runner?
+
+    # DigitalOcean App Platform (and similar hosts) set PRE_DEPLOY during
+    # release/migrate steps that are not always detected as Rake.
+    def pre_deploy?
+      ENV.key?("PRE_DEPLOY")
+    end
+    private_class_method :pre_deploy?
+
+    # Standalone Solid Queue supervisor (`bin/jobs`). Cli loads after boot, so
+    # detect via program name. MCP fan-out belongs on the web process.
+    def solid_queue_jobs?
+      File.basename($PROGRAM_NAME.to_s) == "jobs"
+    end
+    private_class_method :solid_queue_jobs?
+
+    # Hint when after_initialize starts the bus in a Puma cluster master.
+    # Cluster hosts should load plugin :recording_studio_mcp_postgres_bus.
+    def warn_cluster_without_plugin_once!
+      return if @cluster_plugin_warned
+      return if defined?(RecordingStudioMcp::PostgresBusPumaPlugin)
+      return unless puma_cluster_hint?
+
+      @cluster_plugin_warned = true
+      log_warn(
+        "Puma cluster (WEB_CONCURRENCY=#{ENV.fetch('WEB_CONCURRENCY', nil).inspect}): " \
+        "add `plugin :recording_studio_mcp_postgres_bus` so LISTEN starts per worker, " \
+        "not only in the preloaded master"
+      )
+    end
+    private_class_method :warn_cluster_without_plugin_once!
+
+    def puma_cluster_hint?
+      flag = ENV.fetch("WEB_CONCURRENCY", nil).to_s.strip
+      return false if flag.empty?
+      return true if flag == "auto"
+
+      flag.to_i > 1
+    end
+    private_class_method :puma_cluster_hint?
 
     def register_shutdown_hook!
       return if @shutdown_hook_registered
@@ -230,6 +276,10 @@ module RecordingStudioMcp
 
     def open_listen_socket
       connection = listen_connection
+      # Tag the backend with this process pid so ops/tests can tell workers apart.
+      connection.execute(
+        "SET application_name = #{connection.quote("#{APPLICATION_NAME_PREFIX}:#{Process.pid}")}"
+      )
       connection.execute("LISTEN #{CHANNEL}")
       announce_listening!
       connection.raw_connection
@@ -321,6 +371,8 @@ module RecordingStudioMcp
       return unless connection_usable?(connection)
 
       connection.execute("UNLISTEN #{CHANNEL}")
+      # Clear the bus tag so pooled connections are not mistaken for LISTENers.
+      connection.execute("SET application_name = #{connection.quote('')}")
     rescue StandardError
       nil
     end

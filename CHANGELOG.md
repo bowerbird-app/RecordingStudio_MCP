@@ -15,14 +15,19 @@ Postgres LISTEN bus auto-starts on server boot without a prior Active Record que
 - `PostgresBus.enabled?` checks the configured Postgres adapter via `connection_db_config` and no longer requires `ActiveRecord::Base.connected?`. Lazy connection pools left `connected?` false at `after_initialize`, so auto-start was a no-op under Puma (LISTEN never opened until something else queried first).
 - Boot logs one info line: `PostgresBus listening on recording_studio_mcp_events`.
 - After fork, `start!` drops inherited listen state without touching the parent's sockets so workers can start cleanly.
+- Puma plugin uses public `launcher.options[:workers]` (not private `clustered?`) and guards hooks with `defined?(RecordingStudioMcp::PostgresBus)`.
+- Auto-start skips when `PRE_DEPLOY` is set and when the process is standalone Solid Queue `bin/jobs`.
 
 ### Added
 - Optional Puma plugin `recording_studio_mcp_postgres_bus`: in cluster mode stops the bus in the master before fork and starts it in each worker; in single mode `after_booted` start! is idempotent with `after_initialize`.
+- LISTEN backends set `application_name` to `recording_studio_mcp_bus:<pid>` for ops and tests.
+- Boot warning when `WEB_CONCURRENCY` looks like a Puma cluster unless `plugin :recording_studio_mcp_postgres_bus` is loaded.
 
 ### Upgrade notes
 - Bump to `0.12.2`. No migration.
 - Single-mode Puma (including `SOLID_QUEUE_IN_PUMA`) needs no host change: `after_initialize` starts the bus and the pid guard keeps Solid Queue children inert.
 - Cluster mode (`workers` / `WEB_CONCURRENCY` > 0): add `plugin :recording_studio_mcp_postgres_bus` to `config/puma.rb`, or the equivalent `before_fork` / `before_worker_boot` hooks from the README.
+- Pre-deploy / release steps that set `PRE_DEPLOY` no longer start the bus. Force with `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` if needed.
 
 ## [0.12.1] - 2026-10-12
 

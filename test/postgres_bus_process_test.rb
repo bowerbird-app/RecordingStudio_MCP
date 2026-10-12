@@ -175,68 +175,113 @@ class PostgresBusProcessTest < Minitest::Test
   # prior HTTP/AR query from us. Skips the Solid Queue plugin (empty string is
   # truthy in Ruby — omit the env var entirely).
   def test_puma_single_mode_listens_without_prior_query
-    port = free_port
-    log_path = File.join(DUMMY_ROOT, "tmp/postgres_bus_puma_probe.log")
-    rails_log = File.join(DUMMY_ROOT, "log/test.log")
-    FileUtils.mkdir_p(File.dirname(log_path))
-    FileUtils.mkdir_p(File.dirname(rails_log))
-    FileUtils.rm_f(log_path)
-    # Truncate so we only see lines from this boot.
-    File.write(rails_log, "")
-
-    pid = nil
-    # Build env inside with_unbundled_env so parent gem BUNDLE_* does not leak
-    # into the dummy Puma process (that broke CI boot).
-    Bundler.with_unbundled_env do
-      env = dummy_env.merge(
-        "PORT" => port.to_s,
-        "RAILS_ENV" => "test",
-        "WEB_CONCURRENCY" => "0",
-        "RAILS_MAX_THREADS" => "5"
-      )
-      env.delete("SOLID_QUEUE_IN_PUMA")
-      pid = Process.spawn(
-        env,
-        "bundle", "exec", "puma", "-C", "config/puma.rb", "-b", "tcp://127.0.0.1:#{port}",
-        chdir: DUMMY_ROOT,
-        out: log_path,
-        err: log_path
-      )
+    with_puma_process(workers: 0, solid_queue: false, plugin: false) do |ctx|
+      assert_includes ctx[:log], "Listening on", "puma failed to boot:\n#{ctx[:log]}"
+      refute_includes ctx[:log], "solid_queue", "Solid Queue plugin should be off:\n#{ctx[:log]}"
+      refute_includes ctx[:log], "NoMethodError", ctx[:log]
+      await(15, "LISTEN backend", log_path: ctx[:log_path]) { bus_owner_pids.any? }
+      assert bus_owner_pids.any?, "expected LISTEN. log:\n#{ctx[:combined]}"
+      assert_includes ctx[:combined], "PostgresBus] listening on #{CHANNEL}"
     end
+  end
 
-    await(30, "puma Listening on", log_path: log_path) do
-      File.exist?(log_path) && File.read(log_path).include?("Listening on")
+  def test_puma_single_mode_with_plugin_does_not_raise
+    with_puma_process(workers: 0, solid_queue: false, plugin: true) do |ctx|
+      assert_includes ctx[:log], "Listening on", ctx[:log]
+      refute_includes ctx[:log], "NoMethodError", ctx[:log]
+      refute_includes ctx[:log], "private method `clustered?'", ctx[:log]
+      await(15, "LISTEN with plugin", log_path: ctx[:log_path]) { bus_owner_pids.any? }
+      assert_equal 1, bus_owner_pids.size, "expected one LISTEN owner. #{bus_rows.inspect}"
     end
-    log = File.read(log_path)
-    assert_includes log, "Listening on", "puma failed to boot:\n#{log}"
-    refute_includes log, "solid_queue", "Solid Queue plugin should be off:\n#{log}"
+  end
 
-    await(15, "LISTEN backend", log_path: log_path) { listen_backends.any? }
+  def test_puma_cluster_plugin_listens_in_workers_not_master
+    with_puma_process(workers: 2, solid_queue: false, plugin: true, preload: true) do |ctx|
+      assert_includes ctx[:log], "Listening on", ctx[:log]
+      refute_includes ctx[:log], "NoMethodError", ctx[:log]
+      master_pid = ctx[:pid]
+      await(20, "two worker LISTEN owners", log_path: ctx[:log_path]) do
+        bus_owner_pids.size >= 2
+      end
+      owners = bus_owner_pids
+      assert_equal 2, owners.size, "expected 2 worker LISTEN pids, got #{owners.inspect}\n#{ctx[:combined]}"
+      refute_includes owners, master_pid, "master #{master_pid} must not LISTEN: #{owners.inspect}"
 
-    backends = listen_backends
-    rails_tail = File.read(rails_log)
-    assert backends.any?,
-           "expected LISTEN on #{CHANNEL}, got none.\npuma:\n#{log}\nrails:\n#{rails_tail}"
-
-    listen_line = "PostgresBus] listening on #{CHANNEL}"
-    await(10, "PostgresBus listening log", log_path: log_path) do
-      File.read(log_path).include?(listen_line) || File.read(rails_log).include?(listen_line)
-    end
-    combined = "#{File.read(log_path)}\n#{File.read(rails_log)}"
-    assert_includes combined, listen_line, "missing boot info log:\n#{combined}"
-
-    publish_notify("puma-probe")
-    sleep 0.5
-    assert listen_backends.any?, "LISTEN disappeared after NOTIFY. log:\n#{combined}"
-  ensure
-    if defined?(pid) && pid
-      begin
-        Process.kill("TERM", pid)
-        Process.wait(pid)
-      rescue Errno::ESRCH, Errno::ECHILD
-        nil
+      worker_pids = child_pids(master_pid)
+      assert_operator worker_pids.size, :>=, 2, "expected puma workers under #{master_pid}, got #{worker_pids.inspect}"
+      owners.each do |owner|
+        assert_includes worker_pids, owner, "LISTEN pid #{owner} not a worker of #{master_pid}: #{worker_pids.inspect}"
       end
     end
+  end
+
+  def test_puma_single_with_solid_queue_only_puma_listens
+    ensure_solid_queue_schema!
+    with_puma_process(workers: 0, solid_queue: true, plugin: false) do |ctx|
+      assert_includes ctx[:log], "Listening on", ctx[:log]
+      refute_includes ctx[:log], "NoMethodError", ctx[:log]
+      await(20, "solid queue forked", log_path: ctx[:log_path]) do
+        child_pids(ctx[:pid]).any? || File.read(ctx[:log_path]).match?(/Solid Queue|solid_queue/i)
+      end
+      await(15, "exactly one LISTEN", log_path: ctx[:log_path]) { bus_owner_pids.size == 1 }
+      owners = bus_owner_pids
+      assert_equal 1, owners.size, "expected one LISTEN from Puma only: #{owners.inspect}\n#{ctx[:combined]}"
+      assert_equal ctx[:pid], owners.first, "LISTEN must be the Puma pid #{ctx[:pid]}, got #{owners.inspect}"
+
+      # Solid Queue forks children; none of them should own a LISTEN backend.
+      sq_children = child_pids(ctx[:pid])
+      assert sq_children.any?, "expected Solid Queue child under Puma #{ctx[:pid]}, got none. log:\n#{ctx[:combined]}"
+      sq_children.each do |child|
+        refute_includes owners, child, "Solid Queue child #{child} must not LISTEN"
+      end
+    end
+  end
+
+  def test_pre_deploy_env_skips_auto_start_in_server_boot
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_pre_deploy_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      ENV["RAILS_ENV"] ||= "test"
+      ENV["PRE_DEPLOY"] = "1"
+      require "rails"
+      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
+      require_relative "../config/environment"
+      bus = RecordingStudioMcp::PostgresBus
+      sleep 0.3
+      puts "PROBE allowed=\#{bus.start_allowed?} listening=\#{bus.listening?} enabled=\#{bus.enabled?}"
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+    assert status.success?, stdout
+    assert_probe stdout, allowed: false, listening: false, enabled: true
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
+  end
+
+  # Standalone bin/jobs: $PROGRAM_NAME basename is "jobs". MCP fan-out stays on web.
+  def test_bin_jobs_program_name_skips_auto_start
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_bin_jobs_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      $PROGRAM_NAME = File.expand_path("../bin/jobs", __dir__)
+      ENV["RAILS_ENV"] ||= "test"
+      require_relative "../config/environment"
+      bus = RecordingStudioMcp::PostgresBus
+      sleep 0.3
+      puts "PROBE allowed=\#{bus.start_allowed?} listening=\#{bus.listening?} enabled=\#{bus.enabled?}"
+      puts "PROGRAM=\#{File.basename($PROGRAM_NAME)}"
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+    assert status.success?, stdout
+    assert_includes stdout, "PROGRAM=jobs"
+    assert_probe stdout, allowed: false, listening: false, enabled: true
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
   end
 
   private
@@ -252,6 +297,7 @@ class PostgresBusProcessTest < Minitest::Test
     BUNDLE_CLEAR_KEYS.each { |key| cleaned.delete(key) }
     cleaned.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     cleaned.delete("SOLID_QUEUE_IN_PUMA")
+    cleaned.delete("PRE_DEPLOY")
     cleaned.merge(
       "BUNDLE_GEMFILE" => File.join(DUMMY_ROOT, "Gemfile"),
       "RAILS_ENV" => "test",
@@ -293,17 +339,160 @@ class PostgresBusProcessTest < Minitest::Test
     flunk "timed out waiting for #{label} after #{seconds}s#{detail}"
   end
 
-  def listen_backends
+  def with_puma_process(workers:, solid_queue:, plugin:, preload: false)
+    port = free_port
+    log_path = File.join(DUMMY_ROOT, "tmp/postgres_bus_puma_#{workers}_#{solid_queue}_#{plugin}.log")
+    rails_log = File.join(DUMMY_ROOT, "log/test.log")
+    config_path = File.join(DUMMY_ROOT, "tmp/puma_postgres_bus_#{workers}_#{plugin}.rb")
+    FileUtils.mkdir_p(File.dirname(log_path))
+    FileUtils.mkdir_p(File.dirname(rails_log))
+    FileUtils.rm_f(log_path)
+    File.write(rails_log, "")
+    write_puma_config(config_path, workers: workers, plugin: plugin, preload: preload, solid_queue: solid_queue)
+
+    pid = nil
+    Bundler.with_unbundled_env do
+      env = dummy_env.merge(
+        "PORT" => port.to_s,
+        "RAILS_ENV" => "test",
+        "WEB_CONCURRENCY" => workers.to_s,
+        "RAILS_MAX_THREADS" => "5"
+      )
+      if solid_queue
+        env["SOLID_QUEUE_IN_PUMA"] = "1"
+        env["SOLID_QUEUE_SKIP_RECURRING"] = "1"
+        env["JOB_CONCURRENCY"] = "1"
+        env["SOLID_QUEUE_CONFIG"] = @solid_queue_config if @solid_queue_config
+        env["SOLID_QUEUE_RECURRING_SCHEDULE"] = @solid_queue_recurring if @solid_queue_recurring
+      else
+        env.delete("SOLID_QUEUE_IN_PUMA")
+        env.delete("SOLID_QUEUE_SKIP_RECURRING")
+        env.delete("SOLID_QUEUE_CONFIG")
+        env.delete("SOLID_QUEUE_RECURRING_SCHEDULE")
+      end
+      pid = Process.spawn(
+        env,
+        "bundle", "exec", "puma", "-C", config_path, "-b", "tcp://127.0.0.1:#{port}",
+        chdir: DUMMY_ROOT,
+        out: log_path,
+        err: log_path
+      )
+    end
+
+    await(45, "puma Listening on", log_path: log_path) do
+      File.exist?(log_path) && File.read(log_path).include?("Listening on")
+    end
+    # Workers need a moment after "Listening on" in cluster mode.
+    sleep(workers.positive? ? 2 : 0.5)
+    log = File.read(log_path)
+    combined = "#{log}\n#{File.read(rails_log)}"
+    yield({ pid: pid, log: log, log_path: log_path, rails_log: rails_log, combined: combined, port: port })
+  ensure
+    FileUtils.rm_f(config_path) if defined?(config_path) && config_path
+    if defined?(pid) && pid
+      begin
+        Process.kill("TERM", pid)
+        Process.wait(pid)
+      rescue Errno::ESRCH, Errno::ECHILD
+        nil
+      end
+    end
+  end
+
+  def write_puma_config(path, workers:, plugin:, preload:, solid_queue:)
+    File.write(path, <<~RUBY)
+      # frozen_string_literal: true
+
+      threads 3, 3
+      workers #{workers}
+      #{"preload_app!" if preload || workers.positive?}
+      plugin :tmp_restart
+      #{"plugin :solid_queue" if solid_queue}
+      #{"plugin :recording_studio_mcp_postgres_bus" if plugin}
+    RUBY
+  end
+
+  def ensure_solid_queue_schema!
+    return if solid_queue_table_present?
+
+    write_solid_queue_config_files!
+    stdout, status = run_dummy(
+      "bin/rails", "runner",
+      <<~RUBY
+        path = Gem.loaded_specs.fetch("solid_queue").full_gem_path
+        load File.join(path, "lib/generators/solid_queue/install/templates/db/queue_schema.rb")
+        puts "SOLID_QUEUE_SCHEMA_OK"
+      RUBY
+    )
+    assert status.success?, "failed to load Solid Queue schema:\n#{stdout}"
+    assert solid_queue_table_present?, "solid_queue_processes missing after schema load"
+  end
+
+  # Minimal Solid Queue config so SOLID_QUEUE_IN_PUMA can fork a supervisor.
+  # Uses the primary DB (no separate queue DB in test). Paths are under tmp/.
+  def write_solid_queue_config_files!
+    dir = File.join(DUMMY_ROOT, "tmp/solid_queue_config")
+    FileUtils.mkdir_p(dir)
+    queue_yml = File.join(dir, "queue.yml")
+    recurring_yml = File.join(dir, "recurring.yml")
+    File.write(queue_yml, <<~YAML)
+      default: &default
+        dispatchers:
+          - polling_interval: 1
+            batch_size: 500
+        workers:
+          - queues: "*"
+            threads: 1
+            processes: 1
+            polling_interval: 0.1
+
+      test:
+        <<: *default
+    YAML
+    File.write(recurring_yml, <<~YAML)
+      test:
+    YAML
+    @solid_queue_config = queue_yml
+    @solid_queue_recurring = recurring_yml
+  end
+
+  def solid_queue_table_present?
+    sql = "SELECT 1 FROM information_schema.tables WHERE table_name = 'solid_queue_processes'"
+    stdout, status = Open3.capture2e(psql_env, "psql", database_url, "-At", "-c", sql)
+    status.success? && stdout.strip == "1"
+  end
+
+  def bus_rows
+    prefix = RecordingStudioMcp::PostgresBus::APPLICATION_NAME_PREFIX
+    # Require an active LISTEN query so a master's checked-in pool connection
+    # that still has application_name after UNLISTEN is not counted.
     sql = <<~SQL.tr("\n", " ")
-      SELECT pid, state, left(query, 120) AS query
+      SELECT pid, application_name, state, left(query, 80)
       FROM pg_stat_activity
       WHERE pid <> pg_backend_pid()
+        AND application_name LIKE '#{prefix}:%'
         AND query ILIKE '%LISTEN%#{CHANNEL}%'
     SQL
     stdout, status = Open3.capture2e(psql_env, "psql", database_url, "-At", "-F", "|", "-c", sql)
     return [] unless status.success?
 
     stdout.lines.map(&:strip).reject(&:empty?)
+  end
+
+  def bus_owner_pids
+    prefix = RecordingStudioMcp::PostgresBus::APPLICATION_NAME_PREFIX
+    bus_rows.filter_map do |row|
+      app = row.split("|")[1].to_s
+      match = app.match(/\A#{Regexp.escape(prefix)}:(\d+)\z/)
+      match && match[1].to_i
+    end.uniq
+  end
+
+  def child_pids(parent_pid)
+    stdout, status = Open3.capture2e("pgrep", "-P", parent_pid.to_s)
+    return [] unless status.success?
+
+    stdout.lines.map(&:strip).reject(&:empty?).map(&:to_i)
   end
 
   def publish_notify(recording_id)
