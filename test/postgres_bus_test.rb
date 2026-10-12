@@ -217,14 +217,41 @@ class PostgresBusTest < Minitest::Test
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     ENV.delete("PRE_DEPLOY")
 
-    RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
-      RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
-        RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
-          RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
-            assert RecordingStudioMcp::PostgresBus.start_allowed?
+    RecordingStudioMcp::PostgresBus.stub(:rails_test?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              assert RecordingStudioMcp::PostgresBus.start_allowed?
+            end
           end
         end
       end
+    end
+  end
+
+  def test_start_allowed_is_false_in_test_env_without_flag
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete("PRE_DEPLOY")
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_test?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              refute RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_start_allowed_is_true_in_test_env_with_flag
+    ENV[RecordingStudioMcp::PostgresBus::START_ENV] = "1"
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_test?, true) do
+      assert RecordingStudioMcp::PostgresBus.start_allowed?
     end
   end
 
@@ -246,14 +273,16 @@ class PostgresBusTest < Minitest::Test
   def test_pre_deploy_zero_false_or_empty_is_treated_as_unset
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
 
-    RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
-      RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
-        RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
-          RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
-            ["0", "false", "no", "", "  "].each do |value|
-              ENV["PRE_DEPLOY"] = value
-              assert RecordingStudioMcp::PostgresBus.start_allowed?,
-                     "PRE_DEPLOY=#{value.inspect} should allow start"
+    RecordingStudioMcp::PostgresBus.stub(:rails_test?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              ["0", "false", "no", "", "  "].each do |value|
+                ENV["PRE_DEPLOY"] = value
+                assert RecordingStudioMcp::PostgresBus.start_allowed?,
+                       "PRE_DEPLOY=#{value.inspect} should allow start"
+              end
             end
           end
         end

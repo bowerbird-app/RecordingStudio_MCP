@@ -6,10 +6,11 @@ module RecordingStudioMcp
   # Cross-process MCP subscription fan-out via Postgres LISTEN/NOTIFY.
   #
   # The listen thread is started only in long-lived server or worker processes.
-  # Rake tasks, rails console, rails runner, standalone bin/jobs, and pre-deploy
-  # jobs (truthy PRE_DEPLOY) skip LISTEN unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1
-  # is set. Set that same variable to 0 to force LISTEN off in a server process.
-  # NOTIFY still runs from any Postgres process via Fanout whenever enabled?.
+  # Rake tasks, rails console, rails runner, Rails test (`Rails.env.test?`),
+  # standalone bin/jobs, and pre-deploy jobs (truthy PRE_DEPLOY) skip LISTEN
+  # unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set. Set that same variable to
+  # 0 to force LISTEN off in a server process. NOTIFY still runs from any
+  # Postgres process via Fanout whenever enabled?.
   module PostgresBus
     CHANNEL = "recording_studio_mcp_events"
     APPLICATION_NAME_PREFIX = "recording_studio_mcp_bus"
@@ -38,12 +39,14 @@ module RecordingStudioMcp
     # Whether this process should open a LISTEN thread on boot.
     # Public Rails signals only: Console, Rake top-level tasks,
     # Rails::Command::RunnerCommand (loaded before boot_application! for
-    # `rails runner` — ARGV no longer contains "runner" by then), standalone
-    # Solid Queue `bin/jobs` ($PROGRAM_NAME), PRE_DEPLOY hosts, plus START_ENV.
+    # `rails runner` — ARGV no longer contains "runner" by then), test env,
+    # standalone Solid Queue `bin/jobs` ($PROGRAM_NAME), PRE_DEPLOY hosts,
+    # plus START_ENV.
     def start_allowed?
       override = env_start_override
       return override unless override.nil?
 
+      return false if rails_test?
       return false if pre_deploy?
       return false if solid_queue_jobs?
 
@@ -138,6 +141,14 @@ module RecordingStudioMcp
       defined?(Rails) && Rails.const_defined?(:Console)
     end
     private_class_method :rails_console?
+
+    # Host `bin/rails test` boots with Rails.env.test?. Auto-LISTEN there breaks
+    # transactional fixtures: AfterCommit runs during the test, NOTIFY sits in a
+    # never-committed transaction, and local delivery is skipped while listening.
+    def rails_test?
+      defined?(Rails) && Rails.respond_to?(:env) && Rails.env.test?
+    end
+    private_class_method :rails_test?
 
     def rake_task?
       defined?(Rake) &&
