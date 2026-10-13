@@ -1,39 +1,72 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "minitest/mock"
 require "logger"
 require "stringio"
 
 class PostgresBusTest < Minitest::Test
   def setup
     @previous_start_env = ENV.fetch(RecordingStudioMcp::PostgresBus::START_ENV, nil)
+    @previous_in_test_env = ENV.fetch(RecordingStudioMcp::PostgresBus::IN_TEST_ENV, nil)
+    @previous_pre_deploy = ENV.key?("PRE_DEPLOY") ? ENV.fetch("PRE_DEPLOY") : :absent
+    @previous_web_concurrency = ENV.key?("WEB_CONCURRENCY") ? ENV.fetch("WEB_CONCURRENCY") : :absent
     RecordingStudioMcp::PostgresBus.stop!
     RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, nil)
     RecordingStudioMcp::PostgresBus.instance_variable_set(:@last_warn_at, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@cluster_plugin_warned, nil)
   end
 
   def teardown
     RecordingStudioMcp::PostgresBus.stop!
     RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, nil)
     RecordingStudioMcp::PostgresBus.instance_variable_set(:@last_warn_at, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@cluster_plugin_warned, nil)
     if @previous_start_env.nil?
       ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     else
       ENV[RecordingStudioMcp::PostgresBus::START_ENV] = @previous_start_env
     end
+    if @previous_in_test_env.nil?
+      ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
+    else
+      ENV[RecordingStudioMcp::PostgresBus::IN_TEST_ENV] = @previous_in_test_env
+    end
+    if @previous_pre_deploy == :absent
+      ENV.delete("PRE_DEPLOY")
+    else
+      ENV["PRE_DEPLOY"] = @previous_pre_deploy
+    end
+    if @previous_web_concurrency == :absent
+      ENV.delete("WEB_CONCURRENCY")
+    else
+      ENV["WEB_CONCURRENCY"] = @previous_web_concurrency
+    end
   end
 
-  def test_enabled_is_false_when_not_connected
+  def test_enabled_does_not_require_an_open_connection
+    db_config = Object.new
+    db_config.define_singleton_method(:adapter) { "postgresql" }
+
     ActiveRecord::Base.stub(:connected?, false) do
+      ActiveRecord::Base.stub(:connection_db_config, db_config) do
+        assert RecordingStudioMcp::PostgresBus.enabled?
+      end
+    end
+  end
+
+  def test_enabled_is_false_when_adapter_is_not_postgres
+    db_config = Object.new
+    db_config.define_singleton_method(:adapter) { "sqlite3" }
+
+    ActiveRecord::Base.stub(:connection_db_config, db_config) do
       refute RecordingStudioMcp::PostgresBus.enabled?
     end
   end
 
   def test_enabled_is_false_when_the_adapter_check_raises
-    ActiveRecord::Base.stub(:connected?, true) do
-      ActiveRecord::Base.stub(:connection, -> { raise "gone" }) do
-        refute RecordingStudioMcp::PostgresBus.enabled?
-      end
+    ActiveRecord::Base.stub(:connection_db_config, -> { raise "gone" }) do
+      refute RecordingStudioMcp::PostgresBus.enabled?
     end
   end
 
@@ -41,6 +74,56 @@ class PostgresBusTest < Minitest::Test
     RecordingStudioMcp::PostgresBus.stub(:enabled?, false) do
       refute RecordingStudioMcp::PostgresBus.enabled?
     end
+  end
+
+  def test_start_abandons_inherited_state_after_fork
+    parent_connection = Object.new
+    # After fork only the forking thread survives; simulate a dead inherited thread.
+    stale_thread = Thread.new { sleep 60 }
+    stale_thread.kill
+    stale_thread.join(1)
+
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@owner_pid, Process.pid + 99)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_connection, parent_connection)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@thread, stale_thread)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@running, true)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@shutdown_hook_registered, true)
+
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
+            RecordingStudioMcp::PostgresBus.start!
+            assert_equal Process.pid, RecordingStudioMcp::PostgresBus.instance_variable_get(:@owner_pid)
+            assert_nil RecordingStudioMcp::PostgresBus.instance_variable_get(:@listen_connection)
+            assert RecordingStudioMcp::PostgresBus.listening?
+            RecordingStudioMcp::PostgresBus.stop!
+          end
+        end
+      end
+    end
+  ensure
+    thread = RecordingStudioMcp::PostgresBus.instance_variable_get(:@thread)
+    thread&.kill
+    thread&.join(1)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@thread, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_connection, nil)
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@running, false)
+  end
+
+  def test_announce_listening_logs_once
+    io = StringIO.new
+    logger = Logger.new(io)
+
+    RecordingStudioMcp::PostgresBus.instance_variable_set(:@listen_announced, false)
+    Rails.stub(:logger, logger) do
+      RecordingStudioMcp::PostgresBus.send(:announce_listening!)
+      RecordingStudioMcp::PostgresBus.send(:announce_listening!)
+    end
+
+    lines = io.string.lines.select { |line| line.include?("listening on") }
+    assert_equal 1, lines.size
+    assert_includes lines.first, RecordingStudioMcp::PostgresBus::CHANNEL
   end
 
   def test_publish_notifies_the_channel
@@ -138,24 +221,205 @@ class PostgresBusTest < Minitest::Test
 
   def test_start_allowed_is_true_for_server_like_process
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete("PRE_DEPLOY")
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_test?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              assert RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_start_allowed_is_false_in_test_env_without_flag
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
+    ENV.delete("PRE_DEPLOY")
+
+    with_rails_env("test") do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              refute RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_start_allowed_is_true_in_test_env_with_flag
+    ENV[RecordingStudioMcp::PostgresBus::START_ENV] = "1"
+    ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
+
+    with_rails_env("test") do
+      assert RecordingStudioMcp::PostgresBus.start_allowed?
+    end
+  end
+
+  def test_in_test_flag_lifts_only_rails_test_gate
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV[RecordingStudioMcp::PostgresBus::IN_TEST_ENV] = "1"
+    ENV.delete("PRE_DEPLOY")
+
+    with_rails_env("test") do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              assert RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_in_test_flag_does_not_lift_runner_gate
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV[RecordingStudioMcp::PostgresBus::IN_TEST_ENV] = "1"
+    ENV.delete("PRE_DEPLOY")
+
+    with_rails_env("test") do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, true) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              refute RecordingStudioMcp::PostgresBus.start_allowed?
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_start_allowed_is_false_when_pre_deploy_is_set
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV["PRE_DEPLOY"] = "1"
 
     RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
       RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
         RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
-          assert RecordingStudioMcp::PostgresBus.start_allowed?
+          RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+            refute RecordingStudioMcp::PostgresBus.start_allowed?
+          end
         end
       end
     end
+  end
+
+  def test_pre_deploy_zero_false_or_empty_is_treated_as_unset
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_test?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+            RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, false) do
+              ["0", "false", "no", "", "  "].each do |value|
+                ENV["PRE_DEPLOY"] = value
+                assert RecordingStudioMcp::PostgresBus.start_allowed?,
+                       "PRE_DEPLOY=#{value.inspect} should allow start"
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_start_allowed_is_false_for_bin_jobs
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete("PRE_DEPLOY")
+
+    RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+      RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rails_runner?, false) do
+          RecordingStudioMcp::PostgresBus.stub(:solid_queue_jobs?, true) do
+            refute RecordingStudioMcp::PostgresBus.start_allowed?
+          end
+        end
+      end
+    end
+  end
+
+  def test_pre_deploy_env_flag_can_force_start
+    ENV[RecordingStudioMcp::PostgresBus::START_ENV] = "1"
+    ENV["PRE_DEPLOY"] = "1"
+
+    assert RecordingStudioMcp::PostgresBus.start_allowed?
+  end
+
+  def test_solid_queue_jobs_detects_program_name
+    previous = $PROGRAM_NAME
+    $PROGRAM_NAME = "/app/bin/jobs"
+    assert RecordingStudioMcp::PostgresBus.send(:solid_queue_jobs?)
+    $PROGRAM_NAME = "puma"
+    refute RecordingStudioMcp::PostgresBus.send(:solid_queue_jobs?)
+  ensure
+    $PROGRAM_NAME = previous
+  end
+
+  def test_warns_once_for_preloaded_cluster_without_plugin
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete("PRE_DEPLOY")
+    io = StringIO.new
+    logger = Logger.new(io)
+
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:puma_preloaded_cluster?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
+            Rails.stub(:logger, logger) do
+              RecordingStudioMcp::PostgresBus.start!
+              RecordingStudioMcp::PostgresBus.start!
+            end
+          end
+        end
+      end
+    end
+
+    warnings = io.string.lines.select { |line| line.include?("plugin :recording_studio_mcp_postgres_bus") }
+    assert_equal 1, warnings.size, io.string
+  ensure
+    RecordingStudioMcp::PostgresBus.stop!
+  end
+
+  def test_does_not_warn_for_cluster_without_preload
+    ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
+    ENV.delete("PRE_DEPLOY")
+    io = StringIO.new
+    logger = Logger.new(io)
+    options = { workers: 2, preload_app: false }
+
+    with_puma_cli_config(options) do
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:listen_loop, nil) do
+            Rails.stub(:logger, logger) do
+              RecordingStudioMcp::PostgresBus.start!
+            end
+          end
+        end
+      end
+    end
+
+    refute_match(/plugin :recording_studio_mcp_postgres_bus/, io.string)
+  ensure
+    RecordingStudioMcp::PostgresBus.stop!
   end
 
   def test_starts_under_rails_server_process
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     raw = Object.new
     raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
-    listen_connection = Object.new
-    listen_connection.define_singleton_method(:execute) { |_| }
-    listen_connection.define_singleton_method(:raw_connection) { raw }
-    listen_connection.define_singleton_method(:active?) { true }
+    listen_connection = stub_listen_connection(raw: raw)
 
     pool = Object.new
     pool.define_singleton_method(:checkout) { listen_connection }
@@ -206,10 +470,7 @@ class PostgresBusTest < Minitest::Test
         sleep 0.05
       end
     end
-    listen_connection = Object.new
-    listen_connection.define_singleton_method(:execute) { |_| }
-    listen_connection.define_singleton_method(:raw_connection) { raw }
-    listen_connection.define_singleton_method(:active?) { true }
+    listen_connection = stub_listen_connection(raw: raw)
 
     pool = Object.new
     checked_in = []
@@ -268,10 +529,7 @@ class PostgresBusTest < Minitest::Test
     raw.define_singleton_method(:wait_for_notify) do |*_args|
       raise IOError, "stream closed in another thread"
     end
-    listen_connection = Object.new
-    listen_connection.define_singleton_method(:execute) { |_| }
-    listen_connection.define_singleton_method(:raw_connection) { raw }
-    listen_connection.define_singleton_method(:active?) { false }
+    listen_connection = stub_listen_connection(raw: raw, active: false)
 
     pool = Object.new
     checked_in = []
@@ -322,10 +580,7 @@ class PostgresBusTest < Minitest::Test
       waits += 1
       sleep 0.05
     end
-    listen_connection = Object.new
-    listen_connection.define_singleton_method(:execute) { |_| }
-    listen_connection.define_singleton_method(:raw_connection) { raw }
-    listen_connection.define_singleton_method(:active?) { true }
+    listen_connection = stub_listen_connection(raw: raw)
 
     pool = Object.new
     pool.define_singleton_method(:checkout) do
@@ -374,10 +629,7 @@ class PostgresBusTest < Minitest::Test
       waits += 1
       sleep 0.05
     end
-    listen_connection = Object.new
-    listen_connection.define_singleton_method(:execute) { |_| }
-    listen_connection.define_singleton_method(:raw_connection) { raw }
-    listen_connection.define_singleton_method(:active?) { true }
+    listen_connection = stub_listen_connection(raw: raw)
 
     pool = Object.new
     pool.define_singleton_method(:checkout) do
@@ -476,6 +728,35 @@ class PostgresBusTest < Minitest::Test
     assert_equal 1, stop_calls
   end
 
+  def with_puma_cli_config(options)
+    puma_defined = Object.const_defined?(:Puma)
+    Object.const_set(:Puma, Module.new) unless puma_defined
+    previous = Puma.respond_to?(:cli_config) ? Puma.cli_config : :absent
+    config = Object.new
+    config.define_singleton_method(:options) { options }
+    Puma.singleton_class.attr_accessor :cli_config unless Puma.respond_to?(:cli_config)
+    Puma.cli_config = config
+    yield
+  ensure
+    if Object.const_defined?(:Puma)
+      if previous == :absent
+        Puma.cli_config = nil if Puma.respond_to?(:cli_config=)
+      else
+        Puma.cli_config = previous
+      end
+      Object.send(:remove_const, :Puma) unless puma_defined
+    end
+  end
+
+  def stub_listen_connection(raw:, active: true)
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:quote) { |value| "'#{value}'" }
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { active }
+    listen_connection
+  end
+
   def stub_rake_application(rake_app)
     rake_defined = Object.const_defined?(:Rake)
     original = rake_defined ? Rake : nil
@@ -519,6 +800,11 @@ class PostgresBusTest < Minitest::Test
     yield
   ensure
     Rails.send(:remove_const, :Server) if !already && defined?(Rails) && Rails.const_defined?(:Server)
+  end
+
+  def with_rails_env(name, &)
+    env = ActiveSupport::StringInquirer.new(name.to_s)
+    Rails.stub(:env, env, &)
   end
 
   def monotonic_deadline(seconds)

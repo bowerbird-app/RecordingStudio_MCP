@@ -49,7 +49,8 @@ end
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.test_files = FileList["test/**/*_test.rb"].exclude(*ROOT_TEST_EXCLUSIONS)
-  t.verbose = false
+  # CI sets TESTOPTS=--verbose so skipped test names appear in the log.
+  t.verbose = ENV["TESTOPTS"].to_s.include?("--verbose")
 end
 
 namespace :test do
@@ -67,11 +68,15 @@ namespace :test do
   task :dummy do
     Dir.chdir(DUMMY_APP_ROOT) do
       env = dummy_bundle_env
+      rails_test = ["bundle", "exec", "bin/rails", "test"]
+      rails_test << "--verbose" if ENV["TESTOPTS"].to_s.include?("--verbose")
 
       run_command!(env, "bundle", "exec", "bin/rails", "db:prepare")
-      run_command!(env, "bundle", "exec", "bin/rails", "test")
+      run_command!(env, *rails_test)
       DUMMY_TEST_FILES.each do |test_file|
-        run_command!(env, "bundle", "exec", "ruby", "-I#{TEST_ROOT}", test_file)
+        cmd = ["bundle", "exec", "ruby", "-I#{TEST_ROOT}", test_file]
+        cmd << "--verbose" if ENV["TESTOPTS"].to_s.include?("--verbose")
+        run_command!(env, *cmd)
       end
     end
   end

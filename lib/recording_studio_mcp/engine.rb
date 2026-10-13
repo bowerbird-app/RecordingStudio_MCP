@@ -47,6 +47,10 @@ module RecordingStudioMcp
     # Oauth 0.2+ registers public MCP via config.mcp_mount_path. Keep that path
     # aligned with this gem so public authorize accepts the MCP resource identity.
     # Named-API MCP identities live at `{mcp_mount_path}/apis/{api_key}`.
+    # PostgresBus.start! opens its own pool checkout. enabled? only needs the
+    # configured adapter, so this is not a no-op when the pool is still lazy.
+    # Puma cluster hosts should also load plugin :recording_studio_mcp_postgres_bus
+    # (or before_fork / before_worker_boot) so LISTEN runs per worker.
     config.after_initialize do
       RecordingStudioMcp::ChangeObserver.install!
       RecordingStudioMcp::PostgresBus.start!

@@ -6,12 +6,19 @@ module RecordingStudioMcp
   # Cross-process MCP subscription fan-out via Postgres LISTEN/NOTIFY.
   #
   # The listen thread is started only in long-lived server or worker processes.
-  # Rake tasks, rails console, and rails runner skip it unless
-  # RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set. Set that same variable to 0 to
-  # force the bus off in a server process.
+  # Rake tasks, rails console, rails runner, Rails test (`Rails.env.test?`),
+  # standalone bin/jobs, and pre-deploy jobs (truthy PRE_DEPLOY) skip LISTEN
+  # unless RECORDING_STUDIO_MCP_POSTGRES_BUS=1 is set. Set that same variable to
+  # 0 to force LISTEN off in a server process. Process probes that boot with
+  # RAILS_ENV=test may set RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST=1 to lift
+  # only the test-env gate (other gates still apply). NOTIFY still runs from any
+  # Postgres process via Fanout whenever enabled?.
   module PostgresBus
     CHANNEL = "recording_studio_mcp_events"
+    APPLICATION_NAME_PREFIX = "recording_studio_mcp_bus"
     START_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS"
+    # Lifts only Rails.env.test? — never runner/console/rake/PRE_DEPLOY/bin/jobs.
+    IN_TEST_ENV = "RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST"
     STOP_JOIN_TIMEOUT = 5
     WAIT_TIMEOUT_SECONDS = 1
     RECONNECT_BASE_SECONDS = 0.5
@@ -22,11 +29,13 @@ module RecordingStudioMcp
 
     module_function
 
+    # True when the primary DB config is Postgres. Does not require an open
+    # connection — server boot often reaches after_initialize before the first
+    # query, and gating on connected? made auto-start a no-op under Puma.
     def enabled?
       return false unless defined?(ActiveRecord::Base)
-      return false unless ActiveRecord::Base.connected?
 
-      ActiveRecord::Base.connection.adapter_name.match?(/postg/i)
+      ActiveRecord::Base.connection_db_config.adapter.to_s.match?(/postg/i)
     rescue StandardError
       false
     end
@@ -34,16 +43,29 @@ module RecordingStudioMcp
     # Whether this process should open a LISTEN thread on boot.
     # Public Rails signals only: Console, Rake top-level tasks,
     # Rails::Command::RunnerCommand (loaded before boot_application! for
-    # `rails runner` — ARGV no longer contains "runner" by then), plus START_ENV.
+    # `rails runner` — ARGV no longer contains "runner" by then), test env,
+    # standalone Solid Queue `bin/jobs` ($PROGRAM_NAME), PRE_DEPLOY hosts,
+    # plus START_ENV.
     def start_allowed?
       override = env_start_override
       return override unless override.nil?
 
+      return false if rails_test?
+      return false if pre_deploy?
+      return false if solid_queue_jobs?
+
       !(rails_console? || rake_task? || rails_runner?)
     end
 
+    def notify_payload(event_name:, recording_id:)
+      JSON.generate({ "event" => event_name.to_s, "id" => recording_id.to_s })
+    end
+
     def publish(event_name:, recording_id:)
-      payload = JSON.generate({ "event" => event_name.to_s, "id" => recording_id.to_s })
+      publish_payload(notify_payload(event_name: event_name, recording_id: recording_id))
+    end
+
+    def publish_payload(payload)
       quoted = ActiveRecord::Base.connection.quote(payload)
       ActiveRecord::Base.connection.execute("NOTIFY #{CHANNEL}, #{quoted}")
     end
@@ -56,12 +78,16 @@ module RecordingStudioMcp
       return unless enabled?
       return unless start_allowed?
 
+      warn_cluster_without_plugin_once!
+
       mutex.synchronize do
+        abandon_inherited_state_if_forked!
         return if @thread&.alive?
 
         @owner_pid = Process.pid
         register_shutdown_hook!
         @running = true
+        @listen_announced = false
         @thread = Thread.new { listen_loop }
       end
     end
@@ -120,6 +146,23 @@ module RecordingStudioMcp
     end
     private_class_method :rails_console?
 
+    # Host `bin/rails test` boots with Rails.env.test?. Auto-LISTEN there breaks
+    # transactional fixtures: AfterCommit runs during the test, NOTIFY sits in a
+    # never-committed transaction, and local delivery is skipped while listening.
+    # IN_TEST_ENV lifts only this gate for process probes that also use RAILS_ENV=test.
+    def rails_test?
+      return false if allow_start_in_test?
+
+      defined?(Rails) && Rails.respond_to?(:env) && Rails.env.test?
+    end
+    private_class_method :rails_test?
+
+    def allow_start_in_test?
+      flag = ENV.fetch(IN_TEST_ENV, nil)&.strip&.downcase
+      START_ON.include?(flag)
+    end
+    private_class_method :allow_start_in_test?
+
     def rake_task?
       defined?(Rake) &&
         Rake.respond_to?(:application) &&
@@ -133,6 +176,65 @@ module RecordingStudioMcp
       defined?(Rails::Command::RunnerCommand)
     end
     private_class_method :rails_runner?
+
+    # DigitalOcean App Platform (and similar hosts) set PRE_DEPLOY during
+    # release/migrate steps that are not always detected as Rake.
+    # Empty / 0 / false / no are treated as unset.
+    def pre_deploy?
+      flag = ENV.fetch("PRE_DEPLOY", nil)&.strip&.downcase
+      return false if flag.nil? || flag.empty?
+      return false if START_OFF.include?(flag)
+
+      true
+    end
+    private_class_method :pre_deploy?
+
+    # Standalone Solid Queue supervisor (`bin/jobs`). Cli loads after boot, so
+    # detect via program name. MCP fan-out belongs on the web process.
+    def solid_queue_jobs?
+      File.basename($PROGRAM_NAME.to_s) == "jobs"
+    end
+    private_class_method :solid_queue_jobs?
+
+    # Hint when after_initialize starts the bus in a preloaded Puma cluster
+    # master. Without preload, each worker loads the app and starts LISTEN on
+    # its own — no plugin needed. Cluster + preload hosts should load
+    # plugin :recording_studio_mcp_postgres_bus.
+    def warn_cluster_without_plugin_once!
+      return if @cluster_plugin_warned
+      return if defined?(RecordingStudioMcp::PostgresBusPumaPlugin)
+      return unless puma_preloaded_cluster?
+
+      @cluster_plugin_warned = true
+      workers = puma_cli_options&.[](:workers)
+      log_warn(
+        "Puma cluster (workers=#{workers.inspect}): " \
+        "add `plugin :recording_studio_mcp_postgres_bus` so LISTEN starts per worker, " \
+        "not only in the preloaded master"
+      )
+    end
+    private_class_method :warn_cluster_without_plugin_once!
+
+    # True only for cluster + preload_app. Reads Puma.cli_config (set by
+    # Launcher before the app is preloaded). Clusters without preload do not
+    # need the plugin — each worker boots the app after fork.
+    def puma_preloaded_cluster?
+      options = puma_cli_options
+      return false unless options
+
+      options[:workers].to_i.positive? && options[:preload_app]
+    end
+    private_class_method :puma_preloaded_cluster?
+
+    def puma_cli_options
+      return nil unless defined?(Puma) && Puma.respond_to?(:cli_config)
+      return nil unless Puma.cli_config.respond_to?(:options)
+
+      Puma.cli_config.options
+    rescue StandardError
+      nil
+    end
+    private_class_method :puma_cli_options
 
     def register_shutdown_hook!
       return if @shutdown_hook_registered
@@ -226,10 +328,41 @@ module RecordingStudioMcp
 
     def open_listen_socket
       connection = listen_connection
+      # Tag the backend with this process pid so ops/tests can tell workers apart.
+      connection.execute(
+        "SET application_name = #{connection.quote("#{APPLICATION_NAME_PREFIX}:#{Process.pid}")}"
+      )
       connection.execute("LISTEN #{CHANNEL}")
+      announce_listening!
       connection.raw_connection
     end
     private_class_method :open_listen_socket
+
+    # Drop refs copied across fork without touching the parent's sockets.
+    # Solid Queue's Puma plugin forks after boot; cluster workers also fork.
+    # Callers in the child must start! again (after_initialize already ran in
+    # the parent). Puma cluster hosts should use before_worker_boot or the
+    # recording_studio_mcp_postgres_bus Puma plugin — see README.
+    def abandon_inherited_state_if_forked!
+      return if @owner_pid.nil? || @owner_pid == Process.pid
+
+      @listen_connection = nil
+      @thread = nil
+      @running = false
+      @shutdown_hook_registered = false
+      @listen_announced = false
+    end
+    private_class_method :abandon_inherited_state_if_forked!
+
+    def announce_listening!
+      mutex.synchronize do
+        return if @listen_announced
+
+        @listen_announced = true
+      end
+      log_info("listening on #{CHANNEL}")
+    end
+    private_class_method :announce_listening!
 
     # Returns the updated attempts counter. A successful wait_for_notify resets it.
     def poll_notifications(raw, attempts)
@@ -290,6 +423,8 @@ module RecordingStudioMcp
       return unless connection_usable?(connection)
 
       connection.execute("UNLISTEN #{CHANNEL}")
+      # Clear the bus tag so pooled connections are not mistaken for LISTENers.
+      connection.execute("RESET application_name")
     rescue StandardError
       nil
     end
@@ -356,5 +491,12 @@ module RecordingStudioMcp
       Rails.logger.warn("[RecordingStudioMcp::PostgresBus] #{message}")
     end
     private_class_method :log_warn
+
+    def log_info(message)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.info("[RecordingStudioMcp::PostgresBus] #{message}")
+    end
+    private_class_method :log_info
   end
 end

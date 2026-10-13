@@ -19,6 +19,7 @@ Layout/LineLength:
 Metrics/BlockLength:
   Exclude:
     - 'test/**/*'
+    - 'lib/puma/plugin/**/*'
 
 # Relax metrics for test files and generators
 Metrics/ClassLength:

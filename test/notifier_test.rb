@@ -121,16 +121,31 @@ class NotifierTest < Minitest::Test
   end
 
   def test_deliver_local_loads_a_recording_by_id
-    skip unless defined?(RecordingStudio::Recording)
-
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
       grant = FakeGrant.new([7])
       connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
       connection.subscribe("recording://7")
       found = FakeRecording.new(7, "Page", true)
-      RecordingStudio::Recording.stub(:find_by, found) do
+
+      previous = defined?(RecordingStudio::Recording) ? RecordingStudio::Recording : nil
+      RecordingStudio.send(:remove_const, :Recording) if previous
+      lookup = Class.new do
+        class << self
+          attr_accessor :recording_for_id
+
+          def find_by(id:)
+            recording_for_id if id == 7
+          end
+        end
+      end
+      lookup.recording_for_id = found
+      RecordingStudio.const_set(:Recording, lookup)
+      begin
         RecordingStudioMcp::Notifier.deliver_local(event_name: "recording updated", recording_id: 7)
+      ensure
+        RecordingStudio.send(:remove_const, :Recording)
+        RecordingStudio.const_set(:Recording, previous) if previous
       end
 
       assert_equal "recording://7", connection.shift_pending(timeout: 0).dig(:params, :uri)

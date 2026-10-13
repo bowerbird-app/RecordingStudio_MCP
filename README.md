@@ -49,7 +49,23 @@ A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is 
 
 Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` with the event name and recording id. Each process re-checks access and its local subscribers. Other databases stay in-process: a save on worker B does not reach a subscriber on worker A.
 
-The Postgres LISTEN thread starts only in server or worker processes. It does not start in `rails console`, `rails runner`, or Rake tasks (including `db:migrate`). Set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` to force it on in those processes, or `RECORDING_STUDIO_MCP_POSTGRES_BUS=0` to keep it off in a server. On process exit the bus stops the thread and releases its connection before ActiveRecord tears down the pool (skipped in forked children). Dropped LISTEN connections log and reconnect with bounded backoff until `stop!`.
+`NOTIFY` and local delivery run after the surrounding transaction commits (or immediately when none is open), so rolled-back changes never fan out. `NOTIFY` still runs from any Postgres process that publishes (web, `bin/jobs`, Solid Queue children, rake, runner) so web listeners get MCP updates. If NOTIFY fails (DB down, `IOError`, `PG::Error`) or the payload is 8000 bytes or larger, Fanout logs a warning and delivers in-process only — it does not raise into `record!` or the caller's transaction. When NOTIFY runs inside an open transaction, it uses a savepoint so a rescued failure cannot poison later host SQL. The LISTEN thread starts only in server or worker processes. It does not start in `rails console`, `rails runner`, Rake tasks (including `db:migrate`), `Rails.env.test?` (`bin/rails test`), standalone Solid Queue `bin/jobs`, or when `PRE_DEPLOY` is a truthy value (host pre-deploy / release steps; `0` / `false` / empty count as unset). Set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` to force LISTEN on in those processes, or `RECORDING_STUDIO_MCP_POSTGRES_BUS=0` to keep it off in a server. Process probes that must boot with `RAILS_ENV=test` can set `RECORDING_STUDIO_MCP_POSTGRES_BUS_IN_TEST=1` to lift only the test-env gate. Auto-start does not need a prior query: `enabled?` reads the Postgres adapter from the pool config, and the listen thread checks out its own connection. On boot you should see `PostgresBus listening on recording_studio_mcp_events` in the log. On process exit the bus stops the thread and releases its connection before ActiveRecord tears down the pool (skipped in forked children). Dropped LISTEN connections log and reconnect with bounded backoff until `stop!`.
+
+Puma single mode (including `SOLID_QUEUE_IN_PUMA`) starts the bus in the Puma process via `after_initialize`. Solid Queue's forked supervisor/workers keep the parent's owner pid, so their `at_exit` does not stop the bus; they still `NOTIFY` on publish. Standalone `bin/jobs` skips LISTEN on purpose (the web process listens) but still notifies. For Puma cluster mode with `preload_app!`, start per worker after fork — not in the master. Opt in with the Puma plugin:
+
+```ruby
+# config/puma.rb
+plugin :recording_studio_mcp_postgres_bus
+```
+
+Or the equivalent hooks:
+
+```ruby
+before_fork { RecordingStudioMcp::PostgresBus.stop! }
+before_worker_boot { RecordingStudioMcp::PostgresBus.start! }
+```
+
+Without that plugin, a preloaded cluster master may open LISTEN once and workers will not; boot logs a warning when Puma's config has `workers` > 0 and `preload_app`. Clusters without preload boot each worker separately and do not need the plugin.
 
 Tree hosts register recordable types. They get parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `delete` is included when a type on that named API enables destroy. `type` is an enum of the types registered on the OauthClient's named API (public vs operations). Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
 
@@ -252,4 +268,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.12.1
+0.12.2

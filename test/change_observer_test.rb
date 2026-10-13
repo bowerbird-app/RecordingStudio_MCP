@@ -25,7 +25,8 @@ class ChangeObserverTest < Minitest::Test
   end
 
   def test_after_record_waits_for_commit_when_a_transaction_is_open
-    skip "ActiveRecord is not connected" unless defined?(ActiveRecord::Base) && ActiveRecord::Base.connected?
+    skip "ActiveRecord is missing" unless defined?(ActiveRecord::Base)
+    ensure_active_record_connection!
 
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
@@ -40,5 +41,19 @@ class ChangeObserverTest < Minitest::Test
 
       assert_equal 1, notified.length
     end
+  end
+
+  private
+
+  # Gem suite has no Rails database.yml. CI sets DATABASE_URL; establish so
+  # connected? is true after checkout (lazy pools skip this test otherwise).
+  def ensure_active_record_connection!
+    return if ActiveRecord::Base.connected?
+
+    url = ENV["DATABASE_URL"].to_s.strip
+    skip "DATABASE_URL is not set" if url.empty?
+
+    ActiveRecord::Base.establish_connection(url)
+    ActiveRecord::Base.connection.verify!
   end
 end
