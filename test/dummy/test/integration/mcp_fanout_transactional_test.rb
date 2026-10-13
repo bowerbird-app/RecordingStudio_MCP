@@ -10,7 +10,6 @@ class McpFanoutTransactionalTest < ActiveSupport::TestCase
   include OauthDummyHelpers
 
   setup do
-    RecordingStudioMcp::PostgresBus.stop!
     ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     ENV.delete(RecordingStudioMcp::PostgresBus::IN_TEST_ENV)
     @user = create_user

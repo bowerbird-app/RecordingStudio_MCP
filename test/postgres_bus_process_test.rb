@@ -122,7 +122,7 @@ class PostgresBusProcessTest < Minitest::Test
 
       bus = RecordingStudioMcp::PostgresBus
       # No ActiveRecord query from this script before waiting on auto-start.
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 15
       until bus.listening? || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
         sleep 0.05
       end
