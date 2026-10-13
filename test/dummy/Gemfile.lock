@@ -8,10 +8,10 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: aa7a008f3dc316d96c721773c43fc386d5ba5729
-  tag: v0.9.0
+  revision: c22d1cc2e023082d47f938d2e5c285206329a092
+  tag: v0.10.0
   specs:
-    recording_studio_oauth (0.9.0)
+    recording_studio_oauth (0.10.0)
       flat_pack (~> 0.1.198)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
@@ -21,6 +21,7 @@ GIT
       recording_studio_cache (~> 0.5)
       recording_studio_metrics (~> 0.2)
       recording_studio_site_settings (~> 0.1)
+      recording_studio_trashable (~> 0.10)
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_accessible.git
@@ -33,13 +34,14 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_admin.git
-  revision: 3568969c82cd393fce38c2f788785fa42aa188bc
-  tag: v2.2.0
+  revision: d60442993f33ba358edc6a0fb51538c714aa9479
+  tag: v2.3.0
   specs:
-    recording_studio_admin (2.2.0)
+    recording_studio_admin (2.3.0)
       flat_pack (~> 0.1.207)
       rails (~> 8.1.0)
       recording_studio_accessible (~> 0.6)
+      recording_studio_trashable (~> 0.10)
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
@@ -108,6 +110,17 @@ GIT
       recording_studio_attachable (~> 0.5)
 
 GIT
+  remote: https://github.com/bowerbird-app/RecordingStudio_trashable.git
+  revision: 6f590d0b1ed6cd64515ae5ffec280b28bbbca20d
+  tag: v0.10.0
+  specs:
+    recording_studio_trashable (0.10.0)
+      flat_pack (>= 0.1.74)
+      rails (~> 8.1.0)
+      recording_studio (~> 4.2)
+      recording_studio_metrics (~> 0.2)
+
+GIT
   remote: https://github.com/bowerbird-app/flatpack.git
   revision: 9606a6f24717e8f98c22c73e7ed40b30523fdd3f
   tag: v0.1.213
@@ -127,7 +140,7 @@ PATH
       recording_studio_admin (~> 2.0)
       recording_studio_api (~> 0.6, >= 0.6.11)
       recording_studio_metrics (~> 0.2)
-      recording_studio_oauth (~> 0.9)
+      recording_studio_oauth (~> 0.10)
 
 GEM
   remote: https://rubygems.org/
@@ -564,6 +577,7 @@ DEPENDENCIES
   recording_studio_oauth!
   recording_studio_root_switchable!
   recording_studio_site_settings!
+  recording_studio_trashable!
   rubocop-rails-omakase
   solid_cable
   solid_cache
@@ -690,15 +704,16 @@ CHECKSUMS
   rdoc (8.1.0) sha256=befc37880a5cfd36dcb176c748b5fd5ee39dd3536a75e81824e4972ce230f60a
   recording_studio (4.5.0)
   recording_studio_accessible (0.15.0)
-  recording_studio_admin (2.2.0)
+  recording_studio_admin (2.3.0)
   recording_studio_api (0.6.11)
   recording_studio_attachable (0.15.0)
   recording_studio_cache (0.5.0)
   recording_studio_mcp (0.12.1)
   recording_studio_metrics (0.2.0)
-  recording_studio_oauth (0.9.0)
+  recording_studio_oauth (0.10.0)
   recording_studio_root_switchable (0.9.0)
   recording_studio_site_settings (0.1.0)
+  recording_studio_trashable (0.10.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae
   redis-client (0.31.0) sha256=6820cb2a21e6795a823141f50fd25e655de2b8dc8ff833b43509a27b0263fd75
   regexp_parser (2.11.3) sha256=ca13f381a173b7a93450e53459075c9b76a10433caadcb2f1180f2c741fc55a4
