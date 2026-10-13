@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-10-13
+
+Allow Recording Studio API 0.7 alongside 0.6.11+.
+
+### Changed
+- Runtime dependency `recording_studio_api` from `~> 0.6, >= 0.6.11` to `>= 0.6.11, < 0.8` (GitHub tag `v0.7.0`).
+- Runtime dependency `recording_studio_metrics` from `~> 0.3` to `~> 0.2, >= 0.2.2` (API 0.7 needs metrics `>= 0.2.2`; `~> 0.2` still allows Metrics `0.3.x`). Dev pins stay on Metrics `v0.3.0`.
+- Pin `recording_studio_oauth` to git tag `v0.10.1` (API constraint widened to `< 0.8`).
+
+### Upgrade notes
+- Bump to `0.13.1`. No migration.
+- Pin `recording_studio_api` to git tag `v0.7.0` (or keep `>= 0.6.11` and `< 0.8`).
+- Pin `recording_studio_oauth` to git tag `v0.10.1` when using API 0.7.
+- Keep Metrics at `v0.3.0` (or any `>= 0.2.2` in the `0.2`/`0.3` line).
+
+
 ## [0.13.0] - 2026-10-13
 
 Endpoint tools advertise OpenAPI query parameters, so MCP clients can send Metrics date ranges and grouping.
@@ -335,7 +351,11 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.13.0...v0.13.1
+[0.13.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.12.1...v0.13.0
+[0.12.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.2...v0.10.0
 [0.9.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.0...v0.9.1

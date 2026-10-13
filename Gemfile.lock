@@ -8,18 +8,18 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: c22d1cc2e023082d47f938d2e5c285206329a092
-  tag: v0.10.0
+  revision: dcd0250ecf716cc556915c314cc91083608f2392
+  tag: v0.10.1
   specs:
-    recording_studio_oauth (0.10.0)
+    recording_studio_oauth (0.10.1)
       flat_pack (~> 0.1.198)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (>= 0.5.2, < 0.7)
+      recording_studio_api (>= 0.5.2, < 0.8)
       recording_studio_cache (~> 0.5)
-      recording_studio_metrics (~> 0.2)
+      recording_studio_metrics (~> 0.2, >= 0.2.2)
       recording_studio_site_settings (~> 0.1)
       recording_studio_trashable (~> 0.10)
 
@@ -46,13 +46,15 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: 297673a375b71751d6fffe43ffbe71a6769f69f1
-  tag: v0.6.11
+  revision: 18cd57917a217dd7f2452ed73ae179f227082f30
+  tag: v0.7.0
   specs:
-    recording_studio_api (0.6.11)
+    recording_studio_api (0.7.0)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
+      recording_studio_metrics (~> 0.2, >= 0.2.2)
+      recording_studio_trashable (~> 0.10)
       redis (~> 5.3)
 
 GIT
@@ -122,12 +124,12 @@ GIT
 PATH
   remote: .
   specs:
-    recording_studio_mcp (0.13.0)
+    recording_studio_mcp (0.13.1)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (~> 0.6, >= 0.6.11)
-      recording_studio_metrics (~> 0.3)
+      recording_studio_api (>= 0.6.11, < 0.8)
+      recording_studio_metrics (~> 0.2, >= 0.2.2)
       recording_studio_oauth (~> 0.10)
 
 GEM
@@ -525,12 +527,12 @@ CHECKSUMS
   recording_studio (4.5.0)
   recording_studio_accessible (0.17.0)
   recording_studio_admin (2.3.0)
-  recording_studio_api (0.6.11)
+  recording_studio_api (0.7.0)
   recording_studio_attachable (0.15.0)
   recording_studio_cache (0.5.0)
-  recording_studio_mcp (0.13.0)
+  recording_studio_mcp (0.13.1)
   recording_studio_metrics (0.3.0)
-  recording_studio_oauth (0.10.0)
+  recording_studio_oauth (0.10.1)
   recording_studio_site_settings (0.1.0)
   recording_studio_trashable (0.10.0)
   redis (5.4.1) sha256=b5e675b57ad22b15c9bcc765d5ac26f60b675408af916d31527af9bd5a81faae
