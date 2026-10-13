@@ -131,6 +131,66 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     ].each { |identifier| assert_includes identifiers, identifier }
   end
 
+  test "operations MCP metrics tools advertise Metrics query params" do
+    tools = mcp(@staff_operations_token, "tools/list").dig("result", "tools").index_by { |tool| tool["name"] }
+
+    show = tools.fetch("operations_metrics_show").fetch("inputSchema")
+    %w[from to start end interval group_by timezone filters].each do |name|
+      assert show.fetch("properties").key?(name), "missing #{name}"
+    end
+    assert_equal %w[hour day week month year], show.dig("properties", "interval", "enum")
+    assert_equal "date-time", show.dig("properties", "from", "format")
+    assert_includes show.dig("properties", "group_by", "description"), "other"
+    assert_equal %w[resource name], show.fetch("required")
+
+    index = tools.fetch("operations_metrics_index").fetch("inputSchema")
+    assert_equal "string", index.dig("properties", "filters", "properties", "resource", "type")
+  end
+
+  test "operations MCP metrics show passes from to and interval through" do
+    result = call_tool(
+      "operations_metrics_show",
+      resource: "mcp_calls",
+      name: "over_time",
+      interval: "day",
+      from: @day_two.in_time_zone("UTC").beginning_of_day.iso8601,
+      to: (@day_two + 1).in_time_zone("UTC").beginning_of_day.iso8601,
+      timezone: "UTC"
+    )
+
+    refute result.fetch("isError"), result.inspect
+    values = timeseries_counts(result.fetch("structuredContent"))
+    assert_equal({ @day_two.iso8601 => 7 }, values)
+  end
+
+  test "operations MCP metrics show surfaces Metrics errors as tool errors" do
+    conflict = call_tool(
+      "operations_metrics_show",
+      resource: "mcp_calls",
+      name: "over_time",
+      start: @day_one.iso8601,
+      from: @day_two.iso8601
+    )
+    assert conflict.fetch("isError")
+    assert_includes conflict.dig("content", 0, "text"), "start and from must match"
+
+    group = call_tool("operations_metrics_show", resource: "mcp_calls", name: "by_tool", group_by: "nope")
+    assert group.fetch("isError")
+    refute_empty group.dig("content", 0, "text")
+  end
+
+  test "operations MCP metrics index passes the resource filter through" do
+    result = call_tool("operations_metrics_index", filters: { resource: "mcp_calls" })
+
+    refute result.fetch("isError"), result.inspect
+    resources = result.dig("structuredContent", "metrics").map { |row| row.fetch("resource").to_s }.uniq
+    assert_equal ["mcp_calls"], resources
+
+    unknown = call_tool("operations_metrics_index", filters: { nope: "x" })
+    assert unknown.fetch("isError")
+    assert_includes unknown.dig("content", 0, "text"), "Unknown filters: nope"
+  end
+
   test "non-admin operations token is denied MCP metrics" do
     get "#{OPERATIONS_ROOT}/metrics/mcp_calls/rate_limited",
         headers: auth(@workspace_operations_token),
@@ -238,6 +298,19 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
   def timeseries_counts(payload)
     payload.fetch("data").to_h { |row| [row.fetch("date").to_s, row.fetch("value")] }
+  end
+
+  def call_tool(name, **arguments)
+    mcp(@staff_operations_token, "tools/call", name: name, arguments: arguments).fetch("result")
+  end
+
+  def mcp(token, method, **params)
+    post named_mcp_path("operations"),
+         params: { jsonrpc: "2.0", id: 1, method: method, params: params }.to_json,
+         headers: { "Content-Type" => "application/json", "Accept" => "application/json",
+                    "Authorization" => "Bearer #{token}" }
+    assert_response :success, response.body
+    response.parsed_body
   end
 
   def auth(token)

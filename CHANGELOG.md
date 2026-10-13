@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-13
+
+Endpoint tools advertise OpenAPI query parameters, so MCP clients can send Metrics date ranges and grouping.
+
+### Added
+- `EndpointSchema` adds each OpenAPI `in: query` parameter of a registered endpoint to the tool `inputSchema` under the same name, with its schema and description. Query `required` flags carry over. Contract fields and path tokens still win on a name collision.
+- With Recording Studio Metrics `0.3.0`, `operations_metrics_show` advertises `filters`, `interval`, `start`, `from`, `end`, `to`, `group_by`, and `timezone`, and `operations_metrics_index` advertises `filters` (`filters.resource`). Arguments pass through unchanged to the Metrics handlers. Metrics errors (`InvalidDateRange`, `InvalidGroupBy`, `InvalidFilter`, unknown metric) come back as MCP tool errors.
+
+### Changed
+- Runtime dependency `recording_studio_metrics` `~> 0.3` (GitHub tag `v0.3.0`).
+
+### Upgrade notes
+- Bump to `0.13.0`. No migration.
+- Pin `recording_studio_metrics` at tag `v0.3.0`.
+
 ## [0.12.1] - 2026-10-12
 
 Postgres LISTEN bus no longer starts during rake, console, or runner, and shuts down cleanly before connection teardown.
