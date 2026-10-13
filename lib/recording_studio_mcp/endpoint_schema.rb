@@ -22,11 +22,12 @@ module RecordingStudioMcp
 
     def build
       path = path_properties
+      query = query_properties
       contract = contract_properties
       schema = {
         type: "object",
-        properties: contract.fetch(:properties).merge(path.fetch(:properties)),
-        required: (path.fetch(:required) + contract.fetch(:required)).uniq
+        properties: query.fetch(:properties).merge(contract.fetch(:properties)).merge(path.fetch(:properties)),
+        required: (path.fetch(:required) + query.fetch(:required) + contract.fetch(:required)).uniq
       }
       schema[:additionalProperties] = false if reject_unknown?
       schema
@@ -57,6 +58,31 @@ module RecordingStudioMcp
     def path_description(name)
       param = endpoint.openapi_path_parameters.find { |entry| entry[:name].to_s == name }
       param&.[](:description).presence || "Path parameter #{name}."
+    end
+
+    # OpenAPI query parameters become tool arguments with the same names, so
+    # endpoints such as Metrics execute (from, to, interval, group_by) are callable.
+    def query_properties
+      properties = {}
+      required = []
+      query_parameters.each do |param|
+        name = param[:name].to_s
+        properties[name.to_sym] = query_property(param)
+        required << name if param[:required]
+      end
+      { properties: properties, required: required }
+    end
+
+    def query_parameters
+      Array(endpoint.openapi[:parameters]).select do |param|
+        param.is_a?(Hash) && param[:in].to_s == "query" && param[:name].present?
+      end
+    end
+
+    def query_property(param)
+      property = (param[:schema] || { type: "string" }).deep_dup
+      property[:description] = param[:description] if param[:description].present?
+      property
     end
 
     def contract_properties

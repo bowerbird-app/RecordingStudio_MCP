@@ -187,6 +187,8 @@ RecordingStudioMetrics::Api.register!(api: :operations)
 
 Paths on the operations API: `GET /metrics` and `GET /metrics/mcp_calls/:name` (`over_time`, `failed_over_time`, `by_tool`, `by_method`, `rate_limited`).
 
+Endpoint tools take the endpoint's OpenAPI query parameters as arguments with the same names. On MCP, `operations_metrics_show` takes `resource`, `name`, `from`, `to` (or `start`, `end`), `interval`, `group_by`, `timezone`, and `filters`. `operations_metrics_index` takes `filters` (`{ "resource": "mcp_calls" }`). Metrics errors such as a `from`/`start` conflict or an unsupported `group_by` come back as tool errors.
+
 ```bash
 bin/rails generate recording_studio_mcp:migrations
 bin/rails db:migrate
@@ -252,4 +254,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.12.1
+0.13.0
