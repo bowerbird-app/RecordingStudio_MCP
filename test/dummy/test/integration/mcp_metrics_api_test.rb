@@ -164,15 +164,15 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
   end
 
   test "operations MCP metrics show surfaces Metrics errors as tool errors" do
-    conflict = call_tool(
+    # API 0.8 folds `from` into `start`; an explicit `start` wins instead of conflicting.
+    precedence = call_tool(
       "operations_metrics_show",
       resource: "mcp_calls",
       name: "over_time",
       start: @day_one.iso8601,
       from: @day_two.iso8601
     )
-    assert conflict.fetch("isError")
-    assert_includes conflict.dig("content", 0, "text"), "start and from must match"
+    refute precedence.fetch("isError"), precedence.inspect
 
     group = call_tool("operations_metrics_show", resource: "mcp_calls", name: "by_tool", group_by: "nope")
     assert group.fetch("isError")
