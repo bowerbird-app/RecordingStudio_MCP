@@ -6,9 +6,16 @@ require "recording_studio_metrics"
 module RecordingStudioMcp
   module Metrics
     RESOURCE = :mcp_calls
+    SUBSCRIPTIONS = :mcp_subscriptions
     API = :operations
     EXPOSE = { api: [API] }.freeze
     TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call") }
+    FAILING = lambda { |relation|
+      relation.where(status: EventSubscription::ACTIVE).where("failure_count > 0").where("expires_at > ?", Time.current)
+    }
+    FAILED_BY_TOOL_DESCRIPTION = "Failed tools/call requests summed from daily usage rollups, by tool name."
+    FAILING_DESCRIPTION = "Active, unexpired event subscriptions whose last callback delivery failed " \
+                          "(failure_count > 0). They turn inactive after 5 failures in a row."
     AUTHORIZE = ->(context) { RecordingStudioMcp::Api::Access.can_view?(context) }
 
     module_function
@@ -20,12 +27,28 @@ module RecordingStudioMcp
         blast_radius: :site,
         api_authorize: AUTHORIZE
       ) { RecordingStudioMcp::Metrics.define_calls(self) }
+      register_subscriptions!
+    end
+
+    def register_subscriptions!
+      RecordingStudioMetrics.register(
+        SUBSCRIPTIONS,
+        model: EventSubscription,
+        blast_radius: :site,
+        api_authorize: AUTHORIZE
+      ) { RecordingStudioMcp::Metrics.define_subscriptions(self) }
+    end
+
+    def define_subscriptions(dsl)
+      dsl.count :failing, title: "Failing MCP event subscriptions", description: FAILING_DESCRIPTION,
+                          unit: "count", scope: FAILING, cacheable: false, expose: EXPOSE
     end
 
     def define_calls(dsl)
       define_over_time(dsl)
       define_failed_over_time(dsl)
       define_by_tool(dsl)
+      define_failed_by_tool(dsl)
       define_by_method(dsl)
       define_rate_limited(dsl)
     end
@@ -54,6 +77,18 @@ module RecordingStudioMcp
                     field: :subject_name,
                     measurement: :sum,
                     value_field: :call_count,
+                    expose: EXPOSE,
+                    scope: TOOL_CALLS
+    end
+
+    def define_failed_by_tool(dsl)
+      dsl.breakdown :failed_by_tool,
+                    title: "Failed MCP calls by tool",
+                    description: FAILED_BY_TOOL_DESCRIPTION,
+                    unit: "count",
+                    field: :subject_name,
+                    measurement: :sum,
+                    value_field: :failed_count,
                     expose: EXPOSE,
                     scope: TOOL_CALLS
     end
