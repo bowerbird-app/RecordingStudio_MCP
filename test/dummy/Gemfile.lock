@@ -8,18 +8,18 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: 81651b42fcede634e0bdff9526fe5b912d21b470
-  tag: v0.10.5
+  revision: 222dcc4756bdef12412989be4dc38428d5e7a20e
+  tag: v0.11.1
   specs:
-    recording_studio_oauth (0.10.5)
+    recording_studio_oauth (0.11.1)
       flat_pack (~> 0.1.198)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (>= 0.5.2, < 0.9)
+      recording_studio_api (>= 0.5.2, < 0.10)
       recording_studio_cache (~> 0.5)
-      recording_studio_metrics (~> 0.2, >= 0.2.2)
+      recording_studio_metrics (~> 0.3)
       recording_studio_site_settings (~> 0.2)
       recording_studio_trashable (~> 0.10)
 
@@ -46,14 +46,14 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: 0f7f759ce77a2a5040697591b59eedc7aebcc2ef
-  tag: v0.8.0
+  revision: 7665d6dfed22087101398eef04377fa6fe65718e
+  tag: v0.9.0
   specs:
-    recording_studio_api (0.8.0)
+    recording_studio_api (0.9.0)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
-      recording_studio_metrics (~> 0.2, >= 0.2.2)
+      recording_studio_metrics (~> 0.3)
       recording_studio_trashable (~> 0.10)
       redis (~> 5.3)
 
@@ -137,11 +137,11 @@ GIT
 PATH
   remote: ../..
   specs:
-    recording_studio_mcp (0.14.2)
+    recording_studio_mcp (0.14.3)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (>= 0.6.11, < 0.9)
+      recording_studio_api (>= 0.6.11, < 0.10)
       recording_studio_metrics (~> 0.2, >= 0.2.2)
       recording_studio_oauth (~> 0.10)
 
@@ -708,12 +708,12 @@ CHECKSUMS
   recording_studio (4.6.0)
   recording_studio_accessible (0.18.0)
   recording_studio_admin (2.3.0)
-  recording_studio_api (0.8.0)
+  recording_studio_api (0.9.0)
   recording_studio_attachable (0.15.0)
   recording_studio_cache (0.5.0)
-  recording_studio_mcp (0.14.2)
+  recording_studio_mcp (0.14.3)
   recording_studio_metrics (0.3.0)
-  recording_studio_oauth (0.10.5)
+  recording_studio_oauth (0.11.1)
   recording_studio_root_switchable (0.9.0)
   recording_studio_site_settings (0.2.0)
   recording_studio_trashable (0.10.0)
