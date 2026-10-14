@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-14
+
+### Added
+- Opt-in file inputs for endpoint tools. An endpoint lists top-level fields in `openapi` under `x-mcp-file-params` (names, or name => `{ nullable:, required:, description: }`). Each one gets the ChatGPT file object schema (`download_url` and `file_id` required, `mime_type` and `file_name` optional; `["object", "null"]` when nullable), and the tool advertises `_meta["openai/fileParams"]`.
+- `RecordingStudioMcp::FileParams`.
+
+### Changed
+- Endpoint tool `_meta` is merged, so `ui.resourceUri` and `openai/fileParams` can appear together.
+
+### Upgrade notes
+- Bump to `0.14.0`. No migration. Endpoints that do not declare `x-mcp-file-params` are unchanged.
+
 ## [0.13.1] - 2026-10-13
 
 Allow Recording Studio API 0.7 alongside 0.6.11+.
