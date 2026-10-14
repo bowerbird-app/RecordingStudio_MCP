@@ -61,6 +61,26 @@ Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no
 
 When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri` as `ui://…?v=<digest>` of the packaged HTML. `resources/list` and `resources/read` serve that same URI. `resources/read` also accepts the bare `ui://` path. A grant sees a widget only when `actions_for_ui` allows it on that named API. Widget buttons call the real API tool name. MCP UI is optional. Without it, tools and resources stay the same.
 
+### File inputs (ChatGPT `openai/fileParams`)
+
+An endpoint can opt in to top-level file inputs through its openapi metadata. ChatGPT then passes a file the user uploaded as `{ download_url, file_id, mime_type?, file_name? }`:
+
+```ruby
+RecordingStudioApi.register_endpoint(
+  :site_settings_update,
+  http_verb: :patch,
+  path: "site_settings",
+  handler: Update,
+  openapi: {
+    "x-mcp-file-params": {
+      square_logo_file: { nullable: true, description: "Square logo, or null to remove it." }
+    }
+  }
+)
+```
+
+`x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds it to `required`. `description` is copied onto the field. Each field's `inputSchema` property is the file object, with `download_url`, `file_id`, `mime_type`, and `file_name` strings, `download_url` and `file_id` required. A declared field replaces any `input_contract` field of the same name in the schema. The tool's `_meta["openai/fileParams"]` lists the names and is merged with `_meta.ui`. Endpoints without the key are unchanged. MCP only describes the input; the endpoint handler downloads `download_url` (temporary) and does its own validation. Only top-level fields are supported, matching OpenAI.
+
 Mixed hosts get tree tools first, then endpoint tools sorted by name. Do not register an endpoint named `list`, `show`, `create`, `update`, `delete`, `capability_action`, or `describe`.
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
@@ -254,4 +274,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.13.1
+0.14.0

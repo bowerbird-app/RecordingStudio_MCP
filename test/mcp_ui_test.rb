@@ -52,6 +52,25 @@ class McpUiTest < Minitest::Test
     end
   end
 
+  def test_file_params_meta_merges_with_ui_meta
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        "presskits.edit",
+        http_verb: :patch,
+        path: "presskits/:id",
+        handler: ->(_context) { { id: "1" } },
+        ui: "presskits.editor",
+        openapi: { "x-mcp-file-params": ["cover_file"] }
+      )
+      RecordingStudio::MCP_UI.register("presskits.editor")
+
+      edit = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "presskits.edit" }
+
+      assert_match(%r{\Aui://presskits/editor\?v=}, edit.dig(:_meta, :ui, :resourceUri))
+      assert_equal ["cover_file"], edit.dig(:_meta, "openai/fileParams")
+    end
+  end
+
   def test_tools_list_succeeds_with_tree_tools_and_ui_endpoint
     with_isolated_api_configuration do
       register_tree_type("Page")

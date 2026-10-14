@@ -21,7 +21,11 @@ module RecordingStudioMcp
     end
 
     def endpoint_tool(endpoint, api: nil)
-      schema = EndpointSchema.build(endpoint)
+      tool(endpoint_tool_options(endpoint, api))
+    end
+
+    def endpoint_tool_options(endpoint, api)
+      schema = FileParams.apply(EndpointSchema.build(endpoint), endpoint)
       options = {
         name: endpoint.name,
         title: endpoint_title(endpoint),
@@ -33,8 +37,7 @@ module RecordingStudioMcp
         properties: schema.fetch(:properties)
       }
       options[:additional_properties] = schema[:additionalProperties] if schema.key?(:additionalProperties)
-      options[:api] = api
-      tool(options)
+      options.merge(api: api, file_params: FileParams.names(endpoint))
     end
 
     def list_tool(catalog)
@@ -204,7 +207,12 @@ module RecordingStudioMcp
         idempotentHint: options.fetch(:idempotent, false),
         openWorldHint: false
       }
+      attach_meta(payload, options)
+    end
+
+    def attach_meta(payload, options)
       attach_ui_meta(payload, options[:name], options[:api])
+      attach_file_params_meta(payload, options[:file_params])
       payload
     end
 
@@ -214,8 +222,15 @@ module RecordingStudioMcp
       uri = McpUi.resource_uri_for(action_name: action_name, api: api)
       return if uri.blank?
 
-      payload[:_meta] = { ui: { resourceUri: uri } }
+      payload[:_meta] = (payload[:_meta] || {}).merge(ui: { resourceUri: uri })
     end
-    private_class_method :tool, :endpoint_title, :endpoint_description, :attach_ui_meta
+
+    def attach_file_params_meta(payload, names)
+      return if names.blank?
+
+      payload[:_meta] = (payload[:_meta] || {}).merge(FileParams::META_KEY => names)
+    end
+    private_class_method :tool, :endpoint_tool_options, :endpoint_title, :endpoint_description, :attach_meta,
+                         :attach_ui_meta, :attach_file_params_meta
   end
 end
