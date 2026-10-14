@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-10-14
+
+### Changed
+- Allow `recording_studio_api` `>= 0.6.11, < 0.11` so hosts can run API 0.10.0.
+  Development and dummy Gemfiles pin API `v0.10.0` and Oauth `v0.12.1`.
+
 ## [0.14.3] - 2026-10-14
 
 ### Changed
