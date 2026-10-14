@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-10-14
+
+### Changed
+- Runtime dependency `recording_studio_api` widened to `>= 0.6.11, < 0.9` so hosts can use API `0.8.0` (list `total_count`, metrics aliases). The development Gemfiles pin API tag `v0.8.0` and Oauth tag `v0.10.5` (Oauth 0.10.5 also allows API `< 0.9`).
+
+### Notes
+- The `v0.14.1` tag points at the Accessible `v0.18.0` bump (#45), whose `VERSION` still read `0.14.0`; this API range change ships as `0.14.2`.
+
+### Upgrade notes
+- Bump to `0.14.2`. No migration and no configuration change.
+
 ## [0.14.0] - 2026-10-14
 
 ### Added
