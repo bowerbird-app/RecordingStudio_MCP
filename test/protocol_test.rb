@@ -683,4 +683,124 @@ class ProtocolTest < Minitest::Test
       refute result.body.dig(:result, :isError)
     end
   end
+
+  def test_tools_call_rejects_non_object_params
+    [[], 4].each do |params|
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 9, "method" => "tools/call", "params" => params },
+        access_grant: @grant
+      )
+
+      assert_equal RecordingStudioMcp::Protocol::INVALID_PARAMS, result.body.dig(:error, :code)
+      refute_includes result.body.dig(:error, :message), "undefined method"
+    end
+  end
+
+  def test_tools_call_rejects_non_object_arguments
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 10,
+        "method" => "tools/call",
+        "params" => { "name" => "list", "arguments" => [1] }
+      },
+      access_grant: @grant
+    )
+
+    assert_equal RecordingStudioMcp::Protocol::INVALID_PARAMS, result.body.dig(:error, :code)
+  end
+
+  def test_show_only_omits_list
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show])
+      assert_equal %w[show describe], tool_names_for(@grant)
+    end
+  end
+
+  def test_index_only_omits_show
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
+      assert_equal %w[list describe], tool_names_for(@grant)
+    end
+  end
+
+  def test_colliding_endpoint_name_does_not_fail_tools_list
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
+      RecordingStudioApi.register_endpoint(
+        :list,
+        http_verb: :get,
+        path: "custom-list",
+        handler: ->(_context) { { ok: true } }
+      )
+      result = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+        access_grant: @grant
+      )
+
+      assert_nil result.body[:error]
+      names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
+      assert_equal %w[list describe], names
+    end
+  end
+
+  def test_tools_list_and_call_follow_the_grant_role
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index show create update destroy])
+      RecordingStudioApi.register_resource_handler("Page", :index, handler: ->(_) { { json: { records: [] } } })
+      RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: { id: "1" } } })
+
+      view = role_grant(:view)
+      admin = role_grant(:admin)
+      deleted = role_grant(nil)
+
+      assert_equal %w[list show describe], tool_names_for(view)
+      assert_includes tool_names_for(admin), "create"
+      assert_equal %w[describe], tool_names_for(deleted)
+      view_instructions = initialize_instructions(view)
+      assert_includes view_instructions, "Call describe for a type's allowed operations"
+      refute_includes view_instructions, "before create"
+      assert_includes initialize_instructions(admin), "Call describe before create"
+
+      assert_equal true, call_tool(view, "create").body.dig(:result, :isError)
+      assert_includes call_tool(view, "create").body.dig(:result, :content, 0, :text), "Unknown tool"
+      refute call_tool(view, "list").body.dig(:result, :isError)
+      refute call_tool(admin, "create").body.dig(:result, :isError)
+      assert_includes call_tool(deleted, "list").body.dig(:result, :content, 0, :text), "Unknown tool"
+      refute call_tool(deleted, "describe", "Page").body.dig(:result, :isError)
+    end
+  end
+
+  def initialize_instructions(grant)
+    result = RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 1,
+        "method" => "initialize",
+        "params" => { "protocolVersion" => "2025-06-18", "capabilities" => {}, "clientInfo" => { "name" => "test" } }
+      },
+      access_grant: grant
+    )
+    result.body.dig(:result, :instructions)
+  end
+
+  def tool_names_for(grant)
+    result = RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+      access_grant: grant
+    )
+    result.body.dig(:result, :tools).map { |tool| tool[:name] }
+  end
+
+  def call_tool(grant, name, type = "Page")
+    RecordingStudioMcp::Protocol.handle(
+      {
+        "jsonrpc" => "2.0",
+        "id" => 3,
+        "method" => "tools/call",
+        "params" => { "name" => name, "arguments" => { "type" => type } }
+      },
+      access_grant: grant
+    )
+  end
 end

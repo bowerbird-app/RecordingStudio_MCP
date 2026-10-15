@@ -1,20 +1,27 @@
 # frozen_string_literal: true
 
+require_relative "catalog/visibility"
+require_relative "catalog/reader"
+
 module RecordingStudioMcp
   class Catalog
+    include Visibility
+    include Reader
+
     def self.for(access_grant)
-      new(api: api_from(access_grant))
+      new(api: api_from(access_grant), access_grant: access_grant)
     end
 
     def self.api_from(access_grant)
       access_grant&.api_client&.api_key.presence || "public"
     end
 
-    def initialize(api:)
+    def initialize(api:, access_grant: nil)
       @api = RecordingStudioApi.configuration.fetch_api(api).name
+      @access_grant = access_grant
     end
 
-    attr_reader :api
+    attr_reader :api, :access_grant
 
     def type_names
       @type_names ||= registered_types.sort.freeze
@@ -28,93 +35,11 @@ module RecordingStudioMcp
       }
     end
 
-    def registered_operations
-      @registered_operations ||= type_names.flat_map do |type|
-        registration = RecordingStudioApi.recordable_registration_for(type, api: api)
-        Array(registration&.operations).map(&:to_sym)
-      end.uniq.freeze
-    end
-
-    def capability_actions?
-      type_names.any? do |type|
-        registration = RecordingStudioApi.recordable_registration_for(type, api: api)
-        Array(registration&.capability_actions).any?
-      end
-    end
-
-    def destroy_type_names
-      type_names.select do |type|
-        RecordingStudioApi.recordable_registration_for(type, api: api)&.supports_operation?(:destroy)
-      end
-    end
-
-    def destroy_type_schema
+    def type_schema_for(operation)
       type_schema.merge(
-        enum: destroy_type_names,
-        description: "Type on this named API that allows destroy. Call describe for operations."
+        enum: type_names_for(operation),
+        description: "Type on this named API that allows #{operation}. Call describe for operations."
       )
-    end
-
-    def describe(type_name)
-      recordable_type = resolve_type!(type_name)
-      registration = RecordingStudioApi.recordable_registration_for(recordable_type, api: api)
-      {
-        "type" => recordable_type,
-        "operations" => Array(registration&.operations).map(&:to_s),
-        "writable_fields" => FieldSchema.for(recordable_type, registration),
-        "capability_actions" => enabled_capability_actions(recordable_type),
-        "parent" => parent_rules(recordable_type)
-      }.compact
-    end
-
-    def resolve_type!(type_name)
-      raise RecordingStudioApi::InvalidActionInputError, "type is required" if type_name.blank?
-
-      name = type_name.to_s
-      return name if registered_types.include?(name)
-
-      from_resource = RecordingStudioApi.recordable_type_for_resource(name, api: api) ||
-                      RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api)
-      return from_resource if from_resource.present? && registered_types.include?(from_resource)
-
-      raise RecordingStudioApi::NotFoundError, unknown_type_message(name)
-    end
-
-    def unknown_type_message(name)
-      "Unknown type #{name}. #{allowed_types_sentence}"
-    end
-
-    def unknown_action_message(action_name, recordable_type)
-      allowed = enabled_capability_action_names(recordable_type)
-      suffix = allowed.any? ? allowed.join(", ") : "(none)"
-      "Unknown action #{action_name}. Allowed actions for #{recordable_type}: #{suffix}"
-    end
-
-    def allowed_types_sentence
-      suffix = type_names.any? ? type_names.join(", ") : "(none)"
-      "Allowed types: #{suffix}"
-    end
-
-    def enabled_capability_action_names(recordable_type)
-      enabled_action_registrations(recordable_type).map { |action| action.name.to_s }.sort
-    end
-
-    def enabled_capability_actions(recordable_type)
-      enabled_action_registrations(recordable_type).sort_by { |action| action.name.to_s }.map do |action|
-        details = { "name" => action.name.to_s }
-        contract = action.input_contract&.as_json
-        details["params"] = contract.deep_stringify_keys if contract.present?
-        details
-      end
-    end
-
-    def enabled_action_registrations(recordable_type)
-      version = RecordingStudioApi.default_api_version(api: api)
-      RecordingStudioApi.capability_actions_for(recordable_type, version: version, api: api)
-    end
-
-    def writable_fields(recordable_type)
-      Array(RecordingStudioApi.recordable_registration_for(recordable_type, api: api)&.writable_attributes).map(&:to_s)
     end
 
     def registered_endpoints
@@ -128,16 +53,8 @@ module RecordingStudioMcp
       registry.to_h.keys.map(&:to_s)
     end
 
-    def parent_rules(recordable_type)
-      rules = {}
-      if defined?(RecordingStudio) && RecordingStudio.respond_to?(:root_allowed?)
-        rules["root"] = RecordingStudio.root_allowed?(recordable_type)
-      end
-      if defined?(RecordingStudio) && RecordingStudio.respond_to?(:allowed_parent_types_for)
-        parents = Array(RecordingStudio.allowed_parent_types_for(recordable_type))
-        rules["allowed_parent_types"] = parents.map(&:to_s).sort
-      end
-      rules.presence
+    def registration_for(type)
+      RecordingStudioApi.recordable_registration_for(type, api: api)
     end
   end
 end

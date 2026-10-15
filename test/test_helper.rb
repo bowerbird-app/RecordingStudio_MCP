@@ -36,13 +36,22 @@ module IsolatedApiConfiguration
     RecordingStudioApi.register_recordable_type_api(name, **attrs)
   end
 
-  def register_ping_capability(api: :public)
+  def role_grant(role)
+    grant = Struct.new(:api_client, :credential, :access_recording, :root_recording, :role).new(
+      nil, nil, nil, nil, role
+    )
+    grant.define_singleton_method(:accessible_recordings) { |**| [] }
+    grant
+  end
+
+  def register_ping_capability(api: :public, required_role: nil)
     return if RecordingStudioApi.capability_action(:ping, api: api)
 
     RecordingStudioApi.register_capability_action(
       :ping,
       capability: :accessible,
       api: api,
+      required_role: required_role,
       handler: ->(_context) { { json: { ok: true } } }
     )
   end

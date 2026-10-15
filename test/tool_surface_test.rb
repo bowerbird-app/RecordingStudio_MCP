@@ -103,20 +103,128 @@ class ToolSurfaceTest < Minitest::Test
     end
   end
 
-  def test_endpoint_name_collision_raises
+  def test_bad_endpoint_names_are_skipped
     with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
       RecordingStudioApi.register_endpoint(
         :list,
         http_verb: :get,
         path: "custom-list",
         handler: ->(_context) { { ok: true } }
       )
+      RecordingStudioApi.register_endpoint(
+        "bad name",
+        http_verb: :get,
+        path: "bad-name",
+        handler: ->(_context) { { ok: true } }
+      )
+      RecordingStudioApi.register_endpoint(
+        "1bad",
+        http_verb: :get,
+        path: "one-bad",
+        handler: ->(_context) { { ok: true } }
+      )
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        handler: ->(_context) { { ok: true } }
+      )
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      error = assert_raises(RecordingStudioApi::ConfigurationError) do
-        RecordingStudioMcp::ToolSurface.for(api: "public")
-      end
-      assert_includes error.message, "list"
-      assert_includes error.message, "collide"
+      assert_equal %w[list describe ping], surface.tool_names
+      assert_equal true, surface.known?("list")
+      assert_equal true, surface.tree_tool?("list")
+      assert_equal false, surface.known?("bad name")
+      assert_equal false, surface.known?("1bad")
+      RecordingStudioApi.register_endpoint(
+        "presskits.edit",
+        http_verb: :patch,
+        path: "presskits/:id",
+        handler: ->(_context) { { ok: true } }
+      )
+      dotted = RecordingStudioMcp::ToolSurface.for(api: "public")
+      assert_equal true, dotted.known?("presskits.edit")
+    end
+  end
+
+  def test_show_only_omits_list
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show])
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal %w[show describe], surface.tool_names
+      assert_equal false, surface.known?("list")
+    end
+  end
+
+  def test_index_only_omits_show
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal %w[list describe], surface.tool_names
+      assert_equal false, surface.known?("show")
+    end
+  end
+
+  def test_empty_operations_advertise_every_tree_tool
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: [])
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_includes surface.tool_names, "delete"
+      assert_includes surface.tool_names, "create"
+    end
+  end
+
+  def test_nil_operations_follow_named_api_default_access
+    with_isolated_api_configuration do
+      register_tree_type("Article", operations: nil)
+      public_surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_includes public_surface.tool_names, "delete"
+    end
+
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api(:docs)
+      register_tree_type("Article", api: :docs, operations: nil)
+      read_only = RecordingStudioMcp::ToolSurface.for(api: "docs")
+
+      assert_equal %w[list show describe], read_only.tool_names
+    end
+
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api(:docs).default_access = :read_write
+      register_tree_type("Note", api: :docs, operations: nil)
+      writable = RecordingStudioMcp::ToolSurface.for(api: "docs")
+
+      assert_includes writable.tool_names, "delete"
+    end
+  end
+
+  def test_view_grant_hides_edit_tools_and_deleted_grant_hides_reads
+    with_isolated_api_configuration do
+      register_ping_capability(required_role: :view)
+      RecordingStudioApi.register_capability_action(
+        :shout,
+        capability: :accessible,
+        required_role: :edit,
+        handler: ->(_context) { { json: { ok: true } } }
+      )
+      register_tree_type(
+        "Page",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[ping shout]
+      )
+
+      view = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(:view))
+      admin = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(:admin))
+      deleted = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(nil))
+
+      assert_equal %w[list show capability_action describe], view.tool_names
+      assert_equal %w[list show create update delete capability_action describe], admin.tool_names
+      assert_equal %w[describe], deleted.tool_names
     end
   end
 

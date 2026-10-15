@@ -102,7 +102,7 @@ class DocsControllerTest < ActionDispatch::IntegrationTest
     get docs_methods_path
     assert_response :success
     assert_select "h1", text: "Tools"
-    assert_includes response.body, "tools/list matches the named API"
+    assert_includes response.body, "tools/list matches the named API and the grant role"
     assert_includes response.body, "describe stays when types exist"
     assert_includes response.body, "tools/call"
     assert_includes response.body, "Workspace"

@@ -5,14 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [0.15.0] - 2026-10-15
 
 ### Changed
-- Tree tools in `tools/list` follow the union of registered operations on that named API.
-  `list` needs `index`, `show` needs `show`, `create` needs `create`, `update` needs `update`,
-  `delete` needs `destroy`, and `capability_action` appears only when a type has capability actions.
+- Tree tools in `tools/list` follow the union of registered operations on that named API, then the access grant role.
+  `list` needs `index` (`:view`), `show` needs `show` (`:view`), `create` needs `create` (`:edit`),
+  `update` needs `update` (`:edit`), `delete` needs `destroy` (`:edit`), and `capability_action` appears
+  when a type has a capability action that role can run. A missing access row sees `describe` only.
   `describe` stays whenever the API has recordable types. Initialize instructions mention only
-  those advertised tools. Tool descriptions say each type's `describe` output lists allowed operations.
+  those advertised tools. Each tool's `type` enum is the types that allow that operation.
+  `tools/call` returns `-32602` for non-object params or arguments. Non-object filters, nested filter
+  values, and non-numeric limits return a tool error.
+- Endpoint names that are not one MCP tool token, and names that collide with a tree tool, are skipped.
+  `tools/list` still succeeds.
+
+### Removed
+- The fixed tree tool list that always advertised `create`, `update`, and `capability_action`.
 
 ### Upgrade notes
 - Bump to `0.15.0`. No migration and no configuration change.
@@ -20,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `capability_action` in `tools/list`. Calls to a missing tool still return an unknown-tool error.
   Calls to an advertised tool for a type that does not enable that operation still return the
   existing unsupported-operation error.
+- A view grant no longer sees edit tools. A grant with no access row sees `describe` only.
+  `operations: []` still advertises `delete` because the API expands a blank list to all five operations.
+  On the public API, `operations: nil` does the same. On a named API, `operations: nil` follows `default_access`.
+- Endpoint names that are not a single tool token, or that match a tree tool, are omitted. A registered
+  `ping` endpoint is unchanged.
 
 ## [0.14.4] - 2026-10-14
 

@@ -68,6 +68,10 @@ class DispatcherTest < Minitest::Test
       %i[index show create update]
     end
 
+    def visible_operations
+      registered_operations
+    end
+
     def capability_actions?
       true
     end
@@ -676,9 +680,88 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_show_only_rejects_list
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show])
+      RecordingStudioApi.register_resource_handler("Page", :show, handler: ->(_) { { json: { id: "1" } } })
+      listed = dispatch("list", { type: "Page" })
+      shown = dispatch("show", { type: "Page", id: "1" })
+
+      assert listed[:isError]
+      assert_includes listed.dig(:content, 0, :text), "Unknown tool list"
+      refute shown[:isError]
+    end
+  end
+
+  def test_index_only_rejects_show
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
+      RecordingStudioApi.register_resource_handler("Page", :index, handler: ->(_) { { json: { records: [] } } })
+      hidden = dispatch("show", { type: "Page", id: "1" })
+      indexed = dispatch("list", { type: "Page" })
+
+      assert hidden[:isError]
+      assert_includes hidden.dig(:content, 0, :text), "Unknown tool show"
+      refute indexed[:isError]
+    end
+  end
+
+  def test_list_rejects_bad_filter_and_limit
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
+
+      nested = dispatch("list", { type: "Page", filter: { name: { nested: "x" } } })
+      listed = dispatch("list", { type: "Page", filter: ["name"] })
+      limited = dispatch("list", { type: "Page", limit: { n: 1 } })
+      arguments = RecordingStudioMcp::Dispatcher.call(
+        tool_name: "list",
+        arguments: [1],
+        access_grant: @grant
+      )
+
+      assert nested[:isError]
+      assert_includes nested.dig(:content, 0, :text), "Invalid filter"
+      refute_includes nested.dig(:content, 0, :text), "pagination"
+      assert listed[:isError]
+      assert_includes listed.dig(:content, 0, :text), "filter must be an object"
+      assert limited[:isError]
+      assert_includes limited.dig(:content, 0, :text), "limit must be a number"
+      assert arguments[:isError]
+      assert_includes arguments.dig(:content, 0, :text), "arguments must be an object"
+    end
+  end
+
+  def test_view_admin_and_deleted_grants_filter_calls
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index show create])
+      RecordingStudioApi.register_resource_handler("Page", :index, handler: ->(_) { { json: { records: [] } } })
+      RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: { id: "1" } } })
+
+      view = role_grant(:view)
+      admin = role_grant(:admin)
+      deleted = role_grant(nil)
+
+      view_create = call_as(view, "create", { type: "Page" })
+      view_list = call_as(view, "list", { type: "Page" })
+      admin_create = call_as(admin, "create", { type: "Page", title: "Hi" })
+      deleted_list = call_as(deleted, "list", { type: "Page" })
+
+      assert view_create[:isError]
+      assert_includes view_create.dig(:content, 0, :text), "Unknown tool"
+      refute view_list[:isError]
+      refute admin_create[:isError]
+      assert deleted_list[:isError]
+      assert_includes deleted_list.dig(:content, 0, :text), "Unknown tool"
+    end
+  end
+
   private
 
   def dispatch(tool_name, arguments)
-    RecordingStudioMcp::Dispatcher.call(tool_name: tool_name, arguments: arguments, access_grant: @grant)
+    call_as(@grant, tool_name, arguments)
+  end
+
+  def call_as(grant, tool_name, arguments)
+    RecordingStudioMcp::Dispatcher.call(tool_name: tool_name, arguments: arguments, access_grant: grant)
   end
 end
