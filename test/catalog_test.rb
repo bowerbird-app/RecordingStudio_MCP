@@ -62,7 +62,7 @@ class CatalogTest < Minitest::Test
       register_tree_type("Page", operations: %i[index show create update])
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
-      assert_equal %i[index show create update], catalog.registered_operations
+      assert_equal %i[create index show update], catalog.registered_operations.sort
       assert_equal false, catalog.capability_actions?
     end
   end

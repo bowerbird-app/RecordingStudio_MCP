@@ -29,13 +29,10 @@ module RecordingStudioMcp
     end
 
     def registered_operations
-      @registered_operations ||= begin
-        found = type_names.flat_map do |type|
-          registration = RecordingStudioApi.recordable_registration_for(type, api: api)
-          Array(registration&.operations).map(&:to_sym)
-        end.uniq
-        (Tools::TREE_OPERATION_TOOLS.keys & found).freeze
-      end
+      @registered_operations ||= type_names.flat_map do |type|
+        registration = RecordingStudioApi.recordable_registration_for(type, api: api)
+        Array(registration&.operations).map(&:to_sym)
+      end.uniq.freeze
     end
 
     def capability_actions?
