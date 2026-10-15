@@ -14,11 +14,12 @@ module RecordingStudioMcp
       new(catalog: catalog)
     end
 
+    TOOL_NAME = /\A[A-Za-z][A-Za-z0-9_.-]*\z/
+
     def initialize(catalog:)
       @catalog = catalog
-      @endpoints = Array(catalog.registered_endpoints).sort_by { |endpoint| endpoint.name.to_s }
+      @endpoints = advertised_endpoints(catalog)
       @endpoint_by_name = @endpoints.index_by { |endpoint| endpoint.name.to_s }
-      reject_collisions!
     end
 
     attr_reader :catalog, :endpoints
@@ -72,12 +73,15 @@ module RecordingStudioMcp
 
     private
 
-    def reject_collisions!
-      collisions = @endpoint_by_name.keys & Tools::TREE_NAMES
-      return if collisions.empty?
+    def advertised_endpoints(catalog)
+      Array(catalog.registered_endpoints).sort_by { |endpoint| endpoint.name.to_s }.select do |endpoint|
+        advertise_endpoint?(endpoint)
+      end
+    end
 
-      raise RecordingStudioApi::ConfigurationError,
-            "Registered endpoint names collide with tree tools: #{collisions.sort.join(', ')}"
+    def advertise_endpoint?(endpoint)
+      name = endpoint.name.to_s
+      name.match?(TOOL_NAME) && Tools::TREE_NAMES.exclude?(name)
     end
   end
 end

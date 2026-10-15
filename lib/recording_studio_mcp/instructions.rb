@@ -7,11 +7,6 @@ module RecordingStudioMcp
       through the same AccessGrant.
     TEXT
 
-    TREE_BLURB = <<~TEXT.squish.freeze
-      Call describe before create or capability_action. Send writable fields at the top level,
-      not under attributes. For the next list page, pass meta.next_pagination_token as pagination_token.
-    TEXT
-
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
       the available endpoint tools. An endpoint-only grant has no tree or recordable tools
@@ -31,13 +26,15 @@ module RecordingStudioMcp
 
     SKILLS_BLURB = "This server may provide skills containing additional guidance for completing tasks with these " \
                    "tools. Discover and use relevant skills when appropriate."
+    WRITE_FIELDS_BLURB = "Send writable fields at the top level, not under attributes."
+    PAGINATION_BLURB = "For the next list page, pass meta.next_pagination_token as pagination_token."
 
     module_function
 
     def text(access_grant: nil)
       surface = ToolSurface.for(access_grant: access_grant)
       parts = [AUTH_BLURB]
-      parts << TREE_BLURB if surface.tree_enabled?
+      parts << tree_blurb(surface) if surface.tree_enabled?
       parts << ENDPOINT_BLURB if surface.endpoints_enabled?
       parts << REFRESH_BLURB
       parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
@@ -45,6 +42,22 @@ module RecordingStudioMcp
       suffix = suffix_part(access_grant: access_grant)
       parts << suffix if suffix
       parts.join(" ")
+    end
+
+    def tree_blurb(surface)
+      names = surface.tree_tool_names
+      before = %w[create capability_action].select { |name| names.include?(name) }
+      parts = [describe_guidance(names, before)]
+      parts << WRITE_FIELDS_BLURB if names.intersect?(%w[create update])
+      parts << PAGINATION_BLURB if names.include?("list")
+      parts.compact.join(" ")
+    end
+
+    def describe_guidance(names, before)
+      return unless names.include?("describe")
+      return "Call describe for a type's allowed operations." if before.empty?
+
+      "Call describe before #{before.join(' or ')}."
     end
 
     def suffix_part(access_grant:)
@@ -57,6 +70,6 @@ module RecordingStudioMcp
       text = raw.strip
       text.empty? ? nil : text
     end
-    private_class_method :suffix_part
+    private_class_method :suffix_part, :tree_blurb, :describe_guidance
   end
 end

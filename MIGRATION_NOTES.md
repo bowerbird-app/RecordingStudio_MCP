@@ -1,6 +1,16 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6` and `>= 0.6.11`. Oauth `v0.6.2`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.6.11`, `< 0.11`. Oauth `~> 0.10`.
+
+## 0.15.0
+
+No migration. Tree `tools/list` is the union of operations registered on that named API, plus `describe`, then filtered by the access grant role. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. A view grant does not see `create`, `update`, or `delete`. A grant with a missing access row sees `describe` only. `capability_action` appears when a type has an action that role can run. `capability_action` stays `readOnlyHint: false` and `destructiveHint: true` even for a view-only `ping`. Calling an unadvertised tool is an unknown-tool error. Calling an advertised tool for a type that does not enable that operation is still an unsupported-operation error.
+
+`operations: []` is normalized by the API to all five operations, so MCP advertises `delete`. On the public API, `operations: nil` does the same. On a named API, `operations: nil` follows `default_access`: read-only stores `index` and `show` (no `delete`), and read-write stores all five. `operations: []` on a read-only named API still expands to all five.
+
+Endpoint names that are not one MCP tool token, and names that match a tree tool, are left off `tools/list`. `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. Only a removed built-in `ping` tool is gone. The JSON-RPC `ping` method is unchanged.
+
+`tools/call` with non-object `params` or `arguments` returns JSON-RPC `-32602`. A non-object `filter`, a nested filter value, or a non-numeric `limit` returns a tool error. A nested filter is a filter error, not an invalid pagination token.
 
 ## 0.11.0
 

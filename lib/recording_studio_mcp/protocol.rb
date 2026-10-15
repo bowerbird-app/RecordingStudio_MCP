@@ -347,14 +347,17 @@ module RecordingStudioMcp
     end
 
     def call_tool(params, id)
+      return rpc_error(id, INVALID_PARAMS, "Invalid params") unless params.is_a?(Hash)
+
       name = params["name"].to_s
-      arguments = params["arguments"] || {}
+      arguments = params["arguments"]
+      return rpc_error(id, INVALID_PARAMS, "Invalid params") unless arguments.nil? || arguments.is_a?(Hash)
       return rpc_error(id, INVALID_PARAMS, "name is required") if name.blank?
 
       ResultShape.complete(
         Dispatcher.call(
           tool_name: name,
-          arguments: arguments,
+          arguments: arguments || {},
           access_grant: access_grant,
           idempotency_key: idempotency_key,
           request_context: request_context

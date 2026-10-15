@@ -173,14 +173,15 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
   end
 
   def issue_ops_token
-    issue_token(client: @ops_client, access_recording: @admin_root_access, api: "operations")
+    issue_token(client: @ops_client, access_recording: @admin_root_access, api: "operations", role: "admin")
   end
 
-  def issue_token(client:, access_recording:, api: "public")
+  def issue_token(client:, access_recording:, api: "public", role: "view")
     approved = approve_delegated_oauth(
       oauth_client: client,
       user: @user,
       access_recording: access_recording,
+      role: role,
       pkce: @pkce
     )
     token_url = api == "public" ? "/recording_studio_api/oauth/token" : named_api_token_path(api)

@@ -31,6 +31,8 @@ module RecordingStudioMcp
     end
 
     def call(tool_name, arguments)
+      return error_result("arguments must be an object") unless argument_object?(arguments)
+
       name = tool_name.to_s
       args = stringify_keys(arguments)
       return error_result(unknown_tool_message(name)) unless surface.known?(name)
@@ -122,6 +124,7 @@ module RecordingStudioMcp
     end
 
     def dispatch_resource(operation_name, args)
+      validate_index_arguments!(args) if operation_name == :index
       recordable_type = catalog.resolve_type!(args["type"])
       registration = RecordingStudioApi.recordable_registration_for(recordable_type, api: api_key)
       if registration && !registration.supports_operation?(operation_name)
@@ -341,6 +344,53 @@ module RecordingStudioMcp
 
     def api_version
       RecordingStudioApi.default_api_version(api: api_key)
+    end
+
+    def argument_object?(value)
+      value.nil? || value.is_a?(Hash) || parameter_object?(value)
+    end
+
+    def parameter_object?(value)
+      value.respond_to?(:to_unsafe_h) && !value.is_a?(String)
+    end
+
+    def validate_index_arguments!(args)
+      reject_filter!(args["filter"])
+      reject_limit!(args["limit"])
+    end
+
+    def reject_filter!(filter)
+      return if filter.blank?
+      raise RecordingStudioApi::InvalidActionInputError, "filter must be an object" unless argument_object?(filter)
+
+      filter_pairs(filter).each do |key, value|
+        next if filter_value?(value)
+
+        raise RecordingStudioApi::InvalidActionInputError, "Invalid filter #{key}"
+      end
+    end
+
+    def reject_limit!(limit)
+      return if limit.blank?
+      return if numeric_limit?(limit)
+
+      raise RecordingStudioApi::InvalidActionInputError, "limit must be a number"
+    end
+
+    def filter_pairs(filter)
+      source = parameter_object?(filter) ? filter.to_unsafe_h : filter
+      source.to_h
+    end
+
+    def filter_value?(value)
+      value.is_a?(String) || value.is_a?(Numeric) || value == true || value == false
+    end
+
+    def numeric_limit?(limit)
+      return true if limit.is_a?(Numeric)
+      return false unless limit.is_a?(String)
+
+      limit.match?(/\A-?\d+\z/)
     end
 
     def stringify_keys(value)

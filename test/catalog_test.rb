@@ -44,11 +44,36 @@ class CatalogTest < Minitest::Test
       assert_includes public_catalog.type_schema.fetch(:enum), "Page"
       refute_includes public_catalog.type_schema.fetch(:enum), "SupportPage"
       assert_empty public_catalog.destroy_type_names
+      assert_equal %i[create index show update], public_catalog.registered_operations.sort
+      assert_equal false, public_catalog.capability_actions?
 
       assert_includes ops_catalog.type_names, "SupportPage"
       refute_includes ops_catalog.type_names, "Page"
       assert_includes ops_catalog.type_schema.fetch(:enum), "SupportPage"
       assert_equal ["SupportPage"], ops_catalog.destroy_type_names
+      assert_includes ops_catalog.registered_operations, :destroy
+      assert_equal false, ops_catalog.capability_actions?
+    end
+  end
+
+  def test_registered_operations_are_the_union_across_types
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      register_tree_type("Page", operations: %i[index show create update])
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal %i[create index show update], catalog.registered_operations.sort
+      assert_equal false, catalog.capability_actions?
+    end
+  end
+
+  def test_capability_actions_when_a_type_enables_them
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type("Workspace", capability_actions: %i[ping])
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal true, catalog.capability_actions?
     end
   end
 

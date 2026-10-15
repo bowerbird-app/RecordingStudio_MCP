@@ -20,7 +20,6 @@ Metrics/BlockLength:
   Exclude:
     - 'test/**/*'
 
-# Relax metrics for test files and generators
 Metrics/ClassLength:
   Exclude:
     - 'test/**/*'

@@ -3,6 +3,13 @@
 module RecordingStudioMcp
   module Tools
     TREE_NAMES = %w[list show create update delete capability_action describe].freeze
+    TREE_OPERATION_TOOLS = {
+      index: "list",
+      show: "show",
+      create: "create",
+      update: "update",
+      destroy: "delete"
+    }.freeze
 
     module_function
 
@@ -11,9 +18,13 @@ module RecordingStudioMcp
     end
 
     def advertised_tree_names(catalog)
-      names = %w[list show create update]
-      names << "delete" if catalog.destroy_type_names.any?
-      names + %w[capability_action describe]
+      operations = Array(catalog.visible_operations).map(&:to_sym)
+      names = TREE_OPERATION_TOOLS.filter_map do |operation, name|
+        name if operations.include?(operation)
+      end
+      names << "capability_action" if catalog.capability_actions?
+      names << "describe"
+      names
     end
 
     def tree_definitions(catalog)
@@ -52,7 +63,7 @@ module RecordingStudioMcp
         idempotent: true,
         required: ["type"],
         properties: {
-          type: catalog.type_schema,
+          type: catalog.type_schema_for(:index),
           q: { type: "string", description: "Search query across writable and sortable fields." },
           limit: { type: "integer", description: "Page size." },
           sort: { type: "string" },
@@ -75,7 +86,7 @@ module RecordingStudioMcp
         idempotent: true,
         required: %w[type id],
         properties: {
-          type: catalog.type_schema,
+          type: catalog.type_schema_for(:show),
           id: { type: "string", description: "Recording id." }
         }
       )
@@ -95,7 +106,7 @@ module RecordingStudioMcp
         additional_properties: true,
         required: ["type"],
         properties: {
-          type: catalog.type_schema,
+          type: catalog.type_schema_for(:create),
           parent_id: {
             type: "string",
             description: "Parent recording id. Required for types that are not roots."
@@ -121,7 +132,7 @@ module RecordingStudioMcp
         additional_properties: true,
         required: %w[type id],
         properties: {
-          type: catalog.type_schema,
+          type: catalog.type_schema_for(:update),
           id: { type: "string", description: "Recording id." }
         }
       )
@@ -168,16 +179,18 @@ module RecordingStudioMcp
       tool(
         name: "describe",
         title: "Describe a type",
-        description: "Describe one type on this named API. " \
-                     "Returns operations, typed writable fields with requirements and allowed values, " \
-                     "enabled capability actions with input contracts, and parent rules. " \
-                     "Use this before create or capability_action.",
+        description: DESCRIBE_DESCRIPTION,
         read_only: true,
         idempotent: true,
         required: ["type"],
         properties: { type: catalog.type_schema }
       )
     end
+
+    DESCRIBE_DESCRIPTION = "Describe one type on this named API. " \
+                           "Returns operations, typed writable fields with requirements and allowed values, " \
+                           "enabled capability actions with input contracts, and parent rules. " \
+                           "Each type's describe output lists its allowed operations."
 
     def endpoint_title(endpoint)
       endpoint.openapi[:summary].presence || endpoint.name.to_s.tr("_", " ").capitalize
@@ -230,7 +243,7 @@ module RecordingStudioMcp
 
       payload[:_meta] = (payload[:_meta] || {}).merge(FileParams::META_KEY => names)
     end
-    private_class_method :tool, :endpoint_tool_options, :endpoint_title, :endpoint_description, :attach_meta,
-                         :attach_ui_meta, :attach_file_params_meta
+    private_class_method :tool, :endpoint_tool_options, :endpoint_title,
+                         :endpoint_description, :attach_meta, :attach_ui_meta, :attach_file_params_meta
   end
 end

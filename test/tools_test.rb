@@ -12,7 +12,35 @@ class ToolsTest < Minitest::Test
       register_tree_type("Page")
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update capability_action describe], names
+      assert_equal %w[list show create update describe], names
+      describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
+      assert_includes describe[:description], "Each type's describe output lists its allowed operations"
+      refute_includes describe[:description], "Use this before"
+      refute_includes describe[:description], "Call describe before"
+    end
+  end
+
+  def test_mixed_type_operations_union_advertises_create
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      register_tree_type("Page", operations: %i[index show create])
+      names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
+
+      assert_equal %w[list show create describe], names
+    end
+  end
+
+  def test_full_surface_includes_delete_and_capability_action
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type(
+        "Workspace",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[ping]
+      )
+      names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
+
+      assert_equal %w[list show create update delete capability_action describe], names
     end
   end
 
@@ -58,7 +86,7 @@ class ToolsTest < Minitest::Test
 
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update capability_action describe] + %w[alpha zeta], names
+      assert_equal %w[list show create update describe] + %w[alpha zeta], names
     end
   end
 
@@ -83,7 +111,8 @@ class ToolsTest < Minitest::Test
     }
 
     with_isolated_api_configuration do
-      register_tree_type("Page")
+      register_ping_capability
+      register_tree_type("Page", capability_actions: %i[ping])
       expected.each do |name, title|
         tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
         assert_equal title, tool[:title], name
@@ -106,7 +135,8 @@ class ToolsTest < Minitest::Test
 
   def test_write_tools_are_marked_as_changing_data
     with_isolated_api_configuration do
-      register_tree_type("Page")
+      register_ping_capability
+      register_tree_type("Page", capability_actions: %i[ping])
       create = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
       update = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "update" }
       action = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "capability_action" }
@@ -126,6 +156,20 @@ class ToolsTest < Minitest::Test
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
       assert_includes action[:description], "destructively change data"
+    end
+  end
+
+  def test_read_only_types_advertise_list_show_describe
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      tools = RecordingStudioMcp::Tools.definitions
+      names = tools.map { |tool| tool[:name] }
+
+      assert_equal %w[list show describe], names
+      describe = tools.find { |tool| tool[:name] == "describe" }
+      assert_includes describe[:description], "Each type's describe output lists its allowed operations"
+      refute_includes describe[:description], "Use this before"
+      refute_includes describe[:description], "before create"
     end
   end
 
@@ -196,6 +240,48 @@ class ToolsTest < Minitest::Test
 
     assert_equal false, tool.dig(:inputSchema, :additionalProperties)
     assert_equal false, tool.dig(:annotations, :readOnlyHint)
+  end
+
+  def test_show_only_omits_list
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show])
+      assert_equal %w[show describe], RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }.to_a
+    end
+  end
+
+  def test_index_only_omits_show
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index])
+      assert_equal %w[list describe], RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }.to_a
+    end
+  end
+
+  def test_type_enums_follow_the_operation
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index show])
+      register_tree_type("Article", operations: %i[create])
+      tools = RecordingStudioMcp::Tools.definitions.index_by { |tool| tool[:name] }
+
+      assert_equal ["Page"], tools.fetch("list").dig(:inputSchema, :properties, :type, :enum)
+      assert_equal ["Page"], tools.fetch("show").dig(:inputSchema, :properties, :type, :enum)
+      assert_equal ["Article"], tools.fetch("create").dig(:inputSchema, :properties, :type, :enum)
+      assert_equal %w[Article Page], tools.fetch("describe").dig(:inputSchema, :properties, :type, :enum)
+      refute tools.key?("update")
+    end
+  end
+
+  def test_view_ping_keeps_destructive_capability_action_hints
+    with_isolated_api_configuration do
+      register_ping_capability(required_role: :view)
+      register_tree_type("Workspace", operations: %i[index show], capability_actions: %i[ping])
+      action = RecordingStudioMcp::Tools.definitions(access_grant: role_grant(:view)).find do |tool|
+        tool[:name] == "capability_action"
+      end
+
+      assert action
+      assert_equal false, action.dig(:annotations, :readOnlyHint)
+      assert_equal true, action.dig(:annotations, :destructiveHint)
+    end
   end
 
   def test_delete_endpoint_is_marked_destructive
