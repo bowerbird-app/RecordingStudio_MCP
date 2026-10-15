@@ -29,14 +29,20 @@ module RecordingStudioMcp
     end
 
     def registered_operations
-      @registered_operations ||= type_names.flat_map do |type|
-        registration = RecordingStudioApi.recordable_registration_for(type, api: api)
-        Array(registration&.operations).map { |operation| operation.to_sym }
-      end.uniq.freeze
+      @registered_operations ||= begin
+        found = type_names.flat_map do |type|
+          registration = RecordingStudioApi.recordable_registration_for(type, api: api)
+          Array(registration&.operations).map(&:to_sym)
+        end.uniq
+        (Tools::TREE_OPERATION_TOOLS.keys & found).freeze
+      end
     end
 
     def capability_actions?
-      type_names.any? { |type| enabled_capability_action_names(type).any? }
+      type_names.any? do |type|
+        registration = RecordingStudioApi.recordable_registration_for(type, api: api)
+        Array(registration&.capability_actions).any?
+      end
     end
 
     def destroy_type_names

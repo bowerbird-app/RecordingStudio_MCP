@@ -190,7 +190,7 @@ module RecordingStudioMcp
     def describe_tool_description(catalog)
       names = advertised_tree_names(catalog)
       before = %w[create capability_action].select { |name| names.include?(name) }
-      suffix = before.any? ? " Use this before #{before.join(" or ")}." : ""
+      suffix = before.any? ? " Use this before #{before.join(' or ')}." : ""
       "Describe one type on this named API. " \
         "Returns operations, typed writable fields with requirements and allowed values, " \
         "enabled capability actions with input contracts, and parent rules. " \

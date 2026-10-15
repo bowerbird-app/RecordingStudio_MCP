@@ -26,6 +26,8 @@ module RecordingStudioMcp
 
     SKILLS_BLURB = "This server may provide skills containing additional guidance for completing tasks with these " \
                    "tools. Discover and use relevant skills when appropriate."
+    WRITE_FIELDS_BLURB = "Send writable fields at the top level, not under attributes."
+    PAGINATION_BLURB = "For the next list page, pass meta.next_pagination_token as pagination_token."
 
     module_function
 
@@ -44,22 +46,18 @@ module RecordingStudioMcp
 
     def tree_blurb(surface)
       names = surface.tree_tool_names
-      sentences = []
       before = %w[create capability_action].select { |name| names.include?(name) }
-      if names.include?("describe")
-        sentences << if before.any?
-          "Call describe before #{before.join(" or ")}."
-        else
-          "Call describe for a type's allowed operations."
-        end
-      end
-      if (names & %w[create update]).any?
-        sentences << "Send writable fields at the top level, not under attributes."
-      end
-      if names.include?("list")
-        sentences << "For the next list page, pass meta.next_pagination_token as pagination_token."
-      end
-      sentences.join(" ")
+      parts = [describe_guidance(names, before)]
+      parts << WRITE_FIELDS_BLURB if names.intersect?(%w[create update])
+      parts << PAGINATION_BLURB if names.include?("list")
+      parts.compact.join(" ")
+    end
+
+    def describe_guidance(names, before)
+      return unless names.include?("describe")
+      return "Call describe for a type's allowed operations." if before.empty?
+
+      "Call describe before #{before.join(' or ')}."
     end
 
     def suffix_part(access_grant:)
@@ -72,6 +70,6 @@ module RecordingStudioMcp
       text = raw.strip
       text.empty? ? nil : text
     end
-    private_class_method :suffix_part, :tree_blurb
+    private_class_method :suffix_part, :tree_blurb, :describe_guidance
   end
 end

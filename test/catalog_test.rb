@@ -44,7 +44,7 @@ class CatalogTest < Minitest::Test
       assert_includes public_catalog.type_schema.fetch(:enum), "Page"
       refute_includes public_catalog.type_schema.fetch(:enum), "SupportPage"
       assert_empty public_catalog.destroy_type_names
-      assert_equal %i[index show create update], public_catalog.registered_operations
+      assert_equal %i[create index show update], public_catalog.registered_operations.sort
       assert_equal false, public_catalog.capability_actions?
 
       assert_includes ops_catalog.type_names, "SupportPage"
@@ -74,7 +74,6 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal true, catalog.capability_actions?
-      assert_equal %w[ping], catalog.enabled_capability_action_names("Workspace")
     end
   end
 

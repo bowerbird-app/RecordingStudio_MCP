@@ -111,7 +111,7 @@ class ToolsTest < Minitest::Test
     }
 
     with_isolated_api_configuration do
-      register_ping_capability
+      register_ping_capability(on: "Page")
       register_tree_type("Page", capability_actions: %i[ping])
       expected.each do |name, title|
         tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
@@ -135,7 +135,7 @@ class ToolsTest < Minitest::Test
 
   def test_write_tools_are_marked_as_changing_data
     with_isolated_api_configuration do
-      register_ping_capability
+      register_ping_capability(on: "Page")
       register_tree_type("Page", capability_actions: %i[ping])
       create = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
       update = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "update" }
