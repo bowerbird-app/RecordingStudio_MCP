@@ -69,12 +69,14 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.6.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.18.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.3.0"'
-    api_pin = 'github: "bowerbird-app/RecordingStudio_api", branch: "cursor/recordable-metrics-hook-0fe9"'
+    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.11.0"'
     assert_includes gemfile, api_pin
     assert_includes root_gemfile, api_pin
+    refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
+    refute_includes root_gemfile, "cursor/recordable-metrics-hook-0fe9"
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.3.0"'
     refute_includes gemfile, "recording_studio_mcp_ui"
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.12.1"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.12.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.15.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_cache", tag: "v0.5.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.9.0"'

@@ -29,38 +29,28 @@ module RecordingStudioMcp
         raise RecordingStudioApi::InvalidActionInputError,
               "Send list filters as a filter object of attribute names"
       end
-      return assign_filter(tool, params, value) if key == "filter"
+      return assign_filter(params, value) if key == "filter"
 
       assign_passthrough(tool, params, key, value)
     end
 
-    def assign_filter(tool, params, value)
+    def assign_filter(params, value)
       return if value.nil?
 
-      folded = fold_filter(tool, value)
+      folded = fold_filter(value)
       params["filter"] = folded unless folded.empty?
     end
 
-    def fold_filter(tool, value)
+    def fold_filter(value)
       raise RecordingStudioApi::InvalidActionInputError, "filter must be an object" unless value.is_a?(Hash)
 
       folded = {}
       each_argument(value) do |attribute, attribute_value|
-        stored = filter_value(tool, attribute, attribute_value)
-        folded[attribute] = stored unless stored.nil?
+        next if attribute_value.nil?
+
+        folded[attribute] = attribute_value
       end
       folded
-    end
-
-    def filter_value(tool, attribute, attribute_value)
-      known = tool.plan.filter_attributes.include?(attribute)
-      raise RecordingStudioApi::InvalidActionInputError, "Unknown filter attribute #{attribute}" unless known
-      return if attribute_value.nil?
-      unless attribute_value.is_a?(String)
-        raise RecordingStudioApi::InvalidActionInputError, "filter #{attribute} must be a string"
-      end
-
-      attribute_value
     end
 
     def assign_passthrough(tool, params, key, value)
@@ -72,6 +62,6 @@ module RecordingStudioMcp
       params[key] = value
     end
     private_class_method :each_argument, :argument_hash, :assign_argument, :assign_filter, :fold_filter,
-                         :filter_value, :assign_passthrough
+                         :assign_passthrough
   end
 end

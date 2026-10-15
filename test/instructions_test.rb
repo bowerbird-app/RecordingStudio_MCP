@@ -111,8 +111,8 @@ class InstructionsTest < Minitest::Test
   end
 
   def test_metric_tools_add_one_filter_sentence
-    sentence = "Recordable metric tools are read-only. Pass from, to, interval, group_by, and q as arguments, " \
-               "and pass list filters as a filter object of attribute names."
+    sentence = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
+               "Pass list filters as a filter object of attribute names."
 
     with_isolated_api_configuration do
       register_tree_type("Page")

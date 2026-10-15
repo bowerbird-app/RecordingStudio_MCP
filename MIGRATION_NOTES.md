@@ -12,7 +12,7 @@ Pin `recording_studio_api` to `>= 0.11.0, < 0.12` and `recording_studio_oauth` t
 | `folders.created_over_time` | `folders-created_over_time` |
 | `metric_samples.total` | `metric_samples-total` |
 
-List filters are a `filter` object of attribute names. `from`, `to`, `interval`, `group_by`, and `q` stay top-level arguments. `start` and `start_at` alias `from`. `end` and `end_at` alias `to`. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
+List filters are a `filter` object of attribute names. A plain count takes those filters only. A timeseries also takes `from`, `to`, `interval`, and `group_by`. `start` and `start_at` alias `from` when `from` is a parameter. `end` and `end_at` alias `to` when `to` is a parameter. An unknown filter key is rejected with the API error. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
 
 ## 0.11.0
 

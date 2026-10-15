@@ -36,14 +36,14 @@ class RecordableMetricToolsTest < Minitest::Test
 
   def test_filter_object_becomes_nested_filter_param
     with_metric_types do |surface|
-      metric = surface.metric_tool("folders-total")
+      metric = surface.metric_tool("folders-created_over_time")
 
       assert_equal(
         {
           "filter" => { "name" => "Ada" },
           "q" => "Bea",
           "from" => "2026-04-01T00:00:00Z",
-          "name" => "folders.total",
+          "name" => "folders.created_over_time",
           "resource" => "folders"
         },
         RecordingStudioMcp::RecordableMetricTools.params_for(
@@ -61,13 +61,13 @@ class RecordableMetricToolsTest < Minitest::Test
 
   def test_nil_arguments_are_dropped_and_empty_strings_stay
     with_metric_types do |surface|
-      metric = surface.metric_tool("folders-total")
+      metric = surface.metric_tool("folders-created_over_time")
 
       assert_equal(
         {
           "q" => "",
           "filter" => { "name" => "" },
-          "name" => "folders.total",
+          "name" => "folders.created_over_time",
           "resource" => "folders"
         },
         RecordingStudioMcp::RecordableMetricTools.params_for(
@@ -93,10 +93,10 @@ class RecordableMetricToolsTest < Minitest::Test
     with_metric_types do |surface|
       metric = surface.metric_tool("folders-total")
 
-      unknown = assert_raises(RecordingStudioApi::InvalidActionInputError) do
-        RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter" => { "missing" => "Ada" } })
-      end
-      assert_equal "Unknown filter attribute missing", unknown.message
+      passed = RecordingStudioMcp::RecordableMetricTools.params_for(
+        metric, { "filter" => { "missing" => "Ada", "name" => 1 } }
+      )
+      assert_equal({ "missing" => "Ada", "name" => 1 }, passed.fetch("filter"))
 
       number = assert_raises(RecordingStudioApi::InvalidActionInputError) do
         RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "q" => 1 })
@@ -107,17 +107,12 @@ class RecordableMetricToolsTest < Minitest::Test
         RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter" => "Ada" })
       end
       assert_equal "filter must be an object", text.message
-
-      number_filter = assert_raises(RecordingStudioApi::InvalidActionInputError) do
-        RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter" => { "name" => 1 } })
-      end
-      assert_equal "filter name must be a string", number_filter.message
     end
   end
 
   def test_period_aliases_pass_through_to_show
     with_metric_types do |surface|
-      metric = surface.metric_tool("folders-total")
+      metric = surface.metric_tool("folders-created_over_time")
 
       assert_equal(
         {
@@ -125,7 +120,7 @@ class RecordableMetricToolsTest < Minitest::Test
           "start_at" => "2026-04-02T00:00:00Z",
           "end" => "2026-05-01T00:00:00Z",
           "end_at" => "2026-05-02T00:00:00Z",
-          "name" => "folders.total",
+          "name" => "folders.created_over_time",
           "resource" => "folders"
         },
         RecordingStudioMcp::RecordableMetricTools.params_for(
@@ -143,27 +138,30 @@ class RecordableMetricToolsTest < Minitest::Test
 
   def test_count_metric_schema_copies_the_api_catalog
     with_metric_types do |surface|
-      entry = RecordingStudioApi.metrics_for(RecordableMetricToolHelpers::FOLDER, api: "public")
-                                .find { |candidate| candidate.name == "folders.total" }
-      interval = entry.parameters.find { |parameter| parameter.fetch(:name) == "interval" }
-      group_by = entry.parameters.find { |parameter| parameter.fetch(:name) == "group_by" }
-      tool_interval = tool(surface, "folders-total").dig(:inputSchema, :properties, :interval)
-      tool_group = tool(surface, "folders-total").dig(:inputSchema, :properties, :group_by)
+      total = tool(surface, "folders-total").fetch(:inputSchema).fetch(:properties)
+      refute total.key?(:from)
+      refute total.key?(:interval)
+      refute total.key?(:group_by)
+      assert_equal "string", total.dig(:q, :type)
+      window = assert_raises(RecordingStudioApi::InvalidActionInputError) do
+        RecordingStudioMcp::RecordableMetricTools.params_for(
+          surface.metric_tool("folders-total"),
+          { "from" => "2026-04-01T00:00:00Z" }
+        )
+      end
+      assert_equal "Unknown argument from", window.message
 
-      refute interval.fetch(:schema).key?(:enum)
-      refute group_by.fetch(:schema).key?(:enum)
-      assert_equal interval.fetch(:schema).fetch(:type), tool_interval.fetch(:type)
-      assert_equal interval.fetch(:description), tool_interval.fetch(:description)
-      refute tool_interval.key?(:enum)
-      assert_equal group_by.fetch(:description), tool_group.fetch(:description)
-      refute tool_group.key?(:enum)
+      created_entry = RecordingStudioApi.metrics_for(RecordableMetricToolHelpers::FOLDER, api: "public")
+                                        .find { |candidate| candidate.name == "folders.created_over_time" }
+      interval = created_entry.parameters.find { |parameter| parameter.fetch(:name) == "interval" }
+      group_by = created_entry.parameters.find { |parameter| parameter.fetch(:name) == "group_by" }
+      created = tool(surface, "folders-created_over_time").fetch(:inputSchema).fetch(:properties)
 
-      created = RecordingStudioApi.metrics_for(RecordableMetricToolHelpers::FOLDER, api: "public")
-                                  .find { |candidate| candidate.name == "folders.created_over_time" }
-      created_interval = created.parameters.find { |parameter| parameter.fetch(:name) == "interval" }
-      tool_created = tool(surface, "folders-created_over_time").dig(:inputSchema, :properties, :interval)
-      assert_equal %w[day week], created_interval.dig(:schema, :enum)
-      assert_equal %w[day week], tool_created.fetch(:enum)
+      assert_equal %w[day week], interval.dig(:schema, :enum)
+      assert_equal %w[day week], created.dig(:interval, :enum)
+      assert_equal ["name"], group_by.dig(:schema, :enum)
+      assert_equal ["name"], created.dig(:group_by, :enum)
+      assert_includes created.dig(:from, :description), "start must match from"
     end
   end
 
@@ -292,19 +290,16 @@ class RecordableMetricToolsTest < Minitest::Test
   def folders_total_schema
     {
       type: "object",
-      properties: query_properties(filter_attribute: :name),
+      properties: filter_properties(filter_attribute: :name),
       required: [],
       additionalProperties: false
     }
   end
 
   def folders_created_over_time_schema
-    properties = query_properties(filter_attribute: :name)
-    properties[:interval] = properties[:interval].merge(enum: %w[day week])
-    properties[:group_by] = properties[:group_by].merge(enum: %w[name])
     {
       type: "object",
-      properties: properties,
+      properties: window_properties.merge(filter_properties(filter_attribute: :name)),
       required: [],
       additionalProperties: false
     }
@@ -313,7 +308,7 @@ class RecordableMetricToolsTest < Minitest::Test
   def pages_total_schema
     {
       type: "object",
-      properties: query_properties(filter_attribute: :title),
+      properties: filter_properties(filter_attribute: :title),
       required: [],
       additionalProperties: false
     }
@@ -333,24 +328,36 @@ class RecordableMetricToolsTest < Minitest::Test
     )
   end
 
-  def query_properties(filter_attribute:)
+  def window_properties
     {
       from: {
         type: "string",
         format: "date-time",
-        description: "Inclusive period start, as an ISO-8601 date-time. start and start_at are aliases."
-      },
-      to: {
-        type: "string",
-        format: "date-time",
-        description: "Exclusive period end, as an ISO-8601 date-time. end and end_at are aliases."
+        description: "Inclusive period start, as an ISO-8601 date-time. start must match from when both are sent. " \
+                     "start_at is the fallback."
       },
       start: { type: "string", format: "date-time", description: "Same as from." },
       start_at: { type: "string", format: "date-time", description: "Same as from." },
+      to: {
+        type: "string",
+        format: "date-time",
+        description: "Exclusive period end, as an ISO-8601 date-time. end must match to when both are sent. " \
+                     "end_at is the fallback."
+      },
       end: { type: "string", format: "date-time", description: "Same as to." },
       end_at: { type: "string", format: "date-time", description: "Same as to." },
-      interval: { type: "string", description: "Time-series bucket size." },
-      group_by: { type: "string", description: "Grouping column for this metric." },
+      interval: { type: "string", description: "Time-series bucket size.", enum: %w[day week] },
+      group_by: {
+        type: "string",
+        description: "Grouping column for this metric. Do not allowlist a column that holds personal data. " \
+                     "Groups under min_group_size fold into other.",
+        enum: %w[name]
+      }
+    }
+  end
+
+  def filter_properties(filter_attribute:)
+    {
       q: {
         type: "string",
         description: "Case-insensitive substring search across filterable attributes for this resource."

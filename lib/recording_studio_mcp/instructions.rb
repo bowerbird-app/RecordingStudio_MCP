@@ -12,8 +12,8 @@ module RecordingStudioMcp
       not under attributes. For the next list page, pass meta.next_pagination_token as pagination_token.
     TEXT
 
-    METRIC_BLURB = "Recordable metric tools are read-only. Pass from, to, interval, group_by, and q as arguments, " \
-                   "and pass list filters as a filter object of attribute names."
+    METRIC_BLURB = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
+                   "Pass list filters as a filter object of attribute names."
 
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see

@@ -42,17 +42,50 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     refute total.dig("inputSchema", "properties").key?("filter[name]")
 
     instructions = mcp(token, "initialize", protocolVersion: "2025-06-18").dig("result", "instructions")
-    assert_includes instructions, "pass list filters as a filter object of attribute names"
+    assert_includes instructions, "Pass list filters as a filter object of attribute names"
 
     filtered = call_tool(token, "folders-total", filter: { name: "Ada" })
     assert_equal false, filtered.fetch("isError")
     assert_equal 1, filtered.dig("structuredContent", "value")
     assert_equal "folders.total", filtered.dig("structuredContent", "metric")
+    assert_equal({}, filtered.dig("structuredContent", "filters"))
     assert_equal 1, JSON.parse(filtered.dig("content", 0, "text")).fetch("value")
+
+    created = listed.find { |tool| tool.fetch("name") == "folders-created_over_time" }
+    assert_equal %w[day week], created.dig("inputSchema", "properties", "interval", "enum")
+    assert_equal [ "name" ], created.dig("inputSchema", "properties", "group_by", "enum")
+    refute total.dig("inputSchema", "properties").key?("interval")
+    refute total.dig("inputSchema", "properties").key?("from")
+
+    window = call_tool(
+      token,
+      "folders-created_over_time",
+      start: "2026-04-01T00:00:00Z",
+      to: "2026-04-03T00:00:00Z",
+      interval: "day"
+    )
+    assert_equal false, window.fetch("isError"), window.dig("content", 0, "text").to_s
+    assert_equal({}, window.dig("structuredContent", "filters"))
 
     unfiltered = call_tool(token, "folders-total")
     assert_equal false, unfiltered.fetch("isError")
     assert_equal 2, unfiltered.dig("structuredContent", "value")
+  end
+
+  test "unknown filters and rejected windows match the api" do
+    token = issue_token
+
+    unknown = call_tool(token, "folders-total", filter: { missing: "Ada" })
+    assert_equal true, unknown.fetch("isError")
+    assert_equal "Unknown filters: missing", unknown.dig("content", 0, "text")
+
+    listed = call_tool(token, "folders-total", filter: { name: [ "Ada" ] })
+    assert_equal true, listed.fetch("isError")
+    assert_equal "filter[name] must be a single value", listed.dig("content", 0, "text")
+
+    window = call_tool(token, "folders-total", interval: "day")
+    assert_equal true, window.fetch("isError")
+    assert_equal "Unknown argument interval", window.dig("content", 0, "text")
   end
 
   test "a guest does not see recordable metric tools" do

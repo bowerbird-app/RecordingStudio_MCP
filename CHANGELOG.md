@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - One read-only MCP tool per recordable metric allowlisted with `metrics:` on `register_recordable_type_api`. The call runs `RecordingStudioApi::Services::ResourceMetrics::Show`.
 - Tool names replace the metric identifier's single dot with a hyphen. The result must match `[a-z][a-z0-9_]*-[a-z][a-z0-9_]*` and be at most 64 characters. A name that does not match is skipped and logged. The rest of `tools/list` still returns.
 - The tool is advertised only when that type enables index and the access grant can view its scope.
-- `start` and `start_at` are accepted as aliases of `from`. `end` and `end_at` are accepted as aliases of `to`.
+- `start` and `start_at` are accepted as aliases of `from` when the metric has `from`. `end` and `end_at` are accepted as aliases of `to` when the metric has `to`. A plain count does not take a window. Timeseries `interval` and `group_by` keep the catalog enum.
 
 | Metric identifier | MCP tool |
 | --- | --- |
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | `folders.created_over_time` | `folders-created_over_time` |
 | `metric_samples.total` | `metric_samples-total` |
 
-- List filters are a `filter` object of attribute names. An unknown filter attribute is rejected. The HTTP metric endpoint ignores unknown filter keys. `from`, `to`, `interval`, `group_by`, and `q` stay top-level arguments. When any of these tools is advertised, initialize adds one sentence about that `filter` object.
+- List filters are a `filter` object of attribute names. An unknown filter key returns the API error `Unknown filters: ...`. When any of these tools is advertised, initialize adds one sentence about that `filter` object.
 
 ### Changed
 - Runtime dependency `recording_studio_api` is `>= 0.11.0, < 0.12`.
