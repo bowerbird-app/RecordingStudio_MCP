@@ -64,12 +64,24 @@ class DispatcherTest < Minitest::Test
       []
     end
 
+    def registered_operations
+      %i[index show create update]
+    end
+
+    def capability_actions?
+      true
+    end
+
     def registered_endpoints
       []
     end
   end
 
   class DestroyCatalog < FakeCatalog
+    def registered_operations
+      %i[index show create update destroy]
+    end
+
     def destroy_type_names
       %w[Page]
     end
@@ -339,6 +351,40 @@ class DispatcherTest < Minitest::Test
                 assert_includes scope.calls, { include_trashed: true }
               end
             end
+          end
+        end
+      end
+    end
+  end
+
+  def test_create_hidden_when_no_type_supports_create
+    catalog = Class.new(FakeCatalog) do
+      def registered_operations
+        %i[index show]
+      end
+
+      def capability_actions?
+        false
+      end
+    end.new("public")
+
+    RecordingStudioMcp::Catalog.stub(:for, catalog) do
+      result = dispatch("create", { type: "Page", title: "Hi" })
+
+      assert result[:isError]
+      assert_includes result.dig(:content, 0, :text), "Unknown tool create"
+    end
+  end
+
+  def test_create_denied_when_type_does_not_support_it
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(false)) do
+        RecordingStudioApi.stub(:resource_name_for, "pages") do
+          RecordingStudioApi.stub(:default_api_version, "v1") do
+            result = dispatch("create", { type: "Page", title: "Hi" })
+
+            assert result[:isError]
+            assert_includes result.dig(:content, 0, :text), "create is not enabled for Page"
           end
         end
       end

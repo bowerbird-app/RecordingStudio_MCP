@@ -29,6 +29,7 @@ class ProtocolTest < Minitest::Test
       assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
       assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
       assert_includes instructions, "Call describe before create"
+      refute_includes instructions, "capability_action"
       assert_includes instructions, "meta.next_pagination_token"
       assert_includes instructions, "both this MCP endpoint and the Recording Studio API"
       refute_includes instructions, "Use the endpoint tools"
@@ -73,7 +74,35 @@ class ProtocolTest < Minitest::Test
       )
 
       names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-      assert_equal %w[list show create update capability_action describe], names
+      assert_equal %w[list show create update describe], names
+    end
+  end
+
+  def test_tools_list_and_instructions_match_a_read_only_surface
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      listed = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+        access_grant: @grant
+      )
+      initialized = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 1,
+          "method" => "initialize",
+          "params" => { "protocolVersion" => "2025-06-18", "capabilities" => {}, "clientInfo" => { "name" => "test" } }
+        },
+        access_grant: @grant
+      )
+
+      names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
+      instructions = initialized.body.dig(:result, :instructions)
+
+      assert_equal %w[list show describe], names
+      assert_includes instructions, "Call describe for a type's allowed operations"
+      refute_includes instructions, "before create"
+      refute_includes instructions, "capability_action"
+      refute_includes instructions, "not under attributes"
     end
   end
 
@@ -332,7 +361,7 @@ class ProtocolTest < Minitest::Test
       names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
       assert_equal "complete", discover.body.dig(:result, :resultType)
       assert_equal false, discover.body.dig(:result, :capabilities, :tools, :listChanged)
-      assert_equal %w[list show create update capability_action describe], names
+      assert_equal %w[list show create update describe], names
       assert_equal "complete", listed.body.dig(:result, :resultType)
       assert_equal 0, listed.body.dig(:result, :ttlMs)
       assert_equal "private", listed.body.dig(:result, :cacheScope)

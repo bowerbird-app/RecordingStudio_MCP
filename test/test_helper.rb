@@ -23,14 +23,27 @@ module IsolatedApiConfiguration
     end
   end
 
-  def register_tree_type(name = "Page", api: :public, operations: %i[index show create update])
-    RecordingStudioApi.register_recordable_type_api(
-      name,
+  def register_tree_type(name = "Page", api: :public, operations: %i[index show create update],
+                         capability_actions: nil)
+    attrs = {
       api: api,
       serializer: ->(*) { { title: "Title" } },
       output_keys: %i[title],
       writable_attributes: %i[title],
       operations: operations
+    }
+    attrs[:capability_actions] = capability_actions if capability_actions
+    RecordingStudioApi.register_recordable_type_api(name, **attrs)
+  end
+
+  def register_ping_capability(api: :public)
+    return if RecordingStudioApi.capability_action(:ping, api: api)
+
+    RecordingStudioApi.register_capability_action(
+      :ping,
+      capability: :accessible,
+      api: api,
+      handler: ->(_context) { { json: { ok: true } } }
     )
   end
 end

@@ -2,6 +2,14 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6` and `>= 0.6.11`. Oauth `v0.6.2`.
 
+## 0.15.0
+
+No migration. Tree MCP tools follow registered operations on the named API. A read-only type (`index`/`show`) advertises `list`, `show`, and `describe` only. Clients that called `create` on that surface already got an unsupported-operation error; they now get unknown-tool instead unless another type on the same API enables create.
+
+## 0.15.0
+
+`tools/list` for a tree grant is the union of operations registered on that named API, plus `describe`. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. `capability_action` appears only when a type has enabled capability actions. The dispatcher still rejects unknown tools and unsupported operations. No configuration change.
+
 ## 0.11.0
 
 Pin `recording_studio_api` to git tag `v0.6.11` (`~> 0.6`, `>= 0.6.11`). MCP UI is optional and not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3`. Register `ui:` on the API operation and the widget in MCP UI. Nothing else to wire. Widget buttons call the real API tool name. Widget URIs include `?v=` of the packaged HTML so hosts that cache `ui://` by URI get updates.

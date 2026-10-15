@@ -13,10 +13,66 @@ class ToolSurfaceTest < Minitest::Test
       assert_equal true, surface.known?("describe")
       assert_equal true, surface.tree_tool?("list")
       assert_equal false, surface.known?("ping")
-      assert_equal %w[list show create update capability_action describe], surface.tool_names
+      assert_equal %w[list show create update describe], surface.tool_names
+      assert_equal false, surface.known?("capability_action")
       assert_equal false, surface.known?("delete")
       assert_equal true, surface.read_only_tool?("list")
       assert_equal false, surface.read_only_tool?("create")
+    end
+  end
+
+  def test_read_only_surface_omits_write_tools
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal %w[list show describe], surface.tool_names
+      assert_equal true, surface.known?("list")
+      assert_equal true, surface.known?("show")
+      assert_equal true, surface.known?("describe")
+      assert_equal false, surface.known?("create")
+      assert_equal false, surface.known?("update")
+      assert_equal false, surface.known?("capability_action")
+      assert_equal false, surface.known?("delete")
+      assert_equal true, surface.read_only_tool?("list")
+      assert_equal true, surface.read_only_tool?("describe")
+    end
+  end
+
+  def test_editable_surface_includes_create_and_update
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index show create update])
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal %w[list show create update describe], surface.tool_names
+      assert_equal true, surface.known?("create")
+      assert_equal true, surface.known?("update")
+      assert_equal false, surface.known?("capability_action")
+      assert_equal false, surface.read_only_tool?("create")
+    end
+  end
+
+  def test_union_across_types_advertises_create_when_any_type_allows_it
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      register_tree_type("Page", operations: %i[index show create update])
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal %w[list show create update describe], surface.tool_names
+    end
+  end
+
+  def test_full_surface_with_destroy_and_capability_actions
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type(
+        "Page",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[ping]
+      )
+      surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+      assert_equal %w[list show create update delete capability_action describe], surface.tool_names
     end
   end
 

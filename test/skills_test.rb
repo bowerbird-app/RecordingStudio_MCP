@@ -290,7 +290,7 @@ class SkillsTest < Minitest::Test
           result = handle("tools/list", id: 2)
           names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
 
-          assert_equal %w[list show create update capability_action describe], names
+          assert_equal %w[list show create update describe], names
         end
       end
     end

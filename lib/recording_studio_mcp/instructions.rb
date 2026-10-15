@@ -7,11 +7,6 @@ module RecordingStudioMcp
       through the same AccessGrant.
     TEXT
 
-    TREE_BLURB = <<~TEXT.squish.freeze
-      Call describe before create or capability_action. Send writable fields at the top level,
-      not under attributes. For the next list page, pass meta.next_pagination_token as pagination_token.
-    TEXT
-
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
       the available endpoint tools. An endpoint-only grant has no tree or recordable tools
@@ -37,7 +32,7 @@ module RecordingStudioMcp
     def text(access_grant: nil)
       surface = ToolSurface.for(access_grant: access_grant)
       parts = [AUTH_BLURB]
-      parts << TREE_BLURB if surface.tree_enabled?
+      parts << tree_blurb(surface) if surface.tree_enabled?
       parts << ENDPOINT_BLURB if surface.endpoints_enabled?
       parts << REFRESH_BLURB
       parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
@@ -45,6 +40,26 @@ module RecordingStudioMcp
       suffix = suffix_part(access_grant: access_grant)
       parts << suffix if suffix
       parts.join(" ")
+    end
+
+    def tree_blurb(surface)
+      names = surface.tree_tool_names
+      sentences = []
+      before = %w[create capability_action].select { |name| names.include?(name) }
+      if names.include?("describe")
+        sentences << if before.any?
+          "Call describe before #{before.join(" or ")}."
+        else
+          "Call describe for a type's allowed operations."
+        end
+      end
+      if (names & %w[create update]).any?
+        sentences << "Send writable fields at the top level, not under attributes."
+      end
+      if names.include?("list")
+        sentences << "For the next list page, pass meta.next_pagination_token as pagination_token."
+      end
+      sentences.join(" ")
     end
 
     def suffix_part(access_grant:)
@@ -57,6 +72,6 @@ module RecordingStudioMcp
       text = raw.strip
       text.empty? ? nil : text
     end
-    private_class_method :suffix_part
+    private_class_method :suffix_part, :tree_blurb
   end
 end

@@ -51,7 +51,7 @@ Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` wit
 
 The Postgres LISTEN thread starts only in server or worker processes. It does not start in `rails console`, `rails runner`, or Rake tasks (including `db:migrate`). Set `RECORDING_STUDIO_MCP_POSTGRES_BUS=1` to force it on in those processes, or `RECORDING_STUDIO_MCP_POSTGRES_BUS=0` to keep it off in a server. On process exit the bus stops the thread and releases its connection before ActiveRecord tears down the pool (skipped in forked children). Dropped LISTEN connections log and reconnect with bounded backoff until `stop!`.
 
-Tree hosts register recordable types. They get parameterized tools: `list`, `show`, `create`, `update`, `capability_action`, and `describe`. `delete` is included when a type on that named API enables destroy. `type` is an enum of the types registered on the OauthClient's named API (public vs operations). Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Unknown type or action errors name the allowed set.
+Tree hosts register recordable types. The advertised tools are the union of operations on that named API: `list` when a type enables `index`, `show` when a type enables `show`, `create` when a type enables `create`, `update` when a type enables `update`, `delete` when a type enables `destroy`, and `capability_action` when a type has capability actions. `describe` is always included when the API has types. `type` is an enum of the types registered on the OauthClient's named API (public vs operations). Call `describe` for operations, typed writable fields, required fields, allowed values, enabled capability action input contracts, and parent rules. Each type's `describe` output lists its allowed operations. Unknown type or action errors name the allowed set. Initialize instructions name only the tools that `tools/list` advertises.
 
 When `RecordingStudioApi.register_resource_handler` is set for a type and operation, MCP calls that handler the same way API 0.6.9 does. The handler owns lookup and access. Types without a handler still load through the grant's scoped recordings.
 
@@ -274,4 +274,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.14.4
+0.15.0

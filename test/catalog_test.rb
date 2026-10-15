@@ -44,11 +44,14 @@ class CatalogTest < Minitest::Test
       assert_includes public_catalog.type_schema.fetch(:enum), "Page"
       refute_includes public_catalog.type_schema.fetch(:enum), "SupportPage"
       assert_empty public_catalog.destroy_type_names
+      assert_equal %i[index show create update], public_catalog.registered_operations
+      assert_equal false, public_catalog.capability_actions?
 
       assert_includes ops_catalog.type_names, "SupportPage"
       refute_includes ops_catalog.type_names, "Page"
       assert_includes ops_catalog.type_schema.fetch(:enum), "SupportPage"
       assert_equal ["SupportPage"], ops_catalog.destroy_type_names
+      assert_includes ops_catalog.registered_operations, :destroy
     end
   end
 

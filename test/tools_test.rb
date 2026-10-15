@@ -12,7 +12,7 @@ class ToolsTest < Minitest::Test
       register_tree_type("Page")
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update capability_action describe], names
+      assert_equal %w[list show create update describe], names
     end
   end
 
@@ -58,7 +58,7 @@ class ToolsTest < Minitest::Test
 
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update capability_action describe] + %w[alpha zeta], names
+      assert_equal %w[list show create update describe] + %w[alpha zeta], names
     end
   end
 
@@ -83,7 +83,8 @@ class ToolsTest < Minitest::Test
     }
 
     with_isolated_api_configuration do
-      register_tree_type("Page")
+      register_ping_capability
+      register_tree_type("Page", capability_actions: %i[ping])
       expected.each do |name, title|
         tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
         assert_equal title, tool[:title], name
@@ -106,7 +107,8 @@ class ToolsTest < Minitest::Test
 
   def test_write_tools_are_marked_as_changing_data
     with_isolated_api_configuration do
-      register_tree_type("Page")
+      register_ping_capability
+      register_tree_type("Page", capability_actions: %i[ping])
       create = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
       update = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "update" }
       action = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "capability_action" }
@@ -126,6 +128,20 @@ class ToolsTest < Minitest::Test
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
       assert_includes action[:description], "destructively change data"
+    end
+  end
+
+  def test_read_only_types_advertise_list_show_describe
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      tools = RecordingStudioMcp::Tools.definitions
+      names = tools.map { |tool| tool[:name] }
+
+      assert_equal %w[list show describe], names
+      describe = tools.find { |tool| tool[:name] == "describe" }
+      assert_includes describe[:description], "Each type's describe output lists its allowed operations"
+      refute_includes describe[:description], "create"
+      refute_includes describe[:description], "capability_action"
     end
   end
 

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-15
+
+### Changed
+- Tree tools in `tools/list` follow the union of registered operations on that named API.
+  `list` needs `index`, `show` needs `show`, `create` needs `create`, `update` needs `update`,
+  `delete` needs `destroy`, and `capability_action` appears only when a type has capability actions.
+  `describe` stays whenever the API has recordable types. Initialize instructions mention only
+  those advertised tools. Tool descriptions say each type's `describe` output lists allowed operations.
+
+### Upgrade notes
+- Bump to `0.15.0`. No migration and no configuration change.
+- MCP clients on a named API that only registers `index`/`show` no longer see `create`, `update`,
+  or `capability_action` in `tools/list`. Calls to a missing tool still return an unknown-tool error.
+  Calls to an advertised tool for a type that does not enable that operation still return the
+  existing unsupported-operation error.
+
 ## [0.14.4] - 2026-10-14
 
 ### Changed

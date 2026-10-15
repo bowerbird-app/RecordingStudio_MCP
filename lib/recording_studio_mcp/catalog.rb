@@ -28,6 +28,17 @@ module RecordingStudioMcp
       }
     end
 
+    def registered_operations
+      @registered_operations ||= type_names.flat_map do |type|
+        registration = RecordingStudioApi.recordable_registration_for(type, api: api)
+        Array(registration&.operations).map { |operation| operation.to_sym }
+      end.uniq.freeze
+    end
+
+    def capability_actions?
+      type_names.any? { |type| enabled_capability_action_names(type).any? }
+    end
+
     def destroy_type_names
       type_names.select do |type|
         RecordingStudioApi.recordable_registration_for(type, api: api)&.supports_operation?(:destroy)
