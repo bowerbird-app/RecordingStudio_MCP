@@ -153,13 +153,20 @@ module RecordingStudioMcp
           period_aliases(name).each { |alias_name| add_period_alias(alias_name, name) }
         end
 
-        def add_period_alias(alias_name, canonical)
+        def add_period_alias(alias_name, catalog_name)
           @properties[alias_name.to_sym] = {
             type: "string",
             format: "date-time",
-            description: "Same as #{canonical}."
+            description: "Same as #{period_primary(catalog_name)}."
           }
           @passthrough << alias_name
+        end
+
+        def period_primary(name)
+          pair = RecordingStudioApi::Metrics::Period::NAMES.find do |_primary, names|
+            names.map(&:to_s).include?(name)
+          end
+          (pair&.first || name).to_s
         end
 
         def period_aliases(name)

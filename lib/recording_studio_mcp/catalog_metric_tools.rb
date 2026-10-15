@@ -73,8 +73,8 @@ module RecordingStudioMcp
     def tool_for(catalog, entry)
       identifier = read_key(entry, :identifier).to_s
       Tool.new(**tool_fields(catalog, entry, identifier))
-    rescue RecordingStudioApi::ConfigurationError => e
-      warn_skipped(identifier, e)
+    rescue StandardError
+      warn_skipped(identifier)
       nil
     end
 
@@ -101,10 +101,10 @@ module RecordingStudioMcp
       grant.public_send(name) if grant.respond_to?(name)
     end
 
-    def warn_skipped(name, error)
+    def warn_skipped(name)
       return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
 
-      Rails.logger.warn("[RecordingStudioMcp] skipped catalog metric #{name}: #{error.message}")
+      Rails.logger.warn("[RecordingStudioMcp] skipped catalog metric #{name}")
     end
     private_class_method :catalog_entries, :resource_allowed?, :tool_for, :tool_fields, :read_key, :grant_value,
                          :warn_skipped

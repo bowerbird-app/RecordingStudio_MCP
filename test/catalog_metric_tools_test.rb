@@ -21,10 +21,10 @@ class CatalogMetricToolsTest < Minitest::Test
       assert_equal false, total.dig(:inputSchema, :properties, :filters, :additionalProperties)
       assert_equal %w[closed open], total.dig(:inputSchema, :properties, :filters, :properties, :status, :enum).sort
       refute total.dig(:inputSchema, :properties).key?(:from)
-      assert_equal "Same as from.", series.dig(:inputSchema, :properties, :start, :description)
-      assert_equal "Same as from.", series.dig(:inputSchema, :properties, :start_at, :description)
-      assert_equal "Same as to.", series.dig(:inputSchema, :properties, :end, :description)
-      assert_equal "Same as to.", series.dig(:inputSchema, :properties, :end_at, :description)
+      assert_equal "Same as start.", series.dig(:inputSchema, :properties, :start, :description)
+      assert_equal "Same as start.", series.dig(:inputSchema, :properties, :start_at, :description)
+      assert_equal "Same as end.", series.dig(:inputSchema, :properties, :end, :description)
+      assert_equal "Same as end.", series.dig(:inputSchema, :properties, :end_at, :description)
       assert_equal %w[day week], series.dig(:inputSchema, :properties, :interval, :enum)
       assert_equal ["status"], series.dig(:inputSchema, :properties, :group_by, :enum)
       assert_equal false, series.dig(:inputSchema, :additionalProperties)
@@ -51,6 +51,50 @@ class CatalogMetricToolsTest < Minitest::Test
       assert_equal "Unknown argument nope", unknown.dig(:content, 0, :text)
       assert_equal true, window[:isError]
       assert_equal "start and from must match when both are provided", window.dig(:content, 0, :text)
+    end
+  end
+
+  def test_listed_metric_authorization_error_is_a_tool_error
+    authorize = lambda do |context|
+      params = context.params
+      metric_name = params[:name] || params["name"]
+      raise RecordingStudioApi::AuthorizationError, "Not authorized to run this metric" if metric_name.present?
+
+      true
+    end
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        register_widgets(authorize)
+        grant = catalog_grant(allowed: true)
+        assert_includes RecordingStudioMcp::ToolSurface.for(access_grant: grant).tool_names, "widgets-total"
+
+        result = RecordingStudioMcp::Protocol.handle(
+          {
+            "jsonrpc" => "2.0",
+            "id" => 8,
+            "method" => "tools/call",
+            "params" => { "name" => "widgets-total", "arguments" => {} }
+          },
+          access_grant: grant
+        )
+
+        assert_nil result.body[:error]
+        assert_equal true, result.body.dig(:result, :isError)
+        assert_equal "Not authorized to run this metric", result.body.dig(:result, :content, 0, :text)
+      end
+    end
+  end
+
+  def test_string_filters_are_a_tool_error
+    with_widget_metrics do
+      result = RecordingStudioMcp::Dispatcher.call(
+        tool_name: "widgets-total",
+        arguments: { "filters" => "open" },
+        access_grant: catalog_grant(allowed: true)
+      )
+
+      assert_equal true, result[:isError]
+      assert_equal "filters must be an object", result.dig(:content, 0, :text)
     end
   end
 
@@ -144,6 +188,7 @@ class CatalogMetricToolsTest < Minitest::Test
         refute_includes names, "widgets-#{leaf}"
       end
     end
+    assert_includes warnings.string, "WARN --"
     assert_includes warnings.string, "widgets.#{leaf}"
   ensure
     Rails.logger = previous if previous
@@ -170,6 +215,7 @@ class CatalogMetricToolsTest < Minitest::Test
         assert_includes surface.tool_names, "widgets-created_over_time"
       end
     end
+    assert_includes warnings.string, "WARN --"
     assert_includes warnings.string, "widgets-total"
   ensure
     Rails.logger = previous if previous

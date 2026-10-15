@@ -6,28 +6,37 @@ module RecordingStudioMcp
 
     def raw_entries(catalog, access_grant)
       if access_grant && defined?(RecordingStudioMetrics::Api::DiscoveryHandler)
-        discover(access_grant)
+        discover(catalog, access_grant)
       else
         exposed_definitions(catalog)
       end
     end
 
-    def discover(access_grant)
-      result = RecordingStudioMetrics::Api::DiscoveryHandler.call(discovery_context(access_grant))
+    def discover(catalog, access_grant)
+      resources_for(catalog).flat_map { |resource| discover_resource(access_grant, resource) }
+    end
+
+    def discover_resource(access_grant, resource)
+      result = RecordingStudioMetrics::Api::DiscoveryHandler.call(discovery_context(access_grant, resource))
       Array(result[:metrics] || result["metrics"])
-    rescue RecordingStudioApi::AuthorizationError => e
-      warn_skipped("(catalog)", e)
+    rescue StandardError
+      warn_skipped(resource)
       []
     end
 
-    def discovery_context(access_grant)
+    def resources_for(catalog)
+      names = exposed_definitions(catalog).filter_map { |entry| read_key(entry, :resource)&.to_s.presence }
+      names.uniq.select { |resource| resource_allowed?(resource) }
+    end
+
+    def discovery_context(access_grant, resource)
       RecordingStudioApi::RegisteredEndpointContext.new(
         api_client: access_grant.api_client,
         credential: grant_value(access_grant, :credential),
         access_recording: grant_value(access_grant, :access_recording),
         access_grant: access_grant,
         root_recording: grant_value(access_grant, :root_recording),
-        params: {}
+        params: { filters: { resource: resource } }
       )
     end
 
@@ -37,6 +46,7 @@ module RecordingStudioMcp
       RecordingStudioMetrics.definitions.select { |definition| definition.exposed_to_api?(catalog.api) }
                             .map(&:catalog_metadata)
     end
-    private_class_method :raw_entries, :discover, :discovery_context, :exposed_definitions
+    private_class_method :raw_entries, :discover, :discover_resource, :resources_for, :discovery_context,
+                         :exposed_definitions
   end
 end

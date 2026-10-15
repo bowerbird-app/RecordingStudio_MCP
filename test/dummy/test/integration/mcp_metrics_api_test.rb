@@ -131,6 +131,48 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     ].each { |identifier| assert_includes identifiers, identifier }
   end
 
+  test "a raising metric authorize hook stays off tools/list and keeps sibling metrics" do
+    secret = "secret-token sk-probe"
+    warnings = StringIO.new
+    previous = Rails.logger
+    Rails.logger = Logger.new(warnings)
+    registry = RecordingStudioMetrics.registry
+    saved_metrics = registry.instance_variable_get(:@metrics).dup
+    saved_resources = registry.instance_variable_get(:@resources).dup
+    RecordingStudioMetrics.register(
+      :probes,
+      model: RecordingStudioMcp::UsageDailyMetric,
+      blast_radius: :site,
+      api_authorize: ->(_context) { raise secret }
+    ) do
+      count :total, title: "Probes", expose: { api: [:operations] }
+    end
+
+    post named_mcp_path("operations"),
+         params: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }.to_json,
+         headers: {
+           "Content-Type" => "application/json",
+           "Accept" => "application/json",
+           "Authorization" => "Bearer #{@staff_operations_token}"
+         }
+
+    assert_response :success
+    refute_includes response.body, "-32603"
+    refute_includes response.body, secret
+    names = response.parsed_body.dig("result", "tools").map { |tool| tool.fetch("name") }
+    assert_includes names, "mcp_calls-rate_limited"
+    refute_includes names, "probes-total"
+    assert_includes warnings.string, "WARN --"
+    assert_includes warnings.string, "skipped catalog metric probes"
+    refute_includes warnings.string, secret
+  ensure
+    Rails.logger = previous if previous
+    if defined?(registry) && registry
+      registry.instance_variable_set(:@metrics, saved_metrics)
+      registry.instance_variable_set(:@resources, saved_resources)
+    end
+  end
+
   test "operations MCP lists one tool per mcp_calls metric and keeps the metrics endpoints" do
     tools = mcp(@staff_operations_token, "tools/list").dig("result", "tools").index_by { |tool| tool.fetch("name") }
 
@@ -146,8 +188,8 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
     over_time = tools.fetch("mcp_calls-over_time").fetch("inputSchema")
     assert_equal false, over_time.fetch("additionalProperties")
-    assert_equal "Same as from.", over_time.dig("properties", "start", "description")
-    assert_equal "Same as to.", over_time.dig("properties", "end", "description")
+    assert_equal "Same as start.", over_time.dig("properties", "start", "description")
+    assert_equal "Same as end.", over_time.dig("properties", "end", "description")
     assert_equal %w[day week month year], over_time.dig("properties", "interval", "enum")
     refute over_time.fetch("properties").key?("group_by")
 

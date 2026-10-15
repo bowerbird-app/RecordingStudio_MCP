@@ -104,6 +104,25 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     assert_includes denied.dig("content", 0, "text"), "Unknown tool folders-total"
   end
 
+  test "a delegated token with a deleted access row is invalid" do
+    token = issue_token
+    grant = access_grant_for(token)
+    RecordingStudio::Access.where(id: grant.access_recording.recordable_id).delete_all
+    ActiveRecord::Base.connection.clear_query_cache
+
+    post "/recording_studio_mcp",
+         params: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }.to_json,
+         headers: {
+           "Content-Type" => "application/json",
+           "Accept" => "application/json",
+           "Authorization" => "Bearer #{token}"
+         }
+
+    assert_response :unauthorized
+    assert_includes response.headers["WWW-Authenticate"], 'error="invalid_token"'
+    refute_includes response.body, "describe"
+  end
+
   test "a deleted access row does not see recordable metric tools" do
     token = client_credentials_token
     grant = access_grant_for(token)

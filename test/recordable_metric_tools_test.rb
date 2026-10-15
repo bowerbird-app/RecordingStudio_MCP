@@ -89,7 +89,7 @@ class RecordableMetricToolsTest < Minitest::Test
     end
   end
 
-  def test_unknown_filter_attribute_is_passed_through_and_non_string_values_are_rejected
+  def test_filter_keeps_a_non_string_name_and_rejects_a_non_string_q
     with_metric_types do |surface|
       metric = surface.metric_tool("folders-total")
 
@@ -259,6 +259,7 @@ class RecordableMetricToolsTest < Minitest::Test
         assert_equal solo, tool(surface, "folders-total").fetch(:inputSchema)
       end
     end
+    assert_includes warnings.string, "WARN --"
     assert_includes warnings.string, "folders.absent"
     assert_includes warnings.string, "is not registered with RecordingStudioMetrics"
   ensure
@@ -366,16 +367,16 @@ class RecordableMetricToolsTest < Minitest::Test
         description: "Inclusive period start, as an ISO-8601 date-time. start must match from when both are sent. " \
                      "start_at is the fallback."
       },
-      start: { type: "string", format: "date-time", description: "Same as from." },
-      start_at: { type: "string", format: "date-time", description: "Same as from." },
+      start: { type: "string", format: "date-time", description: "Same as start." },
+      start_at: { type: "string", format: "date-time", description: "Same as start." },
       to: {
         type: "string",
         format: "date-time",
         description: "Exclusive period end, as an ISO-8601 date-time. end must match to when both are sent. " \
                      "end_at is the fallback."
       },
-      end: { type: "string", format: "date-time", description: "Same as to." },
-      end_at: { type: "string", format: "date-time", description: "Same as to." },
+      end: { type: "string", format: "date-time", description: "Same as end." },
+      end_at: { type: "string", format: "date-time", description: "Same as end." },
       interval: { type: "string", description: "Time-series bucket size.", enum: %w[day week] },
       group_by: {
         type: "string",

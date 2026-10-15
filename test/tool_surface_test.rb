@@ -182,6 +182,7 @@ class ToolSurfaceTest < Minitest::Test
         assert_includes surface.tool_names, "list"
       end
     end
+    assert_includes warnings.string, "WARN --"
     assert_includes warnings.string, "folders-total"
     assert_includes warnings.string, "endpoint tool"
   ensure
