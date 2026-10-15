@@ -4,6 +4,17 @@ module RecordingStudioMcp
   class ToolSurface
     private
 
+    def advertised_endpoints(catalog)
+      Array(catalog.registered_endpoints).sort_by { |endpoint| endpoint.name.to_s }.select do |endpoint|
+        advertise_endpoint?(endpoint)
+      end
+    end
+
+    def advertise_endpoint?(endpoint)
+      name = endpoint.name.to_s
+      name.match?(TOOL_NAME) && Tools::TREE_NAMES.exclude?(name)
+    end
+
     def insert_tree_tools
       return unless tree_enabled?
 
@@ -29,12 +40,6 @@ module RecordingStudioMcp
     end
 
     def insert_endpoint_tools
-      reserved = @endpoints.map { |endpoint| endpoint.name.to_s }.select { |name| Tools::TREE_NAMES.include?(name) }
-      if reserved.any?
-        raise RecordingStudioApi::ConfigurationError,
-              "Registered endpoint names collide with tree tools: #{reserved.sort.join(', ')}"
-      end
-
       @endpoints.each do |endpoint|
         insert(endpoint.name.to_s, endpoint_entry(endpoint))
       end

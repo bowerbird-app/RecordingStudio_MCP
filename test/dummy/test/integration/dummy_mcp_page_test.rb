@@ -59,7 +59,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "MCP answered"
     assert_includes response.body, "Sample POST"
-    assert_includes response.body, "list, show, create, update, capability_action, describe"
+    assert_includes response.body, "list, show, capability_action, describe, demo_progress, ping"
     assert_includes response.body, "Studio Workspace"
     assert_match(/rsoauth_at_[A-Za-z0-9_-]+/, response.body)
     assert_select "form[action=?]", docs_mcp_test_token_path, count: 0
@@ -88,7 +88,7 @@ class DummyMcpPageTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "All checks passed"
     assert_includes response.body, "Grant resolved"
     assert_includes response.body, "Sample POST worked. Grant resolved."
-    assert_includes response.body, "list, show, create, update, capability_action, describe"
+    assert_includes response.body, "list, show, capability_action, describe, demo_progress, ping"
     assert_includes response.body, "Sign out"
     assert_includes response.body, "flat-pack-sidebar-layout"
     refute_includes response.body, ">Sample POST<"

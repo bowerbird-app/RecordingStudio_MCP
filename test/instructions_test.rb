@@ -12,6 +12,7 @@ class InstructionsTest < Minitest::Test
 
       assert_includes text, "both this MCP endpoint and the Recording Studio API"
       assert_includes text, "Call describe before create"
+      refute_includes text, "capability_action"
       assert_includes text, "not under attributes"
       assert_includes text, "pagination_token"
       assert_includes text, "call tools/list again"
@@ -37,6 +38,29 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "unless tools/list advertises them"
       assert_includes text, "call tools/list again"
       refute_includes text, "Call describe before create"
+    end
+  end
+
+  def test_read_only_tree_omits_create_guidance
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      text = RecordingStudioMcp::Instructions.text
+
+      assert_includes text, "Call describe for a type's allowed operations"
+      assert_includes text, "pagination_token"
+      refute_includes text, "before create"
+      refute_includes text, "capability_action"
+      refute_includes text, "not under attributes"
+    end
+  end
+
+  def test_full_tree_mentions_create_and_capability_action
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type("Page", capability_actions: %i[ping])
+      text = RecordingStudioMcp::Instructions.text
+
+      assert_includes text, "Call describe before create or capability_action"
     end
   end
 
@@ -134,8 +158,8 @@ class InstructionsTest < Minitest::Test
       register_tree_type("Page")
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, RecordingStudioMcp::Instructions::TREE_BLURB
       assert_includes text, "Call describe before create"
+      refute_includes text, "capability_action"
       refute_includes text, "Use the endpoint tools"
     end
   end

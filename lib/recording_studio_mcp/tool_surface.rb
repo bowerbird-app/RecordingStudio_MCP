@@ -49,10 +49,12 @@ module RecordingStudioMcp
       new(catalog: catalog, access_grant: access_grant)
     end
 
+    TOOL_NAME = /\A[A-Za-z][A-Za-z0-9_.-]*\z/
+
     def initialize(catalog:, access_grant: nil)
       @catalog = catalog
       @access_grant = access_grant
-      @endpoints = Array(catalog.registered_endpoints).sort_by { |endpoint| endpoint.name.to_s }
+      @endpoints = advertised_endpoints(catalog)
       @by_name = {}
       insert_tree_tools
       insert_metric_tools

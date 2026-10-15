@@ -14,6 +14,16 @@ Pin `recording_studio_api` to `>= 0.11.0, < 0.12` and `recording_studio_oauth` t
 
 List filters are a `filter` object of attribute names. A plain count takes those filters only. A timeseries also takes `from`, `to`, `interval`, and `group_by`. `start` and `start_at` alias `from` when `from` is a parameter. `end` and `end_at` alias `to` when `to` is a parameter. An unknown filter key is rejected with the API error. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
 
+## 0.15.0
+
+No migration. Tree `tools/list` is the union of operations registered on that named API, plus `describe`, then filtered by the access grant role. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. A view grant does not see `create`, `update`, or `delete`. A grant with a missing access row sees `describe` only. `capability_action` appears when a type has an action that role can run. `capability_action` stays `readOnlyHint: false` and `destructiveHint: true` even for a view-only `ping`. Calling an unadvertised tool is an unknown-tool error. Calling an advertised tool for a type that does not enable that operation is still an unsupported-operation error.
+
+`operations: []` is normalized by the API to all five operations, so MCP advertises `delete`. On the public API, `operations: nil` does the same. On a named API, `operations: nil` follows `default_access`: read-only stores `index` and `show` (no `delete`), and read-write stores all five. `operations: []` on a read-only named API still expands to all five.
+
+Endpoint names that are not one MCP tool token, and names that match a tree tool, are left off `tools/list`. `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. Only a removed built-in `ping` tool is gone. The JSON-RPC `ping` method is unchanged.
+
+`tools/call` with non-object `params` or `arguments` returns JSON-RPC `-32602`. A non-object `filter`, a nested filter value, or a non-numeric `limit` returns a tool error. A nested filter is a filter error, not an invalid pagination token.
+
 ## 0.11.0
 
 Pin `recording_studio_api` to git tag `v0.6.11` (`~> 0.6`, `>= 0.6.11`). MCP UI is optional and not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3`. Register `ui:` on the API operation and the widget in MCP UI. Nothing else to wire. Widget buttons call the real API tool name. Widget URIs include `?v=` of the packaged HTML so hosts that cache `ui://` by URI get updates.

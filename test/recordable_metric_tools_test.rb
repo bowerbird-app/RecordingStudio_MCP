@@ -8,7 +8,7 @@ class RecordableMetricToolsTest < Minitest::Test
   def test_two_types_advertise_one_tool_per_metric
     with_metric_types do |surface|
       assert_equal(
-        %w[list show create update capability_action describe folders-created_over_time folders-total pages-total],
+        %w[list show create update describe folders-created_over_time folders-total pages-total],
         surface.tool_names
       )
 
@@ -206,7 +206,7 @@ class RecordableMetricToolsTest < Minitest::Test
         )
 
         assert_equal true, result[:isError]
-        assert_equal "Tool arguments must be an object", result.dig(:content, 0, :text)
+        assert_equal "arguments must be an object", result.dig(:content, 0, :text)
       end
     end
   end
