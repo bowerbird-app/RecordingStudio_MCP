@@ -154,7 +154,10 @@ class ToolSurfaceTest < Minitest::Test
     end
   end
 
-  def test_metric_tool_name_collision_raises
+  def test_metric_tool_name_collision_is_skipped
+    warnings = StringIO.new
+    previous = Rails.logger
+    Rails.logger = Logger.new(warnings)
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         RecordingStudioApi.register_recordable_type_api(
@@ -170,14 +173,20 @@ class ToolSurfaceTest < Minitest::Test
           path: "folders-total",
           handler: ->(_context) { { ok: true } }
         )
+        surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-        error = assert_raises(RecordingStudioApi::ConfigurationError) do
-          RecordingStudioMcp::ToolSurface.for(api: "public")
-        end
-        assert_includes error.message, "folders-total"
-        assert_includes error.message, "collide"
+        assert_includes surface.tool_names, "folders-total"
+        assert_equal 1, surface.tool_names.count("folders-total")
+        assert_nil surface.metric_tool("folders-total")
+        assert_equal :get, surface.endpoint_for("folders-total").http_verb
+        assert_includes surface.tool_names, "list"
       end
     end
+    assert_includes warnings.string, "WARN --"
+    assert_includes warnings.string, "folders-total"
+    assert_includes warnings.string, "endpoint tool"
+  ensure
+    Rails.logger = previous if previous
   end
 
   def test_bad_endpoint_names_are_skipped

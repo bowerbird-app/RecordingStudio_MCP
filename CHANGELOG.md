@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-15
+
+### Added
+- One read-only MCP tool per metric exposed on the named API. The call runs `RecordingStudioMetrics::Api::ExecuteHandler`. Listing uses `RecordingStudioMetrics::Api::DiscoveryHandler` for the current grant.
+- `config.catalog_metric_resources` limits those tools to named resources. Unset means every exposed metric. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
+
+### Changed
+- Runtime dependency `recording_studio_metrics` is `>= 0.3.0, < 0.4`.
+
+### Fixed
+- A metric `api_authorize` that raises is skipped. `tools/list` still returns the other metrics, and the warning does not include the exception text.
+- Period alias descriptions say `Same as start.` and `Same as end.`, matching the HTTP parameters.
+- A metric tool whose name collides with an endpoint or another tool is skipped and logged. `tools/list` still succeeds. An allowlisted metric that is not registered is skipped the same way.
+
+### Upgrade notes
+- Bump to `0.17.0`. No migration.
+- Pin `recording_studio_metrics` to `>= 0.3.0, < 0.4`.
+- Set `config.catalog_metric_resources` when the named API should not advertise every exposed metric.
+
 ## [0.16.0] - 2026-10-15
 
 ### Added
@@ -38,7 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tree tools in `tools/list` follow the union of registered operations on that named API, then the access grant role.
   `list` needs `index` (`:view`), `show` needs `show` (`:view`), `create` needs `create` (`:edit`),
   `update` needs `update` (`:edit`), `delete` needs `destroy` (`:edit`), and `capability_action` appears
-  when a type has a capability action that role can run. A missing access row sees `describe` only.
+  when a type has a capability action that role can run. A delegated token returns 401 `invalid_token`
+  when its Access row is deleted or its access recording is trashed. A client-credentials token whose
+  Access row is deleted, while the access recording is still there, still authenticates. Its role is nil,
+  so tree reads and writes are hidden and `describe` remains. A voided authorization returns 401 `invalid_token`.
   `describe` stays whenever the API has recordable types. Initialize instructions mention only
   those advertised tools. Each tool's `type` enum is the types that allow that operation.
   `tools/call` returns `-32602` for non-object params or arguments. Non-object filters, nested filter
@@ -55,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `capability_action` in `tools/list`. Calls to a missing tool still return an unknown-tool error.
   Calls to an advertised tool for a type that does not enable that operation still return the
   existing unsupported-operation error.
-- A view grant no longer sees edit tools. A grant with no access row sees `describe` only.
+- A view grant no longer sees edit tools. A delegated token returns 401 `invalid_token` when its Access row is deleted or its access recording is trashed. A client-credentials token whose Access row is deleted, while the access recording is still there, still authenticates. Its role is nil, so tree reads and writes are hidden and `describe` remains. A voided authorization returns 401 `invalid_token`.
   `operations: []` still advertises `delete` because the API expands a blank list to all five operations.
   On the public API, `operations: nil` does the same. On a named API, `operations: nil` follows `default_access`.
 - Endpoint names that are not a single tool token, or that match a tree tool, are omitted. A registered
@@ -440,7 +462,14 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.14.4...v0.15.0
+[0.14.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.14.3...v0.14.4
+[0.14.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.14.2...v0.14.3
+[0.14.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.14.0...v0.14.2
+[0.14.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.12.0...v0.12.1

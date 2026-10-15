@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_9_0
-    assert_equal "0.16.0", ::RecordingStudioMcp::VERSION
+    assert_equal "0.17.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -17,7 +17,7 @@ class RecordingStudioMcpTest < Minitest::Test
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.11.0", "< 0.12"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", "~> 0.2", ">= 0.2.2"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 0.4"'
     refute_includes gemspec, "recording_studio_mcp_ui"
     assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", "~> 0.10"'
     refute_includes gemspec, "recording_studio_users"
@@ -103,7 +103,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "0.16.0"
+    assert_includes readme, "0.17.0"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."

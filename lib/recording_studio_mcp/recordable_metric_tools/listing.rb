@@ -13,8 +13,38 @@ module RecordingStudioMcp
       registration = RecordingStudioApi.recordable_registration_for(type_name, api: catalog.api)
       return [] unless registration&.supports_operation?(:index)
 
-      RecordingStudioApi.metrics_for(type_name, api: catalog.api).filter_map do |entry|
+      metric_entries(registration, type_name, catalog.api).filter_map do |entry|
         metric_tool_for(catalog, type_name, entry)
+      end
+    end
+
+    def metric_entries(registration, type_name, api)
+      RecordingStudioApi.metrics_for(type_name, api: api)
+    rescue RecordingStudioApi::ConfigurationError => e
+      raise unless unregistered_metric?(e)
+
+      present_entries(registration)
+    end
+
+    def unregistered_metric?(error)
+      error.message.include?("is not registered with RecordingStudioMetrics")
+    end
+
+    def unregistered_error(metric_name)
+      RecordingStudioApi::ConfigurationError.new(
+        "Metric #{metric_name} is not registered with RecordingStudioMetrics"
+      )
+    end
+
+    def present_entries(registration)
+      registration.metric_names.filter_map do |metric_name|
+        definition = RecordingStudioMetrics.find(metric_name)
+        if definition.nil?
+          warn_skipped_metric(metric_name, unregistered_error(metric_name))
+          next
+        end
+
+        RegisteredEntry.build(registration, definition)
       end
     end
 
@@ -42,6 +72,7 @@ module RecordingStudioMcp
 
       Rails.logger.warn("[RecordingStudioMcp] skipped recordable metric #{name}: #{error.message}")
     end
-    private_class_method :tools_for, :metric_tool_for, :tool_fields, :warn_skipped_metric
+    private_class_method :tools_for, :metric_entries, :unregistered_metric?, :unregistered_error, :present_entries,
+                         :metric_tool_for, :tool_fields, :warn_skipped_metric
   end
 end

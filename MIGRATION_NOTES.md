@@ -1,6 +1,12 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`. Oauth `v0.12.2` or later.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`. Metrics `>= 0.3.0, < 0.4`. Oauth `v0.12.2` or later.
+
+## 0.17.0
+
+Pin `recording_studio_metrics` to `>= 0.3.0, < 0.4`. Metrics exposed on the named API are one read-only MCP tool each, named by replacing the identifier's dot with a hyphen. A timeseries takes `from` and `to`. `start` and `start_at` are described as the same as `start`. `end` and `end_at` are described as the same as `end`. Pass metric filters as a `filters` object. `config.catalog_metric_resources` defaults to every exposed resource. Set a resource list to narrow that. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
+
+A metric `api_authorize` denies is left off `tools/list`. A call to that name returns `Unknown tool ... Allowed tools: ...`. That is intended. A delegated token returns 401 `invalid_token` when its Access row is deleted or its access recording is trashed. A client-credentials token whose Access row is deleted, while the access recording is still there, still authenticates. The role is nil, so tree reads, writes, and metric tools stay off `tools/list` and `describe` remains. A voided authorization returns 401 `invalid_token`.
 
 ## 0.16.0
 
@@ -16,7 +22,7 @@ List filters are a `filter` object of attribute names. A plain count takes those
 
 ## 0.15.0
 
-No migration. Tree `tools/list` is the union of operations registered on that named API, plus `describe`, then filtered by the access grant role. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. A view grant does not see `create`, `update`, or `delete`. A grant with a missing access row sees `describe` only. `capability_action` appears when a type has an action that role can run. `capability_action` stays `readOnlyHint: false` and `destructiveHint: true` even for a view-only `ping`. Calling an unadvertised tool is an unknown-tool error. Calling an advertised tool for a type that does not enable that operation is still an unsupported-operation error.
+No migration. Tree `tools/list` is the union of operations registered on that named API, plus `describe`, then filtered by the access grant role. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. A view grant does not see `create`, `update`, or `delete`. A delegated token returns 401 `invalid_token` when its Access row is deleted or its access recording is trashed. A client-credentials token whose Access row is deleted, while the access recording is still there, still authenticates. Its role is nil, so tree reads and writes are hidden and `describe` remains. A voided authorization returns 401 `invalid_token`. `capability_action` appears when a type has an action that role can run. `capability_action` stays `readOnlyHint: false` and `destructiveHint: true` even for a view-only `ping`. Calling an unadvertised tool is an unknown-tool error. Calling an advertised tool for a type that does not enable that operation is still an unsupported-operation error.
 
 `operations: []` is normalized by the API to all five operations, so MCP advertises `delete`. On the public API, `operations: nil` does the same. On a named API, `operations: nil` follows `default_access`: read-only stores `index` and `show` (no `delete`), and read-write stores all five. `operations: []` on a read-only named API still expands to all five.
 

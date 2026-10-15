@@ -37,7 +37,7 @@ module RecordingStudioMcp
       return error_result(unknown_tool_message(name)) unless surface.known?(name)
 
       if (metric = surface.metric_tool(name))
-        render_handler_result(RecordableMetricTools.execute(metric, arguments, access_grant))
+        dispatch_metric(metric, arguments)
       else
         args = stringify_keys(arguments)
         surface.tree_tool?(name) ? dispatch_tree(name, args) : dispatch_endpoint(surface.endpoint_for(name), args)
@@ -53,6 +53,16 @@ module RecordingStudioMcp
     private
 
     attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface
+
+    def dispatch_metric(metric, arguments)
+      if metric.is_a?(CatalogMetricTools::Tool)
+        success_result(
+          CatalogMetricTools.execute(metric, arguments, access_grant, progress_reporter: progress_reporter)
+        )
+      else
+        render_handler_result(RecordableMetricTools.execute(metric, arguments, access_grant))
+      end
+    end
 
     def dispatch_tree(name, args)
       case name
