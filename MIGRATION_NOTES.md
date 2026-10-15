@@ -4,11 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `~> 0.6` and `>= 0.
 
 ## 0.15.0
 
-No migration. Tree MCP tools follow registered operations on the named API. A read-only type (`index`/`show`) advertises `list`, `show`, and `describe` only. Clients that called `create` on that surface already got an unsupported-operation error; they now get unknown-tool instead unless another type on the same API enables create.
-
-## 0.15.0
-
-`tools/list` for a tree grant is the union of operations registered on that named API, plus `describe`. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. `capability_action` appears only when a type has enabled capability actions. The dispatcher still rejects unknown tools and unsupported operations. No configuration change.
+No migration. Tree `tools/list` is the union of operations registered on that named API, plus `describe`. A named API that only registers `index` and `show` advertises `list`, `show`, and `describe`. `capability_action` appears only when a type has enabled capability actions. Calling an unadvertised tool is an unknown-tool error. Calling an advertised tool for a type that does not enable that operation is still an unsupported-operation error.
 
 ## 0.11.0
 

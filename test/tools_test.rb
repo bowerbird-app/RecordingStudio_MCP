@@ -13,6 +13,34 @@ class ToolsTest < Minitest::Test
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
       assert_equal %w[list show create update describe], names
+      describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
+      assert_includes describe[:description], "Each type's describe output lists its allowed operations"
+      assert_includes describe[:description], "Use this before create."
+      refute_includes describe[:description], "capability_action"
+    end
+  end
+
+  def test_mixed_type_operations_union_advertises_create
+    with_isolated_api_configuration do
+      register_tree_type("SupportPage", operations: %i[index show])
+      register_tree_type("Page", operations: %i[index show create])
+      names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
+
+      assert_equal %w[list show create describe], names
+    end
+  end
+
+  def test_full_surface_includes_delete_and_capability_action
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type(
+        "Workspace",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[ping]
+      )
+      names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
+
+      assert_equal %w[list show create update delete capability_action describe], names
     end
   end
 
@@ -140,8 +168,8 @@ class ToolsTest < Minitest::Test
       assert_equal %w[list show describe], names
       describe = tools.find { |tool| tool[:name] == "describe" }
       assert_includes describe[:description], "Each type's describe output lists its allowed operations"
-      refute_includes describe[:description], "create"
-      refute_includes describe[:description], "capability_action"
+      refute_includes describe[:description], "Use this before"
+      refute_includes describe[:description], "before create"
     end
   end
 
