@@ -13,6 +13,10 @@ class DispatcherTest < Minitest::Test
     def supports_operation?(_name)
       enabled
     end
+
+    def metric_names
+      []
+    end
   end
   FakeOperation = Struct.new(:handler)
   FakeAction = Struct.new(:name, :handler, :input_contract, :serializer, keyword_init: true)
@@ -58,6 +62,10 @@ class DispatcherTest < Minitest::Test
 
     def type_names
       %w[Folder Page Workspace]
+    end
+
+    def type_schema
+      { type: "string", enum: type_names }
     end
 
     def destroy_type_names

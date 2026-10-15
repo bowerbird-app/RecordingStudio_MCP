@@ -12,6 +12,9 @@ module RecordingStudioMcp
       not under attributes. For the next list page, pass meta.next_pagination_token as pagination_token.
     TEXT
 
+    METRIC_BLURB = "Recordable metric tools are read-only. Pass from, to, interval, group_by, and q as arguments, " \
+                   "and pass list filters as a filter object of attribute names."
+
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
       the available endpoint tools. An endpoint-only grant has no tree or recordable tools
@@ -35,16 +38,20 @@ module RecordingStudioMcp
     module_function
 
     def text(access_grant: nil)
-      surface = ToolSurface.for(access_grant: access_grant)
-      parts = [AUTH_BLURB]
-      parts << TREE_BLURB if surface.tree_enabled?
-      parts << ENDPOINT_BLURB if surface.endpoints_enabled?
-      parts << REFRESH_BLURB
-      parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
-      parts << SKILLS_BLURB
-      suffix = suffix_part(access_grant: access_grant)
-      parts << suffix if suffix
-      parts.join(" ")
+      parts_for(ToolSurface.for(access_grant: access_grant), access_grant: access_grant).join(" ")
+    end
+
+    def parts_for(surface, access_grant:)
+      [
+        AUTH_BLURB,
+        (TREE_BLURB if surface.tree_enabled?),
+        (METRIC_BLURB if surface.metric_tools?),
+        (ENDPOINT_BLURB if surface.endpoints_enabled?),
+        REFRESH_BLURB,
+        (WATCH_BLURB if RecordingStudioMcp.events_registered?),
+        SKILLS_BLURB,
+        suffix_part(access_grant: access_grant)
+      ].compact
     end
 
     def suffix_part(access_grant:)
@@ -57,6 +64,6 @@ module RecordingStudioMcp
       text = raw.strip
       text.empty? ? nil : text
     end
-    private_class_method :suffix_part
+    private_class_method :parts_for, :suffix_part
   end
 end

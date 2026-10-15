@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-15
+
+### Added
+- One read-only MCP tool per recordable metric allowlisted with `metrics:` on `register_recordable_type_api`. The call runs `RecordingStudioApi::Services::ResourceMetrics::Show`.
+- Tool names replace the metric identifier's single dot with a hyphen. The result must match `[a-z][a-z0-9_]*-[a-z][a-z0-9_]*` and be at most 64 characters, or building the tool surface raises `RecordingStudioApi::ConfigurationError`.
+
+| Metric identifier | MCP tool |
+| --- | --- |
+| `folders.total` | `folders-total` |
+| `folders.created_over_time` | `folders-created_over_time` |
+| `metric_samples.total` | `metric_samples-total` |
+
+- List filters are a `filter` object of attribute names. `from`, `to`, `interval`, `group_by`, and `q` stay top-level arguments. When any of these tools is advertised, initialize adds one sentence about that `filter` object.
+
+### Changed
+- Runtime dependency `recording_studio_api` is `>= 0.11.0, < 0.12`.
+- `Gemfile` and `test/dummy/Gemfile` pin API branch `cursor/recordable-metrics-hook-0fe9` until `bowerbird-app/RecordingStudio_api#49` merges. After that merge, repin both Gemfiles to the released API tag.
+
+### Upgrade notes
+- Bump to `0.15.0`. No migration.
+- Pin `recording_studio_api` to `>= 0.11.0, < 0.12`.
+- After `bowerbird-app/RecordingStudio_api#49` merges, repin both `Gemfile` and `test/dummy/Gemfile` off the API branch and onto the released API tag.
+- Oauth `v0.12.1` still requires `recording_studio_api < 0.11`. This gem does not vendor Oauth.
+- Hosts opt in with `metrics:` on the recordable registration. Site-usage `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
+
 ## [0.14.4] - 2026-10-14
 
 ### Changed

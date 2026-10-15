@@ -52,6 +52,20 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_describe_does_not_list_metrics
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        register_folder_and_page_metrics
+        described = RecordingStudioMcp::Catalog.new(api: :public).describe(RecordableMetricToolHelpers::FOLDER)
+
+        assert_equal %w[type operations writable_fields capability_actions], described.keys - ["parent"]
+        refute described.key?("metrics")
+        assert_equal RecordableMetricToolHelpers::FOLDER, described.fetch("type")
+        refute_includes described.fetch("operations"), "metrics"
+      end
+    end
+  end
+
   def test_unknown_type_message_names_the_allowed_set
     catalog = RecordingStudioMcp::Catalog.new(api: :public)
     names = catalog.type_names

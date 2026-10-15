@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_9_0
-    assert_equal "0.14.4", ::RecordingStudioMcp::VERSION
+    assert_equal "0.15.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -16,7 +16,7 @@ class RecordingStudioMcpTest < Minitest::Test
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.6.11", "< 0.11"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.11.0", "< 0.12"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", "~> 0.2", ">= 0.2.2"'
     refute_includes gemspec, "recording_studio_mcp_ui"
     assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", "~> 0.10"'
@@ -64,11 +64,14 @@ class RecordingStudioMcpTest < Minitest::Test
 
   def test_dummy_gemfile_pins_live_github_tags
     gemfile = File.read(File.expand_path("dummy/Gemfile", __dir__))
+    root_gemfile = File.read(File.expand_path("../Gemfile", __dir__))
 
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.6.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.18.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.3.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.10.0"'
+    api_pin = 'github: "bowerbird-app/RecordingStudio_api", branch: "cursor/recordable-metrics-hook-0fe9"'
+    assert_includes gemfile, api_pin
+    assert_includes root_gemfile, api_pin
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.3.0"'
     refute_includes gemfile, "recording_studio_mcp_ui"
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.12.1"'
@@ -98,7 +101,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "0.14.4"
+    assert_includes readme, "0.15.0"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."

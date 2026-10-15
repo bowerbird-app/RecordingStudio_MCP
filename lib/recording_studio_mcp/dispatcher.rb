@@ -37,6 +37,8 @@ module RecordingStudioMcp
 
       if surface.tree_tool?(name)
         dispatch_tree(name, args)
+      elsif (metric = surface.metric_tool(name))
+        render_handler_result(RecordableMetricTools.execute(metric, args, access_grant))
       else
         dispatch_endpoint(surface.endpoint_for(name), args)
       end

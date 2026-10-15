@@ -131,6 +131,15 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     ].each { |identifier| assert_includes identifiers, identifier }
   end
 
+  test "recordable metric tools do not replace operations metrics" do
+    names = mcp(@staff_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
+
+    assert_includes names, "operations_metrics_index"
+    assert_includes names, "operations_metrics_show"
+    refute_includes names, "folders-total"
+    refute_includes names, "pages-total"
+  end
+
   test "operations MCP metrics tools advertise Metrics query params" do
     tools = mcp(@staff_operations_token, "tools/list").dig("result", "tools").index_by { |tool| tool["name"] }
 

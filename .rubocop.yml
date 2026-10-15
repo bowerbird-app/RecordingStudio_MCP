@@ -29,6 +29,7 @@ Metrics/ClassLength:
     - 'lib/recording_studio_mcp/connection.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
+    - 'lib/recording_studio_mcp/tool_surface.rb'
 
 Metrics/ModuleLength:
   Exclude:
@@ -37,6 +38,7 @@ Metrics/ModuleLength:
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
     - 'lib/recording_studio_mcp/postgres_bus.rb'
+    - 'lib/recording_studio_mcp/recordable_metric_tools.rb'
 
 Metrics/MethodLength:
   Exclude:

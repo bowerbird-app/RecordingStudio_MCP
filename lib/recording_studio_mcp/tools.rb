@@ -24,6 +24,10 @@ module RecordingStudioMcp
       tool(endpoint_tool_options(endpoint, api))
     end
 
+    def metric_tool(recordable_metric)
+      tool(recordable_metric.definition_options)
+    end
+
     def endpoint_tool_options(endpoint, api)
       schema = FileParams.apply(EndpointSchema.build(endpoint), endpoint)
       options = {
