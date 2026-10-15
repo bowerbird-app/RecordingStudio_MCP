@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`. Metrics `>= 0.3.0, < 0.4`. Oauth `v0.12.2` or later.
 
+## 0.18.0
+
+No migration. `mcp_calls.failed_by_tool` sums failed `tools/call` requests by tool. `mcp_subscriptions.failing` counts active, unexpired event subscriptions with `failure_count > 0`.
+
 ## 0.17.0
 
 Pin `recording_studio_metrics` to `>= 0.3.0, < 0.4`. Metrics exposed on the named API are one read-only MCP tool each, named by replacing the identifier's dot with a hyphen. A timeseries takes `from` and `to`. `start` and `start_at` are described as the same as `start`. `end` and `end_at` are described as the same as `end`. Pass metric filters as a `filters` object. `config.catalog_metric_resources` defaults to every exposed resource. Set a resource list to narrow that. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
