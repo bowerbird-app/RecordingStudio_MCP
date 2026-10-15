@@ -131,6 +131,73 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     ].each { |identifier| assert_includes identifiers, identifier }
   end
 
+  test "operations MCP lists one tool per mcp_calls metric and keeps the metrics endpoints" do
+    tools = mcp(@staff_operations_token, "tools/list").dig("result", "tools").index_by { |tool| tool.fetch("name") }
+
+    assert_includes tools.keys, "operations_metrics_index"
+    assert_includes tools.keys, "operations_metrics_show"
+    %w[
+      mcp_calls-over_time
+      mcp_calls-failed_over_time
+      mcp_calls-by_tool
+      mcp_calls-by_method
+      mcp_calls-rate_limited
+    ].each { |name| assert_includes tools.keys, name }
+
+    over_time = tools.fetch("mcp_calls-over_time").fetch("inputSchema")
+    assert_equal false, over_time.fetch("additionalProperties")
+    assert_equal "Same as from.", over_time.dig("properties", "start", "description")
+    assert_equal "Same as to.", over_time.dig("properties", "end", "description")
+    assert_equal %w[day week month year], over_time.dig("properties", "interval", "enum")
+    refute over_time.fetch("properties").key?("group_by")
+
+    rate_limited = tools.fetch("mcp_calls-rate_limited").fetch("inputSchema")
+    refute rate_limited.fetch("properties").key?("from")
+    refute tools.fetch("mcp_calls-by_tool").fetch("inputSchema").fetch("properties").key?("from")
+
+    counted = call_tool("mcp_calls-rate_limited")
+    assert_equal false, counted.fetch("isError"), counted.dig("content", 0, "text")
+    assert_equal 4, counted.dig("structuredContent", "value")
+
+    series = call_tool(
+      "mcp_calls-over_time",
+      from: @day_one.in_time_zone("UTC").beginning_of_day.iso8601,
+      to: (@day_two + 1).in_time_zone("UTC").beginning_of_day.iso8601,
+      interval: "day"
+    )
+    assert_equal false, series.fetch("isError"), series.dig("content", 0, "text")
+    values = series.dig("structuredContent", "data").to_h { |row| [row.fetch("date"), row.fetch("value")] }
+    assert_equal 12, values[@day_one.iso8601]
+    assert_equal 7, values[@day_two.iso8601]
+
+    unknown = call_tool("mcp_calls-rate_limited", nope: "1")
+    assert_equal true, unknown.fetch("isError")
+    assert_equal "Unknown argument nope", unknown.dig("content", 0, "text")
+  end
+
+  test "a workspace operations token does not see mcp_calls tools" do
+    names = mcp(@workspace_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
+
+    refute_includes names, "mcp_calls-rate_limited"
+    assert_includes names, "operations_metrics_index"
+    denied = mcp(
+      @workspace_operations_token, "tools/call", name: "mcp_calls-rate_limited", arguments: {}
+    ).fetch("result")
+    assert_equal true, denied.fetch("isError")
+    assert_includes denied.dig("content", 0, "text"), "Unknown tool mcp_calls-rate_limited"
+  end
+
+  test "catalog metric resources allowlist hides mcp_calls tools" do
+    previous = RecordingStudioMcp.configuration.catalog_metric_resources
+    RecordingStudioMcp.configuration.catalog_metric_resources = ["other"]
+    names = mcp(@staff_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
+
+    refute_includes names, "mcp_calls-over_time"
+    assert_includes names, "operations_metrics_show"
+  ensure
+    RecordingStudioMcp.configuration.catalog_metric_resources = previous
+  end
+
   test "recordable metric tools do not replace operations metrics" do
     names = mcp(@staff_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
 

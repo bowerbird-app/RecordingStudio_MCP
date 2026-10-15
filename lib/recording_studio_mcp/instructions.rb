@@ -9,6 +9,9 @@ module RecordingStudioMcp
 
     METRIC_BLURB = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
                    "Pass list filters as a filter object of attribute names."
+    CATALOG_METRIC_BLURB = "API metric tools are read-only. A timeseries takes from and to. " \
+                           "start and start_at are the same as from. end and end_at are the same as to. " \
+                           "Pass filters as a filters object."
 
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
@@ -36,15 +39,20 @@ module RecordingStudioMcp
 
     def text(access_grant: nil)
       surface = ToolSurface.for(access_grant: access_grant)
-      parts = [AUTH_BLURB]
-      parts << tree_blurb(surface) if surface.tree_enabled?
-      parts << METRIC_BLURB if surface.metric_tools?
-      parts << ENDPOINT_BLURB if surface.endpoints_enabled?
-      parts << REFRESH_BLURB
+      parts = [AUTH_BLURB, *surface_blurbs(surface), REFRESH_BLURB]
       parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
       parts << SKILLS_BLURB
       parts << suffix_part(access_grant: access_grant)
       parts.compact.join(" ")
+    end
+
+    def surface_blurbs(surface)
+      [
+        (tree_blurb(surface) if surface.tree_enabled?),
+        (METRIC_BLURB if surface.recordable_metric_tools?),
+        (CATALOG_METRIC_BLURB if surface.catalog_metric_tools?),
+        (ENDPOINT_BLURB if surface.endpoints_enabled?)
+      ]
     end
 
     def tree_blurb(surface)
@@ -73,6 +81,6 @@ module RecordingStudioMcp
       text = raw.strip
       text.empty? ? nil : text
     end
-    private_class_method :suffix_part, :tree_blurb, :describe_guidance
+    private_class_method :suffix_part, :tree_blurb, :describe_guidance, :surface_blurbs
   end
 end

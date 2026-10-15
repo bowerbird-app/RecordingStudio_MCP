@@ -14,6 +14,7 @@ module RecordingStudioMcp
         case family
         when :tree then validate_tree!(metric, endpoint)
         when :metric then validate_metric!(metric, endpoint)
+        when :catalog_metric then validate_catalog_metric!(metric, endpoint)
         when :endpoint then validate_endpoint!(metric, endpoint)
         else raise ArgumentError, "Unknown tool family #{family.inspect}"
         end
@@ -29,6 +30,12 @@ module RecordingStudioMcp
         recordable_metric = metric.is_a?(RecordableMetricTools::Tool)
         raise ArgumentError, "A metric tool needs a recordable metric" unless recordable_metric
         raise ArgumentError, "A metric tool has no endpoint" if endpoint
+      end
+
+      def validate_catalog_metric!(metric, endpoint)
+        catalog_metric = metric.is_a?(CatalogMetricTools::Tool)
+        raise ArgumentError, "A catalog metric tool needs a catalog metric" unless catalog_metric
+        raise ArgumentError, "A catalog metric tool has no endpoint" if endpoint
       end
 
       def validate_endpoint!(metric, endpoint)
@@ -58,6 +65,7 @@ module RecordingStudioMcp
       @by_name = {}
       insert_tree_tools
       insert_metric_tools
+      insert_catalog_metric_tools
       insert_endpoint_tools
       @by_name.freeze
     end
@@ -70,10 +78,6 @@ module RecordingStudioMcp
 
     def endpoints_enabled?
       endpoints.any?
-    end
-
-    def metric_tools?
-      @by_name.each_value.any? { |entry| entry.family == :metric }
     end
 
     def known?(name)
@@ -90,7 +94,7 @@ module RecordingStudioMcp
 
     def metric_tool(name)
       entry = @by_name[name.to_s]
-      return unless entry&.family == :metric
+      return unless metric_family?(entry)
 
       entry.metric
     end
@@ -120,4 +124,5 @@ module RecordingStudioMcp
   end
 end
 
+require "recording_studio_mcp/tool_surface/families"
 require "recording_studio_mcp/tool_surface/insert"

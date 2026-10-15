@@ -32,6 +32,12 @@ module RecordingStudioMcp
       end
     end
 
+    def insert_catalog_metric_tools
+      CatalogMetricTools.collect(catalog, @access_grant).each do |metric|
+        insert(metric.name.to_s, catalog_metric_entry(metric))
+      end
+    end
+
     def metric_view_allowed?
       return true if @access_grant.nil?
 
@@ -53,6 +59,14 @@ module RecordingStudioMcp
       )
     end
 
+    def catalog_metric_entry(metric)
+      Entry.new(
+        family: :catalog_metric,
+        definition: Tools.metric_tool(metric),
+        metric: metric
+      )
+    end
+
     def endpoint_entry(endpoint)
       Entry.new(
         family: :endpoint,
@@ -63,12 +77,37 @@ module RecordingStudioMcp
 
     def insert(name, entry)
       key = name.to_s
+      if metric_family?(entry) && blocked_metric_name?(key)
+        warn_skipped_tool(key, blocked_metric_reason(key))
+        return
+      end
       if entry.family != :tree && Tools::TREE_NAMES.include?(key)
         raise RecordingStudioApi::ConfigurationError, reserved_name_message(key, entry)
       end
       raise RecordingStudioApi::ConfigurationError, duplicate_name_message(key, entry) if @by_name.key?(key)
 
       @by_name[key] = entry
+    end
+
+    def blocked_metric_name?(key)
+      Tools::TREE_NAMES.include?(key) || endpoint_name?(key) || @by_name.key?(key)
+    end
+
+    def endpoint_name?(key)
+      @endpoints.any? { |endpoint| endpoint.name.to_s == key }
+    end
+
+    def blocked_metric_reason(key)
+      return "name collides with a tree tool" if Tools::TREE_NAMES.include?(key)
+      return "name collides with an endpoint tool" if endpoint_name?(key)
+
+      "name collides with an existing tool"
+    end
+
+    def warn_skipped_tool(name, reason)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.warn("[RecordingStudioMcp] skipped metric tool #{name}: #{reason}")
     end
 
     def reserved_name_message(name, entry)

@@ -83,7 +83,7 @@ RecordingStudioApi.register_endpoint(
 
 `x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds it to `required`. `description` is copied onto the field. Each field's `inputSchema` property is the file object, with `download_url`, `file_id`, `mime_type`, and `file_name` strings, `download_url` and `file_id` required. A declared field replaces any `input_contract` field of the same name in the schema. The tool's `_meta["openai/fileParams"]` lists the names and is merged with `_meta.ui`. Endpoints without the key are unchanged. MCP only describes the input; the endpoint handler downloads `download_url` (temporary) and does its own validation. Only top-level fields are supported, matching OpenAI.
 
-Mixed hosts get tree tools first, then one read-only tool per recordable metric, then endpoint tools sorted by name. Tree tools are the operations registered on that named API, then filtered by the access grant role. An endpoint is advertised only when its name is one MCP tool token (`[A-Za-z][A-Za-z0-9_.-]*`). Names such as `bad name` and `1bad` are skipped. Dotted names such as `presskits.edit` stay. Names that match a tree tool (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) are skipped too, so `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. The JSON-RPC `ping` method is separate and is not that tool. An endpoint whose name matches a recordable metric tool fails while the surface is built.
+Mixed hosts get tree tools first, then one read-only tool per recordable metric, then endpoint tools sorted by name. Tree tools are the operations registered on that named API, then filtered by the access grant role. An endpoint is advertised only when its name is one MCP tool token (`[A-Za-z][A-Za-z0-9_.-]*`). Names such as `bad name` and `1bad` are skipped. Dotted names such as `presskits.edit` stay. Names that match a tree tool (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) are skipped too, so `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. The JSON-RPC `ping` method is separate and is not that tool. An endpoint whose name matches a recordable or API metric tool keeps the endpoint. The metric tool is skipped and logged. `tools/list` still succeeds.
 
 Recordable metrics opt in on the named API. MCP does not grow a second registration API, and it does not call `RecordingStudioMetrics::Api.register!` for these tools.
 
@@ -104,9 +104,19 @@ The tool name is the metric identifier with its single dot replaced by a hyphen.
 
 Each tool's arguments are that metric's registry parameters. A plain count has the list filters only. A timeseries adds `from`, `to`, `interval`, and `group_by`, and those last two keep the catalog enum. `start` and `start_at` are accepted as aliases of `from` when `from` is a parameter. `end` and `end_at` are accepted as aliases of `to` when `to` is a parameter. List filters are one `filter` object whose keys are attribute names (`{ "name": "Ada" }`). That object is what the API reads as `params[:filter]`. A literal `filter[name]` argument is rejected. An unknown filter key comes back as the API error `Unknown filters: ...`. When any recordable metric tool is advertised, initialize adds one sentence telling clients to pass list filters as that object. When none are advertised, that sentence is absent.
 
-A metric tool is advertised only when that type enables index and the access grant can view its scope. A guest, or a client whose Access row is gone, does not see these tools. A metric whose tool name is not a valid hyphenated name is skipped and logged. The other tools still list.
+A metric tool is advertised only when that type enables index and the access grant can view its scope. A guest does not see these tools. Deleting the Access row does not return 401. The token still resolves, the grant role is nil, and these tools stay off `tools/list`. `describe` remains. Tree reads such as `list` do not. A voided authorization returns 401 `invalid_token`. A metric whose tool name is not a valid hyphenated name is skipped and logged. An unregistered allowlisted name is skipped the same way. The other tools still list.
 
 Site-usage `operations_metrics_index` and `operations_metrics_show` stay registered endpoint tools. Calling a recordable metric tool runs `RecordingStudioApi::Services::ResourceMetrics::Show`, the same authorize-then-filter path as `GET /:resource/metrics/:name`.
+
+Metrics exposed on the named API also get one read-only tool each. The tool name is the identifier with its dot replaced by a hyphen, same rule as a recordable metric tool. MCP lists them from `RecordingStudioMetrics::Api::DiscoveryHandler` for the current grant, and from definitions exposed on that API when there is no grant. Calling one runs `RecordingStudioMetrics::Api::ExecuteHandler`. Authorization stays in the metric's `api_authorize` and the grant. MCP does not apply the recordable view check to these tools.
+
+A timeseries tool takes `from` and `to`. `start` and `start_at` are the same as `from`. `end` and `end_at` are the same as `to`. `interval` is present when the metric has supported intervals. `group_by` is present when the metric has group columns. Metric filters are one `filters` object. The input schema sets `additionalProperties` to false. Unknown arguments return a tool error instead of being ignored.
+
+`config.catalog_metric_resources` limits which resources get these tools. Leave it unset and every metric exposed on the named API is included. Set it to a list of resource names, such as `%w[users]`, to advertise only those. An empty list advertises none. `operations_metrics_index` and `operations_metrics_show` stay either way.
+
+```ruby
+config.catalog_metric_resources = %w[mcp_calls]
+```
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
 
@@ -299,4 +309,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.16.0
+0.17.0

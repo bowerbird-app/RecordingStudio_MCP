@@ -113,6 +113,8 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     names = tool_names(token)
     assert_not_includes names, "folders-total"
     assert_not_includes names, "pages-total"
+    assert_includes names, "describe"
+    assert_not_includes names, "list"
 
     denied = call_tool(token, "folders-total")
     assert_equal true, denied.fetch("isError")

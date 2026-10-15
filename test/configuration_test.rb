@@ -29,6 +29,8 @@ class ConfigurationTest < Minitest::Test
     assert_equal 24.hours, @configuration.event_subscription_ttl
     assert_equal 50, @configuration.event_subscriptions_per_principal
     assert_nil @configuration.event_callback_host_allowed
+    assert_nil @configuration.catalog_metric_resources
+    assert_nil @configuration.to_h[:catalog_metric_resources]
     assert_includes @configuration.to_h.keys, :events_enabled
     refute_includes @configuration.to_h.keys, :skill_catalog
     refute_includes @configuration.to_h.keys, :event_catalog
@@ -44,7 +46,8 @@ class ConfigurationTest < Minitest::Test
       protocol_version: "2025-03-26",
       allowed_origins: ["https://assistant.example"],
       instructions_suffix: "Fetch item detail before you draw a screen.",
-      skill_policy: ->(skill:, access_grant:) { skill && access_grant }
+      skill_policy: ->(skill:, access_grant:) { skill && access_grant },
+      catalog_metric_resources: [:widgets, "widgets"]
     )
 
     assert_equal "/.well-known/oauth-protected-resource/mcp", @configuration.oauth_protected_resource_path
@@ -55,6 +58,8 @@ class ConfigurationTest < Minitest::Test
     assert_equal "Fetch item detail before you draw a screen.", @configuration.to_h[:instructions_suffix]
     assert @configuration.skill_policy.respond_to?(:call)
     assert_same @configuration.skill_policy, @configuration.to_h[:skill_policy]
+    assert_equal ["widgets"], @configuration.catalog_metric_resources
+    assert_equal ["widgets"], @configuration.to_h[:catalog_metric_resources]
   end
 
   def test_merge_ignores_unknown_keys
