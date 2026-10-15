@@ -7,6 +7,9 @@ module RecordingStudioMcp
       through the same AccessGrant.
     TEXT
 
+    METRIC_BLURB = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
+                   "Pass list filters as a filter object of attribute names."
+
     ENDPOINT_BLURB = <<~TEXT.squish.freeze
       Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
       the available endpoint tools. An endpoint-only grant has no tree or recordable tools
@@ -35,13 +38,13 @@ module RecordingStudioMcp
       surface = ToolSurface.for(access_grant: access_grant)
       parts = [AUTH_BLURB]
       parts << tree_blurb(surface) if surface.tree_enabled?
+      parts << METRIC_BLURB if surface.metric_tools?
       parts << ENDPOINT_BLURB if surface.endpoints_enabled?
       parts << REFRESH_BLURB
       parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
       parts << SKILLS_BLURB
-      suffix = suffix_part(access_grant: access_grant)
-      parts << suffix if suffix
-      parts.join(" ")
+      parts << suffix_part(access_grant: access_grant)
+      parts.compact.join(" ")
     end
 
     def tree_blurb(surface)

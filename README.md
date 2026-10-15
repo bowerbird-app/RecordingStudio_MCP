@@ -83,7 +83,30 @@ RecordingStudioApi.register_endpoint(
 
 `x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds it to `required`. `description` is copied onto the field. Each field's `inputSchema` property is the file object, with `download_url`, `file_id`, `mime_type`, and `file_name` strings, `download_url` and `file_id` required. A declared field replaces any `input_contract` field of the same name in the schema. The tool's `_meta["openai/fileParams"]` lists the names and is merged with `_meta.ui`. Endpoints without the key are unchanged. MCP only describes the input; the endpoint handler downloads `download_url` (temporary) and does its own validation. Only top-level fields are supported, matching OpenAI.
 
-Mixed hosts get tree tools first, then endpoint tools sorted by name. An endpoint is advertised only when its name is one MCP tool token (`[A-Za-z][A-Za-z0-9_.-]*`). Names such as `bad name` and `1bad` are skipped. Dotted names such as `presskits.edit` stay. Names that match a tree tool (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) are skipped too, so `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. The JSON-RPC `ping` method is separate and is not that tool.
+Mixed hosts get tree tools first, then one read-only tool per recordable metric, then endpoint tools sorted by name. Tree tools are the operations registered on that named API, then filtered by the access grant role. An endpoint is advertised only when its name is one MCP tool token (`[A-Za-z][A-Za-z0-9_.-]*`). Names such as `bad name` and `1bad` are skipped. Dotted names such as `presskits.edit` stay. Names that match a tree tool (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) are skipped too, so `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. The JSON-RPC `ping` method is separate and is not that tool. An endpoint whose name matches a recordable metric tool fails while the surface is built.
+
+Recordable metrics opt in on the named API. MCP does not grow a second registration API, and it does not call `RecordingStudioMetrics::Api.register!` for these tools.
+
+```ruby
+RecordingStudioApi.register_recordable_type_api(
+  "Folder",
+  metrics: %w[folders.total folders.created_over_time]
+)
+```
+
+The tool name is the metric identifier with its single dot replaced by a hyphen. The result must match `[a-z][a-z0-9_]*-[a-z][a-z0-9_]*` and be at most 64 characters. MCP does not parse the tool name back to the identifier. The call uses the registry name stored on the tool.
+
+| Metric identifier | MCP tool |
+| --- | --- |
+| `folders.total` | `folders-total` |
+| `folders.created_over_time` | `folders-created_over_time` |
+| `metric_samples.total` | `metric_samples-total` |
+
+Each tool's arguments are that metric's registry parameters. A plain count has the list filters only. A timeseries adds `from`, `to`, `interval`, and `group_by`, and those last two keep the catalog enum. `start` and `start_at` are accepted as aliases of `from` when `from` is a parameter. `end` and `end_at` are accepted as aliases of `to` when `to` is a parameter. List filters are one `filter` object whose keys are attribute names (`{ "name": "Ada" }`). That object is what the API reads as `params[:filter]`. A literal `filter[name]` argument is rejected. An unknown filter key comes back as the API error `Unknown filters: ...`. When any recordable metric tool is advertised, initialize adds one sentence telling clients to pass list filters as that object. When none are advertised, that sentence is absent.
+
+A metric tool is advertised only when that type enables index and the access grant can view its scope. A guest, or a client whose Access row is gone, does not see these tools. A metric whose tool name is not a valid hyphenated name is skipped and logged. The other tools still list.
+
+Site-usage `operations_metrics_index` and `operations_metrics_show` stay registered endpoint tools. Calling a recordable metric tool runs `RecordingStudioApi::Services::ResourceMetrics::Show`, the same authorize-then-filter path as `GET /:resource/metrics/:name`.
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
 
@@ -185,7 +208,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.6.11, < 0.11` (git tag `v0.10.0`), Accessible `v0.18.0`, Oauth `v0.12.1`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), and Metrics `~> 0.2, >= 0.2.2` (git tag `v0.3.0`). MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.11.0, < 0.12`, Oauth `v0.12.2` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), and Metrics `~> 0.2, >= 0.2.2` (git tag `v0.3.0`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.11.0` and Oauth tag `v0.12.2`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -276,4 +299,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.15.0
+0.16.0

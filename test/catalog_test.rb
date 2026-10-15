@@ -3,6 +3,8 @@
 require "test_helper"
 
 class CatalogTest < Minitest::Test
+  include RecordableMetricToolHelpers
+
   FakeClient = Struct.new(:api_key)
   FakeGrant = Struct.new(:api_client)
 
@@ -74,6 +76,20 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal true, catalog.capability_actions?
+    end
+  end
+
+  def test_describe_does_not_list_metrics
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        register_folder_and_page_metrics
+        described = RecordingStudioMcp::Catalog.new(api: :public).describe(RecordableMetricToolHelpers::FOLDER)
+
+        assert_equal %w[type operations writable_fields capability_actions], described.keys - ["parent"]
+        refute described.key?("metrics")
+        assert_equal RecordableMetricToolHelpers::FOLDER, described.fetch("type")
+        refute_includes described.fetch("operations"), "metrics"
+      end
     end
   end
 

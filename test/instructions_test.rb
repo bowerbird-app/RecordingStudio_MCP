@@ -3,6 +3,8 @@
 require "test_helper"
 
 class InstructionsTest < Minitest::Test
+  include RecordableMetricToolHelpers
+
   def test_tree_only_includes_describe_guidance
     with_isolated_api_configuration do
       register_tree_type("Page")
@@ -128,6 +130,25 @@ class InstructionsTest < Minitest::Test
           assert_equal baseline, text
           refute text.end_with?(" ")
         end
+      end
+    end
+  end
+
+  def test_metric_tools_add_one_filter_sentence
+    sentence = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
+               "Pass list filters as a filter object of attribute names."
+
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      without_metrics = RecordingStudioMcp::Instructions.text
+      refute_includes without_metrics, "filter object of attribute names"
+
+      with_recordable_metric_registry do
+        register_folder_and_page_metrics
+        text = RecordingStudioMcp::Instructions.text
+
+        assert_includes text, sentence
+        assert_equal 1, text.scan("filter object of attribute names").length
       end
     end
   end
