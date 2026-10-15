@@ -36,7 +36,7 @@ module IsolatedApiConfiguration
     RecordingStudioApi.register_recordable_type_api(name, **attrs)
   end
 
-  def register_ping_capability(api: :public, **_)
+  def register_ping_capability(api: :public)
     return if RecordingStudioApi.capability_action(:ping, api: api)
 
     RecordingStudioApi.register_capability_action(
