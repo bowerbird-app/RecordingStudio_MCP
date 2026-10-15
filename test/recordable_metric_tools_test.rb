@@ -89,7 +89,7 @@ class RecordableMetricToolsTest < Minitest::Test
     end
   end
 
-  def test_unknown_filter_attribute_and_non_string_values_are_rejected
+  def test_unknown_filter_attribute_is_passed_through_and_non_string_values_are_rejected
     with_metric_types do |surface|
       metric = surface.metric_tool("folders-total")
 
@@ -224,15 +224,45 @@ class RecordableMetricToolsTest < Minitest::Test
     assert_equal "Metric parameter named filter is reserved for the filter object", reserved.message
   end
 
-  def test_missing_definition_fails_the_surface
+  def test_unregistered_metric_is_skipped_and_registered_sibling_keeps_its_schema
+    solo = nil
     with_isolated_api_configuration do
-      RecordingStudioApi.register_recordable_type_api("Folder", metrics: %w[folders.absent])
-
-      error = assert_raises(RecordingStudioApi::ConfigurationError) do
-        RecordingStudioMcp::ToolSurface.for(api: "public")
+      with_recordable_metric_registry do
+        RecordingStudioApi.register_recordable_type_api(
+          RecordableMetricToolHelpers::FOLDER,
+          writable_attributes: %i[name],
+          operations: %i[index],
+          metrics: %w[folders.total]
+        )
+        register_folder_metric_definitions
+        solo = tool(RecordingStudioMcp::ToolSurface.for(api: "public"), "folders-total").fetch(:inputSchema)
       end
-      assert_equal "Metric folders.absent is not registered with RecordingStudioMetrics", error.message
     end
+
+    warnings = StringIO.new
+    previous = Rails.logger
+    Rails.logger = Logger.new(warnings)
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        RecordingStudioApi.register_recordable_type_api(
+          RecordableMetricToolHelpers::FOLDER,
+          writable_attributes: %i[name],
+          operations: %i[index],
+          metrics: %w[folders.absent folders.total]
+        )
+        register_folder_metric_definitions
+        surface = RecordingStudioMcp::ToolSurface.for(api: "public")
+
+        assert_includes surface.tool_names, "folders-total"
+        assert_includes surface.tool_names, "list"
+        refute_includes surface.tool_names, "folders-absent"
+        assert_equal solo, tool(surface, "folders-total").fetch(:inputSchema)
+      end
+    end
+    assert_includes warnings.string, "folders.absent"
+    assert_includes warnings.string, "is not registered with RecordingStudioMetrics"
+  ensure
+    Rails.logger = previous if previous
   end
 
   def test_invalid_tool_name_is_skipped_and_other_metrics_stay

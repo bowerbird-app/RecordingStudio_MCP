@@ -205,6 +205,7 @@ module RecordingStudioMcp
   end
 end
 
+require "recording_studio_mcp/recordable_metric_tools/registered_entry"
 require "recording_studio_mcp/recordable_metric_tools/listing"
 require "recording_studio_mcp/recordable_metric_tools/arguments"
 require "recording_studio_mcp/recordable_metric_tools/execution"
