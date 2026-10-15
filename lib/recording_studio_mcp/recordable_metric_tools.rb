@@ -150,6 +150,26 @@ module RecordingStudioMcp
           @properties[name.to_sym] = ArgumentPlan.property_schema(parameter)
           @passthrough << name
           @required << name if parameter[:required]
+          period_aliases(name).each { |alias_name| add_period_alias(alias_name, name) }
+        end
+
+        def add_period_alias(alias_name, canonical)
+          @properties[alias_name.to_sym] = {
+            type: "string",
+            format: "date-time",
+            description: "Same as #{canonical}."
+          }
+          @passthrough << alias_name
+        end
+
+        def period_aliases(name)
+          RecordingStudioApi::Metrics::Period::NAMES.each_value do |names|
+            strings = names.map(&:to_s)
+            next unless strings.include?(name)
+
+            return strings - [name]
+          end
+          []
         end
 
         def attach_filter
@@ -182,129 +202,9 @@ module RecordingStudioMcp
         value.freeze
       end
     end
-
-    module_function
-
-    def collect(catalog)
-      tools = catalog.type_names.flat_map { |type_name| tools_for(catalog, type_name) }
-      tools.sort_by { |tool| tool.name.to_s }.freeze
-    end
-
-    def params_for(tool, arguments)
-      params = {}
-      each_argument(arguments) { |key, value| assign_argument(tool, params, key, value) }
-      params["name"] = tool.metric_name
-      params["resource"] = tool.resource_name
-      params
-    end
-
-    def execute(tool, arguments, access_grant)
-      RecordingStudioApi::Services::ResourceMetrics::Show.call(
-        operation_context(tool, arguments, access_grant)
-      )
-    end
-
-    def tools_for(catalog, type_name)
-      RecordingStudioApi.metrics_for(type_name, api: catalog.api).map do |entry|
-        metric_tool_for(catalog, type_name, entry)
-      end
-    end
-
-    def metric_tool_for(catalog, type_name, entry)
-      Tool.new(
-        name: ToolName.from_identifier(entry.name),
-        metric_name: entry.name,
-        recordable_type: type_name,
-        resource_name: RecordingStudioApi.resource_name_for(type_name),
-        api: catalog.api,
-        description: entry.description,
-        plan: ArgumentPlan.from(entry.parameters)
-      )
-    end
-
-    def each_argument(arguments)
-      argument_hash(arguments).each { |key, value| yield key.to_s, value }
-    end
-
-    def argument_hash(arguments)
-      return {} if arguments.nil?
-      return arguments if arguments.is_a?(Hash)
-      return arguments.to_unsafe_h if arguments.respond_to?(:to_unsafe_h)
-
-      raise RecordingStudioApi::InvalidActionInputError, "Tool arguments must be an object"
-    end
-
-    def assign_argument(tool, params, key, value)
-      if key.match?(BRACKET_FILTER_KEY)
-        raise RecordingStudioApi::InvalidActionInputError,
-              "Send list filters as a filter object of attribute names"
-      end
-      return assign_filter(tool, params, value) if key == "filter"
-
-      assign_passthrough(tool, params, key, value)
-    end
-
-    def assign_filter(tool, params, value)
-      return if value.nil?
-
-      folded = fold_filter(tool, value)
-      params["filter"] = folded unless folded.empty?
-    end
-
-    def fold_filter(tool, value)
-      raise RecordingStudioApi::InvalidActionInputError, "filter must be an object" unless value.is_a?(Hash)
-
-      folded = {}
-      each_argument(value) do |attribute, attribute_value|
-        stored = filter_value(tool, attribute, attribute_value)
-        folded[attribute] = stored unless stored.nil?
-      end
-      folded
-    end
-
-    def filter_value(tool, attribute, attribute_value)
-      known = tool.plan.filter_attributes.include?(attribute)
-      raise RecordingStudioApi::InvalidActionInputError, "Unknown filter attribute #{attribute}" unless known
-      return if attribute_value.nil?
-      unless attribute_value.is_a?(String)
-        raise RecordingStudioApi::InvalidActionInputError, "filter #{attribute} must be a string"
-      end
-
-      attribute_value
-    end
-
-    def assign_passthrough(tool, params, key, value)
-      known = tool.plan.passthrough.include?(key)
-      raise RecordingStudioApi::InvalidActionInputError, "Unknown argument #{key}" unless known
-      return if value.nil?
-      raise RecordingStudioApi::InvalidActionInputError, "#{key} must be a string" unless value.is_a?(String)
-
-      params[key] = value
-    end
-
-    def operation_context(tool, arguments, access_grant)
-      RecordingStudioApi::ResourceOperationContext.new(**metric_context(tool, arguments, access_grant))
-    end
-
-    def metric_context(tool, arguments, access_grant)
-      {
-        recording: nil, parent_recording: nil, idempotency_key: nil,
-        recordable_type: tool.recordable_type, resource_name: tool.resource_name,
-        api_client: access_grant.api_client, credential: access_grant.credential,
-        access_recording: access_grant.access_recording, access_grant: access_grant,
-        root_recording: access_grant.root_recording,
-        api_version: RecordingStudioApi.default_api_version(api: tool.api),
-        params: ActionController::Parameters.new(params_for(tool, arguments)).permit!,
-        request_params: empty_request_params, scoped_recordings: access_grant.accessible_recordings
-      }
-    end
-
-    def empty_request_params
-      # GET carries no body. Show reads the metric query from params.
-      ActionController::Parameters.new.permit!
-    end
-    private_class_method :tools_for, :metric_tool_for, :each_argument, :argument_hash, :assign_argument,
-                         :assign_filter, :fold_filter, :filter_value, :assign_passthrough, :operation_context,
-                         :metric_context, :empty_request_params
   end
 end
+
+require "recording_studio_mcp/recordable_metric_tools/listing"
+require "recording_studio_mcp/recordable_metric_tools/arguments"
+require "recording_studio_mcp/recordable_metric_tools/execution"

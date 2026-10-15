@@ -3,6 +3,8 @@
 require "test_helper"
 
 class CatalogTest < Minitest::Test
+  include RecordableMetricToolHelpers
+
   FakeClient = Struct.new(:api_key)
   FakeGrant = Struct.new(:api_client)
 

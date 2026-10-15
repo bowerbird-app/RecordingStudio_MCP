@@ -55,24 +55,35 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     assert_equal 2, unfiltered.dig("structuredContent", "value")
   end
 
-  test "denied view matches the api denial" do
+  test "a guest does not see recordable metric tools" do
     token = client_credentials_token
-    grant = RecordingStudioApi.access_grant_from_authorization_header(
-      authorization_header: "Bearer #{token}",
-      api: "public"
-    )
-    assert grant.success?, grant.error
-
-    RecordingStudio::Access.where(id: grant.value.access_recording.recordable_id).update_all(role: "guest")
+    grant = access_grant_for(token)
+    RecordingStudio::Access.where(id: grant.access_recording.recordable_id).update_all(role: "guest")
     ActiveRecord::Base.connection.clear_query_cache
 
-    denied = call_tool(token, "folders-total")
+    names = tool_names(token)
+    assert_not_includes names, "folders-total"
+    assert_not_includes names, "folders-created_over_time"
+    assert_not_includes names, "pages-total"
 
+    denied = call_tool(token, "folders-total")
     assert_equal true, denied.fetch("isError")
-    assert_equal(
-      "API access grant is not authorized for this capability",
-      denied.dig("content", 0, "text")
-    )
+    assert_includes denied.dig("content", 0, "text"), "Unknown tool folders-total"
+  end
+
+  test "a deleted access row does not see recordable metric tools" do
+    token = client_credentials_token
+    grant = access_grant_for(token)
+    RecordingStudio::Access.where(id: grant.access_recording.recordable_id).delete_all
+    ActiveRecord::Base.connection.clear_query_cache
+
+    names = tool_names(token)
+    assert_not_includes names, "folders-total"
+    assert_not_includes names, "pages-total"
+
+    denied = call_tool(token, "folders-total")
+    assert_equal true, denied.fetch("isError")
+    assert_includes denied.dig("content", 0, "text"), "Unknown tool folders-total"
   end
 
   private
@@ -126,6 +137,19 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
       root_recording: @root_recording,
       parent_recording: @root_recording
     ).recording
+  end
+
+  def tool_names(token)
+    mcp(token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
+  end
+
+  def access_grant_for(token)
+    grant = RecordingStudioApi.access_grant_from_authorization_header(
+      authorization_header: "Bearer #{token}",
+      api: "public"
+    )
+    assert grant.success?, grant.error
+    grant.value
   end
 
   def call_tool(token, name, **arguments)

@@ -32,15 +32,13 @@ module RecordingStudioMcp
 
     def call(tool_name, arguments)
       name = tool_name.to_s
-      args = stringify_keys(arguments)
       return error_result(unknown_tool_message(name)) unless surface.known?(name)
 
-      if surface.tree_tool?(name)
-        dispatch_tree(name, args)
-      elsif (metric = surface.metric_tool(name))
-        render_handler_result(RecordableMetricTools.execute(metric, args, access_grant))
+      if (metric = surface.metric_tool(name))
+        render_handler_result(RecordableMetricTools.execute(metric, arguments, access_grant))
       else
-        dispatch_endpoint(surface.endpoint_for(name), args)
+        args = stringify_keys(arguments)
+        surface.tree_tool?(name) ? dispatch_tree(name, args) : dispatch_endpoint(surface.endpoint_for(name), args)
       end
     rescue RecordingStudioApi::AuthorizationError,
            RecordingStudioApi::NotFoundError,

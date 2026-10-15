@@ -3,6 +3,8 @@
 require "test_helper"
 
 class InstructionsTest < Minitest::Test
+  include RecordableMetricToolHelpers
+
   def test_tree_only_includes_describe_guidance
     with_isolated_api_configuration do
       register_tree_type("Page")

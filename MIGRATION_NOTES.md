@@ -1,10 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`. Oauth `v0.12.1` still requires API `< 0.11` until that gem widens the dependency.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`. Oauth `v0.12.2` or later.
 
-## 0.15.0
+## 0.16.0
 
-Pin `recording_studio_api` to `>= 0.11.0, < 0.12`. Allowlisting metrics on `register_recordable_type_api` advertises one read-only MCP tool per metric. The tool name replaces the identifier's single dot with a hyphen. It must match `[a-z][a-z0-9_]*-[a-z][a-z0-9_]*` and be at most 64 characters.
+Pin `recording_studio_api` to `>= 0.11.0, < 0.12` and `recording_studio_oauth` to `v0.12.2` or later. Allowlisting metrics on `register_recordable_type_api` advertises one read-only MCP tool per metric when that type enables index and the grant can view its scope. The tool name replaces the identifier's single dot with a hyphen. It must match `[a-z][a-z0-9_]*-[a-z][a-z0-9_]*` and be at most 64 characters. An unknown filter attribute is rejected. No migration.
 
 | Metric identifier | MCP tool |
 | --- | --- |
@@ -12,9 +12,7 @@ Pin `recording_studio_api` to `>= 0.11.0, < 0.12`. Allowlisting metrics on `regi
 | `folders.created_over_time` | `folders-created_over_time` |
 | `metric_samples.total` | `metric_samples-total` |
 
-List filters are a `filter` object of attribute names. `from`, `to`, `interval`, `group_by`, and `q` stay top-level arguments.
-
-`Gemfile` and `test/dummy/Gemfile` pin API branch `cursor/recordable-metrics-hook-0fe9` until `bowerbird-app/RecordingStudio_api#49` merges. After that merge, repin both Gemfiles to the released API tag. This gem does not vendor Oauth. No migration. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
+List filters are a `filter` object of attribute names. `from`, `to`, `interval`, `group_by`, and `q` stay top-level arguments. `start` and `start_at` alias `from`. `end` and `end_at` alias `to`. `operations_metrics_index` and `operations_metrics_show` stay endpoint tools.
 
 ## 0.11.0
 

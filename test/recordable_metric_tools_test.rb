@@ -3,6 +3,8 @@
 require "test_helper"
 
 class RecordableMetricToolsTest < Minitest::Test
+  include RecordableMetricToolHelpers
+
   def test_two_types_advertise_one_tool_per_metric
     with_metric_types do |surface|
       assert_equal(
@@ -105,6 +107,109 @@ class RecordableMetricToolsTest < Minitest::Test
         RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter" => "Ada" })
       end
       assert_equal "filter must be an object", text.message
+
+      number_filter = assert_raises(RecordingStudioApi::InvalidActionInputError) do
+        RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter" => { "name" => 1 } })
+      end
+      assert_equal "filter name must be a string", number_filter.message
+    end
+  end
+
+  def test_period_aliases_pass_through_to_show
+    with_metric_types do |surface|
+      metric = surface.metric_tool("folders-total")
+
+      assert_equal(
+        {
+          "start" => "2026-04-01T00:00:00Z",
+          "start_at" => "2026-04-02T00:00:00Z",
+          "end" => "2026-05-01T00:00:00Z",
+          "end_at" => "2026-05-02T00:00:00Z",
+          "name" => "folders.total",
+          "resource" => "folders"
+        },
+        RecordingStudioMcp::RecordableMetricTools.params_for(
+          metric,
+          {
+            "start" => "2026-04-01T00:00:00Z",
+            "start_at" => "2026-04-02T00:00:00Z",
+            "end" => "2026-05-01T00:00:00Z",
+            "end_at" => "2026-05-02T00:00:00Z"
+          }
+        )
+      )
+    end
+  end
+
+  def test_count_metric_schema_copies_the_api_catalog
+    with_metric_types do |surface|
+      entry = RecordingStudioApi.metrics_for(RecordableMetricToolHelpers::FOLDER, api: "public")
+                                .find { |candidate| candidate.name == "folders.total" }
+      interval = entry.parameters.find { |parameter| parameter.fetch(:name) == "interval" }
+      group_by = entry.parameters.find { |parameter| parameter.fetch(:name) == "group_by" }
+      tool_interval = tool(surface, "folders-total").dig(:inputSchema, :properties, :interval)
+      tool_group = tool(surface, "folders-total").dig(:inputSchema, :properties, :group_by)
+
+      refute interval.fetch(:schema).key?(:enum)
+      refute group_by.fetch(:schema).key?(:enum)
+      assert_equal interval.fetch(:schema).fetch(:type), tool_interval.fetch(:type)
+      assert_equal interval.fetch(:description), tool_interval.fetch(:description)
+      refute tool_interval.key?(:enum)
+      assert_equal group_by.fetch(:description), tool_group.fetch(:description)
+      refute tool_group.key?(:enum)
+
+      created = RecordingStudioApi.metrics_for(RecordableMetricToolHelpers::FOLDER, api: "public")
+                                  .find { |candidate| candidate.name == "folders.created_over_time" }
+      created_interval = created.parameters.find { |parameter| parameter.fetch(:name) == "interval" }
+      tool_created = tool(surface, "folders-created_over_time").dig(:inputSchema, :properties, :interval)
+      assert_equal %w[day week], created_interval.dig(:schema, :enum)
+      assert_equal %w[day week], tool_created.fetch(:enum)
+    end
+  end
+
+  def test_metrics_stay_hidden_when_index_is_off
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        RecordingStudioApi.register_recordable_type_api(
+          RecordableMetricToolHelpers::FOLDER,
+          operations: %i[show],
+          metrics: %w[folders.total],
+          writable_attributes: %i[name]
+        )
+        register_folder_metric_definitions
+        names = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
+
+        assert_includes names, "show"
+        refute_includes names, "folders-total"
+      end
+    end
+  end
+
+  def test_metric_tools_follow_view_access
+    with_metric_types do
+      hidden = RecordingStudioMcp::ToolSurface.for(access_grant: view_grant(allowed: false))
+      shown = RecordingStudioMcp::ToolSurface.for(access_grant: view_grant(allowed: true))
+
+      refute_includes hidden.tool_names, "folders-total"
+      refute_includes hidden.tool_names, "pages-total"
+      assert_includes shown.tool_names, "folders-total"
+      assert_includes shown.tool_names, "pages-total"
+    end
+  end
+
+  def test_dispatcher_rejects_non_object_metric_arguments
+    with_metric_types do
+      grant = view_grant(allowed: true)
+      ["nope", [1]].each do |arguments|
+        result = RecordingStudioMcp::Dispatcher.call(
+          tool_name: "folders-total",
+          arguments: arguments,
+          access_grant: grant
+        )
+
+        assert_equal true, result[:isError]
+        assert_equal "Tool arguments must be an object", result.dig(:content, 0, :text)
+      end
     end
   end
 
@@ -132,28 +237,37 @@ class RecordableMetricToolsTest < Minitest::Test
     end
   end
 
-  def test_tool_name_longer_than_64_fails_the_surface
+  def test_invalid_tool_name_is_skipped_and_other_metrics_stay
     leaf = "a" * 57
     identifier = "folders.#{leaf}"
     tool_name = "folders-#{leaf}"
+    warnings = StringIO.new
+    previous = Rails.logger
+    Rails.logger = Logger.new(warnings)
 
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         RecordingStudioApi.register_recordable_type_api(
           RecordableMetricToolHelpers::FOLDER,
-          metrics: [identifier]
+          metrics: [identifier, "folders.total"],
+          writable_attributes: %i[name],
+          operations: %i[index show]
         )
         RecordingStudioMetrics.register(:folders, model: RecordableMetricToolHelpers::Folder, blast_radius: :root) do
           count leaf.to_sym, title: "Long"
+          count :total, title: "Folders", description: "How many folders are in this scope."
         end
 
-        error = assert_raises(RecordingStudioApi::ConfigurationError) do
-          RecordingStudioMcp::ToolSurface.for(api: "public")
-        end
+        names = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
         assert_equal 65, tool_name.length
-        assert_includes error.message, tool_name
+        refute_includes names, tool_name
+        assert_includes names, "folders-total"
+        assert_includes names, "list"
+        assert_includes warnings.string, tool_name
       end
     end
+  ensure
+    Rails.logger = previous
   end
 
   private
@@ -205,6 +319,20 @@ class RecordableMetricToolsTest < Minitest::Test
     }
   end
 
+  def view_grant(allowed:)
+    client = Struct.new(:api_key).new("public")
+    recording = Object.new
+    fields = %i[api_client allowed scope_recording root_recording credential access_recording accessible_recordings]
+    Struct.new(*fields, keyword_init: true) do
+      def authorized?(**)
+        allowed
+      end
+    end.new(
+      api_client: client, allowed: allowed, scope_recording: recording, root_recording: recording,
+      credential: nil, access_recording: nil, accessible_recordings: []
+    )
+  end
+
   def query_properties(filter_attribute:)
     {
       from: {
@@ -217,6 +345,10 @@ class RecordableMetricToolsTest < Minitest::Test
         format: "date-time",
         description: "Exclusive period end, as an ISO-8601 date-time. end and end_at are aliases."
       },
+      start: { type: "string", format: "date-time", description: "Same as from." },
+      start_at: { type: "string", format: "date-time", description: "Same as from." },
+      end: { type: "string", format: "date-time", description: "Same as to." },
+      end_at: { type: "string", format: "date-time", description: "Same as to." },
       interval: { type: "string", description: "Time-series bucket size." },
       group_by: { type: "string", description: "Grouping column for this metric." },
       q: {

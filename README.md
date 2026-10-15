@@ -100,7 +100,9 @@ The tool name is the metric identifier with its single dot replaced by a hyphen.
 | `folders.created_over_time` | `folders-created_over_time` |
 | `metric_samples.total` | `metric_samples-total` |
 
-`from`, `to`, `interval`, `group_by`, and `q` are top-level arguments. List filters are one `filter` object whose keys are attribute names (`{ "name": "Ada" }`). That object is what the API reads as `params[:filter]`. A literal `filter[name]` argument is rejected. When any recordable metric tool is advertised, initialize adds one sentence telling clients to pass list filters as that object. When none are advertised, that sentence is absent.
+`from`, `to`, `interval`, `group_by`, and `q` are top-level arguments. `start` and `start_at` are accepted as aliases of `from`. `end` and `end_at` are accepted as aliases of `to`. List filters are one `filter` object whose keys are attribute names (`{ "name": "Ada" }`). That object is what the API reads as `params[:filter]`. A literal `filter[name]` argument is rejected. An unknown filter attribute is rejected too. The HTTP metric endpoint ignores unknown filter keys. When any recordable metric tool is advertised, initialize adds one sentence telling clients to pass list filters as that object. When none are advertised, that sentence is absent.
+
+A metric tool is advertised only when that type enables index and the access grant can view its scope. A guest, or a client whose Access row is gone, does not see these tools. A metric whose tool name is not a valid hyphenated name is skipped and logged. The other tools still list.
 
 Site-usage `operations_metrics_index` and `operations_metrics_show` stay registered endpoint tools. Calling a recordable metric tool runs `RecordingStudioApi::Services::ResourceMetrics::Show`, the same authorize-then-filter path as `GET /:resource/metrics/:name`.
 
@@ -204,7 +206,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.11.0, < 0.12`, Accessible `v0.18.0`, Oauth `v0.12.1`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), and Metrics `~> 0.2, >= 0.2.2` (git tag `v0.3.0`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API branch `cursor/recordable-metrics-hook-0fe9` until `bowerbird-app/RecordingStudio_api#49` merges. After that merge, repin both Gemfiles to the released API tag. Oauth `v0.12.1` still requires API `< 0.11`, so resolution waits on an Oauth release that allows `0.11`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.11.0, < 0.12`, Oauth `v0.12.2` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), and Metrics `~> 0.2, >= 0.2.2` (git tag `v0.3.0`). This repo's `Gemfile` and `test/dummy/Gemfile` still pin API branch `cursor/recordable-metrics-hook-0fe9` until tag `v0.11.0` exists. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -295,4 +297,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.15.0
+0.16.0

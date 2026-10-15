@@ -3,6 +3,8 @@
 require "test_helper"
 
 class ToolSurfaceTest < Minitest::Test
+  include RecordableMetricToolHelpers
+
   def test_tree_only_surface
     with_isolated_api_configuration do
       register_tree_type("Page")

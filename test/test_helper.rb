@@ -61,7 +61,6 @@ module Minitest
   class Test
     include IsolatedApiConfiguration
     include IsolatedMcpConfiguration
-    include RecordableMetricToolHelpers
     prepend ConnectionCleanup
   end
 end
