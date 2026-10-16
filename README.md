@@ -240,7 +240,7 @@ The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: 
 RecordingStudioMetrics::Api.register!(api: :operations)
 ```
 
-Paths on the operations API: `GET /metrics` and `GET /metrics/mcp_calls/:name` (`over_time`, `failed_over_time`, `by_tool`, `by_method`, `rate_limited`).
+Paths on the operations API: `GET /metrics` and `GET /metrics/mcp_calls/:name` (`over_time`, `failed_over_time`, `by_tool`, `failed_by_tool`, `by_method`, `rate_limited`). `GET /metrics/mcp_subscriptions/failing` counts active, unexpired event subscriptions with `failure_count > 0`. Those subscriptions turn inactive after 5 failures in a row.
 
 Endpoint tools take the endpoint's OpenAPI query parameters as arguments with the same names. On MCP, `operations_metrics_show` takes `resource`, `name`, `from`, `to` (or `start`, `end`), `interval`, `group_by`, `timezone`, and `filters`. `operations_metrics_index` takes `filters` (`{ "resource": "mcp_calls" }`). Metrics errors such as a `from`/`start` conflict or an unsupported `group_by` come back as tool errors.
 
@@ -309,4 +309,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.17.0
+0.18.0

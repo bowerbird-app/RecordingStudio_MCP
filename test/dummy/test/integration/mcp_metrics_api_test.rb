@@ -117,6 +117,41 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     assert_equal 4, response.parsed_body.fetch("value")
   end
 
+  test "failed_by_tool sums failed tools/call rows per tool" do
+    failed = execute("mcp_calls.failed_by_tool").data.to_h { |row| [row[:key].to_s, row[:value]] }
+    assert_equal 1, failed["list"]
+    assert_equal 2, failed["show"]
+    refute_includes failed.keys, ""
+
+    get "#{OPERATIONS_ROOT}/metrics/mcp_calls/failed_by_tool",
+        headers: auth(@staff_operations_token),
+        as: :json
+    assert_response :success
+    http = breakdown_counts(response.parsed_body)
+    assert_equal 1, http["list"]
+    assert_equal 2, http["show"]
+    refute_includes http.keys, ""
+  end
+
+  test "mcp_subscriptions.failing counts active unexpired subscriptions with failures" do
+    RecordingStudioMcp::EventSubscription.delete_all
+    create_subscription(failure_count: 2)
+    create_subscription(failure_count: 1)
+    create_subscription(failure_count: 0)
+    create_subscription(failure_count: 5, status: RecordingStudioMcp::EventSubscription::INACTIVE)
+    create_subscription(failure_count: 3, expires_at: 1.hour.ago)
+
+    assert_equal 2, execute("mcp_subscriptions.failing").value
+
+    get "#{OPERATIONS_ROOT}/metrics/mcp_subscriptions/failing", headers: auth(@staff_operations_token), as: :json
+    assert_response :success
+    assert_equal 2, response.parsed_body.fetch("value")
+
+    counted = call_tool("mcp_subscriptions-failing")
+    assert_equal false, counted.fetch("isError"), counted.dig("content", 0, "text")
+    assert_equal 2, counted.dig("structuredContent", "value")
+  end
+
   test "metrics index lists MCP call metrics" do
     get "#{OPERATIONS_ROOT}/metrics", headers: auth(@staff_operations_token), as: :json
 
@@ -128,6 +163,8 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       mcp_calls.by_tool
       mcp_calls.by_method
       mcp_calls.rate_limited
+      mcp_calls.failed_by_tool
+      mcp_subscriptions.failing
     ].each { |identifier| assert_includes identifiers, identifier }
   end
 
@@ -182,8 +219,10 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       mcp_calls-over_time
       mcp_calls-failed_over_time
       mcp_calls-by_tool
+      mcp_calls-failed_by_tool
       mcp_calls-by_method
       mcp_calls-rate_limited
+      mcp_subscriptions-failing
     ].each { |name| assert_includes tools.keys, name }
 
     over_time = tools.fetch("mcp_calls-over_time").fetch("inputSchema")
@@ -196,6 +235,8 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     rate_limited = tools.fetch("mcp_calls-rate_limited").fetch("inputSchema")
     refute rate_limited.fetch("properties").key?("from")
     refute tools.fetch("mcp_calls-by_tool").fetch("inputSchema").fetch("properties").key?("from")
+    refute tools.fetch("mcp_calls-failed_by_tool").fetch("inputSchema").fetch("properties").key?("from")
+    refute tools.fetch("mcp_subscriptions-failing").fetch("inputSchema").fetch("properties").key?("from")
 
     counted = call_tool("mcp_calls-rate_limited")
     assert_equal false, counted.fetch("isError"), counted.dig("content", 0, "text")
@@ -215,18 +256,35 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     unknown = call_tool("mcp_calls-rate_limited", nope: "1")
     assert_equal true, unknown.fetch("isError")
     assert_equal "Unknown argument nope", unknown.dig("content", 0, "text")
+
+    failed_by_tool = call_tool("mcp_calls-failed_by_tool")
+    assert_equal false, failed_by_tool.fetch("isError"), failed_by_tool.dig("content", 0, "text")
+    failed_values = failed_by_tool.dig("structuredContent", "data").to_h do |row|
+      [row.fetch("key"), row.fetch("value")]
+    end
+    assert_equal 1, failed_values["list"]
+    assert_equal 2, failed_values["show"]
+    refute_includes failed_values.keys, ""
   end
 
   test "a workspace operations token does not see mcp_calls tools" do
     names = mcp(@workspace_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
 
     refute_includes names, "mcp_calls-rate_limited"
+    refute_includes names, "mcp_calls-failed_by_tool"
+    refute_includes names, "mcp_subscriptions-failing"
     assert_includes names, "operations_metrics_index"
     denied = mcp(
       @workspace_operations_token, "tools/call", name: "mcp_calls-rate_limited", arguments: {}
     ).fetch("result")
     assert_equal true, denied.fetch("isError")
     assert_includes denied.dig("content", 0, "text"), "Unknown tool mcp_calls-rate_limited"
+
+    %w[mcp_calls-failed_by_tool mcp_subscriptions-failing].each do |name|
+      hidden = mcp(@workspace_operations_token, "tools/call", name: name, arguments: {}).fetch("result")
+      assert_equal true, hidden.fetch("isError")
+      assert_includes hidden.dig("content", 0, "text"), "Unknown tool #{name}"
+    end
   end
 
   test "catalog metric resources allowlist hides mcp_calls tools" do
@@ -315,10 +373,22 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
         as: :json
     assert_response :forbidden
 
+    get "#{OPERATIONS_ROOT}/metrics/mcp_calls/failed_by_tool",
+        headers: auth(@workspace_operations_token),
+        as: :json
+    assert_response :forbidden
+
+    get "#{OPERATIONS_ROOT}/metrics/mcp_subscriptions/failing",
+        headers: auth(@workspace_operations_token),
+        as: :json
+    assert_response :forbidden
+
     get "#{OPERATIONS_ROOT}/metrics", headers: auth(@workspace_operations_token), as: :json
     assert_response :success
     identifiers = response.parsed_body.fetch("metrics").map { |row| row.fetch("identifier") }
     refute_includes identifiers, "mcp_calls.rate_limited"
+    refute_includes identifiers, "mcp_calls.failed_by_tool"
+    refute_includes identifiers, "mcp_subscriptions.failing"
   end
 
   test "public API token is denied operations MCP metrics" do
@@ -383,6 +453,23 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       call_count: 4,
       failed_count: 0,
       rate_limited_count: 0
+    )
+  end
+
+  def create_subscription(
+    failure_count:,
+    status: RecordingStudioMcp::EventSubscription::ACTIVE,
+    expires_at: 1.day.from_now
+  )
+    RecordingStudioMcp::EventSubscription.create!(
+      id: SecureRandom.uuid,
+      owner_principal_id: "principal-#{SecureRandom.hex(4)}",
+      event_name: "recording.updated",
+      callback_url: "https://example.com/callback",
+      callback_secret: SecureRandom.hex(16),
+      status: status,
+      expires_at: expires_at,
+      failure_count: failure_count
     )
   end
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-15
+
+### Added
+- `mcp_calls.failed_by_tool`: failed `tools/call` requests by tool, from the daily usage rollups.
+- `mcp_subscriptions.failing`: active, unexpired event subscriptions with `failure_count > 0`.
+
+### Upgrade notes
+- Bump to `0.18.0`. No migration.
+
 ## [0.17.0] - 2026-10-15
 
 ### Added
@@ -462,7 +471,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.14.4...v0.15.0
