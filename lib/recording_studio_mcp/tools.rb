@@ -201,8 +201,10 @@ module RecordingStudioMcp
     end
 
     def endpoint_description(endpoint)
-      parts = [endpoint.openapi[:description].presence, "#{endpoint.http_verb.to_s.upcase} #{endpoint.path}"]
-      parts.compact.join(" ")
+      openapi = endpoint.openapi || {}
+      openapi[:description].presence ||
+        openapi[:summary].presence ||
+        "#{endpoint_title(endpoint)}. #{endpoint.http_verb.to_s.upcase} #{endpoint.path}."
     end
 
     def tool(options)

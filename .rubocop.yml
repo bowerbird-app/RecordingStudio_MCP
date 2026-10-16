@@ -88,22 +88,18 @@ Metrics/ParameterLists:
   Exclude:
     - 'lib/recording_studio_mcp/event_rpc.rb'
 
-# Allow empty blocks in tests (common for stubs/mocks)
 Lint/EmptyBlock:
   Exclude:
     - 'test/**/*'
 
-# Allow nested method definitions in tests (common for testing behavior)
 Lint/NestedMethodDefinition:
   Exclude:
     - 'test/**/*'
 
-# Allow underscores in test method names (test_something_100 is fine)
 Naming/VariableNumber:
   Exclude:
     - 'test/**/*'
 
-# Don't require super in service initialize methods
 Lint/MissingSuper:
   Exclude:
     - 'test/services/**/*'

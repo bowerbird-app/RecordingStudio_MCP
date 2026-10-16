@@ -67,7 +67,9 @@ module RecordingStudioMcp
 
       def enabled_action_registrations(recordable_type)
         version = RecordingStudioApi.default_api_version(api: api)
-        RecordingStudioApi.capability_actions_for(recordable_type, version: version, api: api)
+        Array(registration_for(recordable_type)&.capability_actions).filter_map do |name|
+          RecordingStudioApi.capability_action(name, version: version, api: api)
+        end
       end
 
       def resource_type_name(name)

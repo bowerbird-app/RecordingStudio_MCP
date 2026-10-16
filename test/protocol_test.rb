@@ -257,6 +257,30 @@ class ProtocolTest < Minitest::Test
     assert_nil result.session_id
   end
 
+  def test_tools_list_works_without_a_session_after_modern_initialize
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      initialized = RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 27,
+          "method" => "initialize",
+          "params" => { "protocolVersion" => "2026-07-28" }
+        },
+        access_grant: @grant
+      )
+      listed = RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 28, "method" => "tools/list" },
+        access_grant: @grant
+      )
+
+      assert_nil initialized.session_id
+      names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
+      assert_includes names, "list"
+      assert_includes names, "describe"
+    end
+  end
+
   def test_initialize_accepts_2025_11_25_as_legacy
     context = RecordingStudioMcp::RequestContext.new(
       request_id: 26,

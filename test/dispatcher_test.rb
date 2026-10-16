@@ -373,6 +373,49 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_show_does_not_include_trashed_recordings
+    recording = FakeRecording.new("rec-1", "Page")
+    scope = CallTrackingScope.new(recording)
+    scope.define_singleton_method(:find_by) do |id:|
+      return if calls.last == { include_trashed: false }
+
+      recording if recording.id.to_s == id.to_s
+    end
+    grant = FakeGrant.new(
+      api_client: FakeClient.new("public"),
+      credential: nil,
+      access_recording: nil,
+      root_recording: nil,
+      accessible_recordings: scope
+    )
+    grant.define_singleton_method(:accessible_recordings) do |include_trashed: false|
+      scope.accessible_recordings(include_trashed: include_trashed)
+    end
+    show = FakeOperation.new(FakeHandler.new({ json: { id: "rec-1", title: "Still here" } }))
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, nil) do
+          RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :show ? show : nil }) do
+            RecordingStudioApi.stub(:resource_name_for, "pages") do
+              RecordingStudioApi.stub(:default_api_version, "v1") do
+                result = RecordingStudioMcp::Dispatcher.call(
+                  tool_name: "show",
+                  arguments: { type: "Page", id: "rec-1" },
+                  access_grant: grant
+                )
+
+                assert result[:isError]
+                assert_includes result.dig(:content, 0, :text), "Resource was not found in this API scope"
+                assert_includes scope.calls, { include_trashed: false }
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   def test_create_hidden_when_no_type_supports_create
     catalog = Class.new(FakeCatalog) do
       def registered_operations

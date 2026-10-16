@@ -76,6 +76,22 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal true, catalog.capability_actions?
+      assert_equal [{ "name" => "ping" }], catalog.describe("Workspace").fetch("capability_actions")
+
+      RecordingStudio.stub(:capability_enabled?, false) do
+        assert_equal true, catalog.capability_actions?
+        assert_equal [{ "name" => "ping" }], catalog.describe("Workspace").fetch("capability_actions")
+      end
+    end
+  end
+
+  def test_listed_actions_stay_off_tools_when_the_api_has_not_enabled_them
+    with_isolated_api_configuration do
+      register_tree_type("Workspace", capability_actions: %i[ping])
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal false, catalog.capability_actions?
+      assert_equal [], catalog.describe("Workspace").fetch("capability_actions")
     end
   end
 
