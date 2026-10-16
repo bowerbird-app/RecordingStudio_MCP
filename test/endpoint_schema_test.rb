@@ -115,4 +115,35 @@ class EndpointSchemaTest < Minitest::Test
     refute schema[:properties].key?(:"X-Trace")
     refute schema.key?(:additionalProperties)
   end
+
+  def test_users_style_write_endpoint_without_a_contract_has_no_body_fields
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :users_create,
+      http_verb: :post,
+      path: "users",
+      handler: ->(_context) { {} },
+      openapi: { summary: "Create a user", description: "Requires Accessible :edit on AdminRoot." }
+    )
+
+    schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+
+    assert_equal({}, schema[:properties])
+    assert_equal [], schema[:required]
+  end
+
+  def test_users_style_update_exposes_the_path_id_only_without_a_contract
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :users_update,
+      http_verb: :patch,
+      path: "users/:id",
+      handler: ->(_context) { {} },
+      openapi: { summary: "Update a user" }
+    )
+
+    schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+
+    assert_equal %w[id], schema[:required]
+    assert_equal({ type: "string", description: "Path parameter id." }, schema.dig(:properties, :id))
+    refute schema[:properties].key?(:email)
+  end
 end

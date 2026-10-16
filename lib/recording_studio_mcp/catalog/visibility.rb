@@ -47,7 +47,7 @@ module RecordingStudioMcp
       end
 
       def visible_capability_names(type)
-        Array(registration_for(type)&.capability_actions).select { |name| action_visible?(name) }
+        enabled_action_registrations(type).map { |action| action.name.to_s }.select { |name| action_visible?(name) }
       end
 
       def action_visible?(name)

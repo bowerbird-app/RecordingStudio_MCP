@@ -215,8 +215,8 @@ class ToolsTest < Minitest::Test
 
     assert_equal "flatpack_component", tool[:name]
     assert_equal "Show a component", tool[:title]
-    assert_includes tool[:description], "Return one Flatpack component."
-    assert_includes tool[:description], "GET flatpack/components/:name"
+    assert_equal "Return one Flatpack component.", tool[:description]
+    refute_includes tool[:description], "GET "
     assert_equal true, tool.dig(:annotations, :readOnlyHint)
     assert_equal true, tool.dig(:annotations, :idempotentHint)
     assert_equal false, tool.dig(:annotations, :destructiveHint)
@@ -297,5 +297,34 @@ class ToolsTest < Minitest::Test
     assert_equal false, tool.dig(:annotations, :readOnlyHint)
     assert_equal true, tool.dig(:annotations, :destructiveHint)
     assert_equal false, tool.dig(:annotations, :idempotentHint)
+  end
+
+  def test_endpoint_without_openapi_uses_a_human_description
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :users,
+      http_verb: :get,
+      path: "users",
+      handler: ->(_context) { {} }
+    )
+
+    tool = RecordingStudioMcp::Tools.endpoint_tool(endpoint)
+
+    assert_equal "Users", tool[:title]
+    assert_equal "Users. GET users.", tool[:description]
+  end
+
+  def test_endpoint_prefers_openapi_description_over_verb_and_path
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :users_create,
+      http_verb: :post,
+      path: "users",
+      handler: ->(_context) { {} },
+      openapi: { summary: "Create a user", description: "Requires Accessible :edit on AdminRoot." }
+    )
+
+    tool = RecordingStudioMcp::Tools.endpoint_tool(endpoint)
+
+    assert_equal "Create a user", tool[:title]
+    assert_equal "Requires Accessible :edit on AdminRoot.", tool[:description]
   end
 end

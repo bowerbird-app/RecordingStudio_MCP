@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-16
+
+### Changed
+- Endpoint tool descriptions use OpenAPI `description`, then `summary`, then a sentence from the tool title and the HTTP route. They no longer append a raw `GET users` fragment when human text exists.
+- `capability_action` and `describe` use the same list. An action appears when it is registered on the named API, listed on the type, and the grant's role can run it. `describe` no longer hides a listed action just because the recordable mixin check failed.
+
+### Fixed
+- README and 0.15 notes said a grant with no access row sees `describe` only. Tree tools hide. `describe` stays. Endpoint tools still list.
+- CHANGELOG compare for `0.10.0` pointed at `v0.9.2`. The previous documented release is `0.9.1`.
+
+### Upgrade notes
+- Bump to `0.19.0`. No migration.
+- Clients that relied on a raw `GET path` suffix in an endpoint description should read the OpenAPI description or summary instead.
+- Hosts that listed `capability_actions` without registering the action lose the `capability_action` tool until the action exists on that named API.
+- `users_create` and `users_update` still expose no body fields until Recording Studio Users adds an `input_contract` (or OpenAPI query parameters) on those endpoints. MCP does not invent those fields.
+
 ## [0.18.0] - 2026-10-15
 
 ### Added
@@ -69,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when a type has a capability action that role can run. A delegated token returns 401 `invalid_token`
   when its Access row is deleted or its access recording is trashed. A client-credentials token whose
   Access row is deleted, while the access recording is still there, still authenticates. Its role is nil,
-  so tree reads and writes are hidden and `describe` remains. A voided authorization returns 401 `invalid_token`.
+  so tree reads and writes are hidden and `describe` stays. Endpoint tools still list.
+  A voided authorization returns 401 `invalid_token`.
   `describe` stays whenever the API has recordable types. Initialize instructions mention only
   those advertised tools. Each tool's `type` enum is the types that allow that operation.
   `tools/call` returns `-32602` for non-object params or arguments. Non-object filters, nested filter
@@ -86,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `capability_action` in `tools/list`. Calls to a missing tool still return an unknown-tool error.
   Calls to an advertised tool for a type that does not enable that operation still return the
   existing unsupported-operation error.
-- A view grant no longer sees edit tools. A delegated token returns 401 `invalid_token` when its Access row is deleted or its access recording is trashed. A client-credentials token whose Access row is deleted, while the access recording is still there, still authenticates. Its role is nil, so tree reads and writes are hidden and `describe` remains. A voided authorization returns 401 `invalid_token`.
+- A view grant no longer sees edit tools. A delegated token returns 401 `invalid_token` when its Access row is deleted or its access recording is trashed. A client-credentials token whose Access row is deleted, while the access recording is still there, still authenticates. Its role is nil, so tree reads and writes are hidden and `describe` stays. Endpoint tools still list. A voided authorization returns 401 `invalid_token`.
   `operations: []` still advertises `delete` because the API expands a blank list to all five operations.
   On the public API, `operations: nil` does the same. On a named API, `operations: nil` follows `default_access`.
 - Endpoint names that are not a single tool token, or that match a tree tool, are omitted. A registered
@@ -471,7 +488,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.15.0...v0.16.0
@@ -485,7 +503,7 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 [0.12.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.2...v0.10.0
+[0.10.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.7.2...v0.8.0
