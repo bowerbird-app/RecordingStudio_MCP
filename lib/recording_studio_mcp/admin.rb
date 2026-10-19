@@ -39,7 +39,7 @@ module RecordingStudioMcp
 
       def table_ready?(name)
         RecordingStudioMcp.const_get(name).table_available?
-      rescue NameError, NoMethodError
+      rescue NameError
         false
       end
     end
