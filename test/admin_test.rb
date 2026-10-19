@@ -100,13 +100,13 @@ class AdminTest < Minitest::Test
       ]
     )
 
-    RecordingStudioMcp::EventSubscription.stub(:table_available?, true) do
+    RecordingStudioMcp::Admin::SiteMetrics.stub(:table_ready?, true) do
       RecordingStudioMetrics::Admin.stub(:scalar_value, 2) do
         assert_equal 2, RecordingStudioMcp::Admin::SiteMetrics.failing_count(actor_context)
       end
     end
 
-    RecordingStudioMcp::UsageDailyMetric.stub(:table_available?, true) do
+    RecordingStudioMcp::Admin::SiteMetrics.stub(:table_ready?, true) do
       RecordingStudioMetrics::Admin.stub(:execute, result) do
         assert_equal(
           [{ text: "show", trailing: "2" }, { text: "list", trailing: "1" }],

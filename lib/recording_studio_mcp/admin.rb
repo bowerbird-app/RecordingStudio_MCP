@@ -15,13 +15,13 @@ module RecordingStudioMcp
       module_function
 
       def failing_count(admin_context)
-        return 0 unless EventSubscription.table_available?
+        return 0 unless table_ready?("EventSubscription")
 
         RecordingStudioMetrics::Admin.scalar_value(FAILING, admin_context: admin_context, **SITE)
       end
 
       def failed_tool_items(admin_context)
-        return [] unless UsageDailyMetric.table_available?
+        return [] unless table_ready?("UsageDailyMetric")
 
         result = RecordingStudioMetrics::Admin.execute(FAILED_BY_TOOL, admin_context: admin_context, **SITE)
         Array(result.data).filter_map { |row| item_for(row) }.sort_by do |item|
@@ -35,6 +35,12 @@ module RecordingStudioMcp
         return if name.blank? || count.to_i.zero?
 
         { text: name, trailing: count.to_i.to_s }
+      end
+
+      def table_ready?(name)
+        RecordingStudioMcp.const_get(name).table_available?
+      rescue NameError, NoMethodError
+        false
       end
     end
 
