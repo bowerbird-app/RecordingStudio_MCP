@@ -76,9 +76,15 @@ class McpUsageTest < ActionDispatch::IntegrationTest
 
     get "/admin/screens/mcp_usage"
     assert_response :success
-    assert_includes response.body, "name=\"status\""
-    assert_includes response.body, "name=\"failed\""
-    assert_includes response.body, "name=\"method\""
+    assert_select "form#screen-inline-filters-form" do
+      assert_select "[name='status']"
+      assert_select "[name='group_by']"
+      assert_select "[name='date_range_preset'], [name='start_date']"
+      assert_select "[name='failed']", count: 0
+      assert_select "[name='method']", count: 0
+    end
+    assert_select "[name='failed']"
+    assert_select "[name='method']"
   end
 
   test "a rejected sign in is still counted" do

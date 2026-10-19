@@ -21,6 +21,8 @@ class AdminTest < Minitest::Test
     assert_equal "RecordingStudioMcp::Admin::UsageScreen", screen.name
     assert_equal "Usage", screen.title
     assert_equal %i[date_range group_by status failed method], screen.filters.map(&:key)
+    assert_equal :modal, screen.filter_presentation
+    assert_equal 3, screen.inline_filter_count
 
     failing_screen = RecordingStudioAdmin.screen_for("mcp_failing_subscriptions")
     assert_equal "RecordingStudioMcp::Admin::FailingSubscriptionsScreen", failing_screen.name
@@ -163,6 +165,8 @@ class AdminTest < Minitest::Test
                  section.widget_keys
     assert_equal %i[oauth_apps failing_subscriptions usage], section.links.map(&:name)
     assert_equal %i[date_range group_by status failed method], screen.filters.map(&:key)
+    assert_equal :modal, screen.filter_presentation
+    assert_equal 3, screen.inline_filter_count
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }
     usage_screens = RecordingStudioAdmin.screens.keys.count { |key| key == "mcp_usage" }
     failing_screens = RecordingStudioAdmin.screens.keys.count { |key| key == "mcp_failing_subscriptions" }
