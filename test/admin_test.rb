@@ -11,8 +11,9 @@ class AdminTest < Minitest::Test
 
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
-    assert_equal "Ops MCP connection paths and usage.", section.subtitle
-    assert_equal %w[mcp.ops_connection mcp.usage], section.widget_keys
+    assert_equal "Ops MCP connection paths, usage, and failures.", section.subtitle
+    assert_equal %w[mcp.ops_connection mcp.failing_subscriptions mcp.failed_by_tool mcp.usage],
+                 section.widget_keys
     assert_equal %i[oauth_apps usage], section.links.map(&:name)
     assert_nil RecordingStudioAdmin.screen_for("mcp")
 
@@ -44,6 +45,23 @@ class AdminTest < Minitest::Test
       ],
       ops.items
     )
+    failing = RecordingStudioAdmin.widget_for("mcp.failing_subscriptions").resolve(context)
+    assert_equal :number, failing.type
+    assert_equal "Failing subscriptions", failing.title
+    assert_equal "Still listening, but the last callback bounced. They go quiet after five misses in a row.",
+                 failing.info
+    assert_equal "Usage", failing.link_label
+    assert_equal "/admin/screens/mcp_usage", failing.link_to
+    assert_equal 0, failing.value
+
+    failed_tools = RecordingStudioAdmin.widget_for("mcp.failed_by_tool").resolve(context)
+    assert_equal :list, failed_tools.type
+    assert_equal "Failed tools", failed_tools.title
+    assert_equal "Tool calls that failed, from daily totals. Usage lists each call.", failed_tools.info
+    assert_equal "Usage", failed_tools.link_label
+    assert_equal "/admin/screens/mcp_usage", failed_tools.link_to
+    assert_equal [], failed_tools.items
+
     widget = RecordingStudioAdmin.widget_for("mcp.usage").resolve(context)
     assert_equal :chart, widget.type
     assert_equal :column, widget.chart_type
@@ -59,6 +77,43 @@ class AdminTest < Minitest::Test
     assert zeros
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }
     assert_equal 1, mcp_sections
+  end
+
+  def test_site_metrics_read_recording_studio_metrics_admin
+    actor_context = Class.new do
+      def current_actor
+        :staff
+      end
+
+      def admin_screen_path(key)
+        "/admin/screens/#{key}"
+      end
+    end.new
+    result = RecordingStudioMetrics::Result.new(
+      metric: "mcp_calls.failed_by_tool",
+      type: :breakdown,
+      data: [
+        { key: "show", value: 2 },
+        { key: "list", value: 1 },
+        { key: "", value: 4 },
+        { key: "ping", value: 0 }
+      ]
+    )
+
+    RecordingStudioMcp::EventSubscription.stub(:table_available?, true) do
+      RecordingStudioMetrics::Admin.stub(:scalar_value, 2) do
+        assert_equal 2, RecordingStudioMcp::Admin::SiteMetrics.failing_count(actor_context)
+      end
+    end
+
+    RecordingStudioMcp::UsageDailyMetric.stub(:table_available?, true) do
+      RecordingStudioMetrics::Admin.stub(:execute, result) do
+        assert_equal(
+          [{ text: "show", trailing: "2" }, { text: "list", trailing: "1" }],
+          RecordingStudioMcp::Admin::SiteMetrics.failed_tool_items(actor_context)
+        )
+      end
+    end
   end
 
   def test_reload_keeps_one_section_and_one_link
@@ -79,7 +134,8 @@ class AdminTest < Minitest::Test
 
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
-    assert_equal %w[mcp.ops_connection mcp.usage], section.widget_keys
+    assert_equal %w[mcp.ops_connection mcp.failing_subscriptions mcp.failed_by_tool mcp.usage],
+                 section.widget_keys
     assert_equal %i[oauth_apps usage], section.links.map(&:name)
     assert_equal %i[date_range group_by], screen.filters.map(&:key)
     mcp_sections = RecordingStudioAdmin.sections.keys.count { |key| key == "mcp" }

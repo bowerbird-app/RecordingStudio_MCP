@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`. Metrics `>= 0.3.0, < 0.4`. Oauth `v0.12.2` or later.
 
+## 0.20.0
+
+No migration. MCP admin widgets read `mcp_subscriptions.failing` and `mcp_calls.failed_by_tool` through `RecordingStudioMetrics::Admin` with site authorization. Both link to the Usage screen.
+
 ## 0.19.0
 
 No migration. Endpoint tool descriptions prefer OpenAPI `description`, then `summary`, then a sentence from the title and route. `capability_action` and `describe` share the type allowlist of registered actions. A grant with no access row still has `describe` and any endpoint tools. Tree reads and writes stay hidden. `users_create` and `users_update` stay without body fields until Users adds an `input_contract`.
