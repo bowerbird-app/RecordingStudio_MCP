@@ -28,7 +28,9 @@ class MetricsTest < Minitest::Test
     assert_includes metrics, "EventSubscription"
     assert_includes metrics, "count :failing"
     assert_includes metrics, "cacheable: false"
-    assert_includes metrics, "failure_count > 0"
+    assert_includes metrics, "EventSubscription.failing"
+    assert_includes File.read(File.expand_path("../app/models/recording_studio_mcp/event_subscription.rb", __dir__)),
+                    "failure_count > 0"
     assert_includes metrics, "blast_radius: :site"
     assert_includes metrics, "expose: EXPOSE"
     assert_includes metrics, "api: [API]"

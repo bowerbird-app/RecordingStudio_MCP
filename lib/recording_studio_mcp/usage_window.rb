@@ -24,6 +24,14 @@ module RecordingStudioMcp
       context&.admin_screen_path("mcp_usage")
     end
 
+    def failed_calls_path(context)
+      path = screen_path(context)
+      return path if path.blank?
+
+      query = { failed: "true", method: "tools/call" }.to_query
+      "#{path}?#{query}"
+    end
+
     def week_points
       totals = counts_by_day
       week_slices.map { |slice| { x: slice.first.strftime("%b %-d"), y: slice.sum { |day| totals.fetch(day, 0) } } }

@@ -73,6 +73,26 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
       expires_at: 1.day.from_now,
       failure_count: 2
     )
+    RecordingStudioMcp::EventSubscription.create!(
+      id: SecureRandom.uuid,
+      owner_principal_id: "principal-#{SecureRandom.hex(4)}",
+      event_name: "page.commented",
+      callback_url: "https://example.com/healthy",
+      callback_secret: SecureRandom.hex(16),
+      status: RecordingStudioMcp::EventSubscription::ACTIVE,
+      expires_at: 1.day.from_now,
+      failure_count: 0
+    )
+    RecordingStudioMcp::EventSubscription.create!(
+      id: SecureRandom.uuid,
+      owner_principal_id: "principal-#{SecureRandom.hex(4)}",
+      event_name: "recording.updated",
+      callback_url: "https://example.com/expired",
+      callback_secret: SecureRandom.hex(16),
+      status: RecordingStudioMcp::EventSubscription::ACTIVE,
+      expires_at: 1.hour.ago,
+      failure_count: 3
+    )
     RecordingStudioMcp::UsageDailyMetric.create!(
       metric_date: Date.current,
       method_name: "tools/call",
@@ -97,7 +117,21 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     assert_select "span.text-5xl", text: "1"
     assert_includes response.body, "show"
     assert_includes response.body, "list"
-    assert_includes response.body, "/admin/screens/mcp_usage"
+    assert_includes response.body, "/admin/screens/mcp_failing_subscriptions"
+    assert_includes response.body, "/admin/screens/mcp_usage?failed=true&amp;method=tools%2Fcall"
+
+    get "/admin/screens/mcp_failing_subscriptions"
+
+    assert_response :success
+    assert_includes response.body, "/admin/screens/mcp_failing_subscriptions/table"
+
+    get "/admin/screens/mcp_failing_subscriptions/table"
+
+    assert_response :success
+    assert_includes response.body, "recording.updated"
+    assert_includes response.body, "https://example.com/callback"
+    refute_includes response.body, "https://example.com/healthy"
+    refute_includes response.body, "https://example.com/expired"
   end
 
   test "mcp section is defined by the gem and the host only allowlists it" do

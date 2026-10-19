@@ -73,6 +73,12 @@ class McpUsageTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Last 4 weeks"
+
+    get "/admin/screens/mcp_usage"
+    assert_response :success
+    assert_includes response.body, "name=\"status\""
+    assert_includes response.body, "name=\"failed\""
+    assert_includes response.body, "name=\"method\""
   end
 
   test "a rejected sign in is still counted" do
@@ -152,6 +158,36 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_includes result.fetch(:aggregated_dates), Time.zone.today
     assert_equal 1, result.fetch(:pruned_logs)
     assert_nil RecordingStudioMcp::UsageLog.find_by(id: old.id)
+  end
+
+  test "usage table failed filter keeps failed calls" do
+    RecordingStudioMcp::UsageLog.delete_all
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: Time.zone.now,
+      method_name: "ping",
+      subject_name: "",
+      status_code: 200,
+      duration_ms: 2,
+      rate_limited: false,
+      failed: false
+    )
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: Time.zone.now,
+      method_name: "tools/call",
+      subject_name: "show",
+      status_code: 500,
+      duration_ms: 9,
+      rate_limited: false,
+      failed: true
+    )
+
+    sign_in @user
+    switch_to_root!(@admin_root_recording)
+    get "/admin/screens/mcp_usage/table", params: { failed: "true", method: "tools/call" }
+
+    assert_response :success
+    assert_includes response.body, "show"
+    refute_includes response.body, ">ping<"
   end
 
   private

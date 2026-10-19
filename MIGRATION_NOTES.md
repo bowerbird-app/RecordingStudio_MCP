@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.12`
 
 ## 0.20.0
 
-No migration. MCP admin widgets read `mcp_subscriptions.failing` and `mcp_calls.failed_by_tool` through `RecordingStudioMetrics::Admin` with site authorization. Both link to the Usage screen.
+No migration. MCP admin widgets read `mcp_subscriptions.failing` and `mcp_calls.failed_by_tool` through `RecordingStudioMetrics::Admin` with site authorization. Failing subscriptions opens `mcp_failing_subscriptions`. Failed tools opens Usage filtered to failed `tools/call` rows.
 
 ## 0.19.0
 

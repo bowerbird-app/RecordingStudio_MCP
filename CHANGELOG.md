@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.20.0] - 2026-10-19
 
 ### Added
-- MCP admin shows failing event subscriptions and failed tool calls from `RecordingStudioMetrics`. Both widgets open the existing Usage screen. Usage still lists each call's Failed column. It does not group failures by tool.
+- MCP admin shows failing event subscriptions and failed tool calls from `RecordingStudioMetrics`. Failing subscriptions opens a table of active, unexpired subscriptions with `failure_count > 0`. Failed tools opens Usage with Failed and Method filters. Usage can filter by status, failed, and method. It does not group failures by tool.
 
 ### Upgrade notes
 - Bump to `0.20.0`. No migration.

@@ -72,8 +72,8 @@ module RecordingStudioMcp
       hide_period
       blast_radius :site
       value { |context| SiteMetrics.failing_count(context) }
-      link_to { |context| UsageWindow.screen_path(context) }
-      link_label "Usage"
+      link_to { |context| context.admin_screen_path("mcp_failing_subscriptions") }
+      link_label "Open list"
     end
 
     FailedByToolWidget = RecordingStudioAdmin::Widget.new("mcp.failed_by_tool") do
@@ -86,7 +86,7 @@ module RecordingStudioMcp
       blast_radius :site
       list_options divider: true
       items { |context| SiteMetrics.failed_tool_items(context) }
-      link_to { |context| UsageWindow.screen_path(context) }
+      link_to { |context| UsageWindow.failed_calls_path(context) }
       link_label "Usage"
     end
 
@@ -128,6 +128,8 @@ module RecordingStudioMcp
       widget "mcp.failed_by_tool"
       widget "mcp.usage"
       link :oauth_apps, text: "Registered apps", url: ->(context) { context.admin_section_path("oauth_apps") }
+      link :failing_subscriptions, text: "Failing subscriptions",
+                                   url: ->(context) { context.admin_screen_path("mcp_failing_subscriptions") }
       link :usage, text: "Usage", url: ->(context) { context.admin_screen_path("mcp_usage") }
     end
 
@@ -139,6 +141,7 @@ module RecordingStudioMcp
       RecordingStudioAdmin.register_widget(FailedByToolWidget)
       RecordingStudioAdmin.register_widget(UsageWidget)
       RecordingStudioAdmin.register_screen(UsageScreen)
+      RecordingStudioAdmin.register_screen(FailingSubscriptionsScreen)
       RecordingStudioAdmin.register_section(McpSection)
     end
   end

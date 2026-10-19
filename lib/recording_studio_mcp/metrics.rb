@@ -10,9 +10,7 @@ module RecordingStudioMcp
     API = :operations
     EXPOSE = { api: [API] }.freeze
     TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call") }
-    FAILING = lambda { |relation|
-      relation.where(status: EventSubscription::ACTIVE).where("failure_count > 0").where("expires_at > ?", Time.current)
-    }
+    FAILING = ->(relation) { relation.merge(EventSubscription.failing) }
     FAILED_BY_TOOL_DESCRIPTION = "Failed tools/call requests summed from daily usage rollups, by tool name."
     FAILING_DESCRIPTION = "Active, unexpired event subscriptions whose last callback delivery failed " \
                           "(failure_count > 0). They turn inactive after 5 failures in a row."

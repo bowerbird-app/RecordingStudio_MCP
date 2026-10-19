@@ -17,6 +17,19 @@ module RecordingStudioMcp
       query { |_context| RecordingStudioMcp::UsageWindow.logs }
       filter :date_range, field: :occurred_at, default: :last_4_weeks
       filter :group_by, values: %i[day week], default: :day
+      filter :status, field: :status_code, options: -> { UsageScreen.log_values(:status_code) }
+      filter :failed, options: %w[true false], apply: lambda { |relation, value, _context|
+        relation.where(failed: value == "true")
+      }
+      filter :method, field: :method_name, options: -> { UsageScreen.log_values(:method_name) }
+
+      def self.log_values(column)
+        return [] unless RecordingStudioMcp::UsageLog.table_available?
+
+        RecordingStudioMcp::UsageLog.distinct.order(column).limit(100).pluck(column).map(&:to_s)
+      rescue StandardError
+        []
+      end
 
       summary do
         label "Calls"
