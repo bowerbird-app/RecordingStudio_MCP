@@ -31,7 +31,10 @@ class ConfigurationTest < Minitest::Test
     assert_nil @configuration.event_callback_host_allowed
     assert_nil @configuration.catalog_metric_resources
     assert_nil @configuration.to_h[:catalog_metric_resources]
+    assert_equal false, @configuration.logs_summaries_enabled
+    assert_equal false, @configuration.to_h[:logs_summaries_enabled]
     assert_includes @configuration.to_h.keys, :events_enabled
+    assert_includes @configuration.to_h.keys, :logs_summaries_enabled
     refute_includes @configuration.to_h.keys, :skill_catalog
     refute_includes @configuration.to_h.keys, :event_catalog
     refute_respond_to @configuration, :skill_catalog=

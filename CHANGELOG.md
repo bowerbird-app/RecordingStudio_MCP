@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-20
+
+### Added
+- RecordingStudioLogs `>= 0.5.0, < 0.6` registration for MCP usage logs
+  (`partition_interval: nil`, UUID primary key) and one ordinary daily summary
+  table: `recording_studio_mcp_usage_day_summaries` (`mcp/usage_counts`).
+  Run tables install on the usage-log database.
+- `rake recording_studio_mcp:usage_logs:backfill_summaries` rebuilds those
+  summaries for an inclusive UTC `FROM`/`TO` range.
+
+### Changed
+- `config.logs_summaries_enabled` defaults to false. When true, nightly
+  maintain rebuilds Logs summaries (not the legacy daily table), Admin MCP
+  usage widgets mix covered summaries, leftover raw days, and legacy rollups
+  without overlap, Metrics `:mcp_calls` reads the summary rollup, and raw
+  prune uses Logs arrival-watermark coverage for `mcp/usage_counts` only. A
+  day with no summary, raw, or legacy rows is omitted, not reported as zero.
+  Do not schedule Logs partition jobs. Recording Studio Metrics still owns
+  `mcp_calls.*`.
+
+### Upgrade notes
+- Bump to `0.21.0`. Run `bin/rails generate recording_studio_mcp:migrations`
+  and `bin/rails db:migrate`.
+- Pin `recording_studio_logs` to `>= 0.5.0, < 0.6` (development and dummy
+  already pin GitHub tag `v0.5.0`).
+- Leave `config.logs_summaries_enabled` false until you backfill
+  `mcp/usage_counts` and compare it with `recording_studio_mcp_usage_daily_metrics`.
+
 ## [0.20.2] - 2026-10-20
 
 ### Changed
@@ -520,7 +548,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.19.0...v0.20.0

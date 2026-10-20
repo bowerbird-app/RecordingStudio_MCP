@@ -13,6 +13,11 @@ RecordingStudioMcp.configure do |config|
   # config.event_subscription_ttl = 24.hours
   # config.event_subscriptions_per_principal = 50
   # config.event_callback_host_allowed = ->(host) { host.end_with?(".example") }
+  # Daily Logs summaries stay off until you rebuild mcp/usage_counts and
+  # compare them with recording_studio_mcp_usage_daily_metrics.
+  # config.logs_summaries_enabled = false
+  # FROM=2026-09-01 TO=2026-10-18 bin/rails recording_studio_mcp:usage_logs:backfill_summaries
+  # Do not schedule RecordingStudioLogs partition jobs for this table.
 end
 
 # Optional. MCP UI is not a dependency of this gem. Pass ui: on the API

@@ -1,6 +1,18 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `v0.5.0` when using API 0.14.x.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`).
+
+## 0.21.0
+
+Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate`. That adds `recording_studio_mcp_usage_day_summaries`, the `recording_studio_mcp_usage_day_metric_rollups` view, and Logs run tables when they are missing. The existing `recording_studio_mcp_usage_logs` table stays unpartitioned with a UUID `id`.
+
+Leave `config.logs_summaries_enabled` false. Nightly `rake recording_studio_mcp:maintain_usage` still rebuilds `recording_studio_mcp_usage_daily_metrics` for yesterday and today, then deletes raw logs older than 30 days. After you compare those totals with Logs summaries, backfill UTC days and then turn the flag on:
+
+```sh
+FROM=2026-09-01 TO=2026-10-18 bin/rails recording_studio_mcp:usage_logs:backfill_summaries
+```
+
+When the flag is true, maintain rebuilds `mcp/usage_counts` for the last two complete UTC days, Admin MCP usage widgets and `:mcp_calls` metrics read those summaries, and raw prune deletes only UTC days that aggregation has covered. Do not schedule Logs partition jobs for this table.
 
 ## 0.20.2
 

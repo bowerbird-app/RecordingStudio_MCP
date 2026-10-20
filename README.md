@@ -220,7 +220,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.11.0, < 0.15`, Oauth `v0.13.1` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), Metrics `>= 0.3.0, < 0.6` (git tag `v0.5.0`), and Logs `v0.5.0` (API 0.14.x needs it). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.14.1` and Oauth tag `v0.13.1`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.11.0, < 0.15`, Oauth `v0.13.1` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), Metrics `>= 0.3.0, < 0.6` (git tag `v0.5.0`), and Logs `>= 0.5.0, < 0.6` (git tag `v0.5.0`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.14.1`, Oauth tag `v0.13.1`, and Logs tag `v0.5.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -234,9 +234,13 @@ This gem ships no end-user product UI. Staff admin is the MCP section when `reco
 
 Staff admin is the MCP admin section. Ops MCP lists `/recording_studio_mcp/apis/operations` and its well-known path, and reminds staff to register ChatGPT and Grok Bot in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. Failing subscriptions sits on its own compact row at the top: the live count of open callbacks that bounced, and it opens a table of those subscriptions. Ops MCP, Failed tools, and Usage stay in the card grid below. The Usage widget charts calls from the last 4 weeks and opens the Usage screen. Failed tools lists `tools/call` failures by name from daily totals and opens Usage filtered to failed `tools/call` rows. Usage lists each call. Date range, group by, and status sit on the screen. Failed and method stay in the filter modal. It does not group failures by tool. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe. Public MCP and Workspace stay unchanged.
 
-Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics`.
+Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics` while `config.logs_summaries_enabled` is false (the default). The usage log table is unpartitioned with a UUID primary key. RecordingStudioLogs registers it and one aggregation, `mcp/usage_counts`, into `recording_studio_mcp_usage_day_summaries`. Leave the flag off until you migrate, backfill those summaries, and compare them with the legacy daily table. When it is on, Admin MCP usage widgets and `:mcp_calls` metrics use covered Logs summaries for complete UTC days, raw rows for an uncovered day, and legacy daily metrics only for older days that still have no raw rows. A day with none of those sources is omitted, not reported as zero. Do not schedule Logs partition jobs for this table.
 
-The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on that same daily table. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
+```sh
+FROM=2026-09-01 TO=2026-10-18 bin/rails recording_studio_mcp:usage_logs:backfill_summaries
+```
+
+The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on the daily table, or on the Logs summary rollup when the flag is on. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
 
 ```ruby
 RecordingStudioMetrics::Api.register!(api: :operations)
@@ -251,6 +255,8 @@ bin/rails generate recording_studio_mcp:migrations
 bin/rails db:migrate
 rake recording_studio_mcp:maintain_usage
 ```
+
+With the flag false, maintain rebuilds yesterday and today into `recording_studio_mcp_usage_daily_metrics`, then deletes raw logs older than 30 days. With the flag true, it rebuilds the last two complete UTC days for `mcp/usage_counts` only (not every Logs producer) and deletes raw rows only for days that aggregation has covered.
 
 1. Allow the section on the admin root.
 
@@ -311,4 +317,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.20.2
+0.21.0

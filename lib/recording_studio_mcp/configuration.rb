@@ -10,7 +10,8 @@ module RecordingStudioMcp
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :skill_policy, :events_enabled,
-                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
+                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed,
+                  :logs_summaries_enabled
     attr_reader :catalog_metric_resources, :skill_catalog, :event_catalog
 
     def initialize
@@ -28,6 +29,7 @@ module RecordingStudioMcp
       @event_subscriptions_per_principal = 50
       @event_callback_host_allowed = nil
       @catalog_metric_resources = nil
+      @logs_summaries_enabled = false
     end
 
     def catalog_metric_resources=(resources)
@@ -47,7 +49,8 @@ module RecordingStudioMcp
         event_subscription_ttl: event_subscription_ttl,
         event_subscriptions_per_principal: event_subscriptions_per_principal,
         event_callback_host_allowed: event_callback_host_allowed,
-        catalog_metric_resources: catalog_metric_resources
+        catalog_metric_resources: catalog_metric_resources,
+        logs_summaries_enabled: logs_summaries_enabled
       }
     end
 

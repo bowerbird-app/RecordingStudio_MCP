@@ -21,7 +21,7 @@ module RecordingStudioMcp
       end
 
       def failed_tool_items(admin_context)
-        return [] unless table_ready?("UsageDailyMetric")
+        return [] unless calls_table_ready?
 
         result = RecordingStudioMetrics::Admin.execute(FAILED_BY_TOOL, admin_context: admin_context, **SITE)
         Array(result.data).filter_map { |row| item_for(row) }.sort_by do |item|
@@ -41,6 +41,14 @@ module RecordingStudioMcp
         RecordingStudioMcp.const_get(name).table_available?
       rescue NameError
         false
+      end
+
+      def calls_table_ready?
+        if LogsRegistration.summaries_enabled?
+          table_ready?("UsageDayMetricRollup") || table_ready?("UsageLog") || table_ready?("UsageDailyMetric")
+        else
+          table_ready?("UsageDailyMetric")
+        end
       end
     end
 
