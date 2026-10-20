@@ -12,6 +12,7 @@ module RecordingStudioMcp
     encrypts :callback_secret
 
     scope :active, -> { where(status: ACTIVE).where("expires_at > ?", Time.current) }
+    scope :failing, -> { active.where("failure_count > 0") }
 
     def self.table_available?
       connection_pool.with_connection { |connection| connection.data_source_exists?(table_name) }

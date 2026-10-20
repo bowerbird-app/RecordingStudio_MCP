@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-19
+
+### Added
+- MCP admin shows failing event subscriptions and failed tool calls from `RecordingStudioMetrics`. Failing subscriptions opens a table of active, unexpired subscriptions with `failure_count > 0`. Failed tools opens Usage with Failed and Method filters. Usage can filter by status, failed, and method. It does not group failures by tool.
+
+### Changed
+- Usage keeps date range, group by, and status on the screen. Failed and method stay in the filter modal.
+
+### Upgrade notes
+- Bump to `0.20.0`. No migration.
+
 ## [0.19.0] - 2026-10-16
 
 ### Changed
@@ -488,7 +499,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.16.0...v0.17.0
