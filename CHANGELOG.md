@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - Bump to `0.20.2`. No migration.
 - Pin `recording_studio_api` to `>= 0.11.0, < 0.15` and `recording_studio_metrics` to `>= 0.3.0, < 0.6`. Hosts that want API 0.14.x should pin Oauth `v0.13.1` or later and Logs `v0.5.0`.
+- Recordable metric tool results omit `filters` when the host runs API 0.11.2 or later. The key was always `{}`.
 
 ## [0.20.1] - 2026-10-20
 

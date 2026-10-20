@@ -48,7 +48,7 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     assert_equal false, filtered.fetch("isError")
     assert_equal 1, filtered.dig("structuredContent", "value")
     assert_equal "folders.total", filtered.dig("structuredContent", "metric")
-    assert_equal({}, filtered.dig("structuredContent", "filters"))
+    refute filtered.fetch("structuredContent").key?("filters")
     assert_equal 1, JSON.parse(filtered.dig("content", 0, "text")).fetch("value")
 
     created = listed.find { |tool| tool.fetch("name") == "folders-created_over_time" }
@@ -65,7 +65,7 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
       interval: "day"
     )
     assert_equal false, window.fetch("isError"), window.dig("content", 0, "text").to_s
-    assert_equal({}, window.dig("structuredContent", "filters"))
+    refute window.fetch("structuredContent").key?("filters")
 
     unfiltered = call_tool(token, "folders-total")
     assert_equal false, unfiltered.fetch("isError")

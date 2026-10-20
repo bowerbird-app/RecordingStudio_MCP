@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`
 
 ## 0.20.2
 
-No migration. Runtime ranges allow API through 0.14.x and Metrics through 0.5.x. Development pins API `v0.14.1`, Metrics `v0.5.0`, Oauth `v0.13.1`, and Logs `v0.5.0`.
+No migration. Runtime ranges allow API through 0.14.x and Metrics through 0.5.x. Development pins API `v0.14.1`, Metrics `v0.5.0`, Oauth `v0.13.1`, and Logs `v0.5.0`. Recordable metric tool JSON omits `filters` on API 0.11.2 or later.
 
 ## 0.20.1
 
