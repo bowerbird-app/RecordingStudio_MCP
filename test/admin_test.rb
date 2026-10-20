@@ -12,8 +12,13 @@ class AdminTest < Minitest::Test
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
     assert_equal "Ops MCP connection paths, usage, and failures.", section.subtitle
-    assert_equal %w[mcp.ops_connection mcp.failing_subscriptions mcp.failed_by_tool mcp.usage],
+    assert_equal %w[mcp.failing_subscriptions mcp.ops_connection mcp.failed_by_tool mcp.usage],
                  section.widget_keys
+    usages = section.widget_usages.index_by(&:key)
+    assert_equal :compact, usages.fetch("mcp.failing_subscriptions").view_variant
+    assert_nil usages.fetch("mcp.ops_connection").view_variant
+    assert_nil usages.fetch("mcp.failed_by_tool").view_variant
+    assert_nil usages.fetch("mcp.usage").view_variant
     assert_equal %i[oauth_apps failing_subscriptions usage], section.links.map(&:name)
     assert_nil RecordingStudioAdmin.screen_for("mcp")
 
@@ -161,8 +166,13 @@ class AdminTest < Minitest::Test
 
     assert_equal "RecordingStudioMcp::Admin::McpSection", section.name
     assert_equal "MCP admin", section.title
-    assert_equal %w[mcp.ops_connection mcp.failing_subscriptions mcp.failed_by_tool mcp.usage],
+    assert_equal %w[mcp.failing_subscriptions mcp.ops_connection mcp.failed_by_tool mcp.usage],
                  section.widget_keys
+    usages = section.widget_usages.index_by(&:key)
+    assert_equal :compact, usages.fetch("mcp.failing_subscriptions").view_variant
+    assert_nil usages.fetch("mcp.ops_connection").view_variant
+    assert_nil usages.fetch("mcp.failed_by_tool").view_variant
+    assert_nil usages.fetch("mcp.usage").view_variant
     assert_equal %i[oauth_apps failing_subscriptions usage], section.links.map(&:name)
     assert_equal %i[date_range group_by status failed method], screen.filters.map(&:key)
     assert_equal :modal, screen.filter_presentation

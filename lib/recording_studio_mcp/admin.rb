@@ -123,8 +123,8 @@ module RecordingStudioMcp
       title "MCP admin"
       subtitle "Ops MCP connection paths, usage, and failures."
       blast_radius :site
+      widget "mcp.failing_subscriptions", view_variant: :compact
       widget "mcp.ops_connection"
-      widget "mcp.failing_subscriptions"
       widget "mcp.failed_by_tool"
       widget "mcp.usage"
       link :oauth_apps, text: "Registered apps", url: ->(context) { context.admin_section_path("oauth_apps") }

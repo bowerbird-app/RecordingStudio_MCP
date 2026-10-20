@@ -32,6 +32,12 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Grok Bot"
     assert_match(/api_key:\s*&quot;operations&quot;|api_key:\s*"operations"/, response.body)
     assert_includes response.body, "Failing subscriptions"
+    assert_includes response.body, "widget_view_variant=compact"
+    failing_at = response.body.index("mcp.failing_subscriptions")
+    ops_at = response.body.index("mcp.ops_connection")
+    failed_at = response.body.index("mcp.failed_by_tool")
+    assert_operator failing_at, :<, ops_at
+    assert_operator ops_at, :<, failed_at
     assert_includes response.body, "Failed tools"
     assert_includes response.body, "Usage"
     assert_includes response.body, "Last 4 weeks"
