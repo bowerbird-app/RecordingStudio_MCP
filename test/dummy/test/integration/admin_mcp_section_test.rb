@@ -32,6 +32,15 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Grok Bot"
     assert_match(/api_key:\s*&quot;operations&quot;|api_key:\s*"operations"/, response.body)
     assert_includes response.body, "Failing subscriptions"
+    assert_includes response.body, "max-h-28"
+    assert_equal 2, response.body.scan("lg:grid-cols-3").size
+    failing_at = response.body.index(">Failing subscriptions</h3>")
+    ops_at = response.body.index(">Ops MCP</h3>")
+    failed_at = response.body.index(">Failed tools</h3>")
+    usage_at = response.body.index(">Usage</h3>")
+    assert_operator failing_at, :<, ops_at
+    assert_operator ops_at, :<, failed_at
+    assert_operator failed_at, :<, usage_at
     assert_includes response.body, "Failed tools"
     assert_includes response.body, "Usage"
     assert_includes response.body, "Last 4 weeks"
@@ -114,7 +123,7 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h3", text: "Failing subscriptions"
-    assert_select "span.text-5xl", text: "1"
+    assert_select "span.text-4xl", text: "1"
     assert_includes response.body, "show"
     assert_includes response.body, "list"
     assert_includes response.body, "/admin/screens/mcp_failing_subscriptions"
