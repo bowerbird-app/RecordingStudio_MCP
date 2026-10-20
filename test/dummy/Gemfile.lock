@@ -8,18 +8,18 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: 4b2e7a9ffc8df00c6a5eaa66b4f79f3a3ab286e2
-  tag: v0.12.2
+  revision: fe2c6527eda9b983cb1fe8a6a586b7fc0a3d4182
+  tag: v0.13.1
   specs:
-    recording_studio_oauth (0.12.2)
+    recording_studio_oauth (0.13.1)
       flat_pack (~> 0.1.198)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (>= 0.5.2, < 0.12)
+      recording_studio_api (>= 0.5.2, < 0.15)
       recording_studio_cache (~> 0.5)
-      recording_studio_metrics (~> 0.3)
+      recording_studio_metrics (>= 0.3, < 0.6)
       recording_studio_site_settings (~> 0.2)
       recording_studio_trashable (~> 0.10)
 
@@ -46,14 +46,15 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: 8a1aec37f97a52fa7749a7b02f7014030a39ac0a
-  tag: v0.11.0
+  revision: b7fbf064fa764b26e91da8217e7539b368934c7b
+  tag: v0.14.1
   specs:
-    recording_studio_api (0.11.0)
+    recording_studio_api (0.14.1)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
-      recording_studio_metrics (~> 0.3)
+      recording_studio_logs (>= 0.4.1, < 0.6)
+      recording_studio_metrics (>= 0.3.0, < 0.6)
       recording_studio_trashable (~> 0.10)
       redis (~> 5.3)
 
@@ -78,11 +79,20 @@ GIT
       recording_studio (~> 4.2)
 
 GIT
-  remote: https://github.com/bowerbird-app/RecordingStudio_metrics.git
-  revision: 5d1c5165b9587d1d0108e9139c3faf80a412bbba
-  tag: v0.3.0
+  remote: https://github.com/bowerbird-app/RecordingStudio_logs.git
+  revision: e4f2d254d9325f98340360bb7545d7f6fe7009c6
+  tag: v0.5.0
   specs:
-    recording_studio_metrics (0.3.0)
+    recording_studio_logs (0.5.0)
+      rails (~> 8.1.0)
+      recording_studio (~> 4.2)
+
+GIT
+  remote: https://github.com/bowerbird-app/RecordingStudio_metrics.git
+  revision: b3ff62dbee7e4e1107e3e41cdae7b2481893ca51
+  tag: v0.5.0
+  specs:
+    recording_studio_metrics (0.5.0)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
 
@@ -137,12 +147,12 @@ GIT
 PATH
   remote: ../..
   specs:
-    recording_studio_mcp (0.20.1)
+    recording_studio_mcp (0.20.2)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (>= 0.11.0, < 0.12)
-      recording_studio_metrics (>= 0.3.0, < 0.4)
+      recording_studio_api (>= 0.11.0, < 0.15)
+      recording_studio_metrics (>= 0.3.0, < 0.6)
       recording_studio_oauth (~> 0.10)
 
 GEM
@@ -575,6 +585,7 @@ DEPENDENCIES
   recording_studio_api!
   recording_studio_attachable!
   recording_studio_cache!
+  recording_studio_logs!
   recording_studio_mcp!
   recording_studio_metrics!
   recording_studio_oauth!
@@ -708,12 +719,13 @@ CHECKSUMS
   recording_studio (4.7.0)
   recording_studio_accessible (0.18.0)
   recording_studio_admin (2.3.0)
-  recording_studio_api (0.11.0)
+  recording_studio_api (0.14.1)
   recording_studio_attachable (0.15.0)
   recording_studio_cache (0.5.0)
-  recording_studio_mcp (0.20.1)
-  recording_studio_metrics (0.3.0)
-  recording_studio_oauth (0.12.2)
+  recording_studio_logs (0.5.0)
+  recording_studio_mcp (0.20.2)
+  recording_studio_metrics (0.5.0)
+  recording_studio_oauth (0.13.1)
   recording_studio_root_switchable (0.9.0)
   recording_studio_site_settings (0.2.0)
   recording_studio_trashable (0.11.0)

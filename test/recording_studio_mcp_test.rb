@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_9_0
-    assert_equal "0.20.1", ::RecordingStudioMcp::VERSION
+    assert_equal "0.20.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -16,8 +16,8 @@ class RecordingStudioMcpTest < Minitest::Test
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 4.2"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.11.0", "< 0.12"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 0.4"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.11.0", "< 0.15"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 0.6"'
     refute_includes gemspec, "recording_studio_mcp_ui"
     assert_includes gemspec, 'spec.add_dependency "recording_studio_oauth", "~> 0.10"'
     refute_includes gemspec, "recording_studio_users"
@@ -69,14 +69,15 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v4.7.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.18.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.3.0"'
-    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.11.0"'
+    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v0.14.1"'
     assert_includes gemfile, api_pin
     assert_includes root_gemfile, api_pin
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes root_gemfile, "cursor/recordable-metrics-hook-0fe9"
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.3.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_logs", tag: "v0.5.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.5.0"'
     refute_includes gemfile, "recording_studio_mcp_ui"
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.12.2"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.13.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.15.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_cache", tag: "v0.5.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.9.0"'
@@ -103,7 +104,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "## Version\n\n0.20.1\n"
+    assert_includes readme, "## Version\n\n0.20.2\n"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."
