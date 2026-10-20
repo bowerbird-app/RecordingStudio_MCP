@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RecordingStudioLogs `>= 0.5.0, < 0.6` registration for MCP usage logs
   (`partition_interval: nil`, UUID primary key) and one ordinary daily summary
   table: `recording_studio_mcp_usage_day_summaries` (`mcp/usage_counts`).
-  Run tables install on the usage-log database.
+  Run tables, the summary table, and the rollup view install on the primary
+  connection and `UsageLog.connection` when they differ.
 - `rake recording_studio_mcp:usage_logs:backfill_summaries` rebuilds those
   summaries for an inclusive UTC `FROM`/`TO` range.
 
@@ -21,11 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config.logs_summaries_enabled` defaults to false. When true, nightly
   maintain rebuilds Logs summaries (not the legacy daily table), Admin MCP
   usage widgets mix covered summaries, leftover raw days, and legacy rollups
-  without overlap, Metrics `:mcp_calls` reads the summary rollup, and raw
-  prune uses Logs arrival-watermark coverage for `mcp/usage_counts` only. A
-  day with no summary, raw, or legacy rows is omitted, not reported as zero.
-  Do not schedule Logs partition jobs. Recording Studio Metrics still owns
-  `mcp_calls.*`.
+  without overlap, Metrics `:mcp_calls` (and Failed tools through
+  `RecordingStudioMetrics::Admin.execute`) read the summary rollup only so
+  today and un-backfilled days are omitted, and raw prune uses Logs
+  arrival-watermark coverage for `mcp/usage_counts` only. A day with no
+  summary, raw, or legacy rows is omitted from Admin usage, not reported as
+  zero. Do not schedule Logs partition jobs. Recording Studio Metrics still
+  owns `mcp_calls.*`.
 
 ### Upgrade notes
 - Bump to `0.21.0`. Run `bin/rails generate recording_studio_mcp:migrations`

@@ -570,6 +570,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
   add_foreign_key "recording_studio_recordings", "recording_studio_recordings", column: "parent_recording_id"
   add_foreign_key "recording_studio_recordings", "recording_studio_recordings", column: "root_recording_id"
 
+  # Rails schema dump does not emit PostgreSQL views. RecordingStudioApi's dummy
+  # schema.rb also recreates its request-day rollup with execute this way.
   execute <<~SQL
     CREATE OR REPLACE VIEW recording_studio_mcp_usage_day_metric_rollups AS
     SELECT

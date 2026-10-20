@@ -12,6 +12,8 @@ class MetricsTest < Minitest::Test
     assert_includes metrics, "RecordingStudioMetrics.register"
     assert_includes metrics, ":mcp_calls"
     assert_includes metrics, "UsageDailyMetric"
+    assert_includes metrics, "UsageDayMetricRollup"
+    assert_includes metrics, "LogsRegistration.summaries_enabled?"
     assert_includes metrics, "timeseries :over_time"
     assert_includes metrics, "value_field: :call_count"
     assert_includes metrics, "timeseries :failed_over_time"
@@ -66,5 +68,9 @@ class MetricsTest < Minitest::Test
     assert_includes engine, "RecordingStudioMcp::LogsRegistration.register!"
     refute_includes gemspec, '"~> 0.7"'
     assert_includes dummy_metrics, "RecordingStudioMetrics::Api.register!(api: :operations)"
+
+    readme = File.read(File.expand_path("../README.md", __dir__))
+    refute_includes readme, "Admin MCP usage widgets and `:mcp_calls` metrics use covered"
+    assert_includes readme, "read the Logs summary rollup view only"
   end
 end

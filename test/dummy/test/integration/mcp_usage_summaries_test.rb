@@ -77,6 +77,51 @@ class McpUsageSummariesTest < ActiveSupport::TestCase
     assert_equal 0, RecordingStudioMcp::UsageDailyMetric.count
   end
 
+  test "mcp_calls metrics with summaries on read the rollup and skip uncovered raw days" do
+    covered = Time.now.utc.to_date - 1
+    uncovered = Time.now.utc.to_date
+    insert_log(
+      method_name: "tools/call",
+      subject_name: "list",
+      failed: true,
+      rate_limited: false,
+      occurred_at: Time.utc(covered.year, covered.month, covered.day, 12)
+    )
+    RecordingStudioMcp::RebuildUsageSummaries.call(day: covered)
+    insert_log(
+      method_name: "tools/call",
+      subject_name: "show",
+      failed: true,
+      rate_limited: false,
+      occurred_at: Time.utc(uncovered.year, uncovered.month, uncovered.day, 12)
+    )
+
+    coverage = RecordingStudioMcp::UsageCoverage.new
+    assert_equal :summary, coverage.source_for(covered).kind
+    assert_equal :raw, coverage.source_for(uncovered).kind
+    assert_equal 0, RecordingStudioMcp::UsageDayMetricRollup.where(metric_date: uncovered).sum(:call_count)
+
+    re_register_mcp_calls!
+    over_time = execute_calls(
+      "mcp_calls.over_time",
+      interval: :day,
+      start_at: Time.utc(covered.year, covered.month, covered.day),
+      end_at: Time.utc(uncovered.year, uncovered.month, uncovered.day) + 1.day
+    )
+    values = over_time.data.to_h { |row| [row[:date].to_s, row[:value]] }
+    assert_equal 1, values[covered.iso8601]
+    assert_equal 0, values.fetch(uncovered.iso8601, 0)
+
+    failed = execute_calls("mcp_calls.failed_by_tool").data.to_h { |row| [row[:key].to_s, row[:value]] }
+    assert_equal 1, failed["list"]
+    refute_includes failed.keys, "show"
+
+    items = RecordingStudioMcp::Admin::SiteMetrics.failed_tool_items(metrics_context)
+    assert_equal [{ text: "list", trailing: "1" }], items
+  ensure
+    restore_mcp_calls!
+  end
+
   test "coverage mixes summary, raw, legacy, and omits gaps" do
     insert_log(method_name: "ping", subject_name: "", failed: false, rate_limited: false)
     RecordingStudioMcp::RebuildUsageSummaries.call(day: @day)
@@ -139,6 +184,34 @@ class McpUsageSummariesTest < ActiveSupport::TestCase
       duration_ms: 12,
       rate_limited: rate_limited,
       failed: failed
+    )
+  end
+
+  def re_register_mcp_calls!
+    registry = RecordingStudioMetrics.registry
+    registry.define_singleton_method(:reloading?) { true }
+    RecordingStudioMcp::Metrics.register!
+  ensure
+    registry.singleton_class.remove_method(:reloading?) if registry.singleton_class.method_defined?(:reloading?)
+  end
+
+  def restore_mcp_calls!
+    original = RecordingStudioMcp.configuration.logs_summaries_enabled
+    RecordingStudioMcp.configuration.logs_summaries_enabled = false
+    re_register_mcp_calls!
+    RecordingStudioMcp.configuration.logs_summaries_enabled = original
+  end
+
+  def execute_calls(identifier, **params)
+    RecordingStudioMetrics.execute(identifier, context: metrics_context, **params)
+  end
+
+  def metrics_context
+    RecordingStudioMetrics::Context.new(
+      actor: :staff,
+      scope: :site,
+      site_authorized: true,
+      timezone: "UTC"
     )
   end
 
