@@ -74,4 +74,3 @@ class MetricsTest < Minitest::Test
     assert_includes readme, "retention: :indefinite"
   end
 end
-
