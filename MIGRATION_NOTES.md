@@ -1,6 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `v0.5.0` when using API 0.14.x.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`).
+
+## 0.21.0
+
+No MCP summary tables. RecordingStudioLogs registers `recording_studio_mcp_usage_logs` as an unpartitioned UUID table with `retention: :indefinite` and no root column. It does not call `aggregate`. Nightly `rake recording_studio_mcp:maintain_usage` still rebuilds `recording_studio_mcp_usage_daily_metrics` for yesterday and today, then deletes raw logs older than 30 days. Do not schedule Logs partition jobs for this table.
 
 ## 0.20.2
 

@@ -60,8 +60,17 @@ class MetricsTest < Minitest::Test
     refute_includes engine, "RecordingStudioMetrics::Api.register!"
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 0.6"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.5.0", "< 0.6"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.11.0", "< 0.15"'
+    assert_includes engine, 'initializer "recording_studio_mcp.logs"'
+    assert_includes engine, "RecordingStudioMcp::LogsRegistration.register!"
     refute_includes gemspec, '"~> 0.7"'
     assert_includes dummy_metrics, "RecordingStudioMetrics::Api.register!(api: :operations)"
+
+    readme = File.read(File.expand_path("../README.md", __dir__))
+    refute_includes readme, "config.logs_summaries_enabled"
+    refute_includes readme, "mcp/usage_counts"
+    refute_includes readme, "recording_studio_mcp_usage_day_summaries"
+    assert_includes readme, "retention: :indefinite"
   end
 end

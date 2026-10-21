@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-20
+
+### Added
+- RecordingStudioLogs `>= 0.5.0, < 0.6` registration for MCP usage logs
+  (`partition_interval: nil`, UUID primary key, `retention: :indefinite`,
+  no root column). Registration does not call `aggregate` and does not
+  create summary tables. Recording Studio Metrics still owns `mcp_calls.*`
+  on `recording_studio_mcp_usage_daily_metrics`.
+
+### Changed
+- Nightly `rake recording_studio_mcp:maintain_usage` still rebuilds the
+  legacy daily metrics for yesterday and today, then prunes raw logs older
+  than 30 days. Logs `RetentionCleanupJob` does not clean this table.
+  Do not schedule Logs partition jobs for it.
+
+### Upgrade notes
+- Bump to `0.21.0`. No MCP summary migration.
+- Pin `recording_studio_logs` to `>= 0.5.0, < 0.6` (development and dummy
+  already pin GitHub tag `v0.5.0`).
+- Do not set a Logs aggregation for MCP usage, and do not add
+  `config.logs_summaries_enabled`.
+
 ## [0.20.2] - 2026-10-20
 
 ### Changed
@@ -520,7 +542,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.19.0...v0.20.0

@@ -166,6 +166,16 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_nil RecordingStudioMcp::UsageLog.find_by(id: old.id)
   end
 
+  test "boot registers usage logs with RecordingStudioLogs and no aggregation" do
+    log = RecordingStudioLogs.registry.log_for(RecordingStudioMcp::UsageLog)
+    refute_nil log
+    assert_nil log.partition_interval
+    assert_equal :indefinite, log.declared_retention
+    assert_nil log.root_column
+    assert_empty RecordingStudioLogs.registry.aggregations_for(log)
+    refute defined?(RecordingStudioMcp::UsageDaySummary)
+  end
+
   test "usage table failed filter keeps failed calls" do
     RecordingStudioMcp::UsageLog.delete_all
     RecordingStudioMcp::UsageLog.create!(

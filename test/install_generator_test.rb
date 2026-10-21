@@ -70,6 +70,18 @@ class InstallGeneratorTest < Minitest::Test
     refute_includes install_guide, "FlatPack"
   end
 
+  def test_initializer_template_does_not_enable_logs_summaries
+    initializer = File.read(
+      File.expand_path(
+        "../lib/generators/recording_studio_mcp/install/templates/recording_studio_mcp_initializer.rb",
+        __dir__
+      )
+    )
+
+    refute_includes initializer, "logs_summaries_enabled"
+    refute_includes initializer, "backfill_summaries"
+  end
+
   def test_generator_does_not_add_flatpack_tailwind
     source = File.read(File.expand_path("../lib/generators/recording_studio_mcp/install/install_generator.rb", __dir__))
 

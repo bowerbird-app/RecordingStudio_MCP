@@ -40,6 +40,10 @@ module RecordingStudioMcp
       end
     end
 
+    initializer "recording_studio_mcp.logs" do
+      config.to_prepare { RecordingStudioMcp::LogsRegistration.register! }
+    end
+
     initializer "recording_studio_mcp.metrics" do
       config.to_prepare { RecordingStudioMcp::Metrics.register! }
     end
