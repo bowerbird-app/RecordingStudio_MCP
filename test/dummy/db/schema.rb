@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_044408) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -314,28 +314,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
     t.index ["recording_id"], name: "index_recording_studio_events_on_recording_id"
   end
 
-  create_table "recording_studio_logs_aggregation_runs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "aggregation_name", null: false
-    t.date "day", null: false
-    t.string "status", null: false
-    t.text "error_message"
-    t.datetime "finished_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["aggregation_name", "day"], name: "index_rs_logs_aggregation_runs_on_name_and_day", unique: true
-  end
-
-  create_table "recording_studio_logs_maintenance_runs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "task", null: false
-    t.string "subject", null: false
-    t.string "status", null: false
-    t.text "details"
-    t.datetime "finished_at", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["task", "subject", "finished_at"], name: "index_rs_logs_maintenance_runs_on_task_and_subject"
-  end
-
   create_table "recording_studio_mcp_event_subscriptions", id: :string, force: :cascade do |t|
     t.string "owner_principal_id", null: false
     t.uuid "access_recording_id"
@@ -364,19 +342,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
     t.string "subject_name", default: "", null: false
     t.datetime "updated_at", null: false
     t.index ["metric_date", "method_name", "subject_name"], name: "index_rs_mcp_usage_daily_on_day_method_subject", unique: true
-  end
-
-  create_table "recording_studio_mcp_usage_day_summaries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.date "day", null: false
-    t.string "method_name", null: false
-    t.string "subject_name", default: "", null: false
-    t.boolean "failed", default: false, null: false
-    t.boolean "rate_limited", default: false, null: false
-    t.bigint "call_count", default: 0, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["day", "method_name", "subject_name", "failed", "rate_limited"], name: "index_rs_mcp_usage_day_summaries_identity", unique: true, nulls_not_distinct: true
-    t.index ["day"], name: "index_rs_mcp_usage_day_summaries_on_day"
   end
 
   create_table "recording_studio_mcp_usage_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -569,19 +534,4 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
   add_foreign_key "recording_studio_oauth_refresh_tokens", "recording_studio_oauth_authorizations", column: "oauth_authorization_id"
   add_foreign_key "recording_studio_recordings", "recording_studio_recordings", column: "parent_recording_id"
   add_foreign_key "recording_studio_recordings", "recording_studio_recordings", column: "root_recording_id"
-
-  # Rails schema dump does not emit PostgreSQL views. RecordingStudioApi's dummy
-  # schema.rb also recreates its request-day rollup with execute this way.
-  execute <<~SQL
-    CREATE OR REPLACE VIEW recording_studio_mcp_usage_day_metric_rollups AS
-    SELECT
-      day AS metric_date,
-      method_name,
-      subject_name,
-      SUM(call_count)::bigint AS call_count,
-      SUM(CASE WHEN failed THEN call_count ELSE 0 END)::bigint AS failed_count,
-      SUM(CASE WHEN rate_limited THEN call_count ELSE 0 END)::bigint AS rate_limited_count
-    FROM recording_studio_mcp_usage_day_summaries
-    GROUP BY day, method_name, subject_name
-  SQL
 end

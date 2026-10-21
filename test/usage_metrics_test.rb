@@ -36,36 +36,6 @@ class UsageMetricsTest < Minitest::Test
     assert_equal({ aggregated_dates: [], pruned_logs: 0 }, result)
   end
 
-  def test_maintain_usage_rebuilds_logs_summaries_when_enabled
-    RecordingStudioMcp.configuration.logs_summaries_enabled = true
-    install_logs(pruned: 0, today: Date.new(2026, 9, 30))
-    rebuilt = []
-    RecordingStudioMcp::RebuildUsageSummaries.stub(:lookback!, lambda { |lookback_days:|
-      rebuilt << lookback_days
-      [Date.new(2026, 9, 28), Date.new(2026, 9, 29)]
-    }) do
-      RecordingStudioMcp::GuardedUsageLogRetention.stub(:call, 0) do
-        result = RecordingStudioMcp::MaintainUsage.call(today: Date.new(2026, 9, 30))
-        assert_equal [Date.new(2026, 9, 28), Date.new(2026, 9, 29)], result.fetch(:aggregated_dates)
-        assert_equal 0, result.fetch(:pruned_logs)
-      end
-    end
-    assert_equal [2], rebuilt
-  ensure
-    RecordingStudioMcp.configuration.logs_summaries_enabled = false
-  end
-
-  def test_aggregate_usage_skips_legacy_daily_metrics_when_summaries_are_enabled
-    RecordingStudioMcp.configuration.logs_summaries_enabled = true
-    install_logs(rows: [["tools/call", "list", 2, 1, 0]])
-    install_metrics
-
-    assert_equal false, RecordingStudioMcp::AggregateUsage.call(metric_date: Date.new(2026, 9, 30))
-    assert_empty RecordingStudioMcp::UsageDailyMetric.cleared_dates
-  ensure
-    RecordingStudioMcp.configuration.logs_summaries_enabled = false
-  end
-
   def test_aggregate_usage_replaces_an_empty_day
     install_logs(rows: [])
     install_metrics

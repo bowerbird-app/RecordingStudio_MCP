@@ -21,7 +21,7 @@ module RecordingStudioMcp
     def register!
       RecordingStudioMetrics.register(
         RESOURCE,
-        model: (LogsRegistration.summaries_enabled? ? UsageDayMetricRollup : UsageDailyMetric),
+        model: UsageDailyMetric,
         blast_radius: :site,
         api_authorize: AUTHORIZE
       ) { RecordingStudioMcp::Metrics.define_calls(self) }

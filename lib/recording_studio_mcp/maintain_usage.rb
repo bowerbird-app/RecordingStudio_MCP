@@ -15,19 +15,13 @@ module RecordingStudioMcp
     def call
       return { aggregated_dates: [], pruned_logs: 0 } unless UsageLog.table_available?
 
-      { aggregated_dates: aggregate_recent_days!, pruned_logs: prune_old_logs }
+      dates.each { |date| AggregateUsage.call(metric_date: date) }
+      { aggregated_dates: dates, pruned_logs: prune_old_logs }
     end
 
     private
 
     attr_reader :today
-
-    def aggregate_recent_days!
-      return RebuildUsageSummaries.lookback!(lookback_days: dates.size) if LogsRegistration.summaries_enabled?
-
-      dates.each { |date| AggregateUsage.call(metric_date: date) }
-      dates
-    end
 
     def dates
       [today - 1, today]
@@ -35,8 +29,6 @@ module RecordingStudioMcp
 
     def prune_old_logs
       cutoff = today.in_time_zone.beginning_of_day - LOG_RETENTION_DAYS.days
-      return GuardedUsageLogRetention.call(before: cutoff) if LogsRegistration.summaries_enabled?
-
       UsageLog.where(occurred_at: ...cutoff).delete_all
     end
   end

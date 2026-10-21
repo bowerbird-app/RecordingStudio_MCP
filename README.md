@@ -234,13 +234,9 @@ This gem ships no end-user product UI. Staff admin is the MCP section when `reco
 
 Staff admin is the MCP admin section. Ops MCP lists `/recording_studio_mcp/apis/operations` and its well-known path, and reminds staff to register ChatGPT and Grok Bot in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. Failing subscriptions sits on its own compact row at the top: the live count of open callbacks that bounced, and it opens a table of those subscriptions. Ops MCP, Failed tools, and Usage stay in the card grid below. The Usage widget charts calls from the last 4 weeks and opens the Usage screen. Failed tools lists `tools/call` failures by name from daily totals and opens Usage filtered to failed `tools/call` rows. Usage lists each call. Date range, group by, and status sit on the screen. Failed and method stay in the filter modal. It does not group failures by tool. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe. Public MCP and Workspace stay unchanged.
 
-Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics` while `config.logs_summaries_enabled` is false (the default). The usage log table is unpartitioned with a UUID primary key. RecordingStudioLogs registers it and one aggregation, `mcp/usage_counts`, into `recording_studio_mcp_usage_day_summaries`. Leave the flag off until you migrate, backfill those summaries, and compare them with the legacy daily table. When it is on, Admin MCP usage widgets use covered Logs summaries for complete UTC days, raw rows for an uncovered day, and legacy daily metrics only for older days that still have no raw rows. A day with none of those sources is omitted, not reported as zero. `:mcp_calls` metrics and the Failed tools widget (via `RecordingStudioMetrics::Admin.execute`) read the Logs summary rollup view only, matching RecordingStudioApi `:api_requests`. Today and days that have not been backfilled show nothing on those metrics until `mcp/usage_counts` covers them. Raw usage logs are not mixed into `:mcp_calls`. Do not schedule Logs partition jobs for this table.
+Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics`. The usage log table is unpartitioned with a UUID primary key. RecordingStudioLogs registers it (`partition_interval: nil`, `retention: :indefinite`, no root column) and does not aggregate it. Logs `RetentionCleanupJob` never deletes these rows; `rake recording_studio_mcp:maintain_usage` keeps the 30-day raw window. Do not schedule Logs partition jobs for this table.
 
-```sh
-FROM=2026-09-01 TO=2026-10-18 bin/rails recording_studio_mcp:usage_logs:backfill_summaries
-```
-
-The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on the daily table, or on the Logs summary rollup when the flag is on. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
+The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on that same daily table. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
 
 ```ruby
 RecordingStudioMetrics::Api.register!(api: :operations)
@@ -256,7 +252,7 @@ bin/rails db:migrate
 rake recording_studio_mcp:maintain_usage
 ```
 
-With the flag false, maintain rebuilds yesterday and today into `recording_studio_mcp_usage_daily_metrics`, then deletes raw logs older than 30 days. With the flag true, it rebuilds the last two complete UTC days for `mcp/usage_counts` only (not every Logs producer) and deletes raw rows only for days that aggregation has covered.
+Maintain rebuilds yesterday and today into `recording_studio_mcp_usage_daily_metrics`, then deletes raw logs older than 30 days.
 
 1. Allow the section on the admin root.
 

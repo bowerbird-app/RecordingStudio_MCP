@@ -11,32 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - RecordingStudioLogs `>= 0.5.0, < 0.6` registration for MCP usage logs
-  (`partition_interval: nil`, UUID primary key) and one ordinary daily summary
-  table: `recording_studio_mcp_usage_day_summaries` (`mcp/usage_counts`).
-  Run tables, the summary table, and the rollup view install on the primary
-  connection and `UsageLog.connection` when they differ.
-- `rake recording_studio_mcp:usage_logs:backfill_summaries` rebuilds those
-  summaries for an inclusive UTC `FROM`/`TO` range.
+  (`partition_interval: nil`, UUID primary key, `retention: :indefinite`,
+  no root column). Registration does not call `aggregate` and does not
+  create summary tables. Recording Studio Metrics still owns `mcp_calls.*`
+  on `recording_studio_mcp_usage_daily_metrics`.
 
 ### Changed
-- `config.logs_summaries_enabled` defaults to false. When true, nightly
-  maintain rebuilds Logs summaries (not the legacy daily table), Admin MCP
-  usage widgets mix covered summaries, leftover raw days, and legacy rollups
-  without overlap, Metrics `:mcp_calls` (and Failed tools through
-  `RecordingStudioMetrics::Admin.execute`) read the summary rollup only so
-  today and un-backfilled days are omitted, and raw prune uses Logs
-  arrival-watermark coverage for `mcp/usage_counts` only. A day with no
-  summary, raw, or legacy rows is omitted from Admin usage, not reported as
-  zero. Do not schedule Logs partition jobs. Recording Studio Metrics still
-  owns `mcp_calls.*`.
+- Nightly `rake recording_studio_mcp:maintain_usage` still rebuilds the
+  legacy daily metrics for yesterday and today, then prunes raw logs older
+  than 30 days. Logs `RetentionCleanupJob` does not clean this table.
+  Do not schedule Logs partition jobs for it.
 
 ### Upgrade notes
-- Bump to `0.21.0`. Run `bin/rails generate recording_studio_mcp:migrations`
-  and `bin/rails db:migrate`.
+- Bump to `0.21.0`. No MCP summary migration.
 - Pin `recording_studio_logs` to `>= 0.5.0, < 0.6` (development and dummy
   already pin GitHub tag `v0.5.0`).
-- Leave `config.logs_summaries_enabled` false until you backfill
-  `mcp/usage_counts` and compare it with `recording_studio_mcp_usage_daily_metrics`.
+- Do not set a Logs aggregation for MCP usage, and do not add
+  `config.logs_summaries_enabled`.
 
 ## [0.20.2] - 2026-10-20
 

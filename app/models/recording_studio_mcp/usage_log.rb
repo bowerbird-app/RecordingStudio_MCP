@@ -21,8 +21,6 @@ module RecordingStudioMcp
     end
 
     def self.increment_daily(payload, occurred_at)
-      return if LogsRegistration.summaries_enabled?
-
       UsageDailyMetric.increment!(
         metric_date: occurred_at.in_time_zone.to_date,
         method_name: payload.fetch(:method_name),
