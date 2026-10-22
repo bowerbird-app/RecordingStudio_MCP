@@ -98,11 +98,29 @@ endpoint = RecordingStudioApi::RegisteredEndpointContext.new(
 [action, resource, endpoint].each do |context|
   raise "#{context.class} authorized_by" unless context.authorized_by.equal?(human)
 
-  merged = context.with_authorized_by(authorized_by_type: "Spoofed", authorized_by_id: "spoof", note: "keep")
+  merged = context.with_authorized_by(
+    "authorized_by_type" => "Spoofed",
+    "authorized_by_id" => "spoof",
+    authorized_by_type: "Also spoofed",
+    authorized_by_id: "also-spoof",
+    note: "keep"
+  )
   kept = merged[:authorized_by_type] == "AuthorizingPerson" && merged[:authorized_by_id] == 41
   kept &&= merged[:note] == "keep"
+  kept &&= !merged.key?("authorized_by_type") && !merged.key?("authorized_by_id")
   raise "#{context.class} with_authorized_by #{merged.inspect}" unless kept
   raise "authorized_by_id was stringified" unless merged[:authorized_by_id].equal?(41)
+
+  only_type = context.with_authorized_by("authorized_by_type" => "Only type")
+  only_id = context.with_authorized_by(authorized_by_id: "only-id")
+  unless only_type[:authorized_by_type] == "AuthorizingPerson" && only_type[:authorized_by_id] == 41
+    raise "#{context.class} kept a lone type #{only_type.inspect}"
+  end
+  unless only_id[:authorized_by_type] == "AuthorizingPerson" && only_id[:authorized_by_id] == 41
+    raise "#{context.class} kept a lone id #{only_id.inspect}"
+  end
+  raise "#{context.class} left a string type" if only_type.key?("authorized_by_type")
+  raise "#{context.class} left a string id" if only_id.key?("authorized_by_id")
 end
 
 plain = RecordingStudioApi::AccessGrant.new(
@@ -111,5 +129,21 @@ plain = RecordingStudioApi::AccessGrant.new(
   access_recording: nil
 )
 raise "api credential resolved a human" unless plain.authorized_by.nil?
+
+plain_action = RecordingStudioApi::ActionContext.new(
+  recording: nil,
+  api_client: api_client,
+  credential: plain.credential,
+  access_recording: nil,
+  access_grant: plain,
+  root_recording: nil,
+  params: {}
+)
+stripped = plain_action.with_authorized_by(
+  "authorized_by_type" => "Spoofed",
+  authorized_by_id: "spoof",
+  note: "keep"
+)
+raise "client credential write kept #{stripped.inspect}" unless stripped == { note: "keep" }
 
 puts "api 0.16 authorized_by ok"
