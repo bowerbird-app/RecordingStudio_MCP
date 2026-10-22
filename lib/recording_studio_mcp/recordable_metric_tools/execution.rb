@@ -24,7 +24,7 @@ module RecordingStudioMcp
         api_version: RecordingStudioApi.default_api_version(api: tool.api),
         params: ActionController::Parameters.new(params_for(tool, arguments)).permit!,
         request_params: empty_request_params, scoped_recordings: access_grant.accessible_recordings
-      }
+      }.merge(AuthorizedBy.context_keywords(RecordingStudioApi::ResourceOperationContext, access_grant))
     end
 
     def empty_request_params

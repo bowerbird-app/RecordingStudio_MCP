@@ -4,6 +4,8 @@ Mount this engine on a Recording Studio host. It exposes a remote MCP HTTP endpo
 
 People Connect an app. The app gets its own Accessible grant. MCP then uses that same grant. The app does not act as the person.
 
+An OAuth tool call that writes through `record!`, `revise`, or `log_event!` also stores the person who authorized that token on the event. The keys are `authorized_by_type` and `authorized_by_id`: the class and id of the token's `OauthAuthorization#manager_actor`. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials token has no `OauthAuthorization`, so those keys stay absent. MCP passes `authorized_by` and `oauth_authorization` into an API action context when that constructor accepts them. API 0.14.1 does not. MCP still fills the keys on `record!` when they are missing, and leaves them alone when the API write already set them. API `create` inserts the recording without an event, and API `delete` removes the recording, so those calls have no event row to annotate.
+
 ## What you get
 
 A Streamable HTTP MCP endpoint on the host. Unauthenticated calls return `401` with `WWW-Authenticate` pointing at MCP's own RFC 9728 protected-resource metadata (`/.well-known/oauth-protected-resource/recording_studio_mcp`). That document sets `resource` to the MCP URL and `authorization_servers` to Oauth. Clients authorize with authorization-code + PKCE S256 against Oauth (`/oauth/authorize`). Token exchange stays on API `POST /recording_studio_api/oauth/token`. MCP authenticates the Bearer with `RecordingStudioApi.access_grant_from_authorization_header`. The issued Bearer intentionally works for both that named API and that MCP path; both resolve the same AccessGrant.
@@ -313,4 +315,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.21.0
+0.22.0

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-22
+
+### Added
+- An OAuth MCP tool call that writes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` on that event. Those are the class and id of the token's `OauthAuthorization#manager_actor`. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials call does not add the keys.
+- API action contexts that accept `authorized_by` or `oauth_authorization` receive the authorizing person and the token's authorization. API 0.14.1 accepts neither. MCP still fills missing keys on `record!`, and leaves keys the API write already set.
+
+### Upgrade notes
+- Bump to `0.22.0`. No migration.
+- Hosts that read event metadata will see `authorized_by_type` and `authorized_by_id` on OAuth MCP writes that go through `record!`. The actor is still the OAuth client.
+- Client-credentials writes do not get those keys. API `create` does not record an event, and API `delete` removes the recording, so those calls have no event row to annotate.
+
 ## [0.21.0] - 2026-10-20
 
 ### Added
@@ -542,7 +553,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.0...v0.20.1

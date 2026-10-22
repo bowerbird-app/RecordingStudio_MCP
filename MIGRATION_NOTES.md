@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`).
 
+## 0.22.0
+
+No migration. An OAuth MCP write that goes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` for the token's `OauthAuthorization#manager_actor`. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. Client-credentials writes do not get those keys. API `create` and `delete` still have no event row to annotate.
+
 ## 0.21.0
 
 No MCP summary tables. RecordingStudioLogs registers `recording_studio_mcp_usage_logs` as an unpartitioned UUID table with `retention: :indefinite` and no root column. It does not call `aggregate`. Nightly `rake recording_studio_mcp:maintain_usage` still rebuilds `recording_studio_mcp_usage_daily_metrics` for yesterday and today, then deletes raw logs older than 30 days. Do not schedule Logs partition jobs for this table.

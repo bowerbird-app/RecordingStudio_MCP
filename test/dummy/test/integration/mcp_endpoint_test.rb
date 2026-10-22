@@ -196,6 +196,62 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     refute_includes names, outsider.name
   end
 
+  test "oauth mcp update records the authorizing human and keeps the oauth client as actor" do
+    token = issue_delegated_token(role: "edit")
+    Current.actor = nil
+    Current.impersonator = nil
+
+    created = call_tool(token, "create", type: "Page", parent_id: @root_recording.id, title: "Authorized page")
+    updated = call_tool(
+      token,
+      "update",
+      type: "Page",
+      id: created.fetch("id"),
+      title: "Authorized page renamed"
+    )
+
+    assert_equal "Authorized page renamed", updated["title"]
+    recording = RecordingStudio::Recording.find(created.fetch("id"))
+    event = recording.events.find_by!(action: "updated")
+    metadata = event.metadata.with_indifferent_access
+
+    assert_equal @oauth_client, event.actor
+    assert_nil event.impersonator
+    assert_equal "User", metadata[:authorized_by_type]
+    assert_equal @user.id.to_s, metadata[:authorized_by_id].to_s
+    assert_nil Current.actor
+    assert_nil Current.impersonator
+
+    Current.actor = @user
+    @root_recording.revise(recording) { |page| page.title = "Edited outside MCP" }
+    outside = recording.events.where(action: "updated").first
+
+    assert_equal @user, outside.actor
+    refute outside.metadata.with_indifferent_access.key?(:authorized_by_type)
+  ensure
+    Current.actor = nil
+    Current.impersonator = nil
+  end
+
+  test "client credentials mcp update does not record an authorizing human" do
+    token = client_credentials_token
+    Current.actor = nil
+    Current.impersonator = nil
+
+    created = call_tool(token, "create", type: "Page", parent_id: @root_recording.id, title: "Client page")
+    call_tool(token, "update", type: "Page", id: created.fetch("id"), title: "Client page renamed")
+
+    recording = RecordingStudio::Recording.find(created.fetch("id"))
+    event = recording.events.find_by!(action: "updated")
+
+    assert_equal "RecordingStudioApi::ApiClient", event.actor_type
+    assert_nil event.impersonator
+    refute event.metadata.with_indifferent_access.key?(:authorized_by_type)
+    refute event.metadata.with_indifferent_access.key?(:authorized_by_id)
+    assert_nil Current.actor
+    assert_nil Current.impersonator
+  end
+
   test "create and show go through the named api" do
     token = issue_delegated_token(role: "edit")
 
@@ -528,6 +584,37 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     return result.fetch("structuredContent") if result["structuredContent"].present?
 
     JSON.parse(result.dig("content", 0, "text"))
+  end
+
+  def call_tool(token, name, **arguments)
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: name, arguments: arguments).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    payload = JSON.parse(response.body)
+    assert_equal false, payload.dig("result", "isError"), response.body
+    tool_payload(payload)
+  end
+
+  def client_credentials_token
+    provisioned = RecordingStudioApi::Services::ProvisionApiClient.call(
+      access_point_recording: @root_recording,
+      manager_actor: @user,
+      role: "admin",
+      name: "MCP client #{SecureRandom.hex(4)}"
+    )
+    assert provisioned.success?, provisioned.error
+
+    credential = provisioned.value.fetch(:credential)
+    issued = RecordingStudioApi::Services::IssueOauthAccessToken.call(
+      grant_type: "client_credentials",
+      client_id: credential.oauth_client_id,
+      client_secret: provisioned.value.fetch(:token)
+    )
+    assert issued.success?, issued.error
+
+    issued.value.fetch(:access_token)
   end
 
   def issue_delegated_token(role: "view")
