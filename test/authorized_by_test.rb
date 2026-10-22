@@ -172,7 +172,7 @@ class AuthorizedByTest < Minitest::Test
 
   def test_installed_api_resolves_authorized_by_from_the_grant
     unless access_grant_resolves_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; CI job api-0.16 loads PR #61"
+      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; CI job api-016 loads PR #61"
     end
 
     credential = Credential.new(Authorization.new(@human))

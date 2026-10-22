@@ -100,7 +100,7 @@ jobs:
   # Oauth 0.13.1 still requires recording_studio_api < 0.15, so the app
   # lockfile stays on tag v0.14.1. This job loads API PR #61 sources
   # (cursor/oauth-authorized-by-metadata-9fc7) without bundling that branch.
-  api-0.16:
+  api-016:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
