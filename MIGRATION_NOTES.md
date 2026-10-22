@@ -1,6 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`).
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 1.0` (GitHub tag `v0.5.0`).
+
+## 0.21.1
+
+No migration. No code change. Runtime `recording_studio_logs` is `>= 0.5.0, < 1.0` (CI tested with 0.5.0). Runtime `recording_studio_metrics` is `>= 0.3.0, < 1.0` (CI tested with 0.5.0). Development and dummy still pin GitHub tags `v0.5.0`.
 
 ## 0.21.0
 
