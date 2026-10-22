@@ -36,8 +36,7 @@ module RecordingStudioMcp
         access_recording: grant_value(access_grant, :access_recording),
         access_grant: access_grant,
         root_recording: grant_value(access_grant, :root_recording),
-        params: { filters: { resource: resource } },
-        **AuthorizedBy.context_keywords(RecordingStudioApi::RegisteredEndpointContext, access_grant)
+        params: { filters: { resource: resource } }
       )
     end
 

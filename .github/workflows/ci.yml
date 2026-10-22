@@ -96,3 +96,34 @@ jobs:
         run: bundle exec rake test:all
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/recording_studio_mcp_test
+
+  # Oauth 0.13.1 still requires recording_studio_api < 0.15, so the app
+  # lockfile stays on tag v0.14.1. This job loads API PR #61 sources
+  # (cursor/oauth-authorized-by-metadata-9fc7) without bundling that branch.
+  api-0.16:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Checkout Recording Studio API 0.16
+        uses: actions/checkout@v5
+        with:
+          repository: bowerbird-app/RecordingStudio_api
+          ref: f83e4f9bea39477679834ca6eafabce3c1b7c2de
+          path: tmp/recording_studio_api
+          token: ${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install ActiveSupport
+        run: gem install activesupport -v 8.1.4 --no-document
+
+      - name: Exercise AccessGrant authorized_by
+        run: ruby .github/api-0.16/probe.rb
+        env:
+          RECORDING_STUDIO_API_ROOT: tmp/recording_studio_api

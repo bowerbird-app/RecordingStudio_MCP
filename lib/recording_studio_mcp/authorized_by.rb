@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  # The event actor stays the OAuth client (or API client). The person who
-  # authorized an OAuth token is stored beside that actor, as
-  # authorized_by_type and authorized_by_id on the event.
+  # Event actor stays the OAuth client. The person who authorized the token
+  # is authorized_by_type and authorized_by_id on the event.
   #
-  # Tool calls hand that person and the token's OauthAuthorization to an API
-  # action context when the context accepts authorized_by or
-  # oauth_authorization. API 0.14.1 accepts neither. Writes that go through
-  # record! still receive the keys here when the metadata does not already
-  # include them.
+  # API 0.16 reads AccessGrant#authorized_by from the grant MCP already
+  # passes. Those constructors do not take authorized_by.
+  #
+  # record! during an OAuth tool call stamps the server human onto writes
+  # whose actor is that token's API client, replacing client-supplied keys.
+  # The stamp is thread-local and cleared when the tool call ends.
   module AuthorizedBy
     HUMAN_KEY = :recording_studio_mcp_authorized_by_human
+    CLIENT_KEY = :recording_studio_mcp_authorized_by_client
     STACK_KEY = :recording_studio_mcp_authorized_by_stack
     DEPTH_KEY = :recording_studio_mcp_authorized_by_depth
-    METADATA_TYPE = "authorized_by_type"
-    METADATA_ID = "authorized_by_id"
+    RESERVED_METADATA_KEYS = %i[authorized_by_type authorized_by_id].freeze
 
     module_function
 
@@ -33,16 +33,19 @@ module RecordingStudioMcp
 
     def enter(access_grant)
       install!
-      stack << current_human
+      stack << [current_human, current_client]
       Thread.current[DEPTH_KEY] = depth + 1
       Thread.current[HUMAN_KEY] = human_for(access_grant)
+      Thread.current[CLIENT_KEY] = client_for(access_grant)
     end
 
     def leave
       return if depth.zero?
 
       Thread.current[DEPTH_KEY] = depth - 1
-      Thread.current[HUMAN_KEY] = stack.pop
+      human, client = Array(stack.pop)
+      Thread.current[HUMAN_KEY] = human
+      Thread.current[CLIENT_KEY] = client
     end
 
     def human_for(access_grant)
@@ -66,44 +69,56 @@ module RecordingStudioMcp
       credential.oauth_authorization
     end
 
-    def context_keywords(context_class, access_grant)
-      offered = {
-        authorized_by: human_for(access_grant),
-        oauth_authorization: oauth_authorization_for(access_grant)
-      }
-      offered.select { |key, _value| accepts_keyword?(context_class, key) }
-    end
-
     def stamp_payload!(payload)
       human = current_human
-      return if human.nil?
+      client = current_client
+      return if human.nil? || client.nil?
+      return unless oauth_client_write?(payload, client)
 
       metadata = payload_metadata(payload)
       return if metadata.nil? || metadata.frozen?
-      return if metadata_has?(metadata, METADATA_TYPE)
 
-      metadata[METADATA_TYPE] = type_name(human)
-      metadata[METADATA_ID] = human.id.to_s
+      strip_reserved!(metadata)
+      metadata[:authorized_by_type] = type_name(human)
+      metadata[:authorized_by_id] = human.id
     end
 
-    def accepts_keyword?(context_class, key)
-      context_class.instance_method(:initialize).parameters.any? do |type, name|
-        type == :keyrest || (%i[key keyreq].include?(type) && name == key)
-      end
-    rescue NameError
-      false
+    def current_human = Thread.current[HUMAN_KEY]
+
+    def current_client = Thread.current[CLIENT_KEY]
+
+    def stack = (Thread.current[STACK_KEY] ||= [])
+
+    def depth = Thread.current[DEPTH_KEY].to_i
+
+    def client_for(access_grant)
+      return if human_for(access_grant).nil?
+      return unless access_grant.respond_to?(:api_client)
+
+      access_grant.api_client
     end
 
-    def current_human
-      Thread.current[HUMAN_KEY]
+    def oauth_client_write?(payload, client)
+      actor = payload_actor(payload)
+      return false if actor.nil?
+      return true if actor.equal?(client)
+
+      same_record?(actor, client)
     end
 
-    def stack
-      Thread.current[STACK_KEY] ||= []
+    def same_record?(actor, client)
+      return false unless actor.instance_of?(client.class)
+      return false unless actor.respond_to?(:id) && client.respond_to?(:id)
+
+      identifier = actor.id
+      !identifier.nil? && identifier == client.id
     end
 
-    def depth
-      Thread.current[DEPTH_KEY].to_i
+    def payload_actor(payload)
+      return unless payload.is_a?(Hash)
+      return payload[:actor] if payload.key?(:actor)
+
+      payload["actor"] if payload.key?("actor")
     end
 
     def payload_metadata(payload)
@@ -113,8 +128,11 @@ module RecordingStudioMcp
       payload["metadata"] if payload.key?("metadata")
     end
 
-    def metadata_has?(metadata, key)
-      metadata.key?(key) || metadata.key?(key.to_sym)
+    def strip_reserved!(metadata)
+      RESERVED_METADATA_KEYS.each do |key|
+        metadata.delete(key)
+        metadata.delete(key.to_s)
+      end
     end
 
     def type_name(human)
@@ -124,8 +142,6 @@ module RecordingStudioMcp
       klass.name
     end
 
-    def mutex
-      @mutex ||= Mutex.new
-    end
+    def mutex = (@mutex ||= Mutex.new)
   end
 end

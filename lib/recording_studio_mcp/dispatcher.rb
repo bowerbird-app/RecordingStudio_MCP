@@ -86,8 +86,7 @@ module RecordingStudioMcp
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
         params: endpoint_params(endpoint, args),
-        progress_reporter: progress_reporter,
-        **authorizing_keywords(RecordingStudioApi::RegisteredEndpointContext)
+        progress_reporter: progress_reporter
       )
       result = endpoint.handler.call(context)
       success_result(serialize_endpoint_result(endpoint, result))
@@ -244,8 +243,7 @@ module RecordingStudioMcp
         progress_reporter: progress_reporter,
         id: args["id"],
         parent_id: args["parent_id"],
-        relationship_id: nil,
-        **authorizing_keywords(RecordingStudioApi::ResourceOperationContext)
+        relationship_id: nil
       )
     end
 
@@ -262,8 +260,7 @@ module RecordingStudioMcp
         params: params,
         progress_reporter: progress_reporter,
         id: args["id"],
-        recordable_type: recordable_type,
-        **authorizing_keywords(RecordingStudioApi::ActionContext)
+        recordable_type: recordable_type
       )
     end
 
@@ -348,10 +345,6 @@ module RecordingStudioMcp
       end
 
       serializer.call(result)
-    end
-
-    def authorizing_keywords(context_class)
-      AuthorizedBy.context_keywords(context_class, access_grant)
     end
 
     def progress_reporter

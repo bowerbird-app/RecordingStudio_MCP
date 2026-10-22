@@ -10,13 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.22.0] - 2026-10-22
 
 ### Added
-- An OAuth MCP tool call that writes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` on that event. Those are the class and id of the token's `OauthAuthorization#manager_actor`. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials call does not add the keys.
-- API action contexts that accept `authorized_by` or `oauth_authorization` receive the authorizing person and the token's authorization. API 0.14.1 accepts neither. MCP still fills missing keys on `record!`, and leaves keys the API write already set.
+- An OAuth MCP tool call that writes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` on that event when the event actor is the OAuth client. Those are the class and raw id of the token's `OauthAuthorization#manager_actor`. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials call does not add the keys. The stamp clears when the tool call ends.
+- Runtime allows `recording_studio_api` `>= 0.11.0, < 0.17`. API 0.16 reads the authorizing person from `AccessGrant#authorized_by`. MCP passes that grant and does not add constructor keywords. The development lockfile stays on API tag `v0.14.1` because Oauth 0.13.1 still requires API `< 0.15`. CI job `api-0.16` loads API PR #61 sources without changing that pin.
 
 ### Upgrade notes
 - Bump to `0.22.0`. No migration.
-- Hosts that read event metadata will see `authorized_by_type` and `authorized_by_id` on OAuth MCP writes that go through `record!`. The actor is still the OAuth client.
+- Hosts that read event metadata will see `authorized_by_type` and `authorized_by_id` on OAuth MCP writes that go through `record!` and whose actor is the OAuth client. The id is the record id. The actor is still the OAuth client.
 - Client-credentials writes do not get those keys. API `create` does not record an event, and API `delete` removes the recording, so those calls have no event row to annotate.
+- Installing API 0.16 in an app still waits on Oauth allowing `recording_studio_api` `>= 0.15`. This gem's own cap is `< 0.17`.
 
 ## [0.21.0] - 2026-10-20
 

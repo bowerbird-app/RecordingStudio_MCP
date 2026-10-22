@@ -26,8 +26,7 @@ module RecordingStudioMcp
         access_grant: access_grant,
         root_recording: grant_value(access_grant, :root_recording),
         params: params_for(tool, arguments),
-        progress_reporter: progress_reporter,
-        **AuthorizedBy.context_keywords(RecordingStudioApi::RegisteredEndpointContext, access_grant)
+        progress_reporter: progress_reporter
       )
     end
 

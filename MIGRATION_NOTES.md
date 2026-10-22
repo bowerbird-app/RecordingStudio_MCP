@@ -1,10 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.15`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`).
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.17`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`). Development still pins API tag `v0.14.1` because Oauth 0.13.1 requires API `< 0.15`.
 
 ## 0.22.0
 
-No migration. An OAuth MCP write that goes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` for the token's `OauthAuthorization#manager_actor`. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. Client-credentials writes do not get those keys. API `create` and `delete` still have no event row to annotate.
+No migration. An OAuth MCP write that goes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` for the token's `OauthAuthorization#manager_actor` when the event actor is the OAuth client. The id is the record id. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. Client-credentials writes do not get those keys. The stamp clears when the tool call ends. API 0.16 reads the same person from `AccessGrant#authorized_by`. API `create` and `delete` still have no event row to annotate.
 
 ## 0.21.0
 

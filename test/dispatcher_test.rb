@@ -150,6 +150,35 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_tool_call_clears_the_authorizing_human
+    human = Struct.new(:id).new(41)
+    authorization = Struct.new(:manager_actor).new(human)
+    credential = Struct.new(:oauth_authorization).new(authorization)
+    client = Struct.new(:id).new("client-1")
+    grant = FakeGrant.new(
+      api_client: client,
+      credential: credential,
+      access_recording: nil,
+      root_recording: nil,
+      accessible_recordings: []
+    )
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = call_as(grant, "explode", {})
+
+      assert_equal true, result[:isError]
+    end
+
+    assert_nil RecordingStudioMcp::AuthorizedBy.current_human
+    assert_nil RecordingStudioMcp::AuthorizedBy.current_client
+    assert_equal 0, RecordingStudioMcp::AuthorizedBy.depth
+
+    metadata = { "authorized_by_type" => "Spoofed" }
+    RecordingStudioMcp::AuthorizedBy.install!
+    RecordingStudio::Hooks.run(:before_record, actor: client, metadata: metadata)
+    assert_equal "Spoofed", metadata["authorized_by_type"]
+  end
+
   def test_list_calls_index_and_returns_structured_content
     operation = FakeOperation.new(FakeHandler.new({ json: { records: [{ name: "Studio" }] } }))
 

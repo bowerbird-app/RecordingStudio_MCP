@@ -218,7 +218,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_equal @oauth_client, event.actor
     assert_nil event.impersonator
     assert_equal "User", metadata[:authorized_by_type]
-    assert_equal @user.id.to_s, metadata[:authorized_by_id].to_s
+    assert_equal @user.id, metadata[:authorized_by_id]
     assert_nil Current.actor
     assert_nil Current.impersonator
 
