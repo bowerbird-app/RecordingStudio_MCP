@@ -54,7 +54,7 @@ class AuthorizedByTest < Minitest::Test
     grant = Grant.new(Object.new, Client.new("api-client"))
 
     assert_nil RecordingStudioMcp::AuthorizedBy.human_for(grant)
-    assert_nil RecordingStudioMcp::AuthorizedBy.client_for(grant)
+    assert_equal grant.api_client, RecordingStudioMcp::AuthorizedBy.client_for(grant)
   end
 
   def test_record_hook_stamps_the_authorizing_human_without_touching_the_actor
@@ -159,20 +159,37 @@ class AuthorizedByTest < Minitest::Test
 
   def test_client_credentials_tool_call_does_not_stamp
     grant = Grant.new(Object.new, Client.new("api-client"))
-    metadata = { "authorized_by_type" => "Spoofed", authorized_by_id: 1 }
     RecordingStudioMcp::AuthorizedBy.install!
-    RecordingStudioMcp::AuthorizedBy.enter(grant)
-    RecordingStudio::Hooks.run(:before_record, actor: grant.api_client, metadata: metadata)
+    [
+      { "authorized_by_type" => "Spoofed", "authorized_by_id" => "spoof", note: "stay" },
+      { authorized_by_type: "Spoofed", authorized_by_id: 1, note: "stay" },
+      { "authorized_by_type" => "Only type", note: "stay" },
+      { authorized_by_id: "only-id", note: "stay" }
+    ].each do |metadata|
+      RecordingStudioMcp::AuthorizedBy.enter(grant)
+      RecordingStudio::Hooks.run(:before_record, actor: grant.api_client, metadata: metadata)
 
-    assert_equal "Spoofed", metadata["authorized_by_type"]
-    assert_equal 1, metadata[:authorized_by_id]
+      refute metadata.key?("authorized_by_type")
+      refute metadata.key?(:authorized_by_type)
+      refute metadata.key?("authorized_by_id")
+      refute metadata.key?(:authorized_by_id)
+      assert_equal "stay", metadata[:note]
+    ensure
+      RecordingStudioMcp::AuthorizedBy.leave
+    end
+
+    other = { "authorized_by_type" => "Other", authorized_by_id: "other-id" }
+    RecordingStudioMcp::AuthorizedBy.enter(grant)
+    RecordingStudio::Hooks.run(:before_record, actor: Client.new("someone-else"), metadata: other)
+    assert_equal "Other", other["authorized_by_type"]
+    assert_equal "other-id", other[:authorized_by_id]
   ensure
     RecordingStudioMcp::AuthorizedBy.leave
   end
 
   def test_installed_api_resolves_authorized_by_from_the_grant
     unless access_grant_resolves_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; CI job api-016 loads PR #61"
+      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; CI job api-016 runs the suite on API 0.16"
     end
 
     credential = Credential.new(Authorization.new(@human))

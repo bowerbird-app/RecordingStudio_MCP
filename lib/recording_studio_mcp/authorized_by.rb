@@ -7,9 +7,10 @@ module RecordingStudioMcp
   # API 0.16 reads AccessGrant#authorized_by from the grant MCP already
   # passes. Those constructors do not take authorized_by.
   #
-  # record! during an OAuth tool call stamps the server human onto writes
-  # whose actor is that token's API client, replacing client-supplied keys.
-  # The stamp is thread-local and cleared when the tool call ends.
+  # record! during a tool call strips client-sent authorized_by keys from
+  # writes whose actor is that token's API client. An OAuth grant then stores
+  # the server human. A client-credentials grant has no human, so the keys
+  # stay absent. The stamp is thread-local and cleared when the tool call ends.
   module AuthorizedBy
     HUMAN_KEY = :recording_studio_mcp_authorized_by_human
     CLIENT_KEY = :recording_studio_mcp_authorized_by_client
@@ -70,15 +71,17 @@ module RecordingStudioMcp
     end
 
     def stamp_payload!(payload)
-      human = current_human
       client = current_client
-      return if human.nil? || client.nil?
+      return if client.nil?
       return unless oauth_client_write?(payload, client)
 
       metadata = payload_metadata(payload)
       return if metadata.nil? || metadata.frozen?
 
       strip_reserved!(metadata)
+      human = current_human
+      return if human.nil?
+
       metadata[:authorized_by_type] = type_name(human)
       metadata[:authorized_by_id] = human.id
     end
@@ -92,7 +95,6 @@ module RecordingStudioMcp
     def depth = Thread.current[DEPTH_KEY].to_i
 
     def client_for(access_grant)
-      return if human_for(access_grant).nil?
       return unless access_grant.respond_to?(:api_client)
 
       access_grant.api_client

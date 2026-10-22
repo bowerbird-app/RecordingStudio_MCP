@@ -97,33 +97,55 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/recording_studio_mcp_test
 
-  # Oauth 0.13.1 still requires recording_studio_api < 0.15, so the app
-  # lockfile stays on tag v0.14.1. This job loads API PR #61 sources
-  # (cursor/oauth-authorized-by-metadata-9fc7) without bundling that branch.
-  # Delete this job once the lockfile can move to the released API 0.16 tag.
+  # Separate Gemfile so Gemfile.lock stays on the released API and Oauth tags.
+  # Delete this job once recording_studio_api 0.16 and the Oauth cap relax are both tagged.
   api-016:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/recording_studio_mcp_test
+      BUNDLE_GEMFILE: gemfiles/api_016.gemfile
+      BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recording_studio_mcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Checkout Recording Studio API 0.16
-        uses: actions/checkout@v5
-        with:
-          repository: bowerbird-app/RecordingStudio_api
-          ref: ae1bdaed185358e3a833066a714d5e4e3500fbc8
-          path: tmp/recording_studio_api
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
+          bundler-cache: true
 
-      - name: Install ActiveSupport
-        run: gem install activesupport -v 8.1.4 --no-document
-
-      - name: Exercise AccessGrant authorized_by
-        run: ruby .github/api-0.16/probe.rb
+      - name: Install dummy app dependencies
+        run: bundle install
+        working-directory: gemfiles
         env:
-          RECORDING_STUDIO_API_ROOT: tmp/recording_studio_api
+          BUNDLE_GEMFILE: api_016_dummy.gemfile
+          BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
+      - name: Build dummy app Tailwind assets
+        run: bundle exec rails tailwindcss:build
+        working-directory: test/dummy
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/api_016_dummy.gemfile
+
+      - name: Run tests
+        run: bundle exec rake test:all
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/recording_studio_mcp_test
