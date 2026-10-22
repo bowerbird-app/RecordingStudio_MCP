@@ -134,6 +134,13 @@ jobs:
 
       - name: Install dummy app dependencies
         run: bundle install
+        working-directory: test/dummy
+        env:
+          BUNDLE_GEMFILE: Gemfile
+          BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
+      - name: Install API 0.16 dummy app dependencies
+        run: bundle install
         working-directory: gemfiles
         env:
           BUNDLE_GEMFILE: api_016_dummy.gemfile
