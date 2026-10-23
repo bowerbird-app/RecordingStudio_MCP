@@ -163,7 +163,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
       rate_limited: false,
       failed: true
     )
-    RecordingStudioMcp::UsageLog.create!(
+    limited_log = RecordingStudioMcp::UsageLog.create!(
       occurred_at: stamp,
       method_name: "tools/call",
       subject_name: "show",
@@ -172,6 +172,8 @@ class McpUsageTest < ActionDispatch::IntegrationTest
       rate_limited: true,
       failed: true
     )
+    assert_equal 1, limited_log.failed_count
+    assert_equal 1, limited_log.rate_limited_count
 
     RecordingStudioLogs.aggregate_day!(day)
     RecordingStudioLogs.aggregate_day!(day)

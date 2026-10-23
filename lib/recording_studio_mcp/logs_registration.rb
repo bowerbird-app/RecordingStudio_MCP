@@ -9,8 +9,8 @@ module RecordingStudioMcp
     LOG_RETENTION = 30.days
     USAGE_MEASUREMENTS = {
       call_count: :count,
-      failed_count: { sum: :failed },
-      rate_limited_count: { sum: :rate_limited }
+      failed_count: { sum: :failed_count },
+      rate_limited_count: { sum: :rate_limited_count }
     }.freeze
     AGGREGATION = {
       source: SOURCE_MODEL,
@@ -56,8 +56,10 @@ module RecordingStudioMcp
         method_name: { filter: [:eq], group: true },
         subject_name: { filter: [:eq], group: true },
         status_code: { filter: [:eq], group: true },
-        failed: { filter: [:eq], group: true, measurements: [:sum] },
-        rate_limited: { filter: [:eq], group: true, measurements: [:sum] },
+        failed: { filter: [:eq], group: true },
+        rate_limited: { filter: [:eq], group: true },
+        failed_count: { measurements: [:sum] },
+        rate_limited_count: { measurements: [:sum] },
         duration_ms: { measurements: %i[sum maximum] }
       }
     end
