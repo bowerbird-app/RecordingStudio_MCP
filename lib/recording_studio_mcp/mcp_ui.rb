@@ -16,12 +16,6 @@ module RecordingStudioMcp
       RecordingStudio::MCP_UI if defined?(RecordingStudio::MCP_UI)
     end
 
-    def adapter=(value)
-      @adapter = value
-      @content_digests = {}
-    end
-    private_class_method :adapter=
-
     def reset_adapter!(to: nil)
       if to.nil?
         remove_instance_variable(:@adapter) if instance_variable_defined?(:@adapter)
@@ -88,7 +82,7 @@ module RecordingStudioMcp
 
     def unknown_widget_error?(error)
       klass = unknown_widget_error_class
-      klass && error.instance_of?(klass)
+      klass && error.is_a?(klass)
     end
 
     def unknown_widget_error_class

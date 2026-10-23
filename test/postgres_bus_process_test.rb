@@ -95,6 +95,61 @@ class PostgresBusProcessTest < Minitest::Test
     FileUtils.rm_f(script) if defined?(script) && script
   end
 
+  def test_forked_child_exit_leaves_parent_listener_receiving
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_fork_child_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      ENV["RAILS_ENV"] ||= "test"
+      require "rails"
+      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
+      require_relative "../config/environment"
+
+      ActiveRecord::Base.connection.select_value("SELECT 1")
+      bus = RecordingStudioMcp::PostgresBus
+      received = Queue.new
+      RecordingStudioMcp::Notifier.define_singleton_method(:deliver_local) do |event_name:, recording_id:, **|
+        received << "\#{event_name}:\#{recording_id}"
+      end
+
+      bus.start!
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      sleep 0.02 until bus.listening? || Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      abort "PROBE not listening" unless bus.listening?
+
+      pid = fork { exit }
+      _pid, child_status = Process.wait2(pid)
+
+      token = "fork-\#{Process.pid}-\#{Process.clock_gettime(Process::CLOCK_MONOTONIC)}"
+      bus.publish(event_name: "recording updated", recording_id: token)
+      expected = "recording updated:\#{token}"
+      got = nil
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      until Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+        begin
+          loop do
+            got = received.pop(true)
+            break if got == expected
+          end
+          break if got == expected
+        rescue ThreadError
+          sleep 0.02
+        end
+      end
+
+      puts "PROBE child_ok=\#{child_status.success?} listening=\#{bus.listening?} received=\#{got == expected}"
+      bus.stop!
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+
+    assert status.success?, stdout
+    assert_includes stdout, "PROBE child_ok=true listening=true received=true"
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
+  end
+
   def test_server_like_boot_starts_postgres_bus
     script = File.join(DUMMY_ROOT, "tmp/postgres_bus_server_probe.rb")
     FileUtils.mkdir_p(File.dirname(script))
