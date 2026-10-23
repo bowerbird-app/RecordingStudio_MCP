@@ -16,13 +16,13 @@ module RecordingStudioMcp
       token = bearer_token
       return failure(:missing_token) if token.blank?
 
-      result = RecordingStudioApi.access_grant_from_authorization_header(
+      result = RecordingStudioApi.authenticate_authorization_header(
         authorization_header: @authorization_header,
         api: api_for(token)
       )
       return failure(:invalid_token) if result.failure?
 
-      Result.new(success?: true, access_grant: result.value, error: nil)
+      Result.new(success?: true, access_grant: build_access_grant(result.value), error: nil)
     end
 
     private
@@ -45,6 +45,16 @@ module RecordingStudioMcp
       end
 
       :public
+    end
+
+    def build_access_grant(authenticated_client)
+      RecordingStudioApi::AccessGrant.new(
+        api_client: authenticated_client.api_client,
+        credential: authenticated_client.credential,
+        access_recording: authenticated_client.access_recording,
+        root_recording: authenticated_client.root_recording,
+        authorized_by: authenticated_client.authorized_by
+      )
     end
 
     def failure(error)

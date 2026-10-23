@@ -6,6 +6,7 @@ require "test_helper"
 class DispatcherTest < Minitest::Test
   FakeGrant = Struct.new(
     :api_client, :credential, :access_recording, :root_recording, :accessible_recordings, :actor,
+    :authorized_by,
     keyword_init: true
   )
   FakeClient = Struct.new(:api_key)
@@ -148,6 +149,34 @@ class DispatcherTest < Minitest::Test
       assert_includes result.dig(:content, 0, :text), "Unknown tool"
       assert_includes result.dig(:content, 0, :text), "describe"
     end
+  end
+
+  def test_tool_call_clears_authorized_by
+    authorized_by = Struct.new(:id).new(41)
+    client = Struct.new(:id).new("client-1")
+    grant = FakeGrant.new(
+      api_client: client,
+      credential: nil,
+      access_recording: nil,
+      root_recording: nil,
+      accessible_recordings: [],
+      authorized_by: authorized_by
+    )
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      result = call_as(grant, "explode", {})
+
+      assert_equal true, result[:isError]
+    end
+
+    assert_nil RecordingStudioMcp::AuthorizedBy.current_authorized_by
+    assert_nil RecordingStudioMcp::AuthorizedBy.current_client
+    assert_equal 0, RecordingStudioMcp::AuthorizedBy.depth
+
+    metadata = { "authorized_by_type" => "Spoofed" }
+    RecordingStudioMcp::AuthorizedBy.install!
+    RecordingStudio::Hooks.run(:before_record, actor: client, metadata: metadata)
+    assert_equal "Spoofed", metadata["authorized_by_type"]
   end
 
   def test_list_calls_index_and_returns_structured_content

@@ -35,6 +35,7 @@ end
 
 def dummy_bundle_env
   dummy_bundle_base_env.merge(DUMMY_BUNDLE_CLEARED_ENV).tap do |env|
+    env["BUNDLE_GEMFILE"] = DUMMY_GEMFILE
     env["BUNDLE_PATH"] = ENV["BUNDLE_PATH"] if ENV["BUNDLE_PATH"]
   end
 end

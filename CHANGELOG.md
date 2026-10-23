@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-22
+
+### Added
+- An OAuth MCP tool call that writes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` on that event when the event actor is the OAuth client. Those are the class and raw id of the token's `OauthAuthorization#manager_actor`. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials call does not add the keys, and client-sent copies are removed on that client's writes. The stamp clears when the tool call ends.
+- Runtime requires `recording_studio_api` `>= 0.16, < 0.17`. MCP passes the sign-in `authorized_by` into `AccessGrant` and does not add context constructor keywords. The development lockfile pins API tag `v0.16.0` and Oauth tag `v0.15.1`.
+
+### Upgrade notes
+- Bump to `0.22.0`. No migration.
+- Hosts that read event metadata will see `authorized_by_type` and `authorized_by_id` on OAuth MCP writes that go through `record!` and whose actor is the OAuth client. The id is the record id. The actor is still the OAuth client.
+- Client-credentials writes do not get those keys. Client-sent `authorized_by_*` keys are removed on that client's writes. API `create` does not record an event. API `delete` hard-deletes the recording. RecordingStudio_api v0.16.0's `delete_metadata` builds authorized_by metadata, and `Destroy` does not call it, so a delete still has no event row.
+- Hosts need RecordingStudio_api `>= 0.16, < 0.17` and Oauth `v0.15.1` or later.
+- Runtime `recording_studio_logs` stays `>= 0.5.0, < 1.0` and `recording_studio_metrics` stays `>= 0.3.0, < 1.0`, as in 0.21.1.
+
 ## [0.21.1] - 2026-10-22
 
 ### Changed
@@ -552,7 +565,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.1...v0.20.2

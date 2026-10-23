@@ -31,6 +31,7 @@ module RecordingStudioMcp
     end
 
     def call(tool_name, arguments)
+      AuthorizedBy.enter(access_grant)
       return error_result("arguments must be an object") unless argument_object?(arguments)
 
       name = tool_name.to_s
@@ -48,6 +49,8 @@ module RecordingStudioMcp
            RecordingStudioApi::InvalidActionInputError,
            RecordingStudioApi::InvalidPaginationTokenError => e
       error_result(e.message)
+    ensure
+      AuthorizedBy.leave
     end
 
     private

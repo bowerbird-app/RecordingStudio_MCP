@@ -54,6 +54,7 @@ module RecordingStudioMcp
     config.after_initialize do
       RecordingStudioMcp::ChangeObserver.install!
       RecordingStudioMcp::PostgresBus.start!
+      RecordingStudioMcp::AuthorizedBy.install!
       next unless defined?(RecordingStudioOauth)
 
       oauth = RecordingStudioOauth.configuration

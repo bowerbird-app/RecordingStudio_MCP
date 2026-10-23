@@ -3,6 +3,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - 'test/dummy/**/*'
+    - 'gemfiles/**/*'
     - 'vendor/**/*'
     - 'bin/**/*'
 
