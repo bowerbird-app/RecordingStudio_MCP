@@ -2,10 +2,9 @@
 
 module RecordingStudioMcp
   # Event actor stays the OAuth client. authorized_by_type and authorized_by_id
-  # record who authorized the token. Sign-in passes authorized_by into AccessGrant
-  # when that keyword exists. Otherwise the stamp reads OauthAuthorization#manager_actor.
-  # record! strips client-sent authorized_by keys on that client's writes, then stores
-  # authorized_by when one is present. The stamp clears when the tool call ends.
+  # record AccessGrant#authorized_by. record! strips client-sent authorized_by keys
+  # on that client's writes, then stores authorized_by when one is present.
+  # The stamp clears when the tool call ends.
   module AuthorizedBy
     AUTHORIZED_BY_KEY = :recording_studio_mcp_authorized_by
     CLIENT_KEY = :recording_studio_mcp_authorized_by_client
@@ -45,24 +44,10 @@ module RecordingStudioMcp
     end
 
     def authorized_by_for(access_grant)
-      actor = if access_grant.respond_to?(:authorized_by)
-                access_grant.authorized_by
-              else
-                manager_actor_for(access_grant)
-              end
+      return unless access_grant.respond_to?(:authorized_by)
+
+      actor = access_grant.authorized_by
       actor if actor && actor.id.present?
-    end
-
-    def manager_actor_for(access_grant)
-      authorization = oauth_authorization_for(access_grant)
-      authorization.manager_actor if authorization.respond_to?(:manager_actor)
-    end
-
-    def oauth_authorization_for(access_grant)
-      return unless access_grant.respond_to?(:credential)
-
-      credential = access_grant.credential
-      credential.oauth_authorization if credential.respond_to?(:oauth_authorization)
     end
 
     def stamp_payload!(payload)

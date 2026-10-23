@@ -234,10 +234,6 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
   end
 
   test "oauth mcp update stores the same authorized_by as the http api" do
-    unless access_grant_accepts_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by"
-    end
-
     token = issue_delegated_token(role: "edit")
     auth = RecordingStudioMcp::Authenticator.access_grant("Bearer #{token}")
     assert_equal @user, auth.access_grant.authorized_by
@@ -590,12 +586,6 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
   end
 
   private
-
-  def access_grant_accepts_authorized_by?
-    RecordingStudioApi::AccessGrant.instance_method(:initialize).parameters.any? do |_type, name|
-      name == :authorized_by
-    end
-  end
 
   def json_headers
     { "Content-Type" => "application/json", "Accept" => "application/json" }

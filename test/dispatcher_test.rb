@@ -6,6 +6,7 @@ require "test_helper"
 class DispatcherTest < Minitest::Test
   FakeGrant = Struct.new(
     :api_client, :credential, :access_recording, :root_recording, :accessible_recordings, :actor,
+    :authorized_by,
     keyword_init: true
   )
   FakeClient = Struct.new(:api_key)
@@ -152,15 +153,14 @@ class DispatcherTest < Minitest::Test
 
   def test_tool_call_clears_authorized_by
     authorized_by = Struct.new(:id).new(41)
-    authorization = Struct.new(:manager_actor).new(authorized_by)
-    credential = Struct.new(:oauth_authorization).new(authorization)
     client = Struct.new(:id).new("client-1")
     grant = FakeGrant.new(
       api_client: client,
-      credential: credential,
+      credential: nil,
       access_recording: nil,
       root_recording: nil,
-      accessible_recordings: []
+      accessible_recordings: [],
+      authorized_by: authorized_by
     )
 
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do

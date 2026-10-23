@@ -7,12 +7,12 @@ class AuthorizedByTest < Minitest::Test
   Client = Struct.new(:id)
   Authorization = Struct.new(:manager_actor)
   Credential = Struct.new(:oauth_authorization)
-  Grant = Struct.new(:credential, :api_client)
+  Grant = Struct.new(:credential, :api_client, :authorized_by)
 
   def setup
     @authorized_by = Person.new(41)
     @client = Client.new("client-1")
-    @grant = Grant.new(Credential.new(Authorization.new(@authorized_by)), @client)
+    @grant = Grant.new(Credential.new(Authorization.new(@authorized_by)), @client, @authorized_by)
   end
 
   def teardown
@@ -153,7 +153,7 @@ class AuthorizedByTest < Minitest::Test
   def test_leave_restores_the_previous_authorized_by_and_stops_stamping
     outer_authorized_by = Person.new(7)
     outer_client = Client.new("outer")
-    outer = Grant.new(Credential.new(Authorization.new(outer_authorized_by)), outer_client)
+    outer = Grant.new(Credential.new(Authorization.new(outer_authorized_by)), outer_client, outer_authorized_by)
     RecordingStudioMcp::AuthorizedBy.install!
     RecordingStudioMcp::AuthorizedBy.enter(outer)
     RecordingStudioMcp::AuthorizedBy.enter(@grant)
@@ -206,10 +206,6 @@ class AuthorizedByTest < Minitest::Test
   end
 
   def test_installed_api_resolves_authorized_by_from_the_grant
-    unless access_grant_resolves_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by"
-    end
-
     credential = Credential.new(Authorization.new(@authorized_by))
     grant = RecordingStudioApi::AccessGrant.new(
       api_client: @client,
@@ -229,13 +225,5 @@ class AuthorizedByTest < Minitest::Test
     assert_equal @authorized_by, grant.authorized_by
     assert_equal @authorized_by, context.authorized_by
     assert_equal 41, context.with_authorized_by[:authorized_by_id]
-  end
-
-  private
-
-  def access_grant_resolves_authorized_by?
-    RecordingStudioApi::AccessGrant.instance_method(:initialize).parameters.any? do |_type, name|
-      name == :authorized_by
-    end
   end
 end

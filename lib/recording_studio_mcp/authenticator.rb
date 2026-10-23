@@ -48,23 +48,13 @@ module RecordingStudioMcp
     end
 
     def build_access_grant(authenticated_client)
-      attributes = {
+      RecordingStudioApi::AccessGrant.new(
         api_client: authenticated_client.api_client,
         credential: authenticated_client.credential,
         access_recording: authenticated_client.access_recording,
-        root_recording: authenticated_client.root_recording
-      }
-      attributes[:authorized_by] = authenticated_client.authorized_by if pass_authorized_by?(authenticated_client)
-
-      RecordingStudioApi::AccessGrant.new(**attributes)
-    end
-
-    def pass_authorized_by?(authenticated_client)
-      return false unless authenticated_client.respond_to?(:authorized_by)
-
-      RecordingStudioApi::AccessGrant.instance_method(:initialize).parameters.any? do |_type, name|
-        name == :authorized_by
-      end
+        root_recording: authenticated_client.root_recording,
+        authorized_by: authenticated_client.authorized_by
+      )
     end
 
     def failure(error)

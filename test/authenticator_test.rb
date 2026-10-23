@@ -60,10 +60,6 @@ class AuthenticatorTest < Minitest::Test
   end
 
   def test_access_grant_keeps_the_sign_in_authorized_by
-    unless access_grant_accepts_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by"
-    end
-
     credential = FakeCredential.new(FakeClient.new("public"))
     signed_in = Struct.new(:id).new(41)
     looked_up = Struct.new(:id).new(99)
@@ -112,11 +108,5 @@ class AuthenticatorTest < Minitest::Test
       nil,
       authorized_by
     )
-  end
-
-  def access_grant_accepts_authorized_by?
-    RecordingStudioApi::AccessGrant.instance_method(:initialize).parameters.any? do |_type, name|
-      name == :authorized_by
-    end
   end
 end
