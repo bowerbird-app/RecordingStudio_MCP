@@ -24,6 +24,19 @@ module RecordingStudioMcp
       include_current: true,
       count: :sync
     }.freeze
+    FILTER_GROUP = { filter: [:eq], group: true }.freeze
+    SUM_MEASUREMENT = { measurements: [:sum] }.freeze
+    AGGREGATABLE = {
+      api_client_id: FILTER_GROUP,
+      method_name: FILTER_GROUP,
+      subject_name: FILTER_GROUP,
+      status_code: FILTER_GROUP,
+      failed: FILTER_GROUP,
+      rate_limited: FILTER_GROUP,
+      failed_count: SUM_MEASUREMENT,
+      rate_limited_count: SUM_MEASUREMENT,
+      duration_ms: { measurements: %i[sum maximum] }
+    }.freeze
 
     module_function
 
@@ -42,26 +55,12 @@ module RecordingStudioMcp
         partition_interval: nil,
         owner: OWNER,
         retention: LOG_RETENTION,
-        aggregatable: aggregatable_columns
+        aggregatable: AGGREGATABLE
       )
     end
 
     def register_aggregation!
       RecordingStudioLogs.aggregate(**AGGREGATION)
-    end
-
-    def aggregatable_columns
-      {
-        api_client_id: { filter: [:eq], group: true },
-        method_name: { filter: [:eq], group: true },
-        subject_name: { filter: [:eq], group: true },
-        status_code: { filter: [:eq], group: true },
-        failed: { filter: [:eq], group: true },
-        rate_limited: { filter: [:eq], group: true },
-        failed_count: { measurements: [:sum] },
-        rate_limited_count: { measurements: [:sum] },
-        duration_ms: { measurements: %i[sum maximum] }
-      }
     end
   end
 end
