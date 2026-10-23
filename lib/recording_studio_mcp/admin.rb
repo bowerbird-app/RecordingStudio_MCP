@@ -79,7 +79,7 @@ module RecordingStudioMcp
     FailedByToolWidget = RecordingStudioAdmin::Widget.new("mcp.failed_by_tool") do
       type :list
       title "Failed tools"
-      info "Tool calls that failed, from daily totals. Usage lists each call."
+      info "Tool calls that failed. Usage lists each call."
       hide_change
       hide_period
       hide_metric

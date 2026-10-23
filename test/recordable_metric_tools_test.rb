@@ -46,7 +46,7 @@ class RecordableMetricToolsTest < Minitest::Test
           "name" => "folders.created_over_time",
           "resource" => "folders"
         },
-        RecordingStudioMcp::RecordableMetricTools.params_for(
+        RecordingStudioMcp::MetricTools.params_for(
           metric,
           {
             "filter" => { "name" => "Ada" },
@@ -70,7 +70,7 @@ class RecordableMetricToolsTest < Minitest::Test
           "name" => "folders.created_over_time",
           "resource" => "folders"
         },
-        RecordingStudioMcp::RecordableMetricTools.params_for(
+        RecordingStudioMcp::MetricTools.params_for(
           metric,
           { "q" => "", "from" => nil, "filter" => { "name" => "" } }
         )
@@ -82,7 +82,7 @@ class RecordableMetricToolsTest < Minitest::Test
     with_metric_types do |surface|
       metric = surface.metric_tool("folders-total")
       error = assert_raises(RecordingStudioApi::InvalidActionInputError) do
-        RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter[name]" => "Ada" })
+        RecordingStudioMcp::MetricTools.params_for(metric, { "filter[name]" => "Ada" })
       end
 
       assert_equal "Send list filters as a filter object of attribute names", error.message
@@ -93,18 +93,18 @@ class RecordableMetricToolsTest < Minitest::Test
     with_metric_types do |surface|
       metric = surface.metric_tool("folders-total")
 
-      passed = RecordingStudioMcp::RecordableMetricTools.params_for(
+      passed = RecordingStudioMcp::MetricTools.params_for(
         metric, { "filter" => { "missing" => "Ada", "name" => 1 } }
       )
       assert_equal({ "missing" => "Ada", "name" => 1 }, passed.fetch("filter"))
 
       number = assert_raises(RecordingStudioApi::InvalidActionInputError) do
-        RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "q" => 1 })
+        RecordingStudioMcp::MetricTools.params_for(metric, { "q" => 1 })
       end
       assert_equal "q must be a string", number.message
 
       text = assert_raises(RecordingStudioApi::InvalidActionInputError) do
-        RecordingStudioMcp::RecordableMetricTools.params_for(metric, { "filter" => "Ada" })
+        RecordingStudioMcp::MetricTools.params_for(metric, { "filter" => "Ada" })
       end
       assert_equal "filter must be an object", text.message
     end
@@ -123,7 +123,7 @@ class RecordableMetricToolsTest < Minitest::Test
           "name" => "folders.created_over_time",
           "resource" => "folders"
         },
-        RecordingStudioMcp::RecordableMetricTools.params_for(
+        RecordingStudioMcp::MetricTools.params_for(
           metric,
           {
             "start" => "2026-04-01T00:00:00Z",
@@ -144,7 +144,7 @@ class RecordableMetricToolsTest < Minitest::Test
       refute total.key?(:group_by)
       assert_equal "string", total.dig(:q, :type)
       window = assert_raises(RecordingStudioApi::InvalidActionInputError) do
-        RecordingStudioMcp::RecordableMetricTools.params_for(
+        RecordingStudioMcp::MetricTools.params_for(
           surface.metric_tool("folders-total"),
           { "from" => "2026-04-01T00:00:00Z" }
         )
@@ -212,7 +212,7 @@ class RecordableMetricToolsTest < Minitest::Test
   end
 
   def test_non_query_or_reserved_filter_parameter_fails_the_plan
-    plan = RecordingStudioMcp::RecordableMetricTools::ArgumentPlan
+    plan = RecordingStudioMcp::MetricTools::ArgumentPlan
     query = assert_raises(RecordingStudioApi::ConfigurationError) do
       plan.from([{ name: "from", in: "path", required: false, schema: { type: "string" } }])
     end

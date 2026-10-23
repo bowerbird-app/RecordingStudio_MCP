@@ -51,18 +51,26 @@ module RecordingStudioMcp
     def counts
       return {} unless metrics_ready?
 
-      UsageDailyMetric.where(metric_date: day_range).group(:metric_date).sum(:call_count)
+      Time.use_zone(metrics_timezone) do
+        UsageDailyMetric.where(metric_date: day_range).group(:metric_date).sum(:call_count)
+      end
     rescue StandardError
       {}
     end
 
     def days
-      day_range.to_a
+      Time.use_zone(metrics_timezone) { day_range.to_a }
     end
 
     def day_range
-      period = RecordingStudioAdmin::Period.from_preset_key(:last_4_weeks)
-      period.start_date..period.end_date
+      Time.use_zone(metrics_timezone) do
+        period = RecordingStudioAdmin::Period.from_preset_key(:last_4_weeks)
+        period.start_date..period.end_date
+      end
+    end
+
+    def metrics_timezone
+      RecordingStudioMetrics.configuration.default_timezone
     end
 
     def metrics_ready?
@@ -76,7 +84,7 @@ module RecordingStudioMcp
     rescue StandardError
       false
     end
-    private_class_method :week_points, :week_slices, :counts_by_day, :counts, :days, :day_range, :metrics_ready?,
-                         :logs_ready?
+    private_class_method :week_points, :week_slices, :counts_by_day, :counts, :days, :day_range, :metrics_timezone,
+                         :metrics_ready?, :logs_ready?
   end
 end

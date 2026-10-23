@@ -41,7 +41,7 @@ class ListenStreamTest < Minitest::Test
       assert_equal 4, ack.dig(:params, :_meta, RecordingStudioMcp::Connection::SUBSCRIPTION_ID_META)
       assert_equal ["recording://11"], ack.dig(:params, :notifications, :resourceSubscriptions)
 
-      connection.enqueue_updated("recording://11")
+      connection.try_enqueue_updated("recording://11")
       update_payload = connection.shift_pending(timeout: 0)
       assert connection.write_payload(sender, update_payload)
       update = sender.payloads.last
@@ -82,7 +82,7 @@ class ListenStreamTest < Minitest::Test
     connection.attach_sender(sender)
     connection.subscribe("recording://3")
 
-    connection.enqueue_updated("recording://3")
+    connection.try_enqueue_updated("recording://3")
     payload = connection.shift_pending(timeout: 0)
     refute connection.write_payload(sender, payload)
     assert connection.finished?
@@ -96,7 +96,7 @@ class ListenStreamTest < Minitest::Test
     sender = FakeSender.new
     connection.attach_sender(sender)
     connection.subscribe("recording://3")
-    connection.enqueue_updated("recording://3")
+    connection.try_enqueue_updated("recording://3")
     connection.write_payload(sender, connection.shift_pending(timeout: 0))
 
     refute sender.payloads.first[:params].key?(:_meta)
@@ -125,7 +125,7 @@ class ListenStreamTest < Minitest::Test
 
     thread = Thread.new { stream.perform(writer) }
     sleep 0.05
-    connection.enqueue_updated("recording://2")
+    connection.try_enqueue_updated("recording://2")
     sleep 0.05
     connection.finish!
     thread.join(2)
@@ -147,7 +147,7 @@ class ListenStreamTest < Minitest::Test
     sender = Object.new
     sender.define_singleton_method(:write_json) { |_| sleep 2 }
     connection.subscribe("recording://3")
-    connection.enqueue_updated("recording://3")
+    connection.try_enqueue_updated("recording://3")
 
     refute connection.write_payload(sender, connection.shift_pending(timeout: 0))
     assert connection.finished?
@@ -161,7 +161,7 @@ class ListenStreamTest < Minitest::Test
     connection.subscribe("recording://3")
     connection.finish!
 
-    refute connection.enqueue_updated("recording://3")
+    connection.try_enqueue_updated("recording://3")
     refute connection.pending?
     connection.wait(timeout: 0.01)
     assert_equal [connection], RecordingStudioMcp::Connections.to_a

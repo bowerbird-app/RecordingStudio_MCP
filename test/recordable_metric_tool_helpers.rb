@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module RecordableMetricToolHelpers
-  # metrics_for constantizes these names and compares the registered model class.
   # rubocop:disable Lint/EmptyClass
   class Folder; end
   class Page; end
@@ -11,18 +10,17 @@ module RecordableMetricToolHelpers
   PAGE = "RecordableMetricToolHelpers::Page"
 
   def with_recordable_metric_registry
-    registry = nil
-    metrics = nil
-    resources = nil
-    registry = RecordingStudioMetrics.registry
-    metrics = registry.instance_variable_get(:@metrics).dup
-    resources = registry.instance_variable_get(:@resources).dup
+    RecordingStudioMetrics.registry.reset!
     yield
   ensure
-    if registry
-      registry.instance_variable_set(:@metrics, metrics)
-      registry.instance_variable_set(:@resources, resources)
-    end
+    restore_mcp_metrics_registry!
+  end
+
+  def restore_mcp_metrics_registry!
+    RecordingStudioMetrics.registry.reset!
+    return unless RecordingStudioMcp.const_defined?(:UsageDailyMetric, false)
+
+    RecordingStudioMcp::Metrics.register!
   end
 
   def register_folder_and_page_metrics

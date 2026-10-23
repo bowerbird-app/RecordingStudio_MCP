@@ -64,8 +64,9 @@ module RecordingStudioMcp
       @mutex.synchronize { @queue.any? }
     end
 
-    def enqueue_updated(uri) # rubocop:disable Naming/PredicateMethod
-      @mutex.synchronize { store_update(uri) } == :ok
+    def try_enqueue_updated(uri)
+      @mutex.synchronize { store_update(uri) }
+      nil
     end
 
     def shift_pending(timeout: 1)

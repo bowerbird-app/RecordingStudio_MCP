@@ -173,9 +173,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     warnings = StringIO.new
     previous = Rails.logger
     Rails.logger = Logger.new(warnings)
-    registry = RecordingStudioMetrics.registry
-    saved_metrics = registry.instance_variable_get(:@metrics).dup
-    saved_resources = registry.instance_variable_get(:@resources).dup
+    with_saved_metrics_registry do
     RecordingStudioMetrics.register(
       :probes,
       model: RecordingStudioMcp::UsageDailyMetric,
@@ -200,14 +198,11 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     assert_includes names, "mcp_calls-rate_limited"
     refute_includes names, "probes-total"
     assert_includes warnings.string, "WARN --"
-    assert_includes warnings.string, "skipped catalog metric probes"
+    assert_includes warnings.string, "skipped metric probes"
     refute_includes warnings.string, secret
+    end
   ensure
     Rails.logger = previous if previous
-    if defined?(registry) && registry
-      registry.instance_variable_set(:@metrics, saved_metrics)
-      registry.instance_variable_set(:@resources, saved_resources)
-    end
   end
 
   test "operations MCP lists one tool per mcp_calls metric and keeps the metrics endpoints" do
@@ -339,8 +334,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     assert_equal({ @day_two.iso8601 => 7 }, values)
   end
 
-  test "operations MCP metrics show surfaces Metrics errors as tool errors" do
-    # API 0.8 folds `from` into `start`; an explicit `start` wins instead of conflicting.
+  test "operations MCP metrics show prefers start over from" do
     precedence = call_tool(
       "operations_metrics_show",
       resource: "mcp_calls",
@@ -349,7 +343,9 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       from: @day_two.iso8601
     )
     refute precedence.fetch("isError"), precedence.inspect
+  end
 
+  test "operations MCP metrics show surfaces Metrics errors as tool errors" do
     group = call_tool("operations_metrics_show", resource: "mcp_calls", name: "by_tool", group_by: "nope")
     assert group.fetch("isError")
     refute_empty group.dig("content", 0, "text")
@@ -482,6 +478,13 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
       failed_count: failed_count,
       rate_limited_count: rate_limited_count
     )
+  end
+
+  def with_saved_metrics_registry
+    yield
+  ensure
+    RecordingStudioMetrics.registry.reset!
+    RecordingStudioMcp::Metrics.register!
   end
 
   def execute(identifier, **params)

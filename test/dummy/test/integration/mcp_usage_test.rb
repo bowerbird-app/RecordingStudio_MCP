@@ -21,9 +21,9 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     RecordingStudioMcp::UsageRecorder.sink = nil
   end
 
-  test "a tool call is logged, rolled up, and shown on the mcp admin section" do
+  test "a tool call is logged and shown on the mcp admin section" do
     token = issue_token
-    prior_calls = daily_call_count(method_name: "tools/call", subject_name: "list")
+    prior_calls = RecordingStudioMcp::UsageLog.where(method_name: "tools/call", subject_name: "list").count
 
     post "/recording_studio_mcp",
          params: {
@@ -44,13 +44,10 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     refute log.failed
     refute_includes log.attributes.values.map(&:to_s).join, "Secret title"
 
-    metric = RecordingStudioMcp::UsageDailyMetric.find_by!(
-      metric_date: Time.zone.today,
+    assert_equal prior_calls + 1, RecordingStudioMcp::UsageLog.where(
       method_name: "tools/call",
       subject_name: "list"
-    )
-    assert_equal prior_calls + 1, metric.call_count
-    assert_equal 0, metric.failed_count
+    ).count
 
     sign_in @user
     switch_to_root!(@admin_root_recording)
@@ -116,33 +113,8 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "maintain usage rebuilds the day from logs and prunes old rows" do
+  test "usage logs stay until Logs retention cleanup runs" do
     RecordingStudioMcp::UsageLog.delete_all
-    RecordingStudioMcp::UsageDailyMetric.delete_all
-
-    RecordingStudioMcp::UsageLog.create!(
-      occurred_at: Time.zone.now,
-      method_name: "ping",
-      subject_name: "",
-      status_code: 200,
-      duration_ms: 2,
-      rate_limited: false,
-      failed: false
-    )
-    RecordingStudioMcp::UsageDailyMetric.increment!(
-      metric_date: Time.zone.today,
-      method_name: "ping",
-      subject_name: "",
-      failed: false,
-      rate_limited: false
-    )
-    RecordingStudioMcp::UsageDailyMetric.increment!(
-      metric_date: Time.zone.today,
-      method_name: "ping",
-      subject_name: "",
-      failed: false,
-      rate_limited: false
-    )
     old = RecordingStudioMcp::UsageLog.create!(
       occurred_at: 40.days.ago,
       method_name: "initialize",
@@ -153,27 +125,67 @@ class McpUsageTest < ActionDispatch::IntegrationTest
       failed: false
     )
 
-    result = RecordingStudioMcp::MaintainUsageJob.perform_now(today: Time.zone.today)
-
-    metric = RecordingStudioMcp::UsageDailyMetric.find_by!(
-      metric_date: Time.zone.today,
-      method_name: "ping",
-      subject_name: ""
-    )
-    assert_equal 1, metric.call_count
-    assert_includes result.fetch(:aggregated_dates), Time.zone.today
-    assert_equal 1, result.fetch(:pruned_logs)
-    assert_nil RecordingStudioMcp::UsageLog.find_by(id: old.id)
+    assert_equal old.id, RecordingStudioMcp::UsageLog.find(old.id).id
   end
 
-  test "boot registers usage logs with RecordingStudioLogs and no aggregation" do
+  test "boot registers usage logs with RecordingStudioLogs daily aggregation" do
     log = RecordingStudioLogs.registry.log_for(RecordingStudioMcp::UsageLog)
     refute_nil log
     assert_nil log.partition_interval
-    assert_equal :indefinite, log.declared_retention
+    assert_equal 30.days, log.declared_retention
     assert_nil log.root_column
-    assert_empty RecordingStudioLogs.registry.aggregations_for(log)
+    aggregations = RecordingStudioLogs.registry.aggregations_for(log)
+    assert_equal 1, aggregations.size
+    assert_equal RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, aggregations.first.name
     refute defined?(RecordingStudioMcp::UsageDaySummary)
+  end
+
+  test "Logs aggregation fills the existing daily metrics table" do
+    RecordingStudioMcp::UsageLog.delete_all
+    RecordingStudioMcp::UsageDailyMetric.delete_all
+    day = Date.new(2026, 10, 14)
+    stamp = Time.utc(2026, 10, 14, 12)
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: stamp,
+      method_name: "tools/call",
+      subject_name: "list",
+      status_code: 200,
+      duration_ms: 4,
+      rate_limited: false,
+      failed: false
+    )
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: stamp,
+      method_name: "tools/call",
+      subject_name: "list",
+      status_code: 500,
+      duration_ms: 9,
+      rate_limited: false,
+      failed: true
+    )
+    limited_log = RecordingStudioMcp::UsageLog.create!(
+      occurred_at: stamp,
+      method_name: "tools/call",
+      subject_name: "show",
+      status_code: 429,
+      duration_ms: 2,
+      rate_limited: true,
+      failed: true
+    )
+    assert_equal 1, limited_log.failed_count
+    assert_equal 1, limited_log.rate_limited_count
+
+    RecordingStudioLogs.aggregate_period!(RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, day)
+    RecordingStudioLogs.aggregate_period!(RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, day)
+
+    row = RecordingStudioMcp::UsageDailyMetric.find_by!(metric_date: day, method_name: "tools/call", subject_name: "list")
+    assert_equal 2, row.call_count
+    assert_equal 1, row.failed_count
+    assert_equal 0, row.rate_limited_count
+    limited = RecordingStudioMcp::UsageDailyMetric.find_by!(metric_date: day, method_name: "tools/call", subject_name: "show")
+    assert_equal 1, limited.call_count
+    assert_equal 1, limited.failed_count
+    assert_equal 1, limited.rate_limited_count
   end
 
   test "usage table failed filter keeps failed calls" do
@@ -208,13 +220,6 @@ class McpUsageTest < ActionDispatch::IntegrationTest
 
   private
 
-  def daily_call_count(method_name:, subject_name:)
-    RecordingStudioMcp::UsageDailyMetric.find_by(
-      metric_date: Time.zone.today,
-      method_name: method_name,
-      subject_name: subject_name
-    )&.call_count.to_i
-  end
 
   def json_headers(extra = {})
     { "Content-Type" => "application/json", "Accept" => "application/json" }.merge(extra)

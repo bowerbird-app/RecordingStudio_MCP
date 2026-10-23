@@ -3,8 +3,6 @@
 require "digest"
 
 module RecordingStudioMcp
-  # Single place that asks whether RecordingStudio MCP UI is loaded.
-  # This gem never requires that engine. Hosts that want widgets add it.
   module McpUi
     UI_SCHEME = "ui://"
     MIME_TYPE = "text/html;profile=mcp-app"
@@ -12,29 +10,46 @@ module RecordingStudioMcp
 
     module_function
 
+    def adapter
+      return @adapter if instance_variable_defined?(:@adapter)
+
+      RecordingStudio::MCP_UI if defined?(RecordingStudio::MCP_UI)
+    end
+
+    def reset_adapter!(to: nil)
+      if to.nil?
+        remove_instance_variable(:@adapter) if instance_variable_defined?(:@adapter)
+      else
+        @adapter = to
+      end
+      @content_digests = {}
+    end
+
     def loaded?
-      defined?(RecordingStudio::MCP_UI)
+      !adapter.nil?
     end
 
     def find(widget_id)
       return unless loaded?
       return if widget_id.blank?
 
-      RecordingStudio::MCP_UI.find(widget_id)
-    rescue RecordingStudio::MCP_UI::UnknownWidgetError
+      adapter.find(widget_id)
+    rescue StandardError => e
+      raise unless unknown_widget_error?(e)
+
       nil
     end
 
     def list
       return [] unless loaded?
 
-      Array(RecordingStudio::MCP_UI.list)
+      Array(adapter.list)
     end
 
     def package(widget_id, data: {})
       return unless loaded?
 
-      RecordingStudio::MCP_UI.package(widget_id, data: data)
+      adapter.package(widget_id, data: data)
     end
 
     def widget_id_from_uri(uri)
@@ -61,6 +76,21 @@ module RecordingStudioMcp
       "#{widget.resource_uri}?v=#{content_digest(widget.id)}"
     end
 
+    def reset_content_digests!
+      @content_digests = {}
+    end
+
+    def unknown_widget_error?(error)
+      klass = unknown_widget_error_class
+      klass && error.is_a?(klass)
+    end
+
+    def unknown_widget_error_class
+      return unless adapter.respond_to?(:const_defined?) && adapter.const_defined?(:UnknownWidgetError)
+
+      adapter.const_get(:UnknownWidgetError)
+    end
+
     def content_digest(widget_id)
       content_digests[widget_id] ||= Digest::SHA256.hexdigest(
         package(widget_id, data: {}).to_mcp_resource.fetch(:text)
@@ -70,6 +100,6 @@ module RecordingStudioMcp
     def content_digests
       @content_digests ||= {}
     end
-    private_class_method :content_digest, :content_digests
+    private_class_method :unknown_widget_error?, :unknown_widget_error_class, :content_digest, :content_digests
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_044408) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -314,6 +314,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_044408) do
     t.index ["recording_id"], name: "index_recording_studio_events_on_recording_id"
   end
 
+  create_table "recording_studio_logs_aggregation_runs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "aggregation_name", null: false
+    t.string "status", null: false
+    t.text "error_message"
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "period_start", null: false
+    t.index ["aggregation_name", "period_start"], name: "index_rs_logs_aggregation_runs_on_name_and_period", unique: true
+  end
+
+  create_table "recording_studio_logs_maintenance_runs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "task", null: false
+    t.string "subject", null: false
+    t.string "status", null: false
+    t.text "details"
+    t.datetime "finished_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["task", "subject", "finished_at"], name: "index_rs_logs_maintenance_runs_on_task_and_subject"
+  end
+
   create_table "recording_studio_mcp_event_subscriptions", id: :string, force: :cascade do |t|
     t.string "owner_principal_id", null: false
     t.uuid "access_recording_id"
@@ -355,6 +377,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_044408) do
     t.integer "status_code", null: false
     t.string "subject_name", default: "", null: false
     t.datetime "updated_at", null: false
+    t.virtual "failed_count", type: :integer, as: "\nCASE\n    WHEN failed THEN 1\n    ELSE 0\nEND", stored: true
+    t.virtual "rate_limited_count", type: :integer, as: "\nCASE\n    WHEN rate_limited THEN 1\n    ELSE 0\nEND", stored: true
     t.index ["api_client_id", "occurred_at"], name: "index_rs_mcp_usage_logs_on_client_and_time"
     t.index ["occurred_at"], name: "index_recording_studio_mcp_usage_logs_on_occurred_at"
   end

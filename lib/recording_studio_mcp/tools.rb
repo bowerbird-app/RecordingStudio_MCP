@@ -52,7 +52,7 @@ module RecordingStudioMcp
         properties: schema.fetch(:properties)
       }
       options[:additional_properties] = schema[:additionalProperties] if schema.key?(:additionalProperties)
-      options.merge(api: api, file_params: FileParams.names(endpoint))
+      options.merge(api: api)
     end
 
     def list_tool(catalog)
@@ -231,7 +231,6 @@ module RecordingStudioMcp
 
     def attach_meta(payload, options)
       attach_ui_meta(payload, options[:name], options[:api])
-      attach_file_params_meta(payload, options[:file_params])
       payload
     end
 
@@ -244,12 +243,7 @@ module RecordingStudioMcp
       payload[:_meta] = (payload[:_meta] || {}).merge(ui: { resourceUri: uri })
     end
 
-    def attach_file_params_meta(payload, names)
-      return if names.blank?
-
-      payload[:_meta] = (payload[:_meta] || {}).merge(FileParams::META_KEY => names)
-    end
     private_class_method :tool, :endpoint_tool_options, :endpoint_title,
-                         :endpoint_description, :attach_meta, :attach_ui_meta, :attach_file_params_meta
+                         :endpoint_description, :attach_meta, :attach_ui_meta
   end
 end

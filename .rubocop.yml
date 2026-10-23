@@ -24,8 +24,6 @@ Metrics/BlockLength:
 Metrics/ClassLength:
   Exclude:
     - 'test/**/*'
-    - 'lib/recording_studio_mcp/dispatcher.rb'
-    - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/connection.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
@@ -43,8 +41,6 @@ Metrics/MethodLength:
     - 'test/**/*'
     - 'lib/generators/**/*'
     - 'db/migrate/**/*'
-    - 'lib/recording_studio_mcp/dispatcher.rb'
-    - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/tools.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/callback_http.rb'
@@ -62,8 +58,6 @@ Metrics/AbcSize:
     - 'test/**/*'
     - 'lib/generators/**/*'
     - 'db/migrate/**/*'
-    - 'lib/recording_studio_mcp/dispatcher.rb'
-    - 'lib/recording_studio_mcp/protocol.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/callback_http.rb'
@@ -73,7 +67,6 @@ Metrics/AbcSize:
 Metrics/CyclomaticComplexity:
   Exclude:
     - 'test/**/*'
-    - 'lib/recording_studio_mcp/protocol.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/callback_url.rb'
     - 'lib/recording_studio_mcp/json_object_schema.rb'

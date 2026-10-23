@@ -1,15 +1,8 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  # Opt-in file inputs for registered endpoint tools (ChatGPT Apps SDK `openai/fileParams`).
-  #
-  # An endpoint declares top-level file fields in its openapi metadata under OPENAPI_KEY, either as
-  # a list of names or as a hash of name => { nullable:, required:, description: }. Each field gets
-  # the file object schema in inputSchema, and the tool lists the names in `_meta["openai/fileParams"]`.
-  # Endpoints without the key are unchanged.
   module FileParams
     OPENAPI_KEY = :"x-mcp-file-params"
-    META_KEY = "openai/fileParams"
     FILE_PROPERTIES = {
       download_url: { type: "string", description: "Temporary URL to download the file." },
       file_id: { type: "string", description: "File id." },
@@ -20,8 +13,6 @@ module RecordingStudioMcp
 
     module_function
 
-    # { "field_name" => { nullable: bool, required: bool, description: String or nil } }.
-    # Path tokens are never file fields.
     def fields(endpoint)
       declared = endpoint.openapi.is_a?(Hash) ? endpoint.openapi[OPENAPI_KEY] : nil
       fields = case declared
@@ -40,8 +31,6 @@ module RecordingStudioMcp
       fields(endpoint).keys
     end
 
-    # Adds declared file fields to an endpoint inputSchema; a file field replaces any contract field
-    # of the same name. Returns the schema unchanged when nothing is declared.
     def apply(schema, endpoint)
       declared = fields(endpoint)
       return schema if declared.empty?

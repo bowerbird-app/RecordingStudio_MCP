@@ -4,11 +4,17 @@ require "test_helper"
 require "open3"
 require "fileutils"
 
-# Unstubbed subprocess checks: real bin/rails runner, rake, and console in the
-# dummy app must not start PostgresBus (unless the env flag forces it).
+# Subprocess checks (unstubbed): real bin/rails runner, rake, and console in
+# the dummy app must not start PostgresBus (unless the env flag forces it).
+# In-process stubbed check: a forked child must not check in the listen
+# connection the parent still holds.
 class PostgresBusProcessTest < Minitest::Test
   DUMMY_ROOT = File.expand_path("dummy", __dir__)
   PROBE_LINE = /PROBE allowed=(true|false) listening=(true|false) enabled=(true|false)/
+
+  def teardown
+    RecordingStudioMcp::PostgresBus.stop!
+  end
 
   def test_rails_runner_does_not_start_postgres_bus
     code = [
@@ -65,6 +71,77 @@ class PostgresBusProcessTest < Minitest::Test
     assert status.success?, stdout
     assert_includes stdout, "CONSOLE=true"
     assert_probe stdout, allowed: false, listening: false, enabled: true
+  end
+
+  def test_owner_process_exit_stops_postgres_bus
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_owner_exit_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      ENV["RAILS_ENV"] ||= "test"
+      require "rails"
+      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
+      require_relative "../config/application"
+
+      bus = RecordingStudioMcp::PostgresBus
+      at_exit { puts "PROBE listening=\#{bus.listening?}" }
+      Rails.application.initialize!
+      ActiveRecord::Base.connection.select_value("SELECT 1")
+      bus.start!
+      puts "PROBE started=\#{bus.listening?} pid=\#{Process.pid}"
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+
+    assert status.success?, stdout
+    assert_includes stdout, "PROBE started=true"
+    assert_includes stdout, "PROBE listening=false"
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
+  end
+
+  def test_forked_child_exit_does_not_check_in_parent_listen_connection
+    reader, writer = IO.pipe
+    writer.sync = true
+
+    raw = Object.new
+    raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { true }
+
+    checked_out = Queue.new
+    pool = Object.new
+    pool.define_singleton_method(:checkout) do
+      checked_out << true
+      listen_connection
+    end
+    pool.define_singleton_method(:checkin) { |_conn| writer.write("checkin\n") }
+
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          ActiveRecord::Base.stub(:connection_pool, pool) do
+            RecordingStudioMcp::PostgresBus.start!
+            checked_out.pop
+            assert RecordingStudioMcp::PostgresBus.listening?
+
+            pid = fork { exit }
+            Process.wait(pid)
+
+            assert RecordingStudioMcp::PostgresBus.listening?
+            refute reader.wait_readable(0.3),
+                   "forked child at_exit must not check in the listen connection"
+            RecordingStudioMcp::PostgresBus.stop!
+          end
+        end
+      end
+    end
+  ensure
+    writer.close unless writer.nil? || writer.closed?
+    reader.close unless reader.nil? || reader.closed?
   end
 
   def test_server_like_boot_starts_postgres_bus

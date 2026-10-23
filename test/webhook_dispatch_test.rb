@@ -108,15 +108,44 @@ class WebhookDispatchTest < Minitest::Test
     subscription = Struct.new(:owner_principal_id, :access_recording_id).new("missing", nil)
     recording = FakeRecording.new("rec-1", "Page")
 
-    refute RecordingStudioMcp::WebhookDispatch.send(:still_accessible?, subscription, recording)
+    refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
   end
 
-  def test_finds_nothing_when_recording_model_is_not_loaded
-    assert_nil RecordingStudioMcp::WebhookDispatch.send(:find_recording, "rec-1")
-    present = Struct.new(:access_recording_id).new("acc-1")
-    assert_nil RecordingStudioMcp::WebhookDispatch.send(:access_recording_for, present)
-    blank = Struct.new(:access_recording_id).new(nil)
-    assert_nil RecordingStudioMcp::WebhookDispatch.send(:access_recording_for, blank)
+  def test_enqueue_skips_when_find_recording_returns_nil
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.configuration.events_enabled = true
+      RecordingStudioMcp.register_event("recording updated")
+      jobs = []
+
+      RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
+        RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
+          RecordingStudioMcp::WebhookDispatch.enqueue(
+            event_name: "recording updated",
+            recording_id: "rec-1"
+          )
+        end
+      end
+
+      assert_empty jobs
+    end
+  end
+
+  def test_still_accessible_is_false_when_access_recording_for_returns_nil
+    subscription = Struct.new(:owner_principal_id, :access_recording_id).new("oauth-1", "acc-1")
+    recording = FakeRecording.new("rec-1", "Page")
+
+    RecordingStudioMcp::WebhookDispatch.stub(:principal_for, Object.new) do
+      refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+    end
+  end
+
+  def test_still_accessible_is_false_when_access_recording_id_is_blank
+    subscription = Struct.new(:owner_principal_id, :access_recording_id).new("oauth-1", nil)
+    recording = FakeRecording.new("rec-1", "Page")
+
+    RecordingStudioMcp::WebhookDispatch.stub(:principal_for, Object.new) do
+      refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+    end
   end
 
   def test_rebuilds_access_grant_from_oauth_principal_and_stored_access_recording
@@ -124,15 +153,24 @@ class WebhookDispatchTest < Minitest::Test
     access_recording = Object.new
     access_recording.define_singleton_method(:root_recording) { :root }
     subscription = Struct.new(:owner_principal_id, :access_recording_id).new("oauth-1", "acc-1")
+    recording = FakeRecording.new("rec-1", "Page")
+    captured = nil
 
     RecordingStudioMcp::WebhookDispatch.stub(:principal_for, oauth_client) do
       RecordingStudioMcp::WebhookDispatch.stub(:access_recording_for, access_recording) do
-        grant = RecordingStudioMcp::WebhookDispatch.send(:access_grant_for, subscription)
-
-        assert_equal oauth_client, grant.api_client
-        assert_equal access_recording, grant.access_recording
-        assert_equal :root, grant.root_recording
+        RecordingStudioMcp::Resources.stub(:uri_for, "recording://rec-1") do
+          RecordingStudioMcp::Resources.stub(:accessible?, lambda { |grant, _uri|
+            captured = grant
+            true
+          }) do
+            assert RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+          end
+        end
       end
     end
+
+    assert_equal oauth_client, captured.api_client
+    assert_equal access_recording, captured.access_recording
+    assert_equal :root, captured.root_recording
   end
 end

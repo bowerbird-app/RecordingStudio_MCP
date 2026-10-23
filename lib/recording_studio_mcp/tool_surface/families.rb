@@ -2,22 +2,20 @@
 
 module RecordingStudioMcp
   class ToolSurface
-    METRIC_FAMILIES = %i[metric catalog_metric].freeze
-
     def metric_tools?
       recordable_metric_tools? || catalog_metric_tools?
     end
 
     def recordable_metric_tools?
-      @by_name.each_value.any? { |entry| entry.family == :metric }
+      @by_name.each_value.any? { |entry| entry.family == :metric && !entry.metric.catalog? }
     end
 
     def catalog_metric_tools?
-      @by_name.each_value.any? { |entry| entry.family == :catalog_metric }
+      @by_name.each_value.any? { |entry| entry.family == :metric && entry.metric.catalog? }
     end
 
     def metric_family?(entry)
-      METRIC_FAMILIES.include?(entry&.family)
+      entry&.family == :metric
     end
   end
 end

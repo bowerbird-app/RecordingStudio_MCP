@@ -75,6 +75,7 @@ module RecordingStudioMcp
         @running = false
         thread = @thread
         @thread = nil
+        @last_warn_at = nil
       end
 
       wake_listen_loop
