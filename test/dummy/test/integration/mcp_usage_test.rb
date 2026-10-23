@@ -175,8 +175,8 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_equal 1, limited_log.failed_count
     assert_equal 1, limited_log.rate_limited_count
 
-    RecordingStudioLogs.aggregate_day!(day)
-    RecordingStudioLogs.aggregate_day!(day)
+    RecordingStudioLogs.aggregate_period!(RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, day)
+    RecordingStudioLogs.aggregate_period!(RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, day)
 
     row = RecordingStudioMcp::UsageDailyMetric.find_by!(metric_date: day, method_name: "tools/call", subject_name: "list")
     assert_equal 2, row.call_count

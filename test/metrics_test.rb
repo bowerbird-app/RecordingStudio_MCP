@@ -103,10 +103,10 @@ class MetricsTest < Minitest::Test
 
   def with_saved_metrics_registry
     RecordingStudioMetrics.registry.reset!
-    RecordingStudioMcp::Metrics.register!
+    RecordingStudioMcp::Metrics.register! if RecordingStudioMcp.const_defined?(:UsageDailyMetric, false)
     yield
   ensure
     RecordingStudioMetrics.registry.reset!
-    RecordingStudioMcp::Metrics.register!
+    RecordingStudioMcp::Metrics.register! if RecordingStudioMcp.const_defined?(:UsageDailyMetric, false)
   end
 end

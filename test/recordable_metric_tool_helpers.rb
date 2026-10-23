@@ -13,7 +13,13 @@ module RecordableMetricToolHelpers
     RecordingStudioMetrics.registry.reset!
     yield
   ensure
+    restore_mcp_metrics_registry!
+  end
+
+  def restore_mcp_metrics_registry!
     RecordingStudioMetrics.registry.reset!
+    return unless RecordingStudioMcp.const_defined?(:UsageDailyMetric, false)
+
     RecordingStudioMcp::Metrics.register!
   end
 

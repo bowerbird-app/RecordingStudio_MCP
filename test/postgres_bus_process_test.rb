@@ -67,6 +67,34 @@ class PostgresBusProcessTest < Minitest::Test
     assert_probe stdout, allowed: false, listening: false, enabled: true
   end
 
+  def test_owner_process_exit_stops_postgres_bus
+    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_owner_exit_probe.rb")
+    FileUtils.mkdir_p(File.dirname(script))
+    File.write(script, <<~RUBY)
+      # frozen_string_literal: true
+
+      ENV["RAILS_ENV"] ||= "test"
+      require "rails"
+      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
+      require_relative "../config/application"
+
+      bus = RecordingStudioMcp::PostgresBus
+      at_exit { puts "PROBE listening=\#{bus.listening?}" }
+      Rails.application.initialize!
+      ActiveRecord::Base.connection.select_value("SELECT 1")
+      bus.start!
+      puts "PROBE started=\#{bus.listening?} pid=\#{Process.pid}"
+    RUBY
+
+    stdout, status = run_dummy("ruby", script)
+
+    assert status.success?, stdout
+    assert_includes stdout, "PROBE started=true"
+    assert_includes stdout, "PROBE listening=false"
+  ensure
+    FileUtils.rm_f(script) if defined?(script) && script
+  end
+
   def test_server_like_boot_starts_postgres_bus
     script = File.join(DUMMY_ROOT, "tmp/postgres_bus_server_probe.rb")
     FileUtils.mkdir_p(File.dirname(script))

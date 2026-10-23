@@ -118,13 +118,11 @@ class WebhookDispatchTest < Minitest::Test
       jobs = []
 
       RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
-        RecordingStudio::Recording.stub(:find_by, nil) do
-          RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
-            RecordingStudioMcp::WebhookDispatch.enqueue(
-              event_name: "recording updated",
-              recording_id: "rec-1"
-            )
-          end
+        RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
+          RecordingStudioMcp::WebhookDispatch.enqueue(
+            event_name: "recording updated",
+            recording_id: "rec-1"
+          )
         end
       end
 
@@ -137,9 +135,7 @@ class WebhookDispatchTest < Minitest::Test
     recording = FakeRecording.new("rec-1", "Page")
 
     RecordingStudioMcp::WebhookDispatch.stub(:principal_for, Object.new) do
-      RecordingStudio::Recording.stub(:find_by, nil) do
-        refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
-      end
+      refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
     end
   end
 
