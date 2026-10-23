@@ -60,6 +60,7 @@ module RecordingStudioMcp
       metric = surface.metric_tool(name)
       if metric
         return wrap_metric(
+          metric,
           MetricTools.execute(metric, arguments, access_grant, progress_reporter: progress_reporter)
         )
       end
@@ -70,8 +71,8 @@ module RecordingStudioMcp
       dispatch_endpoint(surface.endpoint_for(name), args)
     end
 
-    def wrap_metric(result)
-      return render_handler_result(result) if result.is_a?(Hash) && result.key?(:json)
+    def wrap_metric(tool, result)
+      return render_handler_result(result) if tool.catalog?
 
       success_result(result)
     end

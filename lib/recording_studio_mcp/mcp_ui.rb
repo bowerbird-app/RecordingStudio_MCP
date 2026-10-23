@@ -77,7 +77,14 @@ module RecordingStudioMcp
     end
 
     def unknown_widget_error?(error)
-      error.class.name.end_with?("UnknownWidgetError")
+      klass = unknown_widget_error_class
+      klass && error.instance_of?(klass)
+    end
+
+    def unknown_widget_error_class
+      return unless adapter.respond_to?(:const_defined?) && adapter.const_defined?(:UnknownWidgetError)
+
+      adapter.const_get(:UnknownWidgetError)
     end
 
     def content_digest(widget_id)
@@ -89,6 +96,6 @@ module RecordingStudioMcp
     def content_digests
       @content_digests ||= {}
     end
-    private_class_method :unknown_widget_error?, :content_digest, :content_digests
+    private_class_method :unknown_widget_error?, :unknown_widget_error_class, :content_digest, :content_digests
   end
 end

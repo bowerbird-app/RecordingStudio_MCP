@@ -10,11 +10,14 @@ module RecordableMetricToolHelpers
   PAGE = "RecordableMetricToolHelpers::Page"
 
   def with_recordable_metric_registry
-    RecordingStudioMetrics.registry.reset!
+    registry = RecordingStudioMetrics.registry
+    saved_metrics = registry.instance_variable_get(:@metrics).dup
+    saved_resources = registry.instance_variable_get(:@resources).dup
+    registry.reset!
     yield
   ensure
-    RecordingStudioMetrics.registry.reset!
-    RecordingStudioMcp::Metrics.register! if RecordingStudioMcp.const_defined?(:UsageLog, false)
+    registry.instance_variable_set(:@metrics, saved_metrics)
+    registry.instance_variable_set(:@resources, saved_resources)
   end
 
   def register_folder_and_page_metrics

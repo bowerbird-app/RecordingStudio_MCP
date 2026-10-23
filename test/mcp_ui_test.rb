@@ -52,7 +52,7 @@ class McpUiTest < Minitest::Test
     end
   end
 
-  def test_file_params_meta_merges_with_ui_meta
+  def test_file_params_stay_off_ui_meta
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(
         "presskits.edit",

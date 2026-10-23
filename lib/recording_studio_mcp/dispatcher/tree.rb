@@ -20,7 +20,7 @@ module RecordingStudioMcp
       recordable_type = catalog.resolve_type!(args["type"])
       reject_disabled_operation!(recordable_type, operation_name)
       handler = resource_handler(recordable_type, operation_name)
-      return call_resource_handler(recordable_type, operation_name, args) if handler
+      return call_resource_handler(handler, recordable_type, operation_name, args) if handler
 
       call_builtin_resource(recordable_type, operation_name, args)
     end
@@ -36,8 +36,7 @@ module RecordingStudioMcp
       RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
     end
 
-    def call_resource_handler(recordable_type, operation_name, args)
-      handler = resource_handler(recordable_type, operation_name)
+    def call_resource_handler(handler, recordable_type, operation_name, args)
       context = resource_context(recordable_type, args, recording: nil, operation_name: operation_name)
       render_handler_result(handler.call(context))
     end

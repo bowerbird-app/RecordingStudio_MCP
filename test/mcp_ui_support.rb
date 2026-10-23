@@ -60,7 +60,9 @@ module McpUiSupport
   end
 
   def remove_fake_mcp_ui
-    RecordingStudioMcp::McpUi.adapter = nil
+    if RecordingStudioMcp::McpUi.instance_variable_defined?(:@adapter)
+      RecordingStudioMcp::McpUi.remove_instance_variable(:@adapter)
+    end
     RecordingStudioMcp::McpUi.reset_content_digests!
   end
 end
