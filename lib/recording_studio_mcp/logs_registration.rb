@@ -7,6 +7,23 @@ module RecordingStudioMcp
     AGGREGATION_NAME = "mcp/usage_daily"
     OWNER = "RecordingStudioMcp"
     LOG_RETENTION = 30.days
+    USAGE_MEASUREMENTS = {
+      call_count: :count,
+      failed_count: { sum: :failed },
+      rate_limited_count: { sum: :rate_limited }
+    }.freeze
+    AGGREGATION = {
+      source: SOURCE_MODEL,
+      name: AGGREGATION_NAME,
+      summary_model: SUMMARY_MODEL,
+      owner: OWNER,
+      period: :day,
+      period_column: :metric_date,
+      group_by: %i[method_name subject_name],
+      measurements: USAGE_MEASUREMENTS,
+      include_current: true,
+      count: :sync
+    }.freeze
 
     module_function
 
@@ -30,22 +47,7 @@ module RecordingStudioMcp
     end
 
     def register_aggregation!
-      RecordingStudioLogs.aggregate(
-        source: SOURCE_MODEL,
-        name: AGGREGATION_NAME,
-        summary_model: SUMMARY_MODEL,
-        owner: OWNER,
-        period: :day,
-        period_column: :metric_date,
-        group_by: %i[method_name subject_name],
-        measurements: {
-          call_count: :count,
-          failed_count: { sum: :failed },
-          rate_limited_count: { sum: :rate_limited }
-        },
-        include_current: true,
-        count: :sync
-      )
+      RecordingStudioLogs.aggregate(**AGGREGATION)
     end
 
     def aggregatable_columns
