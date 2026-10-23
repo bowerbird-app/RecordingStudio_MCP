@@ -22,7 +22,7 @@ module RecordingStudioMcp
       group_by: %i[method_name subject_name],
       measurements: USAGE_MEASUREMENTS,
       include_current: true,
-      count: :sync
+      count: :async
     }.freeze
     FILTER_GROUP = { filter: [:eq], group: true }.freeze
     SUM_MEASUREMENT = { measurements: [:sum] }.freeze

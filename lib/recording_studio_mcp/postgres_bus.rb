@@ -52,16 +52,6 @@ module RecordingStudioMcp
       mutex.synchronize { @thread&.alive? == true }
     end
 
-    def reset!(owner_pid: nil, last_warn_at: nil, listen_connection: nil, thread: nil, running: false)
-      mutex.synchronize do
-        @owner_pid = owner_pid
-        @last_warn_at = last_warn_at
-        @listen_connection = listen_connection
-        @thread = thread
-        @running = running
-      end
-    end
-
     def start!
       return unless enabled?
       return unless start_allowed?

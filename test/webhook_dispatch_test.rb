@@ -111,11 +111,45 @@ class WebhookDispatchTest < Minitest::Test
     refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
   end
 
-  def test_finds_nothing_when_recording_model_is_not_loaded
-    subscription = Struct.new(:owner_principal_id, :access_recording_id).new("missing", nil)
+  def test_enqueue_skips_when_find_recording_returns_nil
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.configuration.events_enabled = true
+      RecordingStudioMcp.register_event("recording updated")
+      jobs = []
+
+      RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
+        RecordingStudio::Recording.stub(:find_by, nil) do
+          RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
+            RecordingStudioMcp::WebhookDispatch.enqueue(
+              event_name: "recording updated",
+              recording_id: "rec-1"
+            )
+          end
+        end
+      end
+
+      assert_empty jobs
+    end
+  end
+
+  def test_still_accessible_is_false_when_access_recording_for_returns_nil
+    subscription = Struct.new(:owner_principal_id, :access_recording_id).new("oauth-1", "acc-1")
     recording = FakeRecording.new("rec-1", "Page")
 
-    refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+    RecordingStudioMcp::WebhookDispatch.stub(:principal_for, Object.new) do
+      RecordingStudio::Recording.stub(:find_by, nil) do
+        refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+      end
+    end
+  end
+
+  def test_still_accessible_is_false_when_access_recording_id_is_blank
+    subscription = Struct.new(:owner_principal_id, :access_recording_id).new("oauth-1", nil)
+    recording = FakeRecording.new("rec-1", "Page")
+
+    RecordingStudioMcp::WebhookDispatch.stub(:principal_for, Object.new) do
+      refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+    end
   end
 
   def test_rebuilds_access_grant_from_oauth_principal_and_stored_access_recording

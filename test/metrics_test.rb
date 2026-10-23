@@ -62,7 +62,7 @@ class MetricsTest < Minitest::Test
     assert_includes engine, "RecordingStudioMcp::LogsRegistration.register!"
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 1.0"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.5.0", "< 1.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.7.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.16", "< 0.17"'
     refute_includes gemspec, '"~> 0.7"'
     assert_includes dummy_metrics, "RecordingStudioMetrics::Api.register!(api: :operations)"
@@ -102,12 +102,11 @@ class MetricsTest < Minitest::Test
   end
 
   def with_saved_metrics_registry
-    registry = RecordingStudioMetrics.registry
-    saved_metrics = registry.instance_variable_get(:@metrics).dup
-    saved_resources = registry.instance_variable_get(:@resources).dup
+    RecordingStudioMetrics.registry.reset!
+    RecordingStudioMcp::Metrics.register!
     yield
   ensure
-    registry.instance_variable_set(:@metrics, saved_metrics)
-    registry.instance_variable_set(:@resources, saved_resources)
+    RecordingStudioMetrics.registry.reset!
+    RecordingStudioMcp::Metrics.register!
   end
 end

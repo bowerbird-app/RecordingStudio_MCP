@@ -9,12 +9,10 @@ class PostgresBusTest < Minitest::Test
   def setup
     @previous_start_env = ENV.fetch(RecordingStudioMcp::PostgresBus::START_ENV, nil)
     RecordingStudioMcp::PostgresBus.stop!
-    RecordingStudioMcp::PostgresBus.reset!
   end
 
   def teardown
     RecordingStudioMcp::PostgresBus.stop!
-    RecordingStudioMcp::PostgresBus.reset!
     if @previous_start_env.nil?
       ENV.delete(RecordingStudioMcp::PostgresBus::START_ENV)
     else
@@ -99,9 +97,9 @@ class PostgresBusTest < Minitest::Test
     previous_argv = ARGV.dup
     ARGV.replace([])
 
-    RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
-      RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
-        RecordingStudioMcp::PostgresBus.stub(:rails_runner?, true) do
+    with_runner_command_defined do
+      RecordingStudioMcp::PostgresBus.stub(:rails_console?, false) do
+        RecordingStudioMcp::PostgresBus.stub(:rake_task?, false) do
           refute RecordingStudioMcp::PostgresBus.start_allowed?
         end
       end
@@ -236,6 +234,7 @@ class PostgresBusTest < Minitest::Test
   def test_release_is_a_noop_after_connection_already_closed
     raw = Object.new
     raw.define_singleton_method(:finished?) { true }
+    raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
     connection = Object.new
     connection.define_singleton_method(:raw_connection) { raw }
     connection.define_singleton_method(:active?) { raise IOError, "stream closed in another thread" }
@@ -244,21 +243,25 @@ class PostgresBusTest < Minitest::Test
 
     checked_in = []
     pool = Object.new
+    pool.define_singleton_method(:checkout) { connection }
     pool.define_singleton_method(:checkin) { |conn| checked_in << conn }
 
-    finished = Object.new
-    finished.define_singleton_method(:join) { |*_args| true }
-    finished.define_singleton_method(:alive?) { false }
-    RecordingStudioMcp::PostgresBus.reset!(running: true, thread: finished, listen_connection: connection)
-    RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
-      ActiveRecord::Base.stub(:connection_pool, pool) do
-        RecordingStudioMcp::PostgresBus.stop!
-        RecordingStudioMcp::PostgresBus.stop!
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          ActiveRecord::Base.stub(:connection_pool, pool) do
+            RecordingStudioMcp::PostgresBus.start!
+            sleep 0.1
+            RecordingStudioMcp::PostgresBus.stop!
+            RecordingStudioMcp::PostgresBus.stop!
+          end
+        end
       end
     end
 
-    assert_empty executed
+    refute_includes executed, "UNLISTEN #{RecordingStudioMcp::PostgresBus::CHANNEL}"
     assert_equal [connection], checked_in
+    refute RecordingStudioMcp::PostgresBus.listening?
   end
 
   def test_wait_for_notify_stream_closed_logs_and_reconnects
@@ -428,6 +431,7 @@ class PostgresBusTest < Minitest::Test
 
     checked_in = []
     pool = Object.new
+    pool.define_singleton_method(:checkout) { connection }
     pool.define_singleton_method(:checkin) { |conn| checked_in << conn }
 
     stuck = Object.new
@@ -437,27 +441,101 @@ class PostgresBusTest < Minitest::Test
     log_io = StringIO.new
     logger = Logger.new(log_io)
 
-    RecordingStudioMcp::PostgresBus.reset!(running: true, thread: stuck, listen_connection: connection)
-
-    RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
-      ActiveRecord::Base.stub(:connection_pool, pool) do
-        Rails.stub(:logger, logger) do
-          RecordingStudioMcp::PostgresBus.stop!
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        Thread.stub(:new, stuck) do
+          RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+            ActiveRecord::Base.stub(:connection_pool, pool) do
+              Rails.stub(:logger, logger) do
+                RecordingStudioMcp::PostgresBus.start!
+                RecordingStudioMcp::PostgresBus.stop!
+              end
+            end
+          end
         end
       end
     end
 
     assert_empty checked_in
     assert_includes log_io.string, "did not stop within"
-  ensure
-    RecordingStudioMcp::PostgresBus.reset!
   end
 
   def test_shutdown_hook_skips_forked_child_pid
-    source = File.read(File.expand_path("../lib/recording_studio_mcp/postgres_bus.rb", __dir__))
+    raw = Object.new
+    raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { true }
 
-    assert_includes source, "return unless @owner_pid == Process.pid"
-    assert_includes source, "private_class_method :shutdown_if_owner!"
+    pool = Object.new
+    pool.define_singleton_method(:checkout) { listen_connection }
+    pool.define_singleton_method(:checkin) { |_| }
+
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          ActiveRecord::Base.stub(:connection_pool, pool) do
+            RecordingStudioMcp::PostgresBus.start!
+            sleep 0.1
+            assert RecordingStudioMcp::PostgresBus.listening?
+
+            pid = fork { exit }
+            Process.wait(pid)
+
+            assert RecordingStudioMcp::PostgresBus.listening?
+            RecordingStudioMcp::PostgresBus.stop!
+          end
+        end
+      end
+    end
+
+    refute RecordingStudioMcp::PostgresBus.listening?
+  end
+
+  def test_shutdown_hook_runs_for_owner_pid
+    read_io, write_io = IO.pipe
+    pid = fork do
+      read_io.close
+      raw = Object.new
+      raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
+      listen_connection = Object.new
+      listen_connection.define_singleton_method(:execute) { |_| }
+      listen_connection.define_singleton_method(:raw_connection) { raw }
+      listen_connection.define_singleton_method(:active?) { true }
+      pool = Object.new
+      pool.define_singleton_method(:checkout) { listen_connection }
+      pool.define_singleton_method(:checkin) do |_|
+        write_io.puts("stopped")
+        write_io.close
+      end
+
+      RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+          RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+            ActiveRecord::Base.stub(:connection_pool, pool) do
+              RecordingStudioMcp::PostgresBus.start!
+              sleep 0.1
+              write_io.puts("started=#{RecordingStudioMcp::PostgresBus.listening?}")
+            end
+          end
+        end
+      end
+    end
+    write_io.close
+    output = read_io.read
+    Process.wait(pid)
+
+    assert_includes output, "started=true"
+    assert_includes output, "stopped"
+  end
+
+  def with_runner_command_defined
+    return yield if defined?(Rails::Command::RunnerCommand)
+
+    Rails.const_set(:Command, Module.new) unless Rails.const_defined?(:Command)
+    Rails::Command.const_set(:RunnerCommand, Class.new)
+    yield
   end
 
   def with_rails_server_defined

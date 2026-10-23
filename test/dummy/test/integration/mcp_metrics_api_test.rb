@@ -481,13 +481,10 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
   end
 
   def with_saved_metrics_registry
-    registry = RecordingStudioMetrics.registry
-    saved_metrics = registry.instance_variable_get(:@metrics).dup
-    saved_resources = registry.instance_variable_get(:@resources).dup
     yield
   ensure
-    registry.instance_variable_set(:@metrics, saved_metrics)
-    registry.instance_variable_set(:@resources, saved_resources)
+    RecordingStudioMetrics.registry.reset!
+    RecordingStudioMcp::Metrics.register!
   end
 
   def execute(identifier, **params)

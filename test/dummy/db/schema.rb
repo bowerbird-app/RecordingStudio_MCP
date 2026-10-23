@@ -377,8 +377,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120000) do
     t.integer "status_code", null: false
     t.string "subject_name", default: "", null: false
     t.datetime "updated_at", null: false
-    t.integer "failed_count", default: 0, null: false
-    t.integer "rate_limited_count", default: 0, null: false
+    t.virtual "failed_count", type: :integer, as: "\nCASE\n    WHEN failed THEN 1\n    ELSE 0\nEND", stored: true
+    t.virtual "rate_limited_count", type: :integer, as: "\nCASE\n    WHEN rate_limited THEN 1\n    ELSE 0\nEND", stored: true
     t.index ["api_client_id", "occurred_at"], name: "index_rs_mcp_usage_logs_on_client_and_time"
     t.index ["occurred_at"], name: "index_recording_studio_mcp_usage_logs_on_occurred_at"
   end

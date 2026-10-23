@@ -20,6 +20,16 @@ module RecordingStudioMcp
       @adapter = value
       @content_digests = {}
     end
+    private_class_method :adapter=
+
+    def reset_adapter!(to: nil)
+      if to.nil?
+        remove_instance_variable(:@adapter) if instance_variable_defined?(:@adapter)
+      else
+        @adapter = to
+      end
+      @content_digests = {}
+    end
 
     def loaded?
       !adapter.nil?

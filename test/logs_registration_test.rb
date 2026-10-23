@@ -22,6 +22,7 @@ class LogsRegistrationTest < Minitest::Test
     assert_equal %i[call_count failed_count rate_limited_count], aggregation.measurements.map(&:name)
     assert_equal %i[sum sum], aggregation.measurements.drop(1).map(&:operation)
     assert_equal %i[failed_count rate_limited_count], aggregation.measurements.drop(1).map(&:column)
+    assert_equal :async, aggregation.count
   end
 
   def test_does_not_ship_a_nightly_usage_rake_task
