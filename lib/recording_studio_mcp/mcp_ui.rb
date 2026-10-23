@@ -3,8 +3,6 @@
 require "digest"
 
 module RecordingStudioMcp
-  # Single place that asks whether RecordingStudio MCP UI is loaded.
-  # This gem never requires that engine. Hosts that want widgets add it.
   module McpUi
     UI_SCHEME = "ui://"
     MIME_TYPE = "text/html;profile=mcp-app"

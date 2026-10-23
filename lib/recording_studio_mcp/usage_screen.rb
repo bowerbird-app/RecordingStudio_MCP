@@ -5,7 +5,6 @@ require "recording_studio_admin"
 module RecordingStudioMcp
   module Admin
     class UsageScreen < RecordingStudioAdmin::Screen
-      # A second load reopens this class. filter appends, so clear the list first.
       @filters_value = []
       @widget_usages_value = []
       @filter_presentation_value = nil

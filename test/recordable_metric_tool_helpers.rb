@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module RecordableMetricToolHelpers
-  # metrics_for constantizes these names and compares the registered model class.
   # rubocop:disable Lint/EmptyClass
   class Folder; end
   class Page; end

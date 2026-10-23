@@ -115,7 +115,6 @@ module RecordingStudioMcp
     end
 
     class McpSection < RecordingStudioAdmin::Section
-      # A second load reopens this class. widget and link append, so clear the lists first.
       @widget_keys_value = []
       @links_value = []
 

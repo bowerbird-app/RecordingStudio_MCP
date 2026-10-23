@@ -2,9 +2,6 @@
 
 module RecordingStudioMcp
   module MetricTools
-    # metrics_for raises for the whole type when one allowlisted name is not
-    # registered. This builds the entries that are registered so the others can
-    # stay on tools/list.
     module RegisteredEntry
       FROM = "Inclusive period start, as an ISO-8601 date-time. start must match from when both are sent. " \
              "start_at is the fallback."

@@ -28,7 +28,6 @@ module RecordingStudioMcp
     end
 
     def empty_request_params
-      # GET carries no body. Show reads the metric query from params.
       ActionController::Parameters.new.permit!
     end
     private_class_method :operation_context, :metric_context, :empty_request_params

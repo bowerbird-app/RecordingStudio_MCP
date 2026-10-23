@@ -471,8 +471,6 @@ class PostgresBusTest < Minitest::Test
     already = defined?(Rails) && Rails.const_defined?(:Server)
     return yield if already
 
-    # Mirror railties: `rails server` defines Rails::Server before boot.
-    # Avoid requiring railties' server command in the gem unit suite.
     Rails.const_set(:Server, Class.new)
     yield
   ensure
