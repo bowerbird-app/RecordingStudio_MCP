@@ -46,15 +46,15 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: ae1bdaed185358e3a833066a714d5e4e3500fbc8
-  ref: ae1bdaed185358e3a833066a714d5e4e3500fbc8
+  revision: c7e6c6a6392c0312b201c63b1097fcf729643411
+  ref: c7e6c6a6392c0312b201c63b1097fcf729643411
   specs:
     recording_studio_api (0.16.0)
       rails (~> 8.1.0)
       recording_studio (~> 4.2)
       recording_studio_accessible (~> 0.11)
-      recording_studio_logs (>= 0.4.1, < 0.6)
-      recording_studio_metrics (>= 0.3.0, < 0.6)
+      recording_studio_logs (>= 0.4.1, < 1.0)
+      recording_studio_metrics (>= 0.3.0, < 1.0)
       recording_studio_trashable (~> 0.10)
       redis (~> 5.3)
 
