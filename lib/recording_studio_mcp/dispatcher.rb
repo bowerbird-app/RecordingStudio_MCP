@@ -72,9 +72,9 @@ module RecordingStudioMcp
     end
 
     def wrap_metric(tool, result)
-      return render_handler_result(result) if tool.catalog?
+      return success_result(result) if tool.catalog?
 
-      success_result(result)
+      render_handler_result(result)
     end
   end
 end
