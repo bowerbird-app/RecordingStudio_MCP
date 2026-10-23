@@ -57,9 +57,10 @@ class NotifierTest < Minitest::Test
       connection.subscribe("recording://7")
 
       RecordingStudioMcp::Connection::QUEUE_LIMIT.times do
-        assert connection.enqueue_updated("recording://7")
+        connection.try_enqueue_updated("recording://7")
       end
-      refute connection.enqueue_updated("recording://7")
+      assert connection.pending?
+      connection.try_enqueue_updated("recording://7")
       assert connection.finished?
     end
   end
@@ -154,7 +155,7 @@ class NotifierTest < Minitest::Test
       grant = FakeGrant.new([7])
       connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
       connection.subscribe("recording://7")
-      connection.define_singleton_method(:enqueue_updated) { |_| raise "queue down" }
+      connection.define_singleton_method(:try_enqueue_updated) { |_| raise "queue down" }
 
       RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
 

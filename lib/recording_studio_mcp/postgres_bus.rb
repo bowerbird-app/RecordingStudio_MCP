@@ -52,6 +52,26 @@ module RecordingStudioMcp
       mutex.synchronize { @thread&.alive? == true }
     end
 
+    def reset_for_tests!(owner_pid: nil, last_warn_at: nil, listen_connection: nil, thread: nil, running: false)
+      mutex.synchronize do
+        @owner_pid = owner_pid
+        @last_warn_at = last_warn_at
+        @listen_connection = listen_connection
+        @thread = thread
+        @running = running
+      end
+    end
+
+    def listen_connection_for_tests
+      mutex.synchronize { @listen_connection }
+    end
+
+    def shutdown_if_owner!
+      return unless @owner_pid == Process.pid
+
+      stop!
+    end
+
     def start!
       return unless enabled?
       return unless start_allowed?
@@ -118,21 +138,18 @@ module RecordingStudioMcp
     def rails_console?
       defined?(Rails) && Rails.const_defined?(:Console)
     end
-    private_class_method :rails_console?
 
     def rake_task?
       defined?(Rake) &&
         Rake.respond_to?(:application) &&
         Rake.application&.top_level_tasks&.any?
     end
-    private_class_method :rake_task?
 
     # railties 8.1 RunnerCommand#perform calls boot_application! after the
     # command class is loaded; commands.rb has already shifted "runner" off ARGV.
     def rails_runner?
       defined?(Rails::Command::RunnerCommand)
     end
-    private_class_method :rails_runner?
 
     def register_shutdown_hook!
       return if @shutdown_hook_registered
@@ -143,13 +160,6 @@ module RecordingStudioMcp
       at_exit { shutdown_if_owner! }
     end
     private_class_method :register_shutdown_hook!
-
-    def shutdown_if_owner!
-      return unless @owner_pid == Process.pid
-
-      stop!
-    end
-    private_class_method :shutdown_if_owner!
 
     def listen_loop
       attempts = 0
@@ -284,7 +294,6 @@ module RecordingStudioMcp
       unlisten_if_alive(connection)
       checkin_or_disconnect(connection)
     end
-    private_class_method :release_listen_connection
 
     def unlisten_if_alive(connection)
       return unless connection_usable?(connection)

@@ -1,6 +1,10 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.16, < 0.17`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.15.1` or later. Logs `>= 0.5.0, < 1.0` (GitHub tag `v0.5.0`). Development pins API tag `v0.16.0` and Oauth tag `v0.15.1`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.16, < 0.17`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.15.1` or later. Logs `>= 0.5.0, < 1.0` (GitHub tag `v0.7.0`). Development pins API tag `v0.16.0`, Oauth tag `v0.15.1`, Logs tag `v0.7.0`, and Metrics tag `v0.6.1`.
+
+## 0.23.0
+
+No migration. Stop scheduling `rake recording_studio_mcp:maintain_usage`. `mcp_calls.*` reads `UsageLog`. Leave `recording_studio_mcp_usage_daily_metrics` in place and unused. MCP UI is optional and is not a gemspec dependency. Pin `recording_studio_mcp_ui` to tag `v0.4.1` only when the host wants widgets. After boot, MCP writes `RecordingStudioOauth.configuration.mcp_mount_path` to this gem's MCP mount path.
 
 ## 0.22.0
 

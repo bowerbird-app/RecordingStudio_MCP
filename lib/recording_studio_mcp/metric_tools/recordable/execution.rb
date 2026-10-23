@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  module RecordableMetricTools
+  module MetricTools
     module_function
 
-    def execute(tool, arguments, access_grant)
+    def execute_recordable(tool, arguments, access_grant)
       RecordingStudioApi::Services::ResourceMetrics::Show.call(
         operation_context(tool, arguments, access_grant)
       )
@@ -22,7 +22,7 @@ module RecordingStudioMcp
         access_recording: access_grant.access_recording, access_grant: access_grant,
         root_recording: access_grant.root_recording,
         api_version: RecordingStudioApi.default_api_version(api: tool.api),
-        params: ActionController::Parameters.new(params_for(tool, arguments)).permit!,
+        params: ActionController::Parameters.new(recordable_params_for(tool, arguments)).permit!,
         request_params: empty_request_params, scoped_recordings: access_grant.accessible_recordings
       }
     end

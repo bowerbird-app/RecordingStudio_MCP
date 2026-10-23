@@ -71,7 +71,7 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
 
   test "mcp section shows failing subscriptions and failed tools from metrics" do
     RecordingStudioMcp::EventSubscription.delete_all
-    RecordingStudioMcp::UsageDailyMetric.delete_all
+    RecordingStudioMcp::UsageLog.delete_all
     RecordingStudioMcp::EventSubscription.create!(
       id: SecureRandom.uuid,
       owner_principal_id: "principal-#{SecureRandom.hex(4)}",
@@ -102,22 +102,8 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
       expires_at: 1.hour.ago,
       failure_count: 3
     )
-    RecordingStudioMcp::UsageDailyMetric.create!(
-      metric_date: Date.current,
-      method_name: "tools/call",
-      subject_name: "show",
-      call_count: 3,
-      failed_count: 2,
-      rate_limited_count: 0
-    )
-    RecordingStudioMcp::UsageDailyMetric.create!(
-      metric_date: Date.current,
-      method_name: "tools/call",
-      subject_name: "list",
-      call_count: 1,
-      failed_count: 1,
-      rate_limited_count: 0
-    )
+    2.times { seed_failed_tool_call("show") }
+    seed_failed_tool_call("list")
 
     get "/admin/sections/mcp"
 
@@ -170,5 +156,19 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "MCP"
     assert_includes response.body, "Registered apps"
+  end
+
+  private
+
+  def seed_failed_tool_call(name)
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: Time.zone.now,
+      method_name: "tools/call",
+      subject_name: name,
+      status_code: 500,
+      duration_ms: 3,
+      rate_limited: false,
+      failed: true
+    )
   end
 end

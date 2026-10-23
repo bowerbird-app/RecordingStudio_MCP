@@ -10,8 +10,8 @@ class McpUiTest < Minitest::Test
 
   def setup
     McpUiSupport.install_fake_mcp_ui
-    RecordingStudio::MCP_UI.reset!
-    RecordingStudioMcp::McpUi.instance_variable_set(:@content_digests, {})
+    McpUiSupport::FakeUi.reset!
+    RecordingStudioMcp::McpUi.reset_content_digests!
     @grant = FakeGrant.new(api_client: FakeClient.new("public"), accessible_recordings: [])
   end
 
@@ -42,7 +42,7 @@ class McpUiTest < Minitest::Test
       edit = tools.find { |tool| tool[:name] == "presskits.edit" }
       refute edit.key?(:_meta)
 
-      RecordingStudio::MCP_UI.register("presskits.editor")
+      McpUiSupport::FakeUi.register("presskits.editor")
       tools = RecordingStudioMcp::Tools.definitions
       edit = tools.find { |tool| tool[:name] == "presskits.edit" }
       uri = edit.dig(:_meta, :ui, :resourceUri)
@@ -62,12 +62,12 @@ class McpUiTest < Minitest::Test
         ui: "presskits.editor",
         openapi: { "x-mcp-file-params": ["cover_file"] }
       )
-      RecordingStudio::MCP_UI.register("presskits.editor")
+      McpUiSupport::FakeUi.register("presskits.editor")
 
       edit = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "presskits.edit" }
 
       assert_match(%r{\Aui://presskits/editor\?v=}, edit.dig(:_meta, :ui, :resourceUri))
-      assert_equal ["cover_file"], edit.dig(:_meta, "openai/fileParams")
+      refute edit[:_meta]&.key?("openai/fileParams")
     end
   end
 
@@ -81,7 +81,7 @@ class McpUiTest < Minitest::Test
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
-      RecordingStudio::MCP_UI.register("presskits.editor")
+      McpUiSupport::FakeUi.register("presskits.editor")
 
       tools = RecordingStudioMcp::Tools.definitions
       list = tools.find { |tool| tool[:name] == "list" }
@@ -101,11 +101,11 @@ class McpUiTest < Minitest::Test
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
-      RecordingStudio::MCP_UI.register("presskits.editor")
+      McpUiSupport::FakeUi.register("presskits.editor")
 
       first = RecordingStudioMcp::McpUi.resource_uri_for(action_name: "presskits.edit", api: :public)
-      RecordingStudio::MCP_UI.html_extra = "changed"
-      RecordingStudioMcp::McpUi.instance_variable_set(:@content_digests, {})
+      McpUiSupport::FakeUi.html_extra = "changed"
+      RecordingStudioMcp::McpUi.reset_content_digests!
       second = RecordingStudioMcp::McpUi.resource_uri_for(action_name: "presskits.edit", api: :public)
 
       assert_includes first, "?v="
@@ -123,8 +123,8 @@ class McpUiTest < Minitest::Test
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
-      RecordingStudio::MCP_UI.register("presskits.editor")
-      RecordingStudio::MCP_UI.register("secret.editor")
+      McpUiSupport::FakeUi.register("presskits.editor")
+      McpUiSupport::FakeUi.register("secret.editor")
 
       listed = RecordingStudioMcp::Resources.list(access_grant: @grant)
       listed_uri = listed.payload[:resources].map { |entry| entry[:uri] }.find { |uri| uri.start_with?("ui://") }
@@ -188,7 +188,7 @@ class McpUiTest < Minitest::Test
         handler: ->(_context) { { ok: true } },
         ui: "status.ping"
       )
-      RecordingStudio::MCP_UI.register("status.ping")
+      McpUiSupport::FakeUi.register("status.ping")
 
       answer = RecordingStudioMcp::Protocol.handle(
         {

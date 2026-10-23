@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  module RecordableMetricTools
+  module MetricTools
     module_function
 
-    def params_for(tool, arguments)
+    def recordable_params_for(tool, arguments)
       params = {}
       each_argument(arguments) { |key, value| assign_argument(tool, params, key, value) }
       params["name"] = tool.metric_name

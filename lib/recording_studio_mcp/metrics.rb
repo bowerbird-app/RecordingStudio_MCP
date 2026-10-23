@@ -10,8 +10,11 @@ module RecordingStudioMcp
     API = :operations
     EXPOSE = { api: [API] }.freeze
     TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call") }
+    FAILED = ->(relation) { relation.where(failed: true) }
+    FAILED_TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call", failed: true) }
+    RATE_LIMITED = ->(relation) { relation.where(rate_limited: true) }
     FAILING = ->(relation) { relation.merge(EventSubscription.failing) }
-    FAILED_BY_TOOL_DESCRIPTION = "Failed tools/call requests summed from daily usage rollups, by tool name."
+    FAILED_BY_TOOL_DESCRIPTION = "Failed tools/call requests counted from usage logs, by tool name."
     FAILING_DESCRIPTION = "Active, unexpired event subscriptions whose last callback delivery failed " \
                           "(failure_count > 0). They turn inactive after 5 failures in a row."
     AUTHORIZE = ->(context) { RecordingStudioMcp::Api::Access.can_view?(context) }
@@ -21,7 +24,7 @@ module RecordingStudioMcp
     def register!
       RecordingStudioMetrics.register(
         RESOURCE,
-        model: UsageDailyMetric,
+        model: UsageLog,
         blast_radius: :site,
         api_authorize: AUTHORIZE
       ) { RecordingStudioMcp::Metrics.define_calls(self) }
@@ -54,18 +57,17 @@ module RecordingStudioMcp
     def define_over_time(dsl)
       dsl.timeseries :over_time,
                      title: "MCP calls over time",
-                     field: :metric_date,
-                     measurement: :sum,
-                     value_field: :call_count,
+                     field: :occurred_at,
+                     measurement: :count,
                      expose: EXPOSE
     end
 
     def define_failed_over_time(dsl)
       dsl.timeseries :failed_over_time,
                      title: "Failed MCP calls over time",
-                     field: :metric_date,
-                     measurement: :sum,
-                     value_field: :failed_count,
+                     field: :occurred_at,
+                     measurement: :count,
+                     scope: FAILED,
                      expose: EXPOSE
     end
 
@@ -73,8 +75,7 @@ module RecordingStudioMcp
       dsl.breakdown :by_tool,
                     title: "MCP calls by tool",
                     field: :subject_name,
-                    measurement: :sum,
-                    value_field: :call_count,
+                    measurement: :count,
                     expose: EXPOSE,
                     scope: TOOL_CALLS
     end
@@ -85,23 +86,21 @@ module RecordingStudioMcp
                     description: FAILED_BY_TOOL_DESCRIPTION,
                     unit: "count",
                     field: :subject_name,
-                    measurement: :sum,
-                    value_field: :failed_count,
+                    measurement: :count,
                     expose: EXPOSE,
-                    scope: TOOL_CALLS
+                    scope: FAILED_TOOL_CALLS
     end
 
     def define_by_method(dsl)
       dsl.breakdown :by_method,
                     title: "MCP calls by method",
                     field: :method_name,
-                    measurement: :sum,
-                    value_field: :call_count,
+                    measurement: :count,
                     expose: EXPOSE
     end
 
     def define_rate_limited(dsl)
-      dsl.sum :rate_limited, title: "Rate limited MCP calls", field: :rate_limited_count, expose: EXPOSE
+      dsl.count :rate_limited, title: "Rate limited MCP calls", scope: RATE_LIMITED, expose: EXPOSE
     end
   end
 end

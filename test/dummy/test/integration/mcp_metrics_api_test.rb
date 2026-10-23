@@ -19,7 +19,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     )
     @workspace_root, @workspace_access = create_access_recording_for(user: @staff)
 
-    RecordingStudioMcp::UsageDailyMetric.delete_all
+    RecordingStudioMcp::UsageLog.delete_all
     @day_one = Date.current - 2
     @day_two = Date.current - 1
     seed_daily_metrics!
@@ -178,7 +178,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     saved_resources = registry.instance_variable_get(:@resources).dup
     RecordingStudioMetrics.register(
       :probes,
-      model: RecordingStudioMcp::UsageDailyMetric,
+      model: RecordingStudioMcp::UsageLog,
       blast_radius: :site,
       api_authorize: ->(_context) { raise secret }
     ) do
@@ -474,14 +474,18 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
   end
 
   def create_daily_metric(metric_date:, method_name:, subject_name:, call_count:, failed_count:, rate_limited_count:)
-    RecordingStudioMcp::UsageDailyMetric.create!(
-      metric_date: metric_date,
-      method_name: method_name,
-      subject_name: subject_name,
-      call_count: call_count,
-      failed_count: failed_count,
-      rate_limited_count: rate_limited_count
-    )
+    stamp = metric_date.in_time_zone("UTC").change(hour: 12)
+    call_count.times do |index|
+      RecordingStudioMcp::UsageLog.create!(
+        occurred_at: stamp,
+        method_name: method_name,
+        subject_name: subject_name,
+        status_code: index < failed_count ? 500 : 200,
+        duration_ms: 1,
+        failed: index < failed_count,
+        rate_limited: index < rate_limited_count
+      )
+    end
   end
 
   def execute(identifier, **params)

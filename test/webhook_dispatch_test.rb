@@ -108,15 +108,15 @@ class WebhookDispatchTest < Minitest::Test
     subscription = Struct.new(:owner_principal_id, :access_recording_id).new("missing", nil)
     recording = FakeRecording.new("rec-1", "Page")
 
-    refute RecordingStudioMcp::WebhookDispatch.send(:still_accessible?, subscription, recording)
+    refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
   end
 
   def test_finds_nothing_when_recording_model_is_not_loaded
-    assert_nil RecordingStudioMcp::WebhookDispatch.send(:find_recording, "rec-1")
+    assert_nil RecordingStudioMcp::WebhookDispatch.find_recording("rec-1")
     present = Struct.new(:access_recording_id).new("acc-1")
-    assert_nil RecordingStudioMcp::WebhookDispatch.send(:access_recording_for, present)
+    assert_nil RecordingStudioMcp::WebhookDispatch.access_recording_for(present)
     blank = Struct.new(:access_recording_id).new(nil)
-    assert_nil RecordingStudioMcp::WebhookDispatch.send(:access_recording_for, blank)
+    assert_nil RecordingStudioMcp::WebhookDispatch.access_recording_for(blank)
   end
 
   def test_rebuilds_access_grant_from_oauth_principal_and_stored_access_recording
@@ -127,7 +127,7 @@ class WebhookDispatchTest < Minitest::Test
 
     RecordingStudioMcp::WebhookDispatch.stub(:principal_for, oauth_client) do
       RecordingStudioMcp::WebhookDispatch.stub(:access_recording_for, access_recording) do
-        grant = RecordingStudioMcp::WebhookDispatch.send(:access_grant_for, subscription)
+        grant = RecordingStudioMcp::WebhookDispatch.access_grant_for(subscription)
 
         assert_equal oauth_client, grant.api_client
         assert_equal access_recording, grant.access_recording

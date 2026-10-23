@@ -56,8 +56,6 @@ class RecordingStudioTemplateTest < ActiveSupport::TestCase
     assert usage_logs.exists?(subject_name: "list", api_client_id: oauth_client.id, failed: false)
     assert usage_logs.exists?(method_name: "ping", failed: true)
     refute_includes usage_logs.pluck(:subject_name).join(" "), "Secret"
-    metric_total = RecordingStudioMcp::UsageDailyMetric.where(metric_date: period.start_date..period.end_date)
-    assert metric_total.sum(:call_count).positive?
     log_count = RecordingStudioMcp::UsageLog.count
     metric_count = RecordingStudioMcp::UsageDailyMetric.count
 

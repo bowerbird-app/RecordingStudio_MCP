@@ -1,80 +1,7 @@
 # frozen_string_literal: true
 
-require "action_controller"
-
 module RecordingStudioMcp
-  module RecordableMetricTools
-    TOOL_NAME_PATTERN = /\A[a-z][a-z0-9_]*-[a-z][a-z0-9_]*\z/
-    FILTER_PARAMETER = /\Afilter\[(.+)\]\z/
-    BRACKET_FILTER_KEY = /\Afilter\[.+\]\z/
-    FILTER_DESCRIPTION = "Exact-match list filters. Keys are attribute names. The API reads this as params[:filter]."
-
-    ToolName = Data.define(:value) do
-      def self.from_identifier(metric_name)
-        new(value: metric_name.to_s.sub(".", "-"))
-      end
-
-      def initialize(value:)
-        value = value.to_s
-        unless value.match?(TOOL_NAME_PATTERN) && value.length <= 64
-          raise RecordingStudioApi::ConfigurationError,
-                "Metric tool name #{value} is not a hyphenated recordable metric"
-        end
-
-        super(value: value.freeze)
-      end
-
-      def to_s
-        value
-      end
-    end
-
-    Tool = Data.define(
-      :name, :metric_name, :recordable_type, :resource_name, :api, :description, :plan
-    ) do
-      def initialize(**fields)
-        super(**freeze_fields(checked_fields(fields)))
-      end
-
-      def title
-        metric_name.tr("._", " ").capitalize
-      end
-
-      def definition_options
-        {
-          name: name.to_s, title: title, description: description.presence || title,
-          read_only: true, destructive: false, idempotent: true,
-          required: plan.required, properties: plan.properties,
-          additional_properties: false, api: api
-        }
-      end
-
-      private
-
-      def checked_fields(fields)
-        name = fields.fetch(:name)
-        plan = fields.fetch(:plan)
-        metric_name = fields.fetch(:metric_name).to_s
-        raise ArgumentError, "Metric tool name must be a ToolName" unless name.is_a?(ToolName)
-        raise ArgumentError, "Metric tool plan must be an ArgumentPlan" unless plan.is_a?(ArgumentPlan)
-        unless name == ToolName.from_identifier(metric_name)
-          raise RecordingStudioApi::ConfigurationError, "Metric tool name #{name} does not match #{metric_name}"
-        end
-
-        fields.merge(name: name, plan: plan, metric_name: metric_name)
-      end
-
-      def freeze_fields(fields)
-        fields.merge(
-          metric_name: fields.fetch(:metric_name).freeze,
-          recordable_type: fields.fetch(:recordable_type).to_s.freeze,
-          resource_name: fields.fetch(:resource_name).to_s.freeze,
-          api: fields.fetch(:api).to_s.freeze,
-          description: fields[:description]&.to_s&.freeze
-        )
-      end
-    end
-
+  module MetricTools
     class ArgumentPlan
       attr_reader :properties, :required, :filter_attributes, :passthrough
 
@@ -211,8 +138,3 @@ module RecordingStudioMcp
     end
   end
 end
-
-require "recording_studio_mcp/recordable_metric_tools/registered_entry"
-require "recording_studio_mcp/recordable_metric_tools/listing"
-require "recording_studio_mcp/recordable_metric_tools/arguments"
-require "recording_studio_mcp/recordable_metric_tools/execution"

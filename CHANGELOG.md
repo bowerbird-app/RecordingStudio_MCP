@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-23
+
+### Changed
+- Development and dummy Gemfiles pin Logs `v0.7.0` and Metrics `v0.6.1`. Runtime ranges stay `recording_studio_logs >= 0.5.0, < 1.0` and `recording_studio_metrics >= 0.3.0, < 1.0`. API stays `>= 0.16, < 0.17`.
+- MCP UI is optional and is not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to tag `v0.4.1`.
+- Endpoint file inputs keep the `x-mcp-file-params` JSON Schema shape and no longer set `_meta["openai/fileParams"]`.
+- `mcp_calls.*` metrics register on `UsageLog` through public `RecordingStudioMetrics.register`, with `api_authorize` from `RecordingStudioMcp::Api::Access`. Homemade daily rollup, the nightly rake task, and `MaintainUsageJob` are gone. `UsageDailyMetric` remains unused.
+- Recordable and catalog metric tools share one `MetricTools::Tool` type, one skip logger, and one dispatcher execute path.
+- JSON-RPC lives in `Protocol`. Tree, endpoint, and metric calls live in `Dispatcher`.
+
+### Upgrade notes
+- Bump to `0.23.0`. No migration.
+- Stop scheduling `rake recording_studio_mcp:maintain_usage`. Usage logs stay until the host deletes them. Do not drop `recording_studio_mcp_usage_daily_metrics`.
+- Pin Logs `v0.7.0` and Metrics `v0.6.1` in development. Hosts that want widgets pin MCP UI `v0.4.1`.
+- After boot, MCP still writes `RecordingStudioOauth.configuration.mcp_mount_path`. Set MCP's mount if the engine is not at `/recording_studio_mcp`. Do not change Oauth for this.
+
 ## [0.22.0] - 2026-10-22
 
 ### Added
@@ -565,7 +581,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...v0.21.0

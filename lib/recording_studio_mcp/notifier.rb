@@ -48,7 +48,7 @@ module RecordingStudioMcp
       return unless connection.subscribed?(uri)
       return unless still_accessible?(connection, uri, recording)
 
-      connection.enqueue_updated(uri)
+      connection.try_enqueue_updated(uri)
     rescue StandardError
       connection.finish!
     end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  module RecordableMetricTools
+  module MetricTools
     # metrics_for raises for the whole type when one allowlisted name is not
     # registered. This builds the entries that are registered so the others can
     # stay on tools/list.

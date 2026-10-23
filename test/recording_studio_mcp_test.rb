@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_9_0
-    assert_equal "0.22.0", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_23_0
+    assert_equal "0.23.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -75,8 +75,8 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes root_gemfile, api_pin
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes root_gemfile, "cursor/recordable-metrics-hook-0fe9"
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_logs", tag: "v0.5.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.5.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_logs", tag: "v0.7.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.6.1"'
     refute_includes gemfile, "recording_studio_mcp_ui"
     oauth_pin = 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.15.1"'
     assert_includes gemfile, oauth_pin
@@ -107,7 +107,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "## Version\n\n0.22.0\n"
+    assert_includes readme, "## Version\n\n0.23.0\n"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."

@@ -13,7 +13,7 @@ class FileParamsTest < Minitest::Test
     assert_empty RecordingStudioMcp::FileParams.names(endpoint)
   end
 
-  def test_list_form_adds_file_object_schema_and_meta
+  def test_list_form_adds_file_object_schema
     tool = RecordingStudioMcp::Tools.endpoint_tool(endpoint(openapi: { "x-mcp-file-params": ["logo_file"] }))
     property = tool.dig(:inputSchema, :properties, :logo_file)
 
@@ -21,7 +21,7 @@ class FileParamsTest < Minitest::Test
     assert_equal FILE_KEYS, property[:properties].keys
     assert(property[:properties].values.all? { |schema| schema[:type] == "string" })
     assert_equal %w[download_url file_id], property[:required]
-    assert_equal({ "openai/fileParams" => ["logo_file"] }, tool[:_meta])
+    refute tool.key?(:_meta)
     refute_includes tool.dig(:inputSchema, :required), "logo_file"
   end
 
@@ -42,7 +42,7 @@ class FileParamsTest < Minitest::Test
     refute cover.key?(:description)
     assert_includes tool.dig(:inputSchema, :required), "cover_file"
     refute_includes tool.dig(:inputSchema, :required), "icon_file"
-    assert_equal %w[icon_file cover_file], tool.dig(:_meta, "openai/fileParams")
+    refute tool.key?(:_meta)
   end
 
   def test_file_param_replaces_a_contract_field_of_the_same_name
@@ -63,7 +63,8 @@ class FileParamsTest < Minitest::Test
     tool = RecordingStudioMcp::Tools.endpoint_tool(endpoint(openapi: { "x-mcp-file-params": %w[name logo_file] }))
 
     assert_equal "string", tool.dig(:inputSchema, :properties, :name, :type)
-    assert_equal ["logo_file"], tool.dig(:_meta, "openai/fileParams")
+    refute tool.key?(:_meta)
+    assert tool.dig(:inputSchema, :properties).key?(:logo_file)
   end
 
   def test_ignores_malformed_declarations

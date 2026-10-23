@@ -48,10 +48,8 @@ seed_mcp_usage = lambda do |client|
   next unless RecordingStudioMcp::UsageLog.table_available?
 
   RecordingStudioMcp::UsageLog.delete_all
-  RecordingStudioMcp::UsageDailyMetric.delete_all
   usage_sample_days.call.each do |day|
     write_usage_day.call(day, client)
-    RecordingStudioMcp::AggregateUsage.call(metric_date: day)
   end
 end
 

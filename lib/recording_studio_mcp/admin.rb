@@ -21,7 +21,7 @@ module RecordingStudioMcp
       end
 
       def failed_tool_items(admin_context)
-        return [] unless table_ready?("UsageDailyMetric")
+        return [] unless table_ready?("UsageLog")
 
         result = RecordingStudioMetrics::Admin.execute(FAILED_BY_TOOL, admin_context: admin_context, **SITE)
         Array(result.data).filter_map { |row| item_for(row) }.sort_by do |item|
@@ -79,7 +79,7 @@ module RecordingStudioMcp
     FailedByToolWidget = RecordingStudioAdmin::Widget.new("mcp.failed_by_tool") do
       type :list
       title "Failed tools"
-      info "Tool calls that failed, from daily totals. Usage lists each call."
+      info "Tool calls that failed. Usage lists each call."
       hide_change
       hide_period
       hide_metric

@@ -67,9 +67,9 @@ Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no
 
 When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri` as `ui://…?v=<digest>` of the packaged HTML. `resources/list` and `resources/read` serve that same URI. `resources/read` also accepts the bare `ui://` path. A grant sees a widget only when `actions_for_ui` allows it on that named API. Widget buttons call the real API tool name. MCP UI is optional. Without it, tools and resources stay the same.
 
-### File inputs (ChatGPT `openai/fileParams`)
+### File inputs
 
-An endpoint can opt in to top-level file inputs through its openapi metadata. ChatGPT then passes a file the user uploaded as `{ download_url, file_id, mime_type?, file_name? }`:
+An endpoint can opt in to top-level file inputs through its openapi metadata. Clients pass a file as `{ download_url, file_id, mime_type?, file_name? }`:
 
 ```ruby
 RecordingStudioApi.register_endpoint(
@@ -85,7 +85,7 @@ RecordingStudioApi.register_endpoint(
 )
 ```
 
-`x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds it to `required`. `description` is copied onto the field. Each field's `inputSchema` property is the file object, with `download_url`, `file_id`, `mime_type`, and `file_name` strings, `download_url` and `file_id` required. A declared field replaces any `input_contract` field of the same name in the schema. The tool's `_meta["openai/fileParams"]` lists the names and is merged with `_meta.ui`. Endpoints without the key are unchanged. MCP only describes the input; the endpoint handler downloads `download_url` (temporary) and does its own validation. Only top-level fields are supported, matching OpenAI.
+`x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds it to `required`. `description` is copied onto the field. Each field's `inputSchema` property is the file object, with `download_url`, `file_id`, `mime_type`, and `file_name` strings, `download_url` and `file_id` required. A declared field replaces any `input_contract` field of the same name in the schema. File fields live only in that schema. They do not add provider-specific `_meta`. Endpoints without the key are unchanged. MCP only describes the input; the endpoint handler downloads `download_url` (temporary) and does its own validation. Only top-level fields are supported.
 
 Mixed hosts get tree tools first, then one read-only tool per recordable metric, then endpoint tools sorted by name. Tree tools are the operations registered on that named API, then filtered by the access grant role. An endpoint is advertised only when its name is one MCP tool token (`[A-Za-z][A-Za-z0-9_.-]*`). Names such as `bad name` and `1bad` are skipped. Dotted names such as `presskits.edit` stay. Names that match a tree tool (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) are skipped too, so `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool. The JSON-RPC `ping` method is separate and is not that tool. An endpoint whose name matches a recordable or API metric tool keeps the endpoint. The metric tool is skipped and logged. `tools/list` still succeeds.
 
@@ -222,11 +222,13 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.16, < 0.17`, Oauth `v0.15.1` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.10.0` (`require: false`), Metrics `>= 0.3.0, < 1.0` (git tag `v0.5.0`), and Logs `>= 0.5.0, < 1.0` (git tag `v0.5.0`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.16.0`, Oauth tag `v0.15.1`, and Logs tag `v0.5.0`. MCP UI is optional: pin `recording_studio_mcp_ui` to branch `cursor/mcp-ui-engine-6ec3` only when the host wants widgets. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.16, < 0.17`, Oauth `v0.15.1` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.11.0` (`require: false`), Metrics `>= 0.3.0, < 1.0` (git tag `v0.6.1`), and Logs `>= 0.5.0, < 1.0` (git tag `v0.7.0`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.16.0`, Oauth tag `v0.15.1`, Logs tag `v0.7.0`, and Metrics tag `v0.6.1`. MCP UI is optional and is not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to tag `v0.4.1`. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
 5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token. For staff/ops MCP, register an operations OauthClient (`api_key: "operations"`) and Connect at `/recording_studio_oauth/apis/operations/oauth/authorize`. Point the client at `/recording_studio_mcp/apis/operations`.
+
+After boot, this engine writes `RecordingStudioOauth.configuration.mcp_mount_path` to MCP's own mount path (`ProtectedResourceMetadata.mcp_mount_path`, default `/recording_studio_mcp`) so Oauth authorize accepts that MCP resource identity. Named-API MCP identities live at `{mcp_mount_path}/apis/{api_key}`. Change MCP's `mcp_mount_path` if you mount the engine somewhere else. Do not change Oauth for this.
 
 Host authentication stays on the host. Dummy uses Devise. Do not add Users as a dependency of this gem.
 
@@ -234,11 +236,11 @@ This gem ships no end-user product UI. Staff admin is the MCP section when `reco
 
 ## Admin
 
-Staff admin is the MCP admin section. Ops MCP lists `/recording_studio_mcp/apis/operations` and its well-known path, and reminds staff to register ChatGPT and Grok Bot in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. Failing subscriptions sits on its own compact row at the top: the live count of open callbacks that bounced, and it opens a table of those subscriptions. Ops MCP, Failed tools, and Usage stay in the card grid below. The Usage widget charts calls from the last 4 weeks and opens the Usage screen. Failed tools lists `tools/call` failures by name from daily totals and opens Usage filtered to failed `tools/call` rows. Usage lists each call. Date range, group by, and status sit on the screen. Failed and method stay in the filter modal. It does not group failures by tool. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe. Public MCP and Workspace stay unchanged.
+Staff admin is the MCP admin section. Ops MCP lists `/recording_studio_mcp/apis/operations` and its well-known path, and reminds staff to register ChatGPT and Grok Bot in Registered apps with `api_key: "operations"`. Do not seed those OauthClients. Failing subscriptions sits on its own compact row at the top: the live count of open callbacks that bounced, and it opens a table of those subscriptions. Ops MCP, Failed tools, and Usage stay in the card grid below. The Usage widget charts calls from the last 4 weeks and opens the Usage screen. Failed tools lists `tools/call` failures by name from usage logs and opens Usage filtered to failed `tools/call` rows. Usage lists each call. Date range, group by, and status sit on the screen. Failed and method stay in the filter modal. It does not group failures by tool. Registered apps opens Oauth's section. It is not the `/docs/mcp` probe. Public MCP and Workspace stay unchanged.
 
-Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. Daily totals live in `recording_studio_mcp_usage_daily_metrics`. The usage log table is unpartitioned with a UUID primary key. RecordingStudioLogs registers it (`partition_interval: nil`, `retention: :indefinite`, no root column) and does not aggregate it. Logs `RetentionCleanupJob` never deletes these rows; `rake recording_studio_mcp:maintain_usage` keeps the 30-day raw window. Do not schedule Logs partition jobs for this table.
+Each authenticated or failed POST to the MCP endpoint writes one usage log. The row stores the method, the tool or skill name, the status, the duration, and the API client id. It does not store the token or the tool arguments. The usage log table is unpartitioned with a UUID primary key. RecordingStudioLogs registers it (`partition_interval: nil`, `retention: :indefinite`, no root column) and does not aggregate it. Logs `RetentionCleanupJob` never deletes these rows. Do not schedule Logs partition jobs for this table. The `recording_studio_mcp_usage_daily_metrics` table remains from earlier releases and is unused.
 
-The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on that same daily table. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
+The engine registers `:mcp_calls` with Recording Studio Metrics (`blast_radius: :site`, operations only) on `UsageLog`. `api_authorize` uses `RecordingStudioMcp::Api::Access.can_view?` (AdminRoot Accessible `:view`). This gem does not call `RecordingStudioMetrics::Api.register!`. The host registers Metrics endpoints once:
 
 ```ruby
 RecordingStudioMetrics::Api.register!(api: :operations)
@@ -251,10 +253,7 @@ Endpoint tools take the endpoint's OpenAPI query parameters as arguments with th
 ```bash
 bin/rails generate recording_studio_mcp:migrations
 bin/rails db:migrate
-rake recording_studio_mcp:maintain_usage
 ```
-
-Maintain rebuilds yesterday and today into `recording_studio_mcp_usage_daily_metrics`, then deletes raw logs older than 30 days.
 
 1. Allow the section on the admin root.
 
@@ -307,7 +306,7 @@ curl -N --no-buffer \
 
 ## Dummy
 
-`test/dummy` on port 3000. Sign in with `admin@admin.com` / `Password`. Seed MCP App is a public OauthClient. Studio Workspace starts Connected. Site name `Studio` comes from Site settings when Connect needs it. Seeds also write sample MCP usage for the last 4 weeks, then roll those calls into daily totals. Loading seeds again replaces that sample.
+`test/dummy` on port 3000. Sign in with `admin@admin.com` / `Password`. Seed MCP App is a public OauthClient. Studio Workspace starts Connected. Site name `Studio` comes from Site settings when Connect needs it. Seeds also write sample MCP usage logs for the last 4 weeks. Loading seeds again replaces that sample.
 
 The dummy-only docs page at `/docs/mcp` can mint a real test token, probe MCP, and sample-POST the endpoint. It is not the product.
 
@@ -315,4 +314,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.22.0
+0.23.0

@@ -123,12 +123,12 @@ class CatalogMetricToolsTest < Minitest::Test
         arguments: {},
         access_grant: catalog_grant(allowed: false)
       )
-      tool = RecordingStudioMcp::CatalogMetricTools.collect(
+      tool = RecordingStudioMcp::MetricTools.collect_catalog(
         RecordingStudioMcp::Catalog.new(api: "public"),
         nil
       ).find { |candidate| candidate.name.to_s == "widgets-total" }
       error = assert_raises(RecordingStudioApi::AuthorizationError) do
-        RecordingStudioMcp::CatalogMetricTools.execute(tool, {}, catalog_grant(allowed: false))
+        RecordingStudioMcp::MetricTools.execute(tool, {}, catalog_grant(allowed: false))
       end
 
       refute_includes hidden.tool_names, "widgets-total"

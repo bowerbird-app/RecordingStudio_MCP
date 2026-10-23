@@ -99,7 +99,6 @@ module RecordingStudioMcp
         root_recording: access_recording.root_recording
       )
     end
-    private_class_method :access_grant_for
 
     def principal_for(subscription)
       id = subscription.owner_principal_id
@@ -127,13 +126,11 @@ module RecordingStudioMcp
 
       RecordingStudio::Recording.find_by(id: subscription.access_recording_id)
     end
-    private_class_method :access_recording_for
 
     def find_recording(recording_id)
       return unless defined?(RecordingStudio::Recording)
 
       RecordingStudio::Recording.find_by(id: recording_id)
     end
-    private_class_method :find_recording
   end
 end

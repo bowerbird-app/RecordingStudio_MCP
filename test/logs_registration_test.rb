@@ -15,13 +15,11 @@ class LogsRegistrationTest < Minitest::Test
     assert_empty RecordingStudioLogs.registry.aggregations_for(log)
   end
 
-  def test_rake_task_maintains_usage_without_summary_backfill
-    rake = File.read(File.expand_path("../lib/tasks/recording_studio_mcp_usage.rake", __dir__))
-
-    assert_includes rake, "task maintain_usage"
-    refute_includes rake, "namespace :usage_logs"
-    refute_includes rake, "task backfill_summaries"
-    refute_includes rake, "RebuildUsageSummaries"
+  def test_does_not_ship_a_nightly_usage_rake_task
+    refute File.exist?(File.expand_path("../lib/tasks/recording_studio_mcp_usage.rake", __dir__))
+    refute File.exist?(File.expand_path("../lib/recording_studio_mcp/aggregate_usage.rb", __dir__))
+    refute File.exist?(File.expand_path("../lib/recording_studio_mcp/maintain_usage.rb", __dir__))
+    refute File.exist?(File.expand_path("../app/jobs/recording_studio_mcp/maintain_usage_job.rb", __dir__))
   end
 
   def test_does_not_register_usage_counts_or_summary_models

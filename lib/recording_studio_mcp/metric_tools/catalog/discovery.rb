@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  module CatalogMetricTools
+  module MetricTools
     module_function
 
     def raw_entries(catalog, access_grant)

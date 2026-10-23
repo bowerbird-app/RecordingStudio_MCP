@@ -49,11 +49,20 @@ module RecordingStudioMcp
     end
 
     def counts
-      return {} unless metrics_ready?
+      return {} unless logs_ready?
 
-      UsageDailyMetric.where(metric_date: day_range).group(:metric_date).sum(:call_count)
+      UsageLog.where(occurred_at: time_range).group(day_sql).count
     rescue StandardError
       {}
+    end
+
+    def day_sql
+      zone = UsageLog.connection.quote(Time.zone.tzinfo.name)
+      Arel.sql("((occurred_at AT TIME ZONE 'UTC') AT TIME ZONE #{zone})::date")
+    end
+
+    def time_range
+      day_range.begin.in_time_zone.beginning_of_day..day_range.end.in_time_zone.end_of_day
     end
 
     def days
@@ -65,18 +74,12 @@ module RecordingStudioMcp
       period.start_date..period.end_date
     end
 
-    def metrics_ready?
-      UsageDailyMetric.table_available?
-    rescue StandardError
-      false
-    end
-
     def logs_ready?
       UsageLog.table_available?
     rescue StandardError
       false
     end
-    private_class_method :week_points, :week_slices, :counts_by_day, :counts, :days, :day_range, :metrics_ready?,
-                         :logs_ready?
+    private_class_method :week_points, :week_slices, :counts_by_day, :counts, :days, :day_range, :logs_ready?,
+                         :day_sql, :time_range
   end
 end

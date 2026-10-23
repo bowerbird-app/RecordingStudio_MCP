@@ -24,17 +24,10 @@ module RecordingStudioMcp
     end
 
     def insert_metric_tools
-      metrics = RecordableMetricTools.collect(catalog)
-      return if metrics.empty? || !metric_view_allowed?
-
-      metrics.each do |metric|
+      recordable = metric_view_allowed? ? MetricTools.collect_recordable(catalog) : []
+      catalog_metrics = MetricTools.collect_catalog(catalog, @access_grant)
+      (recordable + catalog_metrics).each do |metric|
         insert(metric.name.to_s, metric_entry(metric))
-      end
-    end
-
-    def insert_catalog_metric_tools
-      CatalogMetricTools.collect(catalog, @access_grant).each do |metric|
-        insert(metric.name.to_s, catalog_metric_entry(metric))
       end
     end
 
@@ -54,14 +47,6 @@ module RecordingStudioMcp
     def metric_entry(metric)
       Entry.new(
         family: :metric,
-        definition: Tools.metric_tool(metric),
-        metric: metric
-      )
-    end
-
-    def catalog_metric_entry(metric)
-      Entry.new(
-        family: :catalog_metric,
         definition: Tools.metric_tool(metric),
         metric: metric
       )
@@ -105,9 +90,7 @@ module RecordingStudioMcp
     end
 
     def warn_skipped_tool(name, reason)
-      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-
-      Rails.logger.warn("[RecordingStudioMcp] skipped metric tool #{name}: #{reason}")
+      MetricTools.warn_skipped(name, reason)
     end
 
     def reserved_name_message(name, entry)

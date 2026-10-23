@@ -43,14 +43,14 @@ module RecordingStudioMcp
         title "Calls"
         type :column
         series do |context|
-          [{
+          RecordingStudioMetrics::Admin.chart_series(
+            "mcp_calls.over_time",
+            admin_context: context,
             name: "Calls",
-            data: RecordingStudioAdmin::AdminActivityLogsSupport.date_series(
-              context.query_result.relation,
-              field: :occurred_at,
-              bucket: context.filter_value(:group_by) || :day
-            )
-          }]
+            scope: :site,
+            site_authorized: true,
+            interval: context.filter_value(:group_by) || :day
+          )
         end
       end
 
