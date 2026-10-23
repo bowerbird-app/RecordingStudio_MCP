@@ -11,13 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - An OAuth MCP tool call that writes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` on that event when the event actor is the OAuth client. Those are the class and raw id of the token's `OauthAuthorization#manager_actor`. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials call does not add the keys, and client-sent copies are removed on that client's writes. The stamp clears when the tool call ends.
-- Runtime allows `recording_studio_api` `>= 0.11.0, < 0.17`. API 0.16 reads `AccessGrant#authorized_by`. MCP passes the sign-in `authorized_by` into that grant when the installed API accepts the keyword, and does not add context constructor keywords. The development lockfile stays on API tag `v0.14.1` and Oauth tag `v0.13.1`. CI job `api-016` bundles API PR #61 and Oauth PR #63 in a separate Gemfile and runs the suite there. That job goes away once both gems are tagged and the main lockfile can use those tags.
+- Runtime allows `recording_studio_api` `>= 0.11.0, < 0.17`. API 0.16 reads `AccessGrant#authorized_by`. MCP passes the sign-in `authorized_by` into that grant when the installed API accepts the keyword, and does not add context constructor keywords. The development lockfile pins API tag `v0.16.0` and Oauth tag `v0.15.1`.
 
 ### Upgrade notes
 - Bump to `0.22.0`. No migration.
 - Hosts that read event metadata will see `authorized_by_type` and `authorized_by_id` on OAuth MCP writes that go through `record!` and whose actor is the OAuth client. The id is the record id. The actor is still the OAuth client.
 - Client-credentials writes do not get those keys. Client-sent `authorized_by_*` keys are removed on that client's writes. API `create` does not record an event. API `delete` hard-deletes the recording. API PR #61's `delete_metadata` builds authorized_by metadata, and `Destroy` does not call it, so a delete still has no event row.
-- Installing API 0.16 in an app still waits on Oauth allowing `recording_studio_api` `>= 0.15`. This gem's own cap is `< 0.17`.
+- API 0.16 needs Oauth `v0.15.1` or later. Oauth 0.13.1 still requires API `< 0.15`. This gem's own cap is `< 0.17`.
 - Runtime `recording_studio_logs` stays `>= 0.5.0, < 1.0` and `recording_studio_metrics` stays `>= 0.3.0, < 1.0`, as in 0.21.1.
 
 ## [0.21.1] - 2026-10-22

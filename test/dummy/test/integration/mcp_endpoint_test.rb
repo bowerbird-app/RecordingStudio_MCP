@@ -235,7 +235,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
   test "oauth mcp update stores the same authorized_by as the http api" do
     unless access_grant_accepts_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; api-016 runs that suite"
+      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by"
     end
 
     token = issue_delegated_token(role: "edit")

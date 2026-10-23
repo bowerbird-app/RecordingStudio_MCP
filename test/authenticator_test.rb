@@ -61,7 +61,7 @@ class AuthenticatorTest < Minitest::Test
 
   def test_access_grant_keeps_the_sign_in_authorized_by
     unless access_grant_accepts_authorized_by?
-      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; api-016 runs that suite"
+      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by"
     end
 
     credential = FakeCredential.new(FakeClient.new("public"))

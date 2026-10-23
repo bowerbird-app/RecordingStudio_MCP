@@ -1,6 +1,6 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.17`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 1.0` (GitHub tag `v0.5.0`). Development still pins API tag `v0.14.1` because Oauth 0.13.1 requires API `< 0.15`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.17`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.15.1` or later with API 0.16. Logs `>= 0.5.0, < 1.0` (GitHub tag `v0.5.0`). Development pins API tag `v0.16.0` and Oauth tag `v0.15.1`. Oauth 0.13.1 still requires API `< 0.15`.
 
 ## 0.22.0
 
