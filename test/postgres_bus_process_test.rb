@@ -124,7 +124,7 @@ class PostgresBusProcessTest < Minitest::Test
             Process.wait(pid)
 
             assert RecordingStudioMcp::PostgresBus.listening?
-            refute IO.select([reader], nil, nil, 0.3),
+            refute reader.wait_readable(0.3),
                    "forked child at_exit must not check in the listen connection"
             RecordingStudioMcp::PostgresBus.stop!
           end
