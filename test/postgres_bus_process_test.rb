@@ -95,59 +95,45 @@ class PostgresBusProcessTest < Minitest::Test
     FileUtils.rm_f(script) if defined?(script) && script
   end
 
-  def test_forked_child_exit_leaves_parent_listener_receiving
-    script = File.join(DUMMY_ROOT, "tmp/postgres_bus_fork_child_probe.rb")
-    FileUtils.mkdir_p(File.dirname(script))
-    File.write(script, <<~RUBY)
-      # frozen_string_literal: true
+  def test_forked_child_exit_does_not_check_in_parent_listen_connection
+    reader, writer = IO.pipe
+    writer.sync = true
 
-      ENV["RAILS_ENV"] ||= "test"
-      require "rails"
-      Rails.const_set(:Server, Class.new) unless Rails.const_defined?(:Server)
-      require_relative "../config/environment"
+    raw = Object.new
+    raw.define_singleton_method(:wait_for_notify) { |*_args| sleep 0.05 }
+    listen_connection = Object.new
+    listen_connection.define_singleton_method(:execute) { |_| }
+    listen_connection.define_singleton_method(:raw_connection) { raw }
+    listen_connection.define_singleton_method(:active?) { true }
 
-      ActiveRecord::Base.connection.select_value("SELECT 1")
-      bus = RecordingStudioMcp::PostgresBus
-      received = Queue.new
-      RecordingStudioMcp::Notifier.define_singleton_method(:deliver_local) do |event_name:, recording_id:, **|
-        received << "\#{event_name}:\#{recording_id}"
-      end
+    pool = Object.new
+    pool.define_singleton_method(:checkout) { listen_connection }
+    pool.define_singleton_method(:checkin) { |_conn| writer.write("checkin\n") }
 
-      bus.start!
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-      sleep 0.02 until bus.listening? || Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
-      abort "PROBE not listening" unless bus.listening?
+    RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
+      RecordingStudioMcp::PostgresBus.stub(:start_allowed?, true) do
+        RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
+          ActiveRecord::Base.stub(:connection_pool, pool) do
+            RecordingStudioMcp::PostgresBus.start!
+            deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
+            sleep 0.01 until RecordingStudioMcp::PostgresBus.listening? ||
+                             Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+            assert RecordingStudioMcp::PostgresBus.listening?
 
-      pid = fork { exit }
-      _pid, child_status = Process.wait2(pid)
+            pid = fork { exit }
+            Process.wait(pid)
 
-      token = "fork-\#{Process.pid}-\#{Process.clock_gettime(Process::CLOCK_MONOTONIC)}"
-      bus.publish(event_name: "recording updated", recording_id: token)
-      expected = "recording updated:\#{token}"
-      got = nil
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-      until Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
-        begin
-          loop do
-            got = received.pop(true)
-            break if got == expected
+            assert RecordingStudioMcp::PostgresBus.listening?
+            refute IO.select([reader], nil, nil, 0.3),
+                   "forked child at_exit must not check in the listen connection"
+            RecordingStudioMcp::PostgresBus.stop!
           end
-          break if got == expected
-        rescue ThreadError
-          sleep 0.02
         end
       end
-
-      puts "PROBE child_ok=\#{child_status.success?} listening=\#{bus.listening?} received=\#{got == expected}"
-      bus.stop!
-    RUBY
-
-    stdout, status = run_dummy("ruby", script)
-
-    assert status.success?, stdout
-    assert_includes stdout, "PROBE child_ok=true listening=true received=true"
+    end
   ensure
-    FileUtils.rm_f(script) if defined?(script) && script
+    writer.close unless writer.nil? || writer.closed?
+    reader.close unless reader.nil? || reader.closed?
   end
 
   def test_server_like_boot_starts_postgres_bus
