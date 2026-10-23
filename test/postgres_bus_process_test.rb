@@ -4,11 +4,17 @@ require "test_helper"
 require "open3"
 require "fileutils"
 
-# Unstubbed subprocess checks: real bin/rails runner, rake, and console in the
-# dummy app must not start PostgresBus (unless the env flag forces it).
+# Subprocess checks (unstubbed): real bin/rails runner, rake, and console in
+# the dummy app must not start PostgresBus (unless the env flag forces it).
+# In-process stubbed check: a forked child must not check in the listen
+# connection the parent still holds.
 class PostgresBusProcessTest < Minitest::Test
   DUMMY_ROOT = File.expand_path("dummy", __dir__)
   PROBE_LINE = /PROBE allowed=(true|false) listening=(true|false) enabled=(true|false)/
+
+  def teardown
+    RecordingStudioMcp::PostgresBus.stop!
+  end
 
   def test_rails_runner_does_not_start_postgres_bus
     code = [
@@ -106,8 +112,12 @@ class PostgresBusProcessTest < Minitest::Test
     listen_connection.define_singleton_method(:raw_connection) { raw }
     listen_connection.define_singleton_method(:active?) { true }
 
+    checked_out = Queue.new
     pool = Object.new
-    pool.define_singleton_method(:checkout) { listen_connection }
+    pool.define_singleton_method(:checkout) do
+      checked_out << true
+      listen_connection
+    end
     pool.define_singleton_method(:checkin) { |_conn| writer.write("checkin\n") }
 
     RecordingStudioMcp::PostgresBus.stub(:enabled?, true) do
@@ -115,9 +125,7 @@ class PostgresBusProcessTest < Minitest::Test
         RecordingStudioMcp::PostgresBus.stub(:wake_listen_loop, nil) do
           ActiveRecord::Base.stub(:connection_pool, pool) do
             RecordingStudioMcp::PostgresBus.start!
-            deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
-            sleep 0.01 until RecordingStudioMcp::PostgresBus.listening? ||
-                             Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+            checked_out.pop
             assert RecordingStudioMcp::PostgresBus.listening?
 
             pid = fork { exit }
