@@ -5,6 +5,7 @@ require "recording_studio_admin"
 module RecordingStudioMcp
   module Admin
     class UsageScreen < RecordingStudioAdmin::Screen
+      # A second load reopens this class. filter appends, so clear the list first.
       @filters_value = []
       @widget_usages_value = []
       @filter_presentation_value = nil
@@ -42,14 +43,14 @@ module RecordingStudioMcp
         title "Calls"
         type :column
         series do |context|
-          RecordingStudioMetrics::Admin.chart_series(
-            "mcp_calls.over_time",
-            admin_context: context,
+          [{
             name: "Calls",
-            scope: :site,
-            site_authorized: true,
-            interval: context.filter_value(:group_by) || :day
-          )
+            data: RecordingStudioAdmin::AdminActivityLogsSupport.date_series(
+              context.query_result.relation,
+              field: :occurred_at,
+              bucket: context.filter_value(:group_by) || :day
+            )
+          }]
         end
       end
 

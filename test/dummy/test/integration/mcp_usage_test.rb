@@ -113,7 +113,7 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "usage logs stay until the host deletes them" do
+  test "usage logs stay until Logs retention cleanup runs" do
     RecordingStudioMcp::UsageLog.delete_all
     old = RecordingStudioMcp::UsageLog.create!(
       occurred_at: 40.days.ago,
@@ -126,17 +126,64 @@ class McpUsageTest < ActionDispatch::IntegrationTest
     )
 
     assert_equal old.id, RecordingStudioMcp::UsageLog.find(old.id).id
-    assert_equal 0, RecordingStudioMcp::UsageDailyMetric.count
   end
 
-  test "boot registers usage logs with RecordingStudioLogs and no aggregation" do
+  test "boot registers usage logs with RecordingStudioLogs daily aggregation" do
     log = RecordingStudioLogs.registry.log_for(RecordingStudioMcp::UsageLog)
     refute_nil log
     assert_nil log.partition_interval
-    assert_equal :indefinite, log.declared_retention
+    assert_equal 30.days, log.declared_retention
     assert_nil log.root_column
-    assert_empty RecordingStudioLogs.registry.aggregations_for(log)
+    aggregations = RecordingStudioLogs.registry.aggregations_for(log)
+    assert_equal 1, aggregations.size
+    assert_equal RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, aggregations.first.name
     refute defined?(RecordingStudioMcp::UsageDaySummary)
+  end
+
+  test "Logs aggregation fills the existing daily metrics table" do
+    RecordingStudioMcp::UsageLog.delete_all
+    RecordingStudioMcp::UsageDailyMetric.delete_all
+    day = Date.new(2026, 10, 14)
+    stamp = Time.utc(2026, 10, 14, 12)
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: stamp,
+      method_name: "tools/call",
+      subject_name: "list",
+      status_code: 200,
+      duration_ms: 4,
+      rate_limited: false,
+      failed: false
+    )
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: stamp,
+      method_name: "tools/call",
+      subject_name: "list",
+      status_code: 500,
+      duration_ms: 9,
+      rate_limited: false,
+      failed: true
+    )
+    RecordingStudioMcp::UsageLog.create!(
+      occurred_at: stamp,
+      method_name: "tools/call",
+      subject_name: "show",
+      status_code: 429,
+      duration_ms: 2,
+      rate_limited: true,
+      failed: true
+    )
+
+    RecordingStudioLogs.aggregate_day!(day)
+    RecordingStudioLogs.aggregate_day!(day)
+
+    row = RecordingStudioMcp::UsageDailyMetric.find_by!(metric_date: day, method_name: "tools/call", subject_name: "list")
+    assert_equal 2, row.call_count
+    assert_equal 1, row.failed_count
+    assert_equal 0, row.rate_limited_count
+    limited = RecordingStudioMcp::UsageDailyMetric.find_by!(metric_date: day, method_name: "tools/call", subject_name: "show")
+    assert_equal 1, limited.call_count
+    assert_equal 1, limited.failed_count
+    assert_equal 1, limited.rate_limited_count
   end
 
   test "usage table failed filter keeps failed calls" do

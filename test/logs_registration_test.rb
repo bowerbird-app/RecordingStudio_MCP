@@ -3,16 +3,23 @@
 require "test_helper"
 
 class LogsRegistrationTest < Minitest::Test
-  def test_register_unpartitioned_usage_log_without_aggregation
+  def test_register_unpartitioned_usage_log_with_daily_aggregation
     RecordingStudioMcp::LogsRegistration.register!
 
     log = RecordingStudioLogs.registry.log_for(RecordingStudioMcp::LogsRegistration::SOURCE_MODEL)
     refute_nil log
     assert_nil log.partition_interval
     assert_equal :occurred_at, log.timestamp_column
-    assert_equal :indefinite, log.declared_retention
+    assert_equal 30.days, log.declared_retention
     assert_nil log.root_column
-    assert_empty RecordingStudioLogs.registry.aggregations_for(log)
+
+    aggregations = RecordingStudioLogs.registry.aggregations_for(log)
+    assert_equal 1, aggregations.size
+    aggregation = aggregations.first
+    assert_equal RecordingStudioMcp::LogsRegistration::AGGREGATION_NAME, aggregation.name
+    assert_equal :metric_date, aggregation.period_column
+    assert_equal %i[method_name subject_name], aggregation.group_by
+    assert_equal %i[call_count failed_count rate_limited_count], aggregation.measurements.map(&:name)
   end
 
   def test_does_not_ship_a_nightly_usage_rake_task
@@ -22,13 +29,12 @@ class LogsRegistrationTest < Minitest::Test
     refute File.exist?(File.expand_path("../app/jobs/recording_studio_mcp/maintain_usage_job.rb", __dir__))
   end
 
-  def test_does_not_register_usage_counts_or_summary_models
+  def test_registers_usage_counts_on_the_existing_daily_metric_table
     source = File.read(File.expand_path("../lib/recording_studio_mcp/logs_registration.rb", __dir__))
 
-    refute_includes source, "register_usage_counts!"
-    refute_includes source, "usage_counts_definition"
-    refute_includes source, "summaries_enabled?"
-    refute_includes source, "RecordingStudioLogs.aggregate"
+    assert_includes source, "RecordingStudioLogs.aggregate"
+    assert_includes source, "UsageDailyMetric"
+    assert_includes source, "period_column: :metric_date"
     refute File.exist?(File.expand_path("../app/models/recording_studio_mcp/usage_day_summary.rb", __dir__))
     refute File.exist?(File.expand_path("../app/models/recording_studio_mcp/usage_day_metric_rollup.rb", __dir__))
   end

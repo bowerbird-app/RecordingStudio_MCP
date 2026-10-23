@@ -19,7 +19,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     )
     @workspace_root, @workspace_access = create_access_recording_for(user: @staff)
 
-    RecordingStudioMcp::UsageLog.delete_all
+    RecordingStudioMcp::UsageDailyMetric.delete_all
     @day_one = Date.current - 2
     @day_two = Date.current - 1
     seed_daily_metrics!
@@ -173,12 +173,10 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     warnings = StringIO.new
     previous = Rails.logger
     Rails.logger = Logger.new(warnings)
-    registry = RecordingStudioMetrics.registry
-    saved_metrics = registry.instance_variable_get(:@metrics).dup
-    saved_resources = registry.instance_variable_get(:@resources).dup
+    with_saved_metrics_registry do
     RecordingStudioMetrics.register(
       :probes,
-      model: RecordingStudioMcp::UsageLog,
+      model: RecordingStudioMcp::UsageDailyMetric,
       blast_radius: :site,
       api_authorize: ->(_context) { raise secret }
     ) do
@@ -202,12 +200,9 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     assert_includes warnings.string, "WARN --"
     assert_includes warnings.string, "skipped metric probes"
     refute_includes warnings.string, secret
+    end
   ensure
     Rails.logger = previous if previous
-    if defined?(registry) && registry
-      registry.instance_variable_set(:@metrics, saved_metrics)
-      registry.instance_variable_set(:@resources, saved_resources)
-    end
   end
 
   test "operations MCP lists one tool per mcp_calls metric and keeps the metrics endpoints" do
@@ -475,18 +470,24 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
   end
 
   def create_daily_metric(metric_date:, method_name:, subject_name:, call_count:, failed_count:, rate_limited_count:)
-    stamp = metric_date.in_time_zone("UTC").change(hour: 12)
-    call_count.times do |index|
-      RecordingStudioMcp::UsageLog.create!(
-        occurred_at: stamp,
-        method_name: method_name,
-        subject_name: subject_name,
-        status_code: index < failed_count ? 500 : 200,
-        duration_ms: 1,
-        failed: index < failed_count,
-        rate_limited: index < rate_limited_count
-      )
-    end
+    RecordingStudioMcp::UsageDailyMetric.create!(
+      metric_date: metric_date,
+      method_name: method_name,
+      subject_name: subject_name,
+      call_count: call_count,
+      failed_count: failed_count,
+      rate_limited_count: rate_limited_count
+    )
+  end
+
+  def with_saved_metrics_registry
+    registry = RecordingStudioMetrics.registry
+    saved_metrics = registry.instance_variable_get(:@metrics).dup
+    saved_resources = registry.instance_variable_get(:@resources).dup
+    yield
+  ensure
+    registry.instance_variable_set(:@metrics, saved_metrics)
+    registry.instance_variable_set(:@resources, saved_resources)
   end
 
   def execute(identifier, **params)
