@@ -1,10 +1,14 @@
 # Host pins
 
-Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.17`. Metrics `>= 0.3.0, < 0.6`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 0.6` (GitHub tag `v0.5.0`). Development still pins API tag `v0.14.1` because Oauth 0.13.1 requires API `< 0.15`.
+Ruby 3.3 or newer. Rails 8.1. Recording Studio `~> 4.2`. API `>= 0.11.0, < 0.17`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.13.1` or later. Logs `>= 0.5.0, < 1.0` (GitHub tag `v0.5.0`). Development still pins API tag `v0.14.1` because Oauth 0.13.1 requires API `< 0.15`.
 
 ## 0.22.0
 
-No migration. An OAuth MCP write that goes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` for the token's `OauthAuthorization#manager_actor` when the event actor is the OAuth client. The id is the record id. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. Client-credentials writes do not get those keys, and client-sent copies are removed on that client's writes. The stamp clears when the tool call ends. API 0.16 reads `AccessGrant#authorized_by`. MCP passes the sign-in `authorized_by` into that grant when the installed API accepts the keyword. API `create` still has no event. API `delete` hard-deletes the recording. `ResourceOperations::Base#delete_metadata` on API PR #61 builds authorized_by metadata, and `Destroy` does not call it, so a delete still has no event row.
+No migration. An OAuth MCP write that goes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` for the token's `OauthAuthorization#manager_actor` when the event actor is the OAuth client. The id is the record id. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. Client-credentials writes do not get those keys, and client-sent copies are removed on that client's writes. The stamp clears when the tool call ends. API 0.16 reads `AccessGrant#authorized_by`. MCP passes the sign-in `authorized_by` into that grant when the installed API accepts the keyword. API `create` still has no event. API `delete` hard-deletes the recording. `ResourceOperations::Base#delete_metadata` on API PR #61 builds authorized_by metadata, and `Destroy` does not call it, so a delete still has no event row. Runtime logs and metrics ceilings stay at `< 1.0`.
+
+## 0.21.1
+
+No migration. No code change. Runtime `recording_studio_logs` is `>= 0.5.0, < 1.0` (CI tested with 0.5.0). Runtime `recording_studio_metrics` is `>= 0.3.0, < 1.0` (CI tested with 0.5.0). Development and dummy still pin GitHub tags `v0.5.0`.
 
 ## 0.21.0
 

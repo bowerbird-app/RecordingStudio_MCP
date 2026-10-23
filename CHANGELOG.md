@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hosts that read event metadata will see `authorized_by_type` and `authorized_by_id` on OAuth MCP writes that go through `record!` and whose actor is the OAuth client. The id is the record id. The actor is still the OAuth client.
 - Client-credentials writes do not get those keys. Client-sent `authorized_by_*` keys are removed on that client's writes. API `create` does not record an event. API `delete` hard-deletes the recording. API PR #61's `delete_metadata` builds authorized_by metadata, and `Destroy` does not call it, so a delete still has no event row.
 - Installing API 0.16 in an app still waits on Oauth allowing `recording_studio_api` `>= 0.15`. This gem's own cap is `< 0.17`.
+- Runtime `recording_studio_logs` stays `>= 0.5.0, < 1.0` and `recording_studio_metrics` stays `>= 0.3.0, < 1.0`, as in 0.21.1.
+
+## [0.21.1] - 2026-10-22
+
+### Changed
+- Runtime dependency `recording_studio_logs` is `>= 0.5.0, < 1.0` (CI tested with 0.5.0).
+- Runtime dependency `recording_studio_metrics` is `>= 0.3.0, < 1.0` (CI tested with 0.5.0).
+- No code change.
+
+### Upgrade notes
+- Bump to `0.21.1`. No migration.
 
 ## [0.21.0] - 2026-10-20
 
@@ -555,7 +566,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
 [Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...HEAD
-[0.22.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...v0.22.0
+[0.22.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.1...v0.22.0
+[0.21.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.20.0...v0.20.1
