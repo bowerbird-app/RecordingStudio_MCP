@@ -10,9 +10,9 @@ class AuthorizedByTest < Minitest::Test
   Grant = Struct.new(:credential, :api_client)
 
   def setup
-    @human = Person.new(41)
+    @authorized_by = Person.new(41)
     @client = Client.new("client-1")
-    @grant = Grant.new(Credential.new(Authorization.new(@human)), @client)
+    @grant = Grant.new(Credential.new(Authorization.new(@authorized_by)), @client)
   end
 
   def teardown
@@ -50,14 +50,14 @@ class AuthorizedByTest < Minitest::Test
     end
   end
 
-  def test_api_credential_without_an_authorization_has_no_human
+  def test_api_credential_without_an_authorization_has_no_authorized_by
     grant = Grant.new(Object.new, Client.new("api-client"))
 
-    assert_nil RecordingStudioMcp::AuthorizedBy.human_for(grant)
+    assert_nil RecordingStudioMcp::AuthorizedBy.authorized_by_for(grant)
     assert_equal grant.api_client, RecordingStudioMcp::AuthorizedBy.client_for(grant)
   end
 
-  def test_record_hook_stamps_the_authorizing_human_without_touching_the_actor
+  def test_record_hook_stamps_authorized_by_without_touching_the_actor
     metadata = { api_action: "move" }
     RecordingStudioMcp::AuthorizedBy.install!
     RecordingStudioMcp::AuthorizedBy.enter(@grant)
@@ -113,6 +113,24 @@ class AuthorizedByTest < Minitest::Test
     RecordingStudioMcp::AuthorizedBy.leave
   end
 
+  def test_record_hook_stamps_the_grant_authorized_by
+    signed_in = Person.new(41)
+    grant = Struct.new(:credential, :api_client, :authorized_by).new(
+      Credential.new(Authorization.new(Person.new(99))),
+      @client,
+      signed_in
+    )
+    metadata = {}
+    RecordingStudioMcp::AuthorizedBy.install!
+    RecordingStudioMcp::AuthorizedBy.enter(grant)
+    RecordingStudio::Hooks.run(:before_record, actor: @client, metadata: metadata)
+
+    assert_equal 41, metadata[:authorized_by_id]
+    assert_equal "AuthorizedByTest::Person", metadata[:authorized_by_type]
+  ensure
+    RecordingStudioMcp::AuthorizedBy.leave
+  end
+
   def test_record_hook_stamps_a_reloaded_oauth_client
     metadata = {}
     RecordingStudioMcp::AuthorizedBy.install!
@@ -132,17 +150,17 @@ class AuthorizedByTest < Minitest::Test
     assert_equal({}, metadata)
   end
 
-  def test_leave_restores_the_previous_human_and_stops_stamping
-    outer_human = Person.new(7)
+  def test_leave_restores_the_previous_authorized_by_and_stops_stamping
+    outer_authorized_by = Person.new(7)
     outer_client = Client.new("outer")
-    outer = Grant.new(Credential.new(Authorization.new(outer_human)), outer_client)
+    outer = Grant.new(Credential.new(Authorization.new(outer_authorized_by)), outer_client)
     RecordingStudioMcp::AuthorizedBy.install!
     RecordingStudioMcp::AuthorizedBy.enter(outer)
     RecordingStudioMcp::AuthorizedBy.enter(@grant)
-    assert_equal @human, RecordingStudioMcp::AuthorizedBy.current_human
+    assert_equal @authorized_by, RecordingStudioMcp::AuthorizedBy.current_authorized_by
 
     RecordingStudioMcp::AuthorizedBy.leave
-    assert_equal outer_human, RecordingStudioMcp::AuthorizedBy.current_human
+    assert_equal outer_authorized_by, RecordingStudioMcp::AuthorizedBy.current_authorized_by
     assert_equal outer_client, RecordingStudioMcp::AuthorizedBy.current_client
 
     metadata = {}
@@ -192,7 +210,7 @@ class AuthorizedByTest < Minitest::Test
       skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; api-016 runs that suite"
     end
 
-    credential = Credential.new(Authorization.new(@human))
+    credential = Credential.new(Authorization.new(@authorized_by))
     grant = RecordingStudioApi::AccessGrant.new(
       api_client: @client,
       credential: credential,
@@ -208,8 +226,8 @@ class AuthorizedByTest < Minitest::Test
       params: {}
     )
 
-    assert_equal @human, grant.authorized_by
-    assert_equal @human, context.authorized_by
+    assert_equal @authorized_by, grant.authorized_by
+    assert_equal @authorized_by, context.authorized_by
     assert_equal 41, context.with_authorized_by[:authorized_by_id]
   end
 

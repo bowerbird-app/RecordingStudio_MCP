@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - An OAuth MCP tool call that writes through `record!`, `revise`, or `log_event!` stores `authorized_by_type` and `authorized_by_id` on that event when the event actor is the OAuth client. Those are the class and raw id of the token's `OauthAuthorization#manager_actor`. Client-supplied copies of those keys are replaced. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials call does not add the keys, and client-sent copies are removed on that client's writes. The stamp clears when the tool call ends.
-- Runtime allows `recording_studio_api` `>= 0.11.0, < 0.17`. API 0.16 reads the authorizing person from `AccessGrant#authorized_by`. MCP passes that grant and does not add constructor keywords. The development lockfile stays on API tag `v0.14.1` and Oauth tag `v0.13.1`. CI job `api-016` bundles API PR #61 and Oauth PR #63 in a separate Gemfile and runs the suite there. That job goes away once both gems are tagged and the main lockfile can use those tags.
+- Runtime allows `recording_studio_api` `>= 0.11.0, < 0.17`. API 0.16 reads `AccessGrant#authorized_by`. MCP passes the sign-in `authorized_by` into that grant when the installed API accepts the keyword, and does not add context constructor keywords. The development lockfile stays on API tag `v0.14.1` and Oauth tag `v0.13.1`. CI job `api-016` bundles API PR #61 and Oauth PR #63 in a separate Gemfile and runs the suite there. That job goes away once both gems are tagged and the main lockfile can use those tags.
 
 ### Upgrade notes
 - Bump to `0.22.0`. No migration.

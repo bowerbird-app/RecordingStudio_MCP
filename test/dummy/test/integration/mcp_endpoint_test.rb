@@ -196,7 +196,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     refute_includes names, outsider.name
   end
 
-  test "oauth mcp update records the authorizing human and keeps the oauth client as actor" do
+  test "oauth mcp update records authorized_by and keeps the oauth client as actor" do
     token = issue_delegated_token(role: "edit")
     Current.actor = nil
     Current.impersonator = nil
@@ -233,7 +233,38 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     Current.impersonator = nil
   end
 
-  test "client credentials mcp update does not record an authorizing human" do
+  test "oauth mcp update stores the same authorized_by as the http api" do
+    unless access_grant_accepts_authorized_by?
+      skip "API #{RecordingStudioApi::VERSION} has no AccessGrant#authorized_by; api-016 runs that suite"
+    end
+
+    token = issue_delegated_token(role: "edit")
+    auth = RecordingStudioMcp::Authenticator.access_grant("Bearer #{token}")
+    assert_equal @user, auth.access_grant.authorized_by
+
+    created = call_tool(token, "create", type: "Page", parent_id: @root_recording.id, title: "Shared page")
+    call_tool(token, "update", type: "Page", id: created.fetch("id"), title: "Shared page from MCP")
+    recording = RecordingStudio::Recording.find(created.fetch("id"))
+    mcp_event = recording.events.find_by!(action: "updated")
+
+    patch "/recording_studio_api/api/v1/pages/#{recording.id}",
+          params: { title: "Shared page from API" },
+          headers: { "Authorization" => "Bearer #{token}", "Accept" => "application/json" }
+
+    assert_response :success, response.body
+    api_event = recording.events.where(action: "updated").where.not(id: mcp_event.id).order(:created_at, :id).last
+    assert api_event, response.body
+    mcp_metadata = mcp_event.metadata.with_indifferent_access
+    api_metadata = api_event.metadata.with_indifferent_access
+
+    refute_equal mcp_event.id, api_event.id
+    assert_equal "User", api_metadata[:authorized_by_type]
+    assert_equal @user.id, api_metadata[:authorized_by_id]
+    assert_equal api_metadata[:authorized_by_type], mcp_metadata[:authorized_by_type]
+    assert_equal api_metadata[:authorized_by_id], mcp_metadata[:authorized_by_id]
+  end
+
+  test "client credentials mcp update does not record authorized_by" do
     token = client_credentials_token
     Current.actor = nil
     Current.impersonator = nil
@@ -559,6 +590,12 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def access_grant_accepts_authorized_by?
+    RecordingStudioApi::AccessGrant.instance_method(:initialize).parameters.any? do |_type, name|
+      name == :authorized_by
+    end
+  end
 
   def json_headers
     { "Content-Type" => "application/json", "Accept" => "application/json" }

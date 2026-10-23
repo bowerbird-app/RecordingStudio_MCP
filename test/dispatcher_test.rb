@@ -150,9 +150,9 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_tool_call_clears_the_authorizing_human
-    human = Struct.new(:id).new(41)
-    authorization = Struct.new(:manager_actor).new(human)
+  def test_tool_call_clears_authorized_by
+    authorized_by = Struct.new(:id).new(41)
+    authorization = Struct.new(:manager_actor).new(authorized_by)
     credential = Struct.new(:oauth_authorization).new(authorization)
     client = Struct.new(:id).new("client-1")
     grant = FakeGrant.new(
@@ -169,7 +169,7 @@ class DispatcherTest < Minitest::Test
       assert_equal true, result[:isError]
     end
 
-    assert_nil RecordingStudioMcp::AuthorizedBy.current_human
+    assert_nil RecordingStudioMcp::AuthorizedBy.current_authorized_by
     assert_nil RecordingStudioMcp::AuthorizedBy.current_client
     assert_equal 0, RecordingStudioMcp::AuthorizedBy.depth
 

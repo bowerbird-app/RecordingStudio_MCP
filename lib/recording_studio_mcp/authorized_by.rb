@@ -1,18 +1,13 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  # Event actor stays the OAuth client. The person who authorized the token
-  # is authorized_by_type and authorized_by_id on the event.
-  #
-  # API 0.16 reads AccessGrant#authorized_by from the grant MCP already
-  # passes. Those constructors do not take authorized_by.
-  #
-  # record! during a tool call strips client-sent authorized_by keys from
-  # writes whose actor is that token's API client. An OAuth grant then stores
-  # the server human. A client-credentials grant has no human, so the keys
-  # stay absent. The stamp is thread-local and cleared when the tool call ends.
+  # Event actor stays the OAuth client. authorized_by_type and authorized_by_id
+  # record who authorized the token. Sign-in passes authorized_by into AccessGrant
+  # when that keyword exists. Otherwise the stamp reads OauthAuthorization#manager_actor.
+  # record! strips client-sent authorized_by keys on that client's writes, then stores
+  # authorized_by when one is present. The stamp clears when the tool call ends.
   module AuthorizedBy
-    HUMAN_KEY = :recording_studio_mcp_authorized_by_human
+    AUTHORIZED_BY_KEY = :recording_studio_mcp_authorized_by
     CLIENT_KEY = :recording_studio_mcp_authorized_by_client
     STACK_KEY = :recording_studio_mcp_authorized_by_stack
     DEPTH_KEY = :recording_studio_mcp_authorized_by_depth
@@ -34,9 +29,9 @@ module RecordingStudioMcp
 
     def enter(access_grant)
       install!
-      stack << [current_human, current_client]
+      stack << [current_authorized_by, current_client]
       Thread.current[DEPTH_KEY] = depth + 1
-      Thread.current[HUMAN_KEY] = human_for(access_grant)
+      Thread.current[AUTHORIZED_BY_KEY] = authorized_by_for(access_grant)
       Thread.current[CLIENT_KEY] = client_for(access_grant)
     end
 
@@ -44,30 +39,30 @@ module RecordingStudioMcp
       return if depth.zero?
 
       Thread.current[DEPTH_KEY] = depth - 1
-      human, client = Array(stack.pop)
-      Thread.current[HUMAN_KEY] = human
+      authorized_by, client = Array(stack.pop)
+      Thread.current[AUTHORIZED_BY_KEY] = authorized_by
       Thread.current[CLIENT_KEY] = client
     end
 
-    def human_for(access_grant)
+    def authorized_by_for(access_grant)
+      actor = if access_grant.respond_to?(:authorized_by)
+                access_grant.authorized_by
+              else
+                manager_actor_for(access_grant)
+              end
+      actor if actor && actor.id.present?
+    end
+
+    def manager_actor_for(access_grant)
       authorization = oauth_authorization_for(access_grant)
-      return unless authorization.respond_to?(:manager_actor)
-
-      human = authorization.manager_actor
-      return if human.nil? || human.id.blank?
-
-      human
+      authorization.manager_actor if authorization.respond_to?(:manager_actor)
     end
 
     def oauth_authorization_for(access_grant)
-      return if access_grant.nil?
       return unless access_grant.respond_to?(:credential)
 
       credential = access_grant.credential
-      return if credential.nil?
-      return unless credential.respond_to?(:oauth_authorization)
-
-      credential.oauth_authorization
+      credential.oauth_authorization if credential.respond_to?(:oauth_authorization)
     end
 
     def stamp_payload!(payload)
@@ -79,14 +74,14 @@ module RecordingStudioMcp
       return if metadata.nil? || metadata.frozen?
 
       strip_reserved!(metadata)
-      human = current_human
-      return if human.nil?
+      actor = current_authorized_by
+      return if actor.nil?
 
-      metadata[:authorized_by_type] = type_name(human)
-      metadata[:authorized_by_id] = human.id
+      metadata[:authorized_by_type] = type_name(actor)
+      metadata[:authorized_by_id] = actor.id
     end
 
-    def current_human = Thread.current[HUMAN_KEY]
+    def current_authorized_by = Thread.current[AUTHORIZED_BY_KEY]
 
     def current_client = Thread.current[CLIENT_KEY]
 
@@ -137,8 +132,8 @@ module RecordingStudioMcp
       end
     end
 
-    def type_name(human)
-      klass = human.class
+    def type_name(actor)
+      klass = actor.class
       return klass.polymorphic_name if klass.respond_to?(:polymorphic_name)
 
       klass.name
