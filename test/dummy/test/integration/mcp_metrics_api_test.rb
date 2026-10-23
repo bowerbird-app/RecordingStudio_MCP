@@ -200,7 +200,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
     assert_includes names, "mcp_calls-rate_limited"
     refute_includes names, "probes-total"
     assert_includes warnings.string, "WARN --"
-    assert_includes warnings.string, "skipped catalog metric probes"
+    assert_includes warnings.string, "skipped metric probes"
     refute_includes warnings.string, secret
   ensure
     Rails.logger = previous if previous

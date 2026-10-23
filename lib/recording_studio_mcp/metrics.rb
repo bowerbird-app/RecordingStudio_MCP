@@ -13,7 +13,7 @@ module RecordingStudioMcp
     FAILED = ->(relation) { relation.where(failed: true) }
     FAILED_TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call", failed: true) }
     RATE_LIMITED = ->(relation) { relation.where(rate_limited: true) }
-    FAILING = ->(relation) { relation.merge(EventSubscription.failing) }
+    FAILING = ->(relation) { relation.merge(RecordingStudioMcp::EventSubscription.failing) }
     FAILED_BY_TOOL_DESCRIPTION = "Failed tools/call requests counted from usage logs, by tool name."
     FAILING_DESCRIPTION = "Active, unexpired event subscriptions whose last callback delivery failed " \
                           "(failure_count > 0). They turn inactive after 5 failures in a row."
@@ -24,7 +24,7 @@ module RecordingStudioMcp
     def register!
       RecordingStudioMetrics.register(
         RESOURCE,
-        model: UsageLog,
+        model: RecordingStudioMcp::UsageLog,
         blast_radius: :site,
         api_authorize: AUTHORIZE
       ) { RecordingStudioMcp::Metrics.define_calls(self) }
@@ -34,7 +34,7 @@ module RecordingStudioMcp
     def register_subscriptions!
       RecordingStudioMetrics.register(
         SUBSCRIPTIONS,
-        model: EventSubscription,
+        model: RecordingStudioMcp::EventSubscription,
         blast_radius: :site,
         api_authorize: AUTHORIZE
       ) { RecordingStudioMcp::Metrics.define_subscriptions(self) }

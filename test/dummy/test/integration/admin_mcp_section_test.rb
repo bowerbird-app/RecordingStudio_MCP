@@ -46,7 +46,7 @@ class AdminMcpSectionTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Last 4 weeks"
     assert_includes response.body, "Calls from the last 4 weeks."
     assert_includes response.body, "Still listening, but the last callback bounced."
-    assert_includes response.body, "Tool calls that failed, from daily totals."
+    assert_includes response.body, "Tool calls that failed. Usage lists each call."
     assert_includes response.body, "Registered apps"
     refute_includes response.body, "None yet"
     refute_includes response.body, "Calls from the last 7 days."

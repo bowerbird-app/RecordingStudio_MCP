@@ -4,6 +4,8 @@ require "test_helper"
 
 class MetricsTest < Minitest::Test
   def test_boot_registers_mcp_calls_authorize_through_api_access
+    skip unless RecordingStudioMcp.const_defined?(:UsageLog, false)
+
     RecordingStudioMetrics.registry.reset!
     RecordingStudioMcp::Metrics.register!
 

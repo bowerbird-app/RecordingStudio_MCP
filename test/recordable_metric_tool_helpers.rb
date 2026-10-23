@@ -15,7 +15,9 @@ module RecordableMetricToolHelpers
     yield
   ensure
     RecordingStudioMetrics.registry.reset!
-    RecordingStudioMcp::Metrics.register!
+    if RecordingStudioMcp.const_defined?(:UsageLog, false)
+      RecordingStudioMcp::Metrics.register!
+    end
   end
 
   def register_folder_and_page_metrics

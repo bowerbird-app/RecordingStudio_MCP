@@ -39,9 +39,9 @@ class AuthorizedByTest < Minitest::Test
     %w[
       lib/recording_studio_mcp/authorized_by.rb
       lib/recording_studio_mcp/dispatcher.rb
-      lib/recording_studio_mcp/catalog_metric_tools/discovery.rb
-      lib/recording_studio_mcp/catalog_metric_tools/execution.rb
-      lib/recording_studio_mcp/recordable_metric_tools/execution.rb
+      lib/recording_studio_mcp/metric_tools/catalog/discovery.rb
+      lib/recording_studio_mcp/metric_tools/catalog/execution.rb
+      lib/recording_studio_mcp/metric_tools/recordable/execution.rb
     ].each do |path|
       source = File.read(File.join(root, path))
 

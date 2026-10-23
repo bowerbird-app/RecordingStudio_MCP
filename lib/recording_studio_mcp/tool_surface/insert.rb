@@ -24,7 +24,8 @@ module RecordingStudioMcp
     end
 
     def insert_metric_tools
-      recordable = metric_view_allowed? ? MetricTools.collect_recordable(catalog) : []
+      recordable = MetricTools.collect_recordable(catalog)
+      recordable = [] if recordable.empty? || !metric_view_allowed?
       catalog_metrics = MetricTools.collect_catalog(catalog, @access_grant)
       (recordable + catalog_metrics).each do |metric|
         insert(metric.name.to_s, metric_entry(metric))

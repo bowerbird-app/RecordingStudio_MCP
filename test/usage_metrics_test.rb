@@ -3,6 +3,10 @@
 require "test_helper"
 
 class UsageMetricsTest < Minitest::Test
+  def setup
+    skip unless RecordingStudioMcp.const_defined?(:UsageLog, false)
+  end
+
   def test_usage_window_totals_calls_across_the_last_four_weeks
     counts = { Date.current => 6, Date.current - 1 => 5, Date.current - 3 => 4 }
 

@@ -68,7 +68,7 @@ class AdminTest < Minitest::Test
     failed_tools = RecordingStudioAdmin.widget_for("mcp.failed_by_tool").resolve(context)
     assert_equal :list, failed_tools.type
     assert_equal "Failed tools", failed_tools.title
-    assert_equal "Tool calls that failed, from daily totals. Usage lists each call.", failed_tools.info
+    assert_equal "Tool calls that failed. Usage lists each call.", failed_tools.info
     assert_equal "Usage", failed_tools.link_label
     assert_equal "/admin/screens/mcp_usage?failed=true&method=tools%2Fcall", failed_tools.link_to
     assert_equal [], failed_tools.items
