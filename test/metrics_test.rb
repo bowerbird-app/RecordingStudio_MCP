@@ -98,7 +98,8 @@ class MetricsTest < Minitest::Test
     refute_includes readme, "recording_studio_mcp_usage_day_summaries"
     assert_includes readme, "Do not schedule `rake recording_studio_mcp:maintain_usage`"
     assert_includes readme, "recording_studio_mcp_usage_daily_metrics"
-    assert_includes readme, "AggregationJob"
+    assert_includes readme, "`AggregationJob` (`aggregate_due!`)"
+    refute_includes readme, "DailyAggregationJob"
   end
 
   def with_saved_metrics_registry
