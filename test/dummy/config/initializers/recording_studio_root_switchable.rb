@@ -6,7 +6,7 @@ RecordingStudioRootSwitchable.configure do |config|
   end
 
   # Render the mounted switcher pages inside the app shell when users visit them.
-  # Root Switchable 0.11.0 accepts a layout name, false, nil, or call(controller:).
+  # Recording Studio 6.1 Layout.accept takes a name string, not a Rails layout method symbol.
   config.layout = "flat_pack_sidebar"
 
   config.after_switch_redirect = lambda do |controller:, return_to:, **|
