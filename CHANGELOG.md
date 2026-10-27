@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Runtime requires `recording_studio` `>= 6.1.0` and `recording_studio_api` `>= 0.17, < 0.18`.
-- Development and dummy Gemfiles pin Recording Studio `v6.1.0`, Flatpack `v0.1.320`, Accessible `v0.22.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Oauth `v0.19.1`, Cache `v0.6.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.0` (dummy).
+- Development and dummy Gemfiles pin Recording Studio `v6.1.0`, Flatpack `v0.1.320`, Accessible `v0.22.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Oauth `v0.19.1`, Cache `v0.6.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.0` (dummy). Dummy Root Switchable `config.layout` is `"flat_pack_sidebar"` (a layout name; Recording Studio 6.1 rejects a Rails layout method symbol).
 
 ### Upgrade notes
 - Bump to `0.23.1`. No migration. Hosts need Recording Studio `6.1.0` or later. 4.2 is no longer supported.
