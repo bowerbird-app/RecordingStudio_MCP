@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-10-27
+
+### Changed
+- Runtime requires `recording_studio` `>= 6.1.0`. API stays `>= 0.16, < 0.17`.
+
+### Upgrade notes
+- Bump to `0.23.1`. No migration. Hosts need Recording Studio `6.1.0` or later. 4.2 is no longer supported.
+
 ## [0.23.0] - 2026-10-23
 
 ### Changed
