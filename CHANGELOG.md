@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Runtime requires `recording_studio` `>= 6.1.0` and `recording_studio_api` `>= 0.17, < 0.18`.
-- Development and dummy Gemfiles pin Recording Studio `v6.1.0`, Flatpack `v0.1.320`, Accessible `v0.22.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Oauth `v0.19.1`, Cache `v0.6.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.0` (dummy).
+- Development and dummy Gemfiles pin Recording Studio `v6.1.0`, Flatpack `v0.1.320`, Accessible `v0.22.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Oauth `v0.19.1`, Cache `v0.6.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.0` (dummy). Dummy copies Oauth `plugin_key`, drops Attachable Library/Placement types, and uses a Root Switchable layout name instead of `UsesDefaultLayout`.
 
 ### Upgrade notes
-- Bump to `0.23.1`. No migration. Hosts need Recording Studio `6.1.0` or later. 4.2 is no longer supported.
+- Bump to `0.23.1`. No MCP migration. Hosts need Recording Studio `6.1.0` or later. 4.2 is no longer supported. Run Oauth's `plugin_key` migration when pinning Oauth `v0.19.1`.
 - Pin API `>= 0.17, < 0.18` (git tag `v0.17.1`), Oauth `v0.19.1`, Accessible `v0.22.1`, Cache `v0.6.0`, Admin `v2.5.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Flatpack `v0.1.320`.
 
 ## [0.23.0] - 2026-10-23

@@ -7,9 +7,7 @@ RecordingStudio.configure do |config|
     "Page",
     "AdminRoot",
     "RecordingStudioSiteSettings::SiteSetting",
-    "RecordingStudioAttachable::Attachment",
-    "RecordingStudioAttachable::Library",
-    "RecordingStudioAttachable::Placement"
+    "RecordingStudioAttachable::Attachment"
   ]
   config.require_recordable_declarations = true
   config.app_name = "Recording Studio MCP" if config.respond_to?(:app_name=)
