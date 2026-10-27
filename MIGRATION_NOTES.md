@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `>= 6.1.0`. API `>= 0.17, < 0.18`
 
 ## 0.23.1
 
-No migration. Hosts need Recording Studio `6.1.0` or later. Pin API `>= 0.17, < 0.18` (git tag `v0.17.1`), Oauth `v0.19.1`, Accessible `v0.22.1`, Cache `v0.6.0`, Admin `v2.5.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Flatpack `v0.1.320`. Dummy also pins Root Switchable `v0.11.0`.
+No MCP migration. Hosts need Recording Studio `6.1.0` or later. Pin API `>= 0.17, < 0.18` (git tag `v0.17.1`), Oauth `v0.19.1`, Accessible `v0.22.1`, Cache `v0.6.0`, Admin `v2.5.1`, Trashable `v0.12.0`, Metrics `v0.7.0`, Logs `v0.7.1`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Flatpack `v0.1.320`. Dummy also pins Root Switchable `v0.11.0`. Run Oauth's `plugin_key` migration with Oauth `v0.19.1`. Attachable `v0.22.0` no longer registers Library or Placement. Replace `RecordingStudio::UsesDefaultLayout` with a layout name or `recording_studio_layout`.
 
 ## 0.23.0
 

@@ -14,7 +14,7 @@
   <% else %>
     <% @page_recordings.each do |recording| %>
       <% page = recording.recordable %>
-      <%= render FlatPack::Card::Component.new(style: :default) do |card| %>
+      <%= render FlatPack::Card::Component.new(background: :default, border: :default, shadow: :none) do |card| %>
         <% card.header do %>
           <%= render FlatPack::PageTitle::Component.new(
             title: page&.title.presence || "Untitled page",

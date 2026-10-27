@@ -29,4 +29,5 @@ end
 
 Rails.application.config.to_prepare do
   RecordingStudioAdmin.register_section(DummyAdminRootSection)
+  RecordingStudioAdmin::ApplicationController.helper RecordingStudioLegacyPageNavHelper
 end
