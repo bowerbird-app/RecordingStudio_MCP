@@ -4,7 +4,7 @@ Mount this engine on a Recording Studio host. It exposes a remote MCP HTTP endpo
 
 People Connect an app. The app gets its own Accessible grant. MCP then uses that same grant. The app does not act as the person.
 
-An OAuth tool call that writes through `record!`, `revise`, or `log_event!` also stores `authorized_by_type` and `authorized_by_id` on the event. Those are the class and id of the token's `OauthAuthorization#manager_actor`. The id is the record id, not a string copy. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials token has no `OauthAuthorization`, so MCP does not add those keys. Client-supplied `authorized_by_type` and `authorized_by_id` values are still removed on that client's writes, including a lone type or a lone id. MCP builds the access grant and passes the sign-in `authorized_by` into `AccessGrant`. The stamp reads that value on `record!` writes whose actor is the token's API client. The development lockfile pins API tag `v0.16.0` and Oauth tag `v0.15.1`. Other writes on the same thread are left alone. The stamp clears when the tool call ends. API `create` inserts the recording without an event. API `delete` hard-deletes the recording. RecordingStudio_api v0.16.0 defines `ResourceOperations::Base#delete_metadata` with `with_authorized_by`, and `Destroy` does not call it, so a delete still has no event row.
+An OAuth tool call that writes through `record!`, `revise`, or `log_event!` also stores `authorized_by_type` and `authorized_by_id` on the event. Those are the class and id of the token's `OauthAuthorization#manager_actor`. The id is the record id, not a string copy. The event actor stays the OAuth client. `Current.actor` and the impersonator stay unset. A client-credentials token has no `OauthAuthorization`, so MCP does not add those keys. Client-supplied `authorized_by_type` and `authorized_by_id` values are still removed on that client's writes, including a lone type or a lone id. MCP builds the access grant and passes the sign-in `authorized_by` into `AccessGrant`. The stamp reads that value on `record!` writes whose actor is the token's API client. The development lockfile pins API tag `v0.17.1` and Oauth tag `v0.19.0`. Other writes on the same thread are left alone. The stamp clears when the tool call ends. API `create` inserts the recording without an event. API `delete` hard-deletes the recording. RecordingStudio_api v0.17.1 defines `ResourceOperations::Base#delete_metadata` with `with_authorized_by`, and `Destroy` does not call it, so a delete still has no event row.
 
 ## What you get
 
@@ -222,7 +222,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 4.2`, API `>= 0.16, < 0.17`, Oauth `v0.15.1` or later, Accessible `v0.18.0`, Cache `v0.5.0`, Admin `v2.3.0`, Site Settings `v0.2.0`, Trashable `v0.11.0` (`require: false`), Metrics `>= 0.3.0, < 1.0` (git tag `v0.6.1`), and Logs `>= 0.7.0, < 1.0` (git tag `v0.7.0`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.16.0`, Oauth tag `v0.15.1`, Logs tag `v0.7.0`, and Metrics tag `v0.6.1`. MCP UI is optional and is not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to tag `v0.4.1`. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `>= 6.1.0`, API `>= 0.17, < 0.18`, Oauth `v0.19.0`, Accessible `v0.22.1`, Cache `v0.6.0`, Admin `v2.5.1`, Site Settings `v0.2.0`, Trashable `v0.12.0` (`require: false`), Metrics `>= 0.3.0, < 1.0` (git tag `v0.7.0`), and Logs `>= 0.7.0, < 1.0` (git tag `v0.7.1`). This repo's `Gemfile` and `test/dummy/Gemfile` pin API tag `v0.17.1`, Oauth tag `v0.19.0`, Logs tag `v0.7.1`, and Metrics tag `v0.7.0`. MCP UI is optional and is not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to tag `v0.4.1`. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -314,4 +314,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.23.0
+0.23.1
