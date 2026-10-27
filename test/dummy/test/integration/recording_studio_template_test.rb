@@ -6,7 +6,7 @@ class RecordingStudioTemplateTest < ActiveSupport::TestCase
   test "dummy app loads root switchable config and controller support" do
     assert_equal [ "all_workspaces" ], RecordingStudioRootSwitchable.configuration.scopes.keys
     assert_includes ApplicationController.ancestors, RecordingStudio::RootSwitchable::ControllerSupport
-    assert_includes ApplicationController.ancestors, RecordingStudio::UsesDefaultLayout
+    refute defined?(RecordingStudio::UsesDefaultLayout) && ApplicationController.ancestors.include?(RecordingStudio::UsesDefaultLayout)
   end
 
   test "dummy app validates recordable declarations" do
@@ -79,7 +79,7 @@ class RecordingStudioTemplateTest < ActiveSupport::TestCase
 
     assert RecordingStudio.capability_enabled?(:accessible, for: Workspace)
     refute RecordingStudio.capability_enabled?(:accessible, for: Page)
-    assert_includes ApplicationController.ancestors, RecordingStudio::UsesDefaultLayout
+    assert_equal :application_layout, ApplicationController._layout
   end
 
   test "dummy importmap looks up engine constants from the top-level namespace" do
