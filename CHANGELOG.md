@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-11-02
+
+### Changed
+- Dummy no longer tracks dumped login HTML or an empty makeup-artist keep file.
+- Development and dummy lockfiles use `rack` `3.2.8`.
+
+### Upgrade notes
+- Bump to `0.23.2`. No MCP migration. No new public API.
+
 ## [0.23.1] - 2026-10-27
 
 ### Changed
@@ -593,7 +602,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...HEAD
+[0.23.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.1...v0.23.2
 [0.23.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.21.1...v0.22.0
