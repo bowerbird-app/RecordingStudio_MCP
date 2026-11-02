@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `>= 6.1.0`. API `>= 0.17, < 0.18`
 
 ## 0.23.2
 
-No MCP migration. No new public API. Dummy dropped tracked `install_page.html` and an empty makeup-artist keep file. Lockfiles pin `rack` `>= 3.2.8`.
+No MCP migration. No new public API. Dummy dropped tracked `install_page.html` and an empty makeup-artist keep file. Lockfiles use `rack` `3.2.8`.
 
 ## 0.23.1
 

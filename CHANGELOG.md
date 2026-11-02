@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Dummy no longer tracks dumped login HTML or an empty makeup-artist keep file.
-- Development and dummy lockfiles pin `rack` `>= 3.2.8`.
+- Development and dummy lockfiles use `rack` `3.2.8`.
 
 ### Upgrade notes
 - Bump to `0.23.2`. No MCP migration. No new public API.
