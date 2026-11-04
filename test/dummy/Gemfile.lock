@@ -153,7 +153,7 @@ GIT
 PATH
   remote: ../..
   specs:
-    recording_studio_mcp (0.23.2)
+    recording_studio_mcp (0.23.3)
       rails (~> 8.1.0)
       recording_studio (>= 6.1.0)
       recording_studio_admin (~> 2.0)
@@ -544,9 +544,10 @@ GEM
     unicode-emoji (4.1.0)
     uri (1.1.2)
     useragent (0.16.11)
-    view_component (4.19.0)
+    view_component (4.22.0)
       actionview (>= 7.1.0)
       activesupport (>= 7.1.0)
+      prism (>= 1.0)
     warden (1.2.9)
       rack (>= 2.0.9)
     web-console (4.2.1)
@@ -730,7 +731,7 @@ CHECKSUMS
   recording_studio_attachable (0.22.0)
   recording_studio_cache (0.6.0)
   recording_studio_logs (0.7.1)
-  recording_studio_mcp (0.23.2)
+  recording_studio_mcp (0.23.3)
   recording_studio_metrics (0.7.0)
   recording_studio_oauth (0.19.1)
   recording_studio_root_switchable (0.11.0)
@@ -778,7 +779,7 @@ CHECKSUMS
   unicode-emoji (4.1.0) sha256=4997d2d5df1ed4252f4830a9b6e86f932e2013fbff2182a9ce9ccabda4f325a5
   uri (1.1.2) sha256=89292e98eabbef6248b0a0ed5e7e398e152f83f17560023a6d94a7f492b169fb
   useragent (0.16.11) sha256=700e6413ad4bb954bb63547fa098dddf7b0ebe75b40cc6f93b8d54255b173844
-  view_component (4.19.0) sha256=e75d3d5cf1f56c47118752436173e0d417d31ce79412919bc4232060257fe615
+  view_component (4.22.0) sha256=723a59c3dadf0bd325fdf0aa07a21fd61003cfe49b31a4e80cca69ac5e5a85e2
   warden (1.2.9) sha256=46684f885d35a69dbb883deabf85a222c8e427a957804719e143005df7a1efd0
   web-console (4.2.1) sha256=e7bcf37a10ea2b4ec4281649d1cee461b32232d0a447e82c786e6841fd22fe20
   websocket-driver (0.8.2) sha256=97c556b019bf3410b4961002ac501621e9322d3f8a7bc02161a09301cc4c4146

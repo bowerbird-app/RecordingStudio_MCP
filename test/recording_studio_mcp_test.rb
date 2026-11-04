@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_23_2
-    assert_equal "0.23.2", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_23_3
+    assert_equal "0.23.3", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -107,7 +107,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "## Version\n\n0.23.2\n"
+    assert_includes readme, "## Version\n\n0.23.3\n"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."
@@ -124,6 +124,17 @@ class RecordingStudioMcpTest < Minitest::Test
     refute_includes readme, "Internal template"
     refute_includes readme, "GemTemplate"
     refute_includes readme, "v3 declarations"
+  end
+
+  def test_lockfiles_resolve_view_component_past_ghsa_8qw7_6phv_7q6p
+    patched = Gem::Version.new("4.14.0")
+    [File.expand_path("../Gemfile.lock", __dir__), File.expand_path("dummy/Gemfile.lock", __dir__)].each do |path|
+      lock = File.read(path)
+      match = lock.match(/^    view_component \(([\d.]+)\)$/)
+
+      assert match, "#{path} must pin view_component"
+      assert_operator Gem::Version.new(match[1]), :>=, patched, "#{path} pins view_component #{match[1]}"
+    end
   end
 
   def test_engine_does_not_ship_product_views

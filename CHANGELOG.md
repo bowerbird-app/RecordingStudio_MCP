@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.3] - 2026-11-04
+
+### Security
+- Development and dummy lockfiles use `view_component` `4.22.0` (GHSA-8qw7-6phv-7q6p; patched in `4.14.0` and later). Flatpack stays on tag `v0.1.320`, which already allows `view_component` `>= 4.14, < 5`.
+
+### Upgrade notes
+- Bump to `0.23.3`. No MCP migration. No new public API. Hosts that lock `view_component` at `4.13.0` or earlier should resolve to `4.14.0` or later.
+
 ## [0.23.2] - 2026-11-02
 
 ### Changed
@@ -602,7 +610,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.3...HEAD
+[0.23.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...v0.23.3
 [0.23.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.1...v0.23.2
 [0.23.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...v0.23.0
