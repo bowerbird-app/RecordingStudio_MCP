@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `>= 6.1.0`. API `>= 0.17, < 0.18`
 
 ## 0.23.3
 
-No MCP migration. No new public API. Development and dummy lockfiles use `view_component` `4.22.0`. Flatpack stays on tag `v0.1.320`.
+No MCP migration. No new public API. Development and dummy lockfiles use `view_component` `4.22.0`, `nokogiri` `1.19.7`, `loofah` `2.25.3`, and `rails-html-sanitizer` `1.7.2`. Flatpack stays on tag `v0.1.320`.
 
 ## 0.23.2
 

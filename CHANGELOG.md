@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.23.3] - 2026-11-04
 
 ### Security
-- Development and dummy lockfiles use `view_component` `4.22.0` (GHSA-8qw7-6phv-7q6p; patched in `4.14.0` and later). Flatpack stays on tag `v0.1.320`, which already allows `view_component` `>= 4.14, < 5`.
+- Development and dummy lockfiles use `view_component` `4.22.0` (GHSA-8qw7-6phv-7q6p; patched in `4.14.0` and later). Dummy bundler-audit also required `nokogiri` `1.19.7`, `loofah` `2.25.3`, and `rails-html-sanitizer` `1.7.2`. Flatpack stays on tag `v0.1.320`, which already allows `view_component` `>= 4.14, < 5`.
 
 ### Upgrade notes
 - Bump to `0.23.3`. No MCP migration. No new public API. Hosts that lock `view_component` at `4.13.0` or earlier should resolve to `4.14.0` or later.
