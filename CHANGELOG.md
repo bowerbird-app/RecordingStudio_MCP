@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.24.0] - 2026-11-05
 
 ### Changed
-- Development and dummy Gemfiles pin Recording Studio `v6.3.0`, Flatpack `v0.1.341`, Accessible `v0.24.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.2`, Metrics `v0.7.2`, Oauth `v0.21.0`, Cache `v0.6.2`, Logs `v0.7.3`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.5` (dummy). Runtime still requires Recording Studio `>= 6.1.0` and API `>= 0.17, < 0.18`. Runtime Admin is `>= 2.0, < 2.6`. API `0.18.x` stays out: Oauth `v0.21.0` still caps API below `0.18`.
+- Development and dummy Gemfiles pin Recording Studio `v6.3.0`, Flatpack `v0.1.341`, Accessible `v0.24.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.2`, Metrics `v0.7.2`, Oauth `v0.21.0`, Cache `v0.6.2`, Logs `v0.7.3`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.5` (dummy). Runtime still requires Recording Studio `>= 6.1.0` and API `>= 0.17, < 0.18`. Runtime Admin is `>= 2.0`. API `0.18.x` stays out: Oauth `v0.21.0` still caps API below `0.18`.
 - Development and dummy lockfiles use Rails `8.1.4.1`. Root lock also uses `bcrypt >= 3.1.22`, `devise >= 5.0.4`, and Puma `8.0.2`.
 - Unexpected JSON-RPC failures return a generic internal error. The exception stays in the server log.
 - Removed leftover `MIGRATION_NOTES.md` and the dummy `gem_template` credentials assertion.

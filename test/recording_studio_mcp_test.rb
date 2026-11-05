@@ -16,7 +16,8 @@ class RecordingStudioMcpTest < Minitest::Test
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio", ">= 6.1.0"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.0", "< 2.6"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.0"'
+    refute_includes gemspec, '"recording_studio_admin", ">= 2.0", "< 2.6"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.17", "< 0.18"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.7.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 1.0"'
