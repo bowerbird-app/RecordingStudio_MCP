@@ -9,6 +9,7 @@ module RecordingStudioMcp
     METHOD_NOT_FOUND = -32_601
     INVALID_PARAMS = -32_602
     INTERNAL_ERROR = -32_603
+    INTERNAL_ERROR_MESSAGE = "Internal error"
     RESOURCE_NOT_FOUND = Resources::RESOURCE_NOT_FOUND
     HEADER_MISMATCH = -32_020
     UNSUPPORTED_PROTOCOL_VERSION = -32_022
@@ -64,12 +65,19 @@ module RecordingStudioMcp
 
       dispatch(message)
     rescue StandardError => e
-      rpc_error(message.is_a?(Hash) ? message["id"] : nil, INTERNAL_ERROR, e.message)
+      log_internal_error(e)
+      rpc_error(message.is_a?(Hash) ? message["id"] : nil, INTERNAL_ERROR, INTERNAL_ERROR_MESSAGE)
     end
 
     private
 
     attr_reader :access_grant, :idempotency_key, :request_context
+
+    def log_internal_error(error)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.error("[RecordingStudioMcp::Protocol] #{error.class}: #{error.message}")
+    end
   end
 end
 

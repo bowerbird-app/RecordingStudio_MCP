@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-05
+
+### Changed
+- Development and dummy Gemfiles pin Recording Studio `v6.3.0`, Flatpack `v0.1.341`, Accessible `v0.24.1`, Admin `v2.5.1`, API `v0.17.1`, Trashable `v0.12.2`, Metrics `v0.7.2`, Oauth `v0.21.0`, Cache `v0.6.2`, Logs `v0.7.3`, Site Settings `v0.5.2`, Attachable `v0.22.0`, and Root Switchable `v0.11.5` (dummy). Runtime still requires Recording Studio `>= 6.1.0` and API `>= 0.17, < 0.18`. Runtime Admin is `>= 2.0`. API `0.18.x` stays out: Oauth `v0.21.0` still caps API below `0.18`.
+- Development and dummy lockfiles use Rails `8.1.4.1`. Root lock also uses `bcrypt >= 3.1.22`, `devise >= 5.0.4`, and Puma `8.0.2`.
+- Unexpected JSON-RPC failures return a generic internal error. The exception stays in the server log.
+- Removed leftover `MIGRATION_NOTES.md` and the dummy `gem_template` credentials assertion.
+
+### Upgrade notes
+- Bump to `0.24.0`. No MCP migration.
+- Pin Oauth `v0.21.0` and follow its Accessible and Admin notes. Keep API on `>= 0.17, < 0.18` (git tag `v0.17.1`) until Oauth allows `0.18.x`.
+- Pin Recording Studio `v6.3.0` in development (runtime floor stays `>= 6.1.0`), Accessible `v0.24.1`, Cache `v0.6.2`, Admin `v2.5.1`, Trashable `v0.12.2`, Metrics `v0.7.2`, Logs `v0.7.3`, Site Settings `v0.5.2`, Attachable `v0.22.0`, Flatpack `v0.1.341`, and dummy Root Switchable `v0.11.5`.
+- Hosts on Rails `8.1.4` should move to `8.1.4.1`.
+
 ## [0.23.2] - 2026-11-02
 
 ### Changed
@@ -602,7 +616,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...v0.24.0
 [0.23.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.1...v0.23.2
 [0.23.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...v0.23.0
