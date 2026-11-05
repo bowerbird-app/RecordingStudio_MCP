@@ -15,7 +15,7 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     @pkce = pkce_pair
     @oauth_client, = create_oauth_client(name: "MCP Watch App")
     Current.actor = @user
-    @page_recording = @root_recording.record(Page) { |page| page.title = "Watch me" }
+    @page_recording = @root_recording.record(Page, actor: @user) { |page| page.title = "Watch me" }
   end
 
   teardown do
@@ -70,7 +70,7 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     finisher = Thread.new do
       sleep 0.2
       Current.actor = @user
-      @root_recording.revise(@page_recording) { |page| page.title = "Changed for watchers" }
+      @root_recording.revise(@page_recording, actor: @user) { |page| page.title = "Changed for watchers" }
       sleep 0.4
       RecordingStudioMcp::Connections.fetch(session)&.finish!
     end
@@ -99,7 +99,7 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     finisher = Thread.new do
       sleep 0.2
       Current.actor = @user
-      @root_recording.revise(@page_recording) { |page| page.title = "Modern change" }
+      @root_recording.revise(@page_recording, actor: @user) { |page| page.title = "Modern change" }
       sleep 0.4
       RecordingStudioMcp::Connections.each(&:finish!)
     end

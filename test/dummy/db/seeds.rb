@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-find_or_record_child = lambda do |recordable, root_recording, parent_recording|
+find_or_record_child = lambda do |recordable, root_recording, parent_recording, actor|
   RecordingStudio::Recording.find_by(
     root_recording: root_recording,
     parent_recording: parent_recording,
@@ -10,7 +10,8 @@ find_or_record_child = lambda do |recordable, root_recording, parent_recording|
     action: "created",
     recordable: recordable,
     root_recording: root_recording,
-    parent_recording: parent_recording
+    parent_recording: parent_recording,
+    actor: actor
   ).recording
 end
 
@@ -101,8 +102,8 @@ begin
   studio_root = RecordingStudio.root_recording_for(studio)
   docs_root = RecordingStudio.root_recording_for(docs)
   admin_recording = RecordingStudio.root_recording_for(admin_root)
-  folder_recording = find_or_record_child.call(folder, studio_root, studio_root)
-  find_or_record_child.call(page, studio_root, folder_recording)
+  folder_recording = find_or_record_child.call(folder, studio_root, studio_root, user)
+  find_or_record_child.call(page, studio_root, folder_recording, user)
 
   studio_access = grant_or_find_access.call(studio_root, user, :admin)
   docs_access = grant_or_find_access.call(docs_root, user, :admin)
