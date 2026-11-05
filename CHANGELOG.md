@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.3] - 2026-11-05
+
+### Changed
+- Dummy `config.authorize_write` allows a write when an actor is present, matching
+  Recording Studio 6.5.0 fail-closed writes. Dummy seeds and write tests pass an actor.
+
+### Upgrade notes
+- Bump to `0.23.3`. No MCP migration. No new public API. This gem's library still does
+  not write through core. Hosts on Recording Studio 6.5.0 need `config.authorize_write`
+  and an actor (argument or `config.actor`). Dummy already sets both.
+
 ## [0.23.2] - 2026-11-02
 
 ### Changed
@@ -602,7 +613,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.3...HEAD
+[0.23.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...v0.23.3
 [0.23.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.1...v0.23.2
 [0.23.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.22.0...v0.23.0

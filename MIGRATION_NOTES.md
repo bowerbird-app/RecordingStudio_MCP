@@ -2,6 +2,10 @@
 
 Ruby 3.3 or newer. Rails 8.1. Recording Studio `>= 6.1.0`. API `>= 0.17, < 0.18`. Metrics `>= 0.3.0, < 1.0`. Oauth `v0.19.1`. Logs `>= 0.7.0, < 1.0` (GitHub tag `v0.7.1`). Development pins API tag `v0.17.1`, Oauth tag `v0.19.1`, Logs tag `v0.7.1`, and Metrics tag `v0.7.0`.
 
+## 0.23.3
+
+No MCP migration. No new public API. Dummy `config.authorize_write` allows writes when an actor is present so Recording Studio 6.5.0 fail-closed writes succeed. Dummy seeds and write tests pass an actor.
+
 ## 0.23.2
 
 No MCP migration. No new public API. Dummy dropped tracked `install_page.html` and an empty makeup-artist keep file. Lockfiles use `rack` `3.2.8`.

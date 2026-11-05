@@ -34,7 +34,8 @@ class RecordingStudioDeclarationsTest < ActiveSupport::TestCase
       action: "created",
       recordable: folder,
       root_recording: root_recording,
-      parent_recording: root_recording
+      parent_recording: root_recording,
+      actor: write_actor
     )
 
     assert_equal folder, event.recording.recordable
@@ -97,8 +98,16 @@ class RecordingStudioDeclarationsTest < ActiveSupport::TestCase
       action: "created",
       recordable: recordable,
       root_recording: root_recording,
-      parent_recording: parent_recording
+      parent_recording: parent_recording,
+      actor: write_actor
     ).recording
+  end
+
+  def write_actor
+    @write_actor ||= User.find_or_create_by!(email: "declarations-writer@example.com") do |user|
+      user.password = "Password123!"
+      user.password_confirmation = "Password123!"
+    end
   end
 
   def unique_name(prefix)

@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_23_2
-    assert_equal "0.23.2", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_23_3
+    assert_equal "0.23.3", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -107,7 +107,7 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "## Version\n\n0.23.2\n"
+    assert_includes readme, "## Version\n\n0.23.3\n"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."
