@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Dummy `config.authorize_write` allows a write when an actor is present, matching
   Recording Studio 6.5.0 fail-closed writes. Dummy seeds and write tests pass an actor.
+- Development and dummy lockfiles use Rails `8.1.4.1`.
 
 ### Upgrade notes
 - Bump to `0.23.3`. No MCP migration. No new public API. This gem's library still does

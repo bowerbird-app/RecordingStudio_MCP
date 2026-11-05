@@ -4,7 +4,7 @@ Ruby 3.3 or newer. Rails 8.1. Recording Studio `>= 6.1.0`. API `>= 0.17, < 0.18`
 
 ## 0.23.3
 
-No MCP migration. No new public API. Dummy `config.authorize_write` allows writes when an actor is present so Recording Studio 6.5.0 fail-closed writes succeed. Dummy seeds and write tests pass an actor.
+No MCP migration. No new public API. Dummy `config.authorize_write` allows writes when an actor is present so Recording Studio 6.5.0 fail-closed writes succeed. Dummy seeds and write tests pass an actor. Lockfiles use Rails `8.1.4.1`.
 
 ## 0.23.2
 
