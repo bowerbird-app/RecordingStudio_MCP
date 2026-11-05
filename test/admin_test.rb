@@ -191,7 +191,9 @@ class AdminTest < Minitest::Test
 
     assert_equal "recording_studio_admin", dependency.name
     assert dependency.requirement.satisfied_by?(Gem::Version.new("2.0.2"))
+    assert dependency.requirement.satisfied_by?(Gem::Version.new("2.5.1"))
     refute dependency.requirement.satisfied_by?(Gem::Version.new("1.9.0"))
+    refute dependency.requirement.satisfied_by?(Gem::Version.new("2.9.0"))
     refute dependency.requirement.satisfied_by?(Gem::Version.new("3.0.0"))
 
     admin_source = File.read(File.expand_path("../lib/recording_studio_mcp/admin.rb", __dir__))

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "logger"
+require "json"
 
 class ProtocolTest < Minitest::Test
   FakeGrant = Struct.new(:api_client)
@@ -146,6 +148,27 @@ class ProtocolTest < Minitest::Test
     result = RecordingStudioMcp::Protocol.handle("{", access_grant: @grant)
 
     assert_equal(-32_700, result.body.dig(:error, :code))
+  end
+
+  def test_unexpected_error_is_generic_internal_error
+    leaking = Class.new(RecordingStudioMcp::Protocol) do
+      def dispatch(_message)
+        raise StandardError, "secret token xyz"
+      end
+    end
+    log = StringIO.new
+    logger = Logger.new(log)
+
+    result = Rails.stub(:logger, logger) do
+      leaking.new(access_grant: @grant).handle(
+        { "jsonrpc" => "2.0", "id" => 9, "method" => "ping" }
+      )
+    end
+
+    assert_equal(-32_603, result.body.dig(:error, :code))
+    assert_equal "Internal error", result.body.dig(:error, :message)
+    refute_includes result.body.to_json, "secret token xyz"
+    assert_includes log.string, "secret token xyz"
   end
 
   def test_initialized_notification_has_no_body
