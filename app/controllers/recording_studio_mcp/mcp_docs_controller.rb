@@ -53,32 +53,14 @@ module RecordingStudioMcp
     def load_documentation_page
       return if performed?
 
-      oauth_client = documentation_oauth_client
-      if oauth_client && oauth_client_api_mismatch?(oauth_client)
-        head :not_found
-        return
-      end
-
-      @page = Documentation.page(api: @api_key, oauth_client: oauth_client)
+      @page = Documentation.page(api: @api_key)
     rescue ArgumentError, KeyError, RecordingStudioApi::ConfigurationError
       head :not_found
     end
 
-    def documentation_oauth_client
-      id = params[:oauth_client_id]
-      return if id.blank?
-      return unless defined?(RecordingStudioOauth::OauthClient)
-
-      RecordingStudioOauth::OauthClient.find_by(id: id)
-    end
-
-    def oauth_client_api_mismatch?(oauth_client)
-      client_api = Documentation.oauth_client_api_key(oauth_client)
-      client_api.present? && client_api != @api_key
-    end
-
     def documentation_actor
-      return send(:current_user) if respond_to?(:current_user, true) && send(:current_user).present?
+      user = current_user if respond_to?(:current_user)
+      return user if user.present?
       return Current.actor if defined?(Current) && Current.respond_to?(:actor)
 
       nil
@@ -86,7 +68,9 @@ module RecordingStudioMcp
 
     def documentation_layout
       layout_name = RecordingStudioMcp.configuration.documentation_layout_name
-      layout_name.present? ? layout_name : "recording_studio/default_layout"
+      return layout_name if layout_name.present?
+
+      RecordingStudio.configuration.resolved_layout(controller: self)
     end
   end
 end

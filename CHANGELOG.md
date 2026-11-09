@@ -14,7 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page that renders the host catalog for a named API (instructions, tools and
   input schemas, the type enum, `describe` output per type, and `recording://{id}`).
   Access is `documentation_access` (`:public`, `:authenticated`, or a callable
-  `|controller:, actor:, api:|`). The gem does not add Accessible, Pundit, or a
+  `|controller:, actor:, api:|`). Every mounted MCP docs route shares that one
+  gate and `documentation_enabled`. Once the host allows the request, the page
+  shows the full named API tool list, the same as Scalar docs. The gem does not
+  filter to `tools/list` per grant and does not add Accessible, Pundit, or a
   second admin. Dummy mounts public and operations docs under
   `/admin/public-api/mcp-docs` and `/admin/operations-api/mcp-docs`.
 

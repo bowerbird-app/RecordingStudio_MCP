@@ -5,8 +5,8 @@ module RecordingStudioMcp
     def mcp_docs_json(value)
       return "" if value.nil?
 
-      JSON.pretty_generate(JSON.parse(value.to_json))
-    rescue JSON::ParserError, TypeError
+      JSON.pretty_generate(value.as_json)
+    rescue JSON::GeneratorError, TypeError
       value.to_s
     end
   end

@@ -227,7 +227,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
 5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token. For staff/ops MCP, register an operations OauthClient (`api_key: "operations"`) and Connect at `/recording_studio_oauth/apis/operations/oauth/authorize`. Point the client at `/recording_studio_mcp/apis/operations`.
-6. Mount live MCP docs for a named API. The gem owns the controller and views. The host owns the path and the gate.
+6. Mount live MCP docs for a named API. The gem owns the controller and views. The host owns the path and the gate. Every MCP docs route shares one `documentation_enabled` flag and one `documentation_access` gate.
 
 ```ruby
 recording_studio_mcp_docs_for :operations,
@@ -250,7 +250,7 @@ RecordingStudioMcp.configure do |config|
 end
 ```
 
-`documentation_access` is `:public`, `:authenticated`, or a callable. Missing actor is `401`. A signed-in actor the callable rejects is `403`. Disabled docs are `404`. The gem does not call Accessible. Pass `oauth_client_id` to read that client's named API when it matches the mounted `api_key`.
+`documentation_access` is `:public`, `:authenticated`, or a callable. Missing actor is `401`. A signed-in actor the callable rejects is `403`. Disabled docs are `404`. The gem does not call Accessible. Once the host gate allows the request, the page shows that named API's full tool list, the same way Scalar shows the full OpenAPI document. It is not filtered to `tools/list` for a grant.
 
 Or generate the same routes:
 

@@ -33,7 +33,7 @@ class DocsGeneratorTest < Minitest::Test
       generator.invoke_all
 
       routes = File.read(File.join(destination_root, "config/routes.rb"))
-      initializer_path = File.join(destination_root, "config/initializers/recording_studio_mcp_docs_public_api.rb")
+      initializer_path = File.join(destination_root, "config/initializers/recording_studio_mcp_docs.rb")
       initializer = File.read(initializer_path)
 
       assert_includes routes, "recording_studio_mcp_docs_for :public"
@@ -58,6 +58,36 @@ class DocsGeneratorTest < Minitest::Test
       routes = File.read(File.join(destination_root, "config/routes.rb"))
       assert_includes routes, "recording_studio_mcp_docs_for :operations"
       assert_includes routes, "as: :operations_api_mcp_docs"
+    end
+  end
+
+  def test_second_run_skips_initializer_and_adds_route
+    with_temp_app do |destination_root|
+      first = build_generator(
+        destination_root,
+        ["public_api"],
+        mount_path: "/admin/public-api/mcp-docs",
+        access: "authenticated"
+      )
+      first.invoke_all
+      initializer_path = File.join(destination_root, "config/initializers/recording_studio_mcp_docs.rb")
+      original = File.read(initializer_path)
+
+      second = build_generator(
+        destination_root,
+        ["operations_api"],
+        mount_path: "/admin/operations-api/mcp-docs",
+        api_surface: "operations",
+        access: "public"
+      )
+      stdout = capture_io { second.invoke_all }.join
+      routes = File.read(File.join(destination_root, "config/routes.rb"))
+
+      assert_equal original, File.read(initializer_path)
+      refute_includes File.read(initializer_path), "documentation_access = :public"
+      assert_includes stdout, "MCP docs configuration already exists"
+      assert_includes routes, "recording_studio_mcp_docs_for :public"
+      assert_includes routes, "recording_studio_mcp_docs_for :operations"
     end
   end
 end

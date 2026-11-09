@@ -7,12 +7,21 @@ module RecordingStudioMcp
     LEGACY_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18 2025-11-25].freeze
     MODERN_PROTOCOL_VERSION = "2026-07-28"
     DEFAULT_MCP_MOUNT_PATH = "/recording_studio_mcp"
+    DOC_FIELDS = {
+      documentation_enabled: :enabled,
+      documentation_access: :access,
+      documentation_layout_name: :layout_name
+    }.freeze
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :skill_policy, :events_enabled,
-                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed,
-                  :documentation_enabled, :documentation_access, :documentation_layout_name
+                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
     attr_reader :catalog_metric_resources, :skill_catalog, :event_catalog
+
+    DOC_FIELDS.each do |public_name, field|
+      define_method(public_name) { documentation.public_send(field) }
+      define_method(:"#{public_name}=") { |value| documentation.public_send(:"#{field}=", value) }
+    end
 
     def initialize
       @mcp_mount_path = DEFAULT_MCP_MOUNT_PATH
@@ -29,9 +38,10 @@ module RecordingStudioMcp
       @event_subscriptions_per_principal = 50
       @event_callback_host_allowed = nil
       @catalog_metric_resources = nil
-      @documentation_enabled = false
-      @documentation_access = nil
-      @documentation_layout_name = nil
+    end
+
+    def documentation
+      @documentation ||= DocumentationConfiguration.new
     end
 
     def catalog_metric_resources=(resources)
@@ -39,31 +49,11 @@ module RecordingStudioMcp
     end
 
     def to_h
-      {
-        oauth_protected_resource_path: oauth_protected_resource_path,
-        oauth_engine_mount_path: oauth_engine_mount_path,
-        mcp_mount_path: mcp_mount_path,
-        protocol_version: protocol_version,
-        allowed_origins: allowed_origins,
-        instructions_suffix: instructions_suffix,
-        skill_policy: skill_policy,
-        events_enabled: events_enabled,
-        event_subscription_ttl: event_subscription_ttl,
-        event_subscriptions_per_principal: event_subscriptions_per_principal,
-        event_callback_host_allowed: event_callback_host_allowed,
-        catalog_metric_resources: catalog_metric_resources,
-        documentation_enabled: documentation_enabled,
-        documentation_access: documentation_access.respond_to?(:call) ? :callable : documentation_access,
-        documentation_layout_name: documentation_layout_name
-      }
+      core_settings.merge(documentation.to_h)
     end
 
     def validate!
-      return unless documentation_enabled
-      return if %i[public authenticated].include?(documentation_access) || documentation_access.respond_to?(:call)
-
-      raise ArgumentError,
-            "documentation_access must be public, authenticated, or callable when documentation is enabled"
+      documentation.validate!
     end
 
     def update_skill_catalog
@@ -89,6 +79,25 @@ module RecordingStudioMcp
         setter = "#{key}="
         public_send(setter, value) if respond_to?(setter)
       end
+    end
+
+    private
+
+    def core_settings
+      {
+        oauth_protected_resource_path: oauth_protected_resource_path,
+        oauth_engine_mount_path: oauth_engine_mount_path,
+        mcp_mount_path: mcp_mount_path,
+        protocol_version: protocol_version,
+        allowed_origins: allowed_origins,
+        instructions_suffix: instructions_suffix,
+        skill_policy: skill_policy,
+        events_enabled: events_enabled,
+        event_subscription_ttl: event_subscription_ttl,
+        event_subscriptions_per_principal: event_subscriptions_per_principal,
+        event_callback_host_allowed: event_callback_host_allowed,
+        catalog_metric_resources: catalog_metric_resources
+      }
     end
   end
 end

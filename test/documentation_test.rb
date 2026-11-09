@@ -31,7 +31,7 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_page_uses_oauth_client_named_api
+  def test_operations_page_uses_the_mounted_named_api
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :operations
       RecordingStudioApi.register_endpoint(
@@ -42,23 +42,26 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Ops ping" },
         handler: ->(_context) { { ok: true } }
       )
-      client = Struct.new(:api_key).new("operations")
 
-      page = RecordingStudioMcp::Documentation.page(api: :public, oauth_client: client)
+      page = RecordingStudioMcp::Documentation.page(api: :operations)
 
       assert_equal "operations", page.api_key
       names = page.tools.map { |tool| tool[:name] || tool["name"] }
       assert_includes names, "ops_ping"
       refute_includes page.types.map { |entry| entry["type"] }, "Folder"
+      refute_includes page.instructions, "Call describe before create"
     end
   end
 
-  def test_page_is_nil_safe_when_describe_raises
+  def test_page_is_nil_safe_when_describe_raises_a_documented_api_error
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       register_tree_type("Folder")
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
-      catalog.stub(:describe, ->(*) { raise "gone" }) do
+      boom = lambda do |*|
+        raise RecordingStudioApi::NotFoundError, "Unknown type Folder"
+      end
+      catalog.stub(:describe, boom) do
         RecordingStudioMcp::Catalog.stub(:new, catalog) do
           page = RecordingStudioMcp::Documentation.page(api: :public)
           folder = page.types.find { |entry| entry["type"] == "Folder" }
@@ -67,17 +70,6 @@ class DocumentationTest < Minitest::Test
           assert_equal [], folder["writable_fields"]
         end
       end
-    end
-  end
-
-  def test_page_is_nil_safe_for_blank_oauth_client
-    with_isolated_api_configuration do
-      RecordingStudioApi.configuration.api :public
-      page = RecordingStudioMcp::Documentation.page(api: :public, oauth_client: nil)
-
-      assert_equal "public", page.api_key
-      assert_equal [], page.types
-      assert_equal "recording://{id}", page.resource_template[:uriTemplate]
     end
   end
 

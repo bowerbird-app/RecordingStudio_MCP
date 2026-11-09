@@ -51,6 +51,27 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "ops_ping"
     refute_includes response.body, ">Workspace</h3>"
     refute_includes response.body, ">Folder</h3>"
+    refute_includes response.body, "Call describe before create"
+  end
+
+  test "host gate callable allowing access returns 200" do
+    sign_in_user
+    RecordingStudioMcp.configuration.documentation_access = lambda do |controller:, actor:, api:|
+      controller.present? && actor.present? && api.present?
+    end
+
+    get public_api_mcp_docs_path
+
+    assert_response :success
+  end
+
+  test "public access with no actor returns 200" do
+    RecordingStudioMcp.configuration.documentation_access = :public
+
+    get public_api_mcp_docs_path
+
+    assert_response :success
+    assert_includes response.body, "Folder"
   end
 
   test "host gate denies signed-in visitors with 403" do
@@ -88,15 +109,6 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     get public_api_mcp_docs_path
 
     assert_response :not_found
-  end
-
-  test "unknown oauth client id stays on the named API" do
-    sign_in_user
-
-    get public_api_mcp_docs_path, params: { oauth_client_id: "missing-client" }
-
-    assert_response :success
-    assert_includes response.body, "Folder"
   end
 
   private

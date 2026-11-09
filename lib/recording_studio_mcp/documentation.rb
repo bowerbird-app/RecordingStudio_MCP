@@ -14,20 +14,19 @@ module RecordingStudioMcp
 
     module_function
 
-    def page(api:, access_grant: nil, oauth_client: nil)
-      api_key = resolve_api_key(api: api, access_grant: access_grant, oauth_client: oauth_client)
+    def page(api:)
+      api_key = NamedApi.normalize(api)
       raise ArgumentError, "unknown API #{api_key}" unless NamedApi.known?(api_key)
 
-      catalog = catalog_for(api_key: api_key, access_grant: access_grant)
-      build_page(catalog, access_grant)
+      build_page(Catalog.new(api: api_key))
     end
 
-    def build_page(catalog, access_grant)
+    def build_page(catalog)
       Page.new(
         api_key: catalog.api,
         title: title_for(catalog.api),
-        instructions: Instructions.text(access_grant: access_grant).to_s,
-        tools: Array(Tools.definitions(access_grant: access_grant, api: catalog.api)),
+        instructions: Instructions.text(access_grant: nil, api: catalog.api).to_s,
+        tools: Array(Tools.definitions(api: catalog.api)),
         type_schema: catalog.type_schema || empty_type_schema,
         types: describe_types(catalog),
         resource_template: resource_template
@@ -42,31 +41,6 @@ module RecordingStudioMcp
       }
     end
 
-    def resolve_api_key(api:, access_grant:, oauth_client:)
-      from_client = oauth_client_api_key(oauth_client)
-      return from_client if from_client.present?
-      return Catalog.api_from(access_grant) if access_grant
-
-      NamedApi.normalize(api)
-    end
-
-    def catalog_for(api_key:, access_grant:)
-      return Catalog.for(access_grant) if access_grant
-
-      Catalog.new(api: api_key)
-    end
-
-    def oauth_client_api_key(oauth_client)
-      return if oauth_client.nil?
-
-      key = if oauth_client.respond_to?(:api_key)
-              oauth_client.api_key
-            elsif oauth_client.respond_to?(:api)
-              oauth_client.api
-            end
-      NamedApi.normalize(key) if key.present?
-    end
-
     def title_for(api_key)
       key = NamedApi.normalize(api_key)
       key == NamedApi::DEFAULT ? "Public MCP" : "#{key.humanize} MCP"
@@ -78,7 +52,11 @@ module RecordingStudioMcp
 
     def describe_type(catalog, type_name)
       catalog.describe(type_name)
-    rescue StandardError
+    rescue RecordingStudioApi::InvalidActionInputError, RecordingStudioApi::NotFoundError
+      empty_type_describe(type_name)
+    end
+
+    def empty_type_describe(type_name)
       {
         "type" => type_name.to_s,
         "operations" => [],
@@ -95,7 +73,7 @@ module RecordingStudioMcp
       }
     end
 
-    private_class_method :resolve_api_key, :catalog_for, :build_page, :title_for, :describe_types,
-                         :describe_type, :empty_type_schema, :resource_template
+    private_class_method :build_page, :title_for, :describe_types, :describe_type,
+                         :empty_type_describe, :empty_type_schema, :resource_template
   end
 end
