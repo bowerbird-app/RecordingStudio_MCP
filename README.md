@@ -306,7 +306,7 @@ curl -N --no-buffer \
 
 ## MCP reference docs
 
-This gem ships a generated MCP reference under `docs/mcp`. It covers the **built-in tools only** (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) plus the `recording://{id}` template. Host apps register extra tools at runtime, so those do not appear in the gem snapshot. JSON HTTP APIs stay on Scalar.
+This repository has a generated MCP reference under `docs/mcp` (the gemspec does not ship `docs/`). It covers the **built-in tools only** (`list`, `show`, `create`, `update`, `capability_action`, `describe`) plus the `recording://{id}` template. `delete` is also a built-in tool; it appears on `tools/list` when a host type allows destroy. The dummy snapshot does not advertise it. Host apps register extra tools at runtime, so those do not appear in the snapshot. JSON HTTP APIs stay on Scalar.
 
 Refresh the snapshot and static site with `bin/docs-mcp` (dummy MCP + an edit-role Seed MCP App token). Sourcey (AGPL-3.0) and mcp-parser (MIT) are docs-only; they are not gem runtime dependencies. The built HTML is gitignored.
 

@@ -10,6 +10,17 @@ SNAPSHOT="${DOCS_DIR}/server.snapshot.json"
 MCP_URL="${MCP_URL:-http://127.0.0.1:3000/recording_studio_mcp}"
 TREE_TOOLS="list show create update delete capability_action describe"
 STARTED_SERVER=0
+SERVER_PID=""
+TOKEN_FILE=""
+
+cleanup() {
+  rm -f "${TOKEN_FILE}"
+  if [[ "${STARTED_SERVER}" -eq 1 && -n "${SERVER_PID}" ]]; then
+    kill "${SERVER_PID}" 2>/dev/null || true
+    wait "${SERVER_PID}" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
 
 dummy_bundle() {
   (
@@ -38,6 +49,7 @@ ensure_server() {
   dummy_bundle rails db:prepare
   dummy_bundle rails db:seed
   dummy_bundle bin/rails server -b 127.0.0.1 -p 3000 >/tmp/recording-studio-mcp-docs-server.log 2>&1 &
+  SERVER_PID=$!
   STARTED_SERVER=1
   wait_for_mcp
 }
@@ -81,14 +93,15 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 }
 
+(
+  cd "${DOCS_DIR}"
+  npm ci
+)
+
 ensure_server
 
 TOKEN_FILE="$(mktemp)"
 chmod 600 "${TOKEN_FILE}"
-cleanup() {
-  rm -f "${TOKEN_FILE}"
-}
-trap cleanup EXIT
 
 dummy_bundle rails runner "${DOCS_DIR}/mint_snapshot_token.rb" > "${TOKEN_FILE}"
 TOKEN="$(cat "${TOKEN_FILE}")"
@@ -104,7 +117,7 @@ fi
 
 unset TOKEN
 rm -f "${TOKEN_FILE}"
-trap - EXIT
+TOKEN_FILE=""
 
 scrub_snapshot
 
