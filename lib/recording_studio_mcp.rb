@@ -30,6 +30,7 @@ require "recording_studio_mcp/fanout"
 require "recording_studio_mcp/notifier"
 require "recording_studio_mcp/change_observer"
 require "recording_studio_mcp/listen_stream"
+require "recording_studio_mcp/documentation_configuration"
 require "recording_studio_mcp/configuration"
 require "recording_studio_mcp/named_api"
 require "recording_studio_mcp/protected_resource_metadata"
@@ -64,7 +65,9 @@ require "recording_studio_mcp/failing_subscriptions_screen"
 require "recording_studio_mcp/admin"
 require "recording_studio_mcp/api/access"
 require "recording_studio_mcp/metrics"
+require "recording_studio_mcp/documentation"
 require "recording_studio_mcp/engine"
+require "recording_studio_mcp/routing"
 
 module RecordingStudioMcp
   class << self

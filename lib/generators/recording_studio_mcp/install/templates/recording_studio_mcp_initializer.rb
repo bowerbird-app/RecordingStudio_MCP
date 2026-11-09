@@ -13,6 +13,11 @@ RecordingStudioMcp.configure do |config|
   # config.event_subscription_ttl = 24.hours
   # config.event_subscriptions_per_principal = 50
   # config.event_callback_host_allowed = ->(host) { host.end_with?(".example") }
+  # Live MCP docs. The gem adds no gate of its own. Set documentation_access to
+  # :authenticated, :public, or a callable the host owns (featured_in uses Admin-root Accessible).
+  # config.documentation_enabled = true
+  # config.documentation_access = :authenticated
+  # config.documentation_layout_name = "recording_studio/default_layout"
 end
 
 # Optional. MCP UI is not a dependency of this gem. Pass ui: on the API

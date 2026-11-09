@@ -1,0 +1,92 @@
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-6" data-recording-studio-mcp-docs="<%= @page.api_key %>">
+  <% content_for :title, @page.title %>
+  <% content_for :subtitle, "Live tools and types for this named API." %>
+
+  <%= render FlatPack::Card::Component.new(background: :default, border: :default, shadow: :none) do |card| %>
+    <% card.header do %>
+      <%= render FlatPack::PageTitle::Component.new(
+        title: "Server instructions",
+        variant: :h3,
+        class: "mb-0 pb-0"
+      ) %>
+    <% end %>
+    <% card.body do %>
+      <p class="text-sm leading-6"><%= @page.instructions.presence || "No instructions for this API." %></p>
+    <% end %>
+  <% end %>
+
+  <%= render FlatPack::Card::Component.new(background: :default, border: :default, shadow: :none) do |card| %>
+    <% card.header do %>
+      <%= render FlatPack::PageTitle::Component.new(
+        title: "Type enum",
+        variant: :h3,
+        class: "mb-0 pb-0"
+      ) %>
+    <% end %>
+    <% card.body do %>
+      <pre class="overflow-x-auto text-sm leading-6"><%= mcp_docs_json(@page.type_schema) %></pre>
+    <% end %>
+  <% end %>
+
+  <%= render FlatPack::PageTitle::Component.new(
+    title: "Tools",
+    subtitle: @page.tools.any? ? nil : "None registered on this named API.",
+    variant: :h2
+  ) %>
+
+  <% @page.tools.each do |tool| %>
+    <%= render FlatPack::Card::Component.new(background: :default, border: :default, shadow: :none) do |card| %>
+      <% card.header do %>
+        <%= render FlatPack::PageTitle::Component.new(
+          title: tool[:title].presence || tool["title"].presence || tool[:name] || tool["name"],
+          subtitle: tool[:description].presence || tool["description"],
+          variant: :h3,
+          class: "mb-0 pb-0"
+        ) %>
+      <% end %>
+      <% card.body do %>
+        <p class="text-sm leading-6">
+          <code><%= tool[:name] || tool["name"] %></code>
+        </p>
+        <pre class="overflow-x-auto text-sm leading-6"><%= mcp_docs_json(tool[:inputSchema] || tool["inputSchema"]) %></pre>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <%= render FlatPack::PageTitle::Component.new(
+    title: "Types",
+    subtitle: @page.types.any? ? nil : "None registered on this named API.",
+    variant: :h2
+  ) %>
+
+  <% @page.types.each do |type| %>
+    <%= render FlatPack::Card::Component.new(background: :default, border: :default, shadow: :none) do |card| %>
+      <% card.header do %>
+        <%= render FlatPack::PageTitle::Component.new(
+          title: type["type"] || type[:type],
+          variant: :h3,
+          class: "mb-0 pb-0"
+        ) %>
+      <% end %>
+      <% card.body do %>
+        <pre class="overflow-x-auto text-sm leading-6"><%= mcp_docs_json(type) %></pre>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <%= render FlatPack::Card::Component.new(background: :default, border: :default, shadow: :none) do |card| %>
+    <% card.header do %>
+      <%= render FlatPack::PageTitle::Component.new(
+        title: "Resource template",
+        variant: :h3,
+        class: "mb-0 pb-0"
+      ) %>
+    <% end %>
+    <% card.body do %>
+      <p class="text-sm leading-6">
+        <code><%= @page.resource_template[:uriTemplate] || @page.resource_template["uriTemplate"] %></code>
+      </p>
+      <pre class="overflow-x-auto text-sm leading-6"><%= mcp_docs_json(@page.resource_template) %></pre>
+    <% end %>
+  <% end %>
+</div>

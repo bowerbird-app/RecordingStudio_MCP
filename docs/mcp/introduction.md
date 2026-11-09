@@ -3,7 +3,7 @@ title: Introduction
 description: What this MCP reference covers, and what it leaves out.
 ---
 
-Recording Studio MCP is a Streamable HTTP adapter. It speaks MCP. Domain writes still go through Recording Studio API. Access still goes through Accessible. This site is the reference for the **built-in tools** that adapter ships:
+Recording Studio MCP is a Streamable HTTP adapter. It speaks MCP. Domain writes still go through Recording Studio API. Access still goes through Accessible. This site is the **example dummy snapshot** of the built-in tools that adapter ships. A host's live types belong on the gem-owned docs page, not here.
 
 - `list`, `show`, and `describe` for reading
 - `create` and `update` for writing

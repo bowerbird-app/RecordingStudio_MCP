@@ -227,6 +227,39 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
 5. Register a public PKCE OauthClient for the MCP app. People Connect. Then call MCP with the issued Bearer token. For staff/ops MCP, register an operations OauthClient (`api_key: "operations"`) and Connect at `/recording_studio_oauth/apis/operations/oauth/authorize`. Point the client at `/recording_studio_mcp/apis/operations`.
+6. Mount live MCP docs for a named API. The gem owns the controller and views. The host owns the path and the gate. Every MCP docs route shares one `documentation_enabled` flag and one `documentation_access` gate.
+
+```ruby
+recording_studio_mcp_docs_for :operations,
+  at: "/admin/operations-api/mcp-docs",
+  as: :operations_api_mcp_docs
+recording_studio_mcp_docs_for :public,
+  at: "/admin/public-api/mcp-docs",
+  as: :public_api_mcp_docs
+
+RecordingStudioMcp.configure do |config|
+  config.documentation_enabled = true
+  config.documentation_layout_name = "recording_studio/default_layout"
+  config.documentation_access = lambda do |controller:, actor:, api:|
+    FeaturedIn::AdminRootDocumentationAccess.allowed?(
+      controller: controller,
+      actor: actor,
+      api: api
+    )
+  end
+end
+```
+
+`documentation_access` is `:public`, `:authenticated`, or a callable. Missing actor is `401`. A signed-in actor the callable rejects is `403`. Disabled docs are `404`. The gem does not call Accessible. Once the host gate allows the request, the page shows that named API's full tool list, the same way Scalar shows the full OpenAPI document. It is not filtered to `tools/list` for a grant.
+
+Or generate the same routes:
+
+```sh
+bin/rails generate recording_studio_mcp:mcp_docs operations_api \
+  --mount-path=/admin/operations-api/mcp-docs \
+  --api-surface=operations \
+  --layout=recording_studio/default_layout
+```
 
 After boot, this engine writes `RecordingStudioOauth.configuration.mcp_mount_path` to MCP's own mount path (`ProtectedResourceMetadata.mcp_mount_path`, default `/recording_studio_mcp`) so Oauth authorize accepts that MCP resource identity. Named-API MCP identities live at `{mcp_mount_path}/apis/{api_key}`. Change MCP's `mcp_mount_path` if you mount the engine somewhere else. Do not change Oauth for this.
 
@@ -306,9 +339,11 @@ curl -N --no-buffer \
 
 ## MCP reference docs
 
-This repository has a generated MCP reference under `docs/mcp` (the gemspec does not ship `docs/`). It covers the **built-in tools only** (`list`, `show`, `create`, `update`, `capability_action`, `describe`) plus the `recording://{id}` template. `delete` is also a built-in tool; it appears on `tools/list` when a host type allows destroy. The dummy snapshot does not advertise it. Host apps register extra tools at runtime, so those do not appear in the snapshot. JSON HTTP APIs stay on Scalar.
+Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page reads the host catalog for the named API, not a committed snapshot.
 
-Refresh the snapshot and static site with `bin/docs-mcp` (dummy MCP + an edit-role Seed MCP App token). Sourcey (AGPL-3.0) and mcp-parser (MIT) are docs-only; they are not gem runtime dependencies. The built HTML is gitignored.
+This repository also has a generated Sourcey site under `docs/mcp` (the gemspec does not ship `docs/`). That site is the **example dummy surface**. It covers the dummy snapshot of built-in tools only (`list`, `show`, `create`, `update`, `capability_action`, `describe`) plus the `recording://{id}` template. `delete` is also a built-in tool; it appears on `tools/list` when a host type allows destroy. The dummy snapshot does not advertise it. Host apps register extra tools at runtime, so those do not appear in the snapshot. JSON HTTP APIs stay on Scalar.
+
+Refresh the dummy snapshot and static site with `bin/docs-mcp` (dummy MCP + an edit-role Seed MCP App token). Sourcey (AGPL-3.0) and mcp-parser (MIT) are docs-only; they are not gem runtime dependencies. The built HTML is gitignored. Do not mount `docs/mcp/dist` as the product docs.
 
 ## Dummy
 
@@ -320,4 +355,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.24.2
+0.25.0

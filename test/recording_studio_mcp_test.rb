@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_24_2
-    assert_equal "0.24.2", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_25_0
+    assert_equal "0.25.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -126,7 +126,8 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "Recording Studio MCP"
     assert_includes readme, "## MCP reference docs"
     assert_includes readme, "built-in tools only"
-    assert_includes readme, "## Version\n\n0.24.2\n"
+    assert_includes readme, "## Version\n\n0.25.0\n"
+    assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."
@@ -145,10 +146,12 @@ class RecordingStudioMcpTest < Minitest::Test
     refute_includes readme, "v3 declarations"
   end
 
-  def test_engine_does_not_ship_product_views
+  def test_engine_docs_views_are_the_only_erb
     erb_views = Dir[File.expand_path("../app/views/recording_studio_mcp/**/*.erb", __dir__)]
+    root = File.expand_path("..", __dir__)
+    relative = erb_views.map { |path| path.delete_prefix("#{root}/") }
 
-    assert_empty erb_views
+    assert_equal ["app/views/recording_studio_mcp/mcp_docs/show.html.erb"], relative
   end
 
   def test_dummy_home_is_dummy_only

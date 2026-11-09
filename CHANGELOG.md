@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-09
+
+### Added
+- Host-mountable live MCP docs. `recording_studio_mcp_docs_for` draws a gem-owned
+  page that renders the host catalog for a named API (instructions, tools and
+  input schemas, the type enum, `describe` output per type, and `recording://{id}`).
+  Access is `documentation_access` (`:public`, `:authenticated`, or a callable
+  `|controller:, actor:, api:|`). Every mounted MCP docs route shares that one
+  gate and `documentation_enabled`. Once the host allows the request, the page
+  shows the full named API tool list, the same as Scalar docs. The gem does not
+  filter to `tools/list` per grant and does not add Accessible, Pundit, or a
+  second admin. Dummy mounts public and operations docs under
+  `/admin/public-api/mcp-docs` and `/admin/operations-api/mcp-docs`.
+
+### Changed
+- The Sourcey site under `docs/mcp` stays as the example dummy snapshot. It is
+  not the host catalog.
+
+### Upgrade notes
+- Bump to `0.25.0`. No MCP migration. Mount live docs with
+  `recording_studio_mcp_docs_for` and set `documentation_enabled` plus
+  `documentation_access`. featured_in can reuse the same Admin-root callable it
+  uses for Scalar. Do not serve the Sourcey snapshot as the product docs.
+
 ## [0.24.2] - 2026-11-09
 
 ### Added
@@ -639,7 +663,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...v0.24.0
