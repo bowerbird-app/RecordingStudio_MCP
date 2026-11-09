@@ -20,6 +20,13 @@ Rails.application.routes.draw do
 
   recording_studio_admin_for :admin, at: "/admin", root_section: :root
 
+  recording_studio_mcp_docs_for :public,
+    at: "/admin/public-api/mcp-docs",
+    as: :public_api_mcp_docs
+  recording_studio_mcp_docs_for :operations,
+    at: "/admin/operations-api/mcp-docs",
+    as: :operations_api_mcp_docs
+
   get "up" => "rails/health#show", as: :rails_health_check
 
   get "docs/install", to: "docs#install", as: :docs_install

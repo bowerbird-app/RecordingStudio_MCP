@@ -66,6 +66,7 @@ class InstallGeneratorTest < Minitest::Test
     assert_includes install_guide, "recording_studio_mcp/oauth_discoveries#protected_resource"
     assert_includes install_guide, "draw_named_api_well_known"
     assert_includes install_guide, "events_enabled"
+    assert_includes install_guide, "recording_studio_mcp_docs_for"
     refute_includes install_guide, "RecordingStudio v3"
     refute_includes install_guide, "FlatPack"
   end

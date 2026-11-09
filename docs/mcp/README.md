@@ -1,6 +1,6 @@
-# MCP reference docs
+# MCP reference docs (example dummy surface)
 
-Sourcey site for this gem's **built-in** MCP tools. Not a runtime dependency. Sourcey is AGPL-3.0. mcp-parser is MIT. Both live only in this folder's `package.json` `devDependencies`. They must not enter the gemspec or a host Gemfile.
+Sourcey site for a **committed dummy snapshot** of this gem's built-in MCP tools. Hosts that need live types should mount `recording_studio_mcp_docs_for`, not this folder. Not a runtime dependency. Sourcey is AGPL-3.0. mcp-parser is MIT. Both live only in this folder's `package.json` `devDependencies`. They must not enter the gemspec or a host Gemfile.
 
 JSON HTTP APIs stay on Scalar.
 

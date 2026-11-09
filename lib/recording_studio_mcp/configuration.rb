@@ -10,7 +10,8 @@ module RecordingStudioMcp
 
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :skill_policy, :events_enabled,
-                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
+                  :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed,
+                  :documentation_enabled, :documentation_access, :documentation_layout_name
     attr_reader :catalog_metric_resources, :skill_catalog, :event_catalog
 
     def initialize
@@ -28,6 +29,9 @@ module RecordingStudioMcp
       @event_subscriptions_per_principal = 50
       @event_callback_host_allowed = nil
       @catalog_metric_resources = nil
+      @documentation_enabled = false
+      @documentation_access = nil
+      @documentation_layout_name = nil
     end
 
     def catalog_metric_resources=(resources)
@@ -47,8 +51,19 @@ module RecordingStudioMcp
         event_subscription_ttl: event_subscription_ttl,
         event_subscriptions_per_principal: event_subscriptions_per_principal,
         event_callback_host_allowed: event_callback_host_allowed,
-        catalog_metric_resources: catalog_metric_resources
+        catalog_metric_resources: catalog_metric_resources,
+        documentation_enabled: documentation_enabled,
+        documentation_access: documentation_access.respond_to?(:call) ? :callable : documentation_access,
+        documentation_layout_name: documentation_layout_name
       }
+    end
+
+    def validate!
+      return unless documentation_enabled
+      return if %i[public authenticated].include?(documentation_access) || documentation_access.respond_to?(:call)
+
+      raise ArgumentError,
+            "documentation_access must be public, authenticated, or callable when documentation is enabled"
     end
 
     def update_skill_catalog

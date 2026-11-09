@@ -25,6 +25,7 @@ Metrics/BlockLength:
 Metrics/ClassLength:
   Exclude:
     - 'test/**/*'
+    - 'lib/generators/**/*'
     - 'lib/recording_studio_mcp/connection.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
@@ -53,12 +54,14 @@ Metrics/MethodLength:
     - 'lib/recording_studio_mcp/json_object_schema.rb'
     - 'lib/recording_studio_mcp/events.rb'
     - 'lib/recording_studio_mcp/postgres_bus.rb'
+    - 'lib/recording_studio_mcp/documentation.rb'
 
 Metrics/AbcSize:
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
     - 'db/migrate/**/*'
+    - 'lib/recording_studio_mcp/configuration.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/callback_http.rb'

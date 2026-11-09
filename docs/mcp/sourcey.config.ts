@@ -6,7 +6,7 @@ export default defineConfig({
   brokenLinks: "error",
   prettyUrls: "slash",
   footer: {
-    text: "Built-in MCP tools only. Host apps add their own tools at runtime. JSON HTTP APIs stay on Scalar.",
+    text: "Example dummy snapshot. Built-in MCP tools only. Host apps mount live docs from the gem. JSON HTTP APIs stay on Scalar.",
   },
   navigation: {
     tabs: [

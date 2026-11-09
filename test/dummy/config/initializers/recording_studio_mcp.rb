@@ -6,6 +6,9 @@ RecordingStudioMcp.configure do |config|
   config.oauth_engine_mount_path = "/recording_studio_oauth"
   config.events_enabled = true
   config.event_callback_host_allowed = ->(host) { host == "receiver.example.test" }
+  config.documentation_enabled = true
+  config.documentation_access = :authenticated
+  config.documentation_layout_name = "recording_studio/default_layout"
 end
 
 RecordingStudioMcp.register_event("recording updated") do |e|

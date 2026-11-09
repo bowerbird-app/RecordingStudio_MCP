@@ -37,6 +37,25 @@ class ConfigurationTest < Minitest::Test
     refute_respond_to @configuration, :skill_catalog=
     refute_respond_to @configuration, :event_catalog=
     assert @configuration.event_catalog.empty?
+    assert_equal false, @configuration.documentation_enabled
+    assert_nil @configuration.documentation_access
+    assert_nil @configuration.documentation_layout_name
+    assert_equal false, @configuration.to_h[:documentation_enabled]
+    assert_nil @configuration.to_h[:documentation_access]
+  end
+
+  def test_validate_requires_access_when_documentation_is_enabled
+    error = assert_raises(ArgumentError) do
+      @configuration.documentation_enabled = true
+      @configuration.validate!
+    end
+    assert_includes error.message, "documentation_access"
+
+    @configuration.documentation_access = :authenticated
+    assert_nil @configuration.validate!
+
+    @configuration.documentation_access = ->(**) { true }
+    assert_nil @configuration.validate!
   end
 
   def test_merge_updates_known_attributes

@@ -64,7 +64,9 @@ require "recording_studio_mcp/failing_subscriptions_screen"
 require "recording_studio_mcp/admin"
 require "recording_studio_mcp/api/access"
 require "recording_studio_mcp/metrics"
+require "recording_studio_mcp/documentation"
 require "recording_studio_mcp/engine"
+require "recording_studio_mcp/routing"
 
 module RecordingStudioMcp
   class << self
