@@ -55,5 +55,9 @@ test/dummy/coverage/
 *.gem
 pkg/
 
+# MCP reference site (Sourcey). Keep the snapshot and config; ignore install and build output.
+docs/mcp/node_modules/
+docs/mcp/dist/
+
 # Rename script state
 .rename_state.yml

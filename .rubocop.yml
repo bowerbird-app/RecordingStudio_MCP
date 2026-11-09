@@ -6,6 +6,7 @@ AllCops:
     - 'gemfiles/**/*'
     - 'vendor/**/*'
     - 'bin/**/*'
+    - 'docs/**/*'
 
 Style/Documentation:
   Enabled: false

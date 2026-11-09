@@ -304,6 +304,12 @@ curl -N --no-buffer \
   http://127.0.0.1:3000/recording_studio_mcp
 ```
 
+## MCP reference docs
+
+This gem ships a generated MCP reference under `docs/mcp`. It covers the **built-in tools only** (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) plus the `recording://{id}` template. Host apps register extra tools at runtime, so those do not appear in the gem snapshot. JSON HTTP APIs stay on Scalar.
+
+Refresh the snapshot and static site with `bin/docs-mcp` (dummy MCP + an edit-role Seed MCP App token). Sourcey (AGPL-3.0) and mcp-parser (MIT) are docs-only; they are not gem runtime dependencies. The built HTML is gitignored.
+
 ## Dummy
 
 `test/dummy` on port 3000. Sign in with `admin@admin.com` / `Password`. Seed MCP App is a public OauthClient. Studio Workspace starts Connected. Site name `Studio` comes from Site settings when Connect needs it. Seeds also write sample MCP usage logs for the last 4 weeks. Loading seeds again replaces that sample.
@@ -314,4 +320,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.24.1
+0.24.2

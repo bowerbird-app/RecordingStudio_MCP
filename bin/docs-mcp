@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Refresh the gem's MCP snapshot from the dummy app, then build the Sourcey site.
+# Sourcey and mcp-parser stay in docs/mcp (dev/docs tooling only).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DOCS_DIR="${ROOT}/docs/mcp"
+DUMMY_DIR="${ROOT}/test/dummy"
+SNAPSHOT="${DOCS_DIR}/server.snapshot.json"
+MCP_URL="${MCP_URL:-http://127.0.0.1:3000/recording_studio_mcp}"
+TREE_TOOLS="list show create update delete capability_action describe"
+STARTED_SERVER=0
+
+dummy_bundle() {
+  (
+    cd "${DUMMY_DIR}"
+    BUNDLE_GEMFILE="${DUMMY_DIR}/Gemfile" bundle exec "$@"
+  )
+}
+
+wait_for_mcp() {
+  local i
+  for i in $(seq 1 60); do
+    if curl -fsS -o /dev/null "${MCP_URL%/recording_studio_mcp}/up" 2>/dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "dummy app did not become ready at ${MCP_URL}" >&2
+  return 1
+}
+
+ensure_server() {
+  if curl -fsS -o /dev/null "${MCP_URL%/recording_studio_mcp}/up" 2>/dev/null; then
+    return 0
+  fi
+  echo "starting dummy MCP on 127.0.0.1:3000"
+  dummy_bundle rails db:prepare
+  dummy_bundle rails db:seed
+  dummy_bundle bin/rails server -b 127.0.0.1 -p 3000 >/tmp/recording-studio-mcp-docs-server.log 2>&1 &
+  STARTED_SERVER=1
+  wait_for_mcp
+}
+
+scrub_snapshot() {
+  python3 - "${SNAPSHOT}" "${TREE_TOOLS}" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+allowed = set(sys.argv[2].split())
+with open(path, encoding="utf-8") as handle:
+    spec = json.load(handle)
+
+spec["tools"] = [tool for tool in spec.get("tools") or [] if tool.get("name") in allowed]
+spec.pop("resources", None)
+spec.pop("prompts", None)
+for template in spec.get("resourceTemplates") or []:
+    if template.get("name") == "Recording" and not template.get("description"):
+        template["description"] = (
+            "One Accessible recording as JSON. The id is the recording id."
+        )
+spec["description"] = (
+    "Built-in Recording Studio MCP tools and the recording resource template. "
+    "Host apps register extra tools at runtime; those are not in this snapshot. "
+    "JSON HTTP APIs stay on Scalar."
+)
+transport = spec.get("transport") or {}
+transport["type"] = "streamable-http"
+transport["url"] = "https://YOUR_HOST/recording_studio_mcp"
+transport["headers"] = {"Authorization": "Bearer YOUR_TOKEN"}
+spec["transport"] = transport
+
+text = json.dumps(spec)
+if "rsoauth_at_" in text or "127.0.0.1" in text or "localhost" in text:
+    raise SystemExit("snapshot still contains a token or a local URL")
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(spec, handle, indent=2)
+    handle.write("\n")
+PY
+}
+
+ensure_server
+
+TOKEN_FILE="$(mktemp)"
+chmod 600 "${TOKEN_FILE}"
+cleanup() {
+  rm -f "${TOKEN_FILE}"
+}
+trap cleanup EXIT
+
+dummy_bundle rails runner "${DOCS_DIR}/mint_snapshot_token.rb" > "${TOKEN_FILE}"
+TOKEN="$(cat "${TOKEN_FILE}")"
+if [[ ! "${TOKEN}" =~ ^rsoauth_at_ ]]; then
+  echo "dummy Oauth token mint failed" >&2
+  exit 1
+fi
+
+(
+  cd "${DOCS_DIR}"
+  npx mcp-parser snapshot --http "${MCP_URL}" --header "Authorization:Bearer ${TOKEN}" -o "${SNAPSHOT}"
+)
+
+unset TOKEN
+rm -f "${TOKEN_FILE}"
+trap - EXIT
+
+scrub_snapshot
+
+(
+  cd "${DOCS_DIR}"
+  npx mcp-parser validate "${SNAPSHOT}"
+  npx sourcey build
+)
+
+echo "MCP reference written to ${DOCS_DIR}/dist"
