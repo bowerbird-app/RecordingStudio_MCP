@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_24_1
-    assert_equal "0.24.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_24_2
+    assert_equal "0.24.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -35,6 +35,21 @@ class RecordingStudioMcpTest < Minitest::Test
     cursor_files = spec.files.select { |path| path == ".cursor" || path.split("/").include?(".cursor") }
 
     assert_empty cursor_files, "gemspec must not package .cursor/ (got #{cursor_files.inspect})"
+  end
+
+  def test_gemspec_excludes_docs_and_sourcey
+    spec = Gem::Specification.load(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
+    gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
+    docs_files = spec.files.select { |path| path == "docs" || path.split("/").include?("docs") }
+
+    assert_empty docs_files, "gemspec must not package docs/ (got #{docs_files.inspect})"
+    refute_includes gemspec, "sourcey"
+    refute_includes gemspec, "mcp-parser"
+
+    package = JSON.parse(File.read(File.expand_path("../docs/mcp/package.json", __dir__)))
+    refute package.key?("dependencies")
+    assert package.dig("devDependencies", "sourcey")
+    assert package.dig("devDependencies", "mcp-parser")
   end
 
   def test_homepage_is_this_repo
@@ -109,7 +124,9 @@ class RecordingStudioMcpTest < Minitest::Test
     readme = File.read(File.expand_path("../README.md", __dir__))
 
     assert_includes readme, "Recording Studio MCP"
-    assert_includes readme, "## Version\n\n0.24.1\n"
+    assert_includes readme, "## MCP reference docs"
+    assert_includes readme, "built-in tools only"
+    assert_includes readme, "## Version\n\n0.24.2\n"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
     refute_includes readme, "This gem ships no product UI."

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-11-09
+
+### Added
+- Generated MCP reference docs under `docs/mcp` (Sourcey + mcp-parser). The snapshot
+  covers this gem's built-in tools only. Host-registered tools stay off the gem
+  snapshot. JSON HTTP APIs stay on Scalar. Sourcey is AGPL-3.0 and mcp-parser is
+  MIT; both are docs-only `devDependencies` in `docs/mcp/package.json`.
+
+### Upgrade notes
+- Bump to `0.24.2`. No MCP migration. No new public API. Docs and tooling only.
+  Refresh the snapshot with `bin/docs-mcp`. Do not add Sourcey to a host Gemfile.
+
 ## [0.24.1] - 2026-11-05
 
 ### Changed
@@ -627,7 +639,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...HEAD
+[0.24.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.2...v0.24.0
 [0.23.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.23.1...v0.23.2
