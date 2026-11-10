@@ -12,8 +12,10 @@ class RedocVendorTest < Minitest::Test
     example.com
     github.com
     localhost
+    localhost:4000
     localhost:4318
     react.dev
+    www.w3.org
     reactrouter.com
     redocly.com
     yarnpkg.com
