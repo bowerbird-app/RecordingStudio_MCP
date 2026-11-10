@@ -3,6 +3,7 @@
 require "test_helper"
 
 class DocumentationTest < Minitest::Test
+  Openapi = RecordingStudioMcp::Documentation::Openapi
   include IsolatedApiConfiguration
 
   def test_page_lists_registered_types_tools_and_resource_template
@@ -111,11 +112,13 @@ class DocumentationTest < Minitest::Test
       assert_includes schemas.keys, "Folder"
       assert_includes schemas.keys, "Page"
       assert_includes Array(folder["x-mcp-operations"]), "index"
-      assert folder.key?("x-mcp-writable-fields")
+      refute folder.key?("x-mcp-writable-fields")
       assert_includes folder.fetch("properties").keys, "title"
       assert_includes actions, "ping"
       assert_equal "recording://{id}", mcp.dig("resources", 0, "uri")
       assert_equal "recording://{id}", mcp.dig("resourceTemplates", 0, "uriTemplate")
+      refute Openapi.respond_to?(:servers)
+      refute Openapi.respond_to?(:stringify)
     end
   end
 end
