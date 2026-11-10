@@ -15,6 +15,10 @@ class InstructionsTest < Minitest::Test
       refute_includes text, "capability_action"
       assert_includes text, "not under attributes"
       assert_includes text, "pagination_token"
+      assert_includes text, "Records nest by parent_id"
+      assert_includes text, "root_id is the workspace, not the parent record"
+      assert_includes text, "Walk down with list using parent_id, then show"
+      assert_includes text, "Call describe to see allowed children and actions"
       assert_includes text, "call tools/list again"
       refute_includes text, "Use the endpoint tools"
     end

@@ -60,6 +60,7 @@ module RecordingStudioMcp
         name: "list",
         title: "List records",
         description: "List records of one type on this OauthClient's named API. " \
+                     "Pass parent_id to list children of that parent. " \
                      "Use describe first if you do not know the type. " \
                      "Send pagination_token from meta.next_pagination_token to get the next page. " \
                      "Returns records and meta.",
@@ -68,6 +69,11 @@ module RecordingStudioMcp
         required: ["type"],
         properties: {
           type: catalog.type_schema_for(:index),
+          parent_id: {
+            type: "string",
+            description: "Parent recording id. Lists children of that parent. " \
+                         "root_id on a record is the workspace, not this parent."
+          },
           q: { type: "string", description: "Search query across writable and sortable fields." },
           limit: { type: "integer", description: "Page size." },
           sort: { type: "string" },
@@ -193,6 +199,7 @@ module RecordingStudioMcp
 
     DESCRIBE_DESCRIPTION = "Describe one type on this named API. " \
                            "Returns operations, typed writable fields with requirements and allowed values, " \
+                           "output keys, extra fields, relationships and allowed children, " \
                            "enabled capability actions with input contracts, and parent rules. " \
                            "Each type's describe output lists its allowed operations."
 

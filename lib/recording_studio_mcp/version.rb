@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  VERSION = "0.25.0"
+  VERSION = "0.27.0"
 end

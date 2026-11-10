@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "catalog/visibility"
+require_relative "catalog/describe_shape"
 require_relative "catalog/reader"
 
 module RecordingStudioMcp
   class Catalog
     include Visibility
+    include DescribeShape
     include Reader
 
     def self.for(access_grant)

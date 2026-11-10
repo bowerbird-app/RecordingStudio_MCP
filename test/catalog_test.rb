@@ -101,10 +101,132 @@ class CatalogTest < Minitest::Test
         register_folder_and_page_metrics
         described = RecordingStudioMcp::Catalog.new(api: :public).describe(RecordableMetricToolHelpers::FOLDER)
 
-        assert_equal %w[type operations writable_fields capability_actions], described.keys - ["parent"]
+        expected = %w[
+          type operations writable_fields capability_actions output_keys fields relationships allowed_children
+        ]
+        assert_equal expected, described.keys - ["parent"]
         refute described.key?("metrics")
         assert_equal RecordableMetricToolHelpers::FOLDER, described.fetch("type")
         refute_includes described.fetch("operations"), "metrics"
+        assert_equal ["name"], described.fetch("output_keys")
+        assert_equal [], described.fetch("fields")
+        assert_equal [], described.fetch("relationships")
+        assert_equal [], described.fetch("allowed_children")
+      end
+    end
+  end
+
+  def test_resolve_type_accepts_unambiguous_short_label
+    with_isolated_api_configuration do
+      register_tree_type("RecordingStudioPresskits::PressKit")
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("PressKit")
+      assert_equal "RecordingStudioPresskits::PressKit",
+                   catalog.resolve_type!("RecordingStudioPresskits::PressKit")
+    end
+  end
+
+  def test_resolve_type_accepts_resource_name_on_a_named_api
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api(:operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      catalog = RecordingStudioMcp::Catalog.new(api: :operations)
+
+      assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("press_kits")
+    end
+  end
+
+  def test_resolve_type_rejects_ambiguous_short_label
+    with_isolated_api_configuration do
+      register_tree_type("Alpha::Page")
+      register_tree_type("Beta::Page")
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      error = assert_raises(RecordingStudioApi::InvalidActionInputError) { catalog.resolve_type!("Page") }
+
+      assert_includes error.message, "matches more than one registered type"
+      assert_includes error.message, "Alpha::Page"
+      assert_includes error.message, "Beta::Page"
+    end
+  end
+
+  def test_resolve_type_prefers_an_exact_registered_name
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      register_tree_type("Nested::Page")
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal "Page", catalog.resolve_type!("Page")
+    end
+  end
+
+  def test_describe_includes_relationships_fields_and_allowed_children
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_recordable_type_api(
+        "Folder",
+        serializer: ->(*) { { name: "Notes" } },
+        output_keys: %i[name],
+        writable_attributes: %i[name],
+        operations: %i[index show],
+        fields: {
+          headline: { resolver: ->(*) { "Hi" }, include: true }
+        },
+        relationships: {
+          pages: {
+            source: :children,
+            child_type: "Page",
+            many: true,
+            limit: 20,
+            serializer: ->(*) { { title: "Title" } },
+            output_keys: %i[title],
+            description: "Pages in this folder"
+          }
+        }
+      )
+      register_tree_type("Page")
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      parents = lambda { |type|
+        type.to_s == "Page" ? ["Folder"] : []
+      }
+
+      described = RecordingStudio.stub(:allowed_parent_types_for, parents) { catalog.describe("Folder") }
+      relationship = described.fetch("relationships").find { |entry| entry["name"] == "pages" }
+
+      assert_equal ["name"], described.fetch("output_keys")
+      assert_equal ["headline"], described.fetch("fields")
+      assert_equal "children", relationship.fetch("source")
+      assert_equal "Page", relationship.fetch("child_type")
+      assert_equal true, relationship.fetch("many")
+      assert_equal ["title"], relationship.fetch("output_keys")
+      assert_equal "Pages in this folder", relationship.fetch("description")
+      assert_includes described.fetch("allowed_children"), "Page"
+      refute described.key?("metrics")
+    end
+  end
+
+  def test_describe_payload_hook_can_override_the_hash
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Page")
+        seen = nil
+        RecordingStudioMcp.configuration.describe_payload = lambda { |payload, type:, registration:, access_grant:|
+          seen = {
+            type: type,
+            registration: registration,
+            access_grant: access_grant,
+            operations: payload["operations"]
+          }
+          payload.merge("hint" => "list sections with parent_id")
+        }
+        grant = FakeGrant.new(FakeClient.new("public"))
+        described = RecordingStudioMcp::Catalog.new(api: :public, access_grant: grant).describe("Page")
+
+        assert_equal "list sections with parent_id", described.fetch("hint")
+        assert described.key?("operations")
+        assert_equal "Page", seen.fetch(:type)
+        assert_equal "Page", seen.fetch(:registration).recordable_type
+        assert_same grant, seen.fetch(:access_grant)
       end
     end
   end

@@ -281,6 +281,30 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_list_passes_parent_id_to_the_api_context
+    captured = nil
+    handler = lambda { |context|
+      captured = context
+      { json: { records: [] }, status: :ok }
+    }
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, ->(_type, action, **) { action == :index ? handler : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { type: "Page", parent_id: "folder-1" })
+
+              refute result[:isError]
+              assert_equal "folder-1", captured.parent_id
+              assert_equal "folder-1", captured.params["parent_id"]
+            end
+          end
+        end
+      end
+    end
+  end
+
   def test_registered_handler_list_create_update_delete_and_capability
     captured = {}
     @grant.accessible_recordings = FakeRelation.new(nil)

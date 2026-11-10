@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-10
+
+### Added
+- `list` advertises `parent_id` so a client can list children of a parent record.
+- Initialize tree instructions explain that records nest by `parent_id`, that
+  `root_id` is the workspace (not the parent record), and that clients walk down
+  with `list` then `show`, using `describe` for allowed children and actions.
+- `describe` includes `output_keys`, extra `fields`, `relationships`, and
+  `allowed_children` from the named API resource registry.
+- Hosts and gems may set `config.describe_payload` to a callable that receives
+  the default describe hash plus `type:`, `registration:`, and `access_grant:`,
+  and returns a replacement hash.
+
+### Changed
+- `resolve_type!` accepts an unambiguous short type label (the demodulized name
+  list envelopes return, such as `PressKit`) in addition to the full constant
+  and the resource name. An ambiguous short label returns an error that lists
+  the matching full type names.
+
+### Upgrade notes
+- Bump to `0.27.0`. `0.26.0` is reserved by the live Redoc docs PR. No MCP
+  migration. Clients can pass `parent_id` on `list` and short type labels on
+  tree tools. To extend `describe` per type, set `describe_payload` in MCP
+  config. Return a hash. Unknown return values keep the default payload.
+
 ## [0.25.0] - 2026-11-09
 
 ### Added
@@ -663,7 +688,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...v0.27.0
 [0.25.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.0...v0.24.1

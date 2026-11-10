@@ -81,6 +81,8 @@ class InstallGeneratorTest < Minitest::Test
 
     refute_includes initializer, "logs_summaries_enabled"
     refute_includes initializer, "backfill_summaries"
+    assert_includes initializer, "describe_payload"
+    assert_includes initializer, "type:, registration:, access_grant:"
   end
 
   def test_generator_does_not_add_flatpack_tailwind

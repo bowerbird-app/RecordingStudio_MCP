@@ -93,10 +93,17 @@ class ToolsTest < Minitest::Test
   def test_list_requires_type
     with_isolated_api_configuration do
       register_tree_type("Page")
-      schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }.fetch(:inputSchema)
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "list" }
+      schema = tool.fetch(:inputSchema)
 
       assert_equal ["type"], schema.fetch(:required)
       assert schema.fetch(:properties).key?(:pagination_token)
+      parent_id = schema.fetch(:properties).fetch(:parent_id)
+
+      assert_equal "string", parent_id.fetch(:type)
+      assert_includes parent_id.fetch(:description), "Parent recording id"
+      assert_includes parent_id.fetch(:description), "root_id"
+      assert_includes tool.fetch(:description), "parent_id"
     end
   end
 
