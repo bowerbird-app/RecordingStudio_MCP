@@ -15,6 +15,10 @@ class InstructionsTest < Minitest::Test
       refute_includes text, "capability_action"
       assert_includes text, "not under attributes"
       assert_includes text, "pagination_token"
+      assert_includes text, "Records nest by parent_id"
+      assert_includes text, "root_id is the workspace, not the parent record"
+      refute_includes text, "Walk down with list using parent_id, then show"
+      assert_includes text, "Call describe to see allowed children and actions"
       assert_includes text, "call tools/list again"
       refute_includes text, "Use the endpoint tools"
     end
@@ -38,6 +42,19 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "unless tools/list advertises them"
       assert_includes text, "call tools/list again"
       refute_includes text, "Call describe before create"
+      refute_includes text, "Records nest by parent_id"
+    end
+  end
+
+  def test_tree_mentions_list_parent_id_when_advertised
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Page")
+        RecordingStudioMcp.configuration.list_parent_id_types = %w[Page]
+        text = RecordingStudioMcp::Instructions.text
+
+        assert_includes text, "Walk down with list using parent_id, then show"
+      end
     end
   end
 

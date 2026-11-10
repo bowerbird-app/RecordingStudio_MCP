@@ -6,29 +6,22 @@ module RecordingStudioMcp
       def describe(type_name)
         recordable_type = resolve_type!(type_name)
         registration = registration_for(recordable_type)
-        {
-          "type" => recordable_type,
-          "operations" => Array(registration&.operations).map(&:to_s),
-          "writable_fields" => FieldSchema.for(recordable_type, registration),
-          "capability_actions" => enabled_capability_actions(recordable_type),
-          "parent" => parent_rules(recordable_type)
-        }.compact
+        payload = default_describe_payload(recordable_type, registration)
+        apply_describe_payload(payload, type: recordable_type, registration: registration)
       end
 
       def resolve_type!(type_name)
         raise RecordingStudioApi::InvalidActionInputError, "type is required" if type_name.blank?
 
-        name = type_name.to_s
-        return name if registered_types.include?(name)
-
-        from_resource = resource_type_name(name)
-        return from_resource if from_resource.present? && registered_types.include?(from_resource)
-
-        raise RecordingStudioApi::NotFoundError, unknown_type_message(name)
+        resolve_registered_type(type_name.to_s)
       end
 
       def unknown_type_message(name)
         "Unknown type #{name}. #{allowed_types_sentence}"
+      end
+
+      def ambiguous_type_message(name, matches)
+        "Type #{name} matches more than one registered type: #{matches.sort.join(', ')}. Use the full type name."
       end
 
       def unknown_action_message(action_name, recordable_type)
@@ -51,6 +44,23 @@ module RecordingStudioMcp
       end
 
       private
+
+      def resolve_registered_type(name)
+        return name if registered_types.include?(name)
+
+        from_resource = resource_type_name(name)
+        return from_resource if from_resource.present? && registered_types.include?(from_resource)
+
+        resolve_short_label!(name)
+      end
+
+      def resolve_short_label!(name)
+        matches = types_for_short_label(name)
+        return matches.first if matches.one?
+        raise RecordingStudioApi::InvalidActionInputError, ambiguous_type_message(name, matches) if matches.many?
+
+        raise RecordingStudioApi::NotFoundError, unknown_type_message(name)
+      end
 
       def enabled_capability_actions(recordable_type)
         enabled_action_registrations(recordable_type).sort_by { |action| action.name.to_s }.map do |action|
@@ -75,6 +85,10 @@ module RecordingStudioMcp
       def resource_type_name(name)
         RecordingStudioApi.recordable_type_for_resource(name, api: api) ||
           RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api)
+      end
+
+      def types_for_short_label(name)
+        registered_types.select { |type| type.demodulize == name }
       end
 
       def parent_rules(recordable_type)

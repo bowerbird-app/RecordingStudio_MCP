@@ -64,7 +64,7 @@ module RecordingStudioMcp
     end
 
     def resource_params(recordable_type, args)
-      keys = %w[id q limit sort order filter include pagination_token]
+      keys = %w[id parent_id q limit sort order filter include pagination_token]
       { "resource" => RecordingStudioApi.resource_name_for(recordable_type) }.merge(args.slice(*keys)).compact
     end
 

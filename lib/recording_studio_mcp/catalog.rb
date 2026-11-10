@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "catalog/visibility"
+require_relative "catalog/describe_shape"
 require_relative "catalog/reader"
 
 module RecordingStudioMcp
   class Catalog
     include Visibility
+    include DescribeShape
     include Reader
 
     def self.for(access_grant)
@@ -46,6 +48,17 @@ module RecordingStudioMcp
       RecordingStudioApi.configuration.fetch_api(api).registered_endpoint_registry.all
     end
 
+    def list_parent_id?
+      list_parent_id_type_names.any?
+    end
+
+    def list_parent_id_type_names
+      configured = configured_parent_id_list_types
+      return [] if configured.empty?
+
+      type_names_for(:index).select { |type| configured.include?(type) }
+    end
+
     private
 
     def registered_types
@@ -55,6 +68,10 @@ module RecordingStudioMcp
 
     def registration_for(type)
       RecordingStudioApi.recordable_registration_for(type, api: api)
+    end
+
+    def configured_parent_id_list_types
+      Array(RecordingStudioMcp.configuration.list_parent_id_types).map(&:to_s)
     end
   end
 end
