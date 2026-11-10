@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-10
+
+### Added
+- Mounted MCP docs include a **Full width** control in `recording_studio_page_nav_right`, matching Scalar. `{mount}/fullscreen` renders Redoc on a bare HTML page with no host layout. Same `documentation_enabled` flag and `documentation_access` gate as `show`.
+
+### Changed
+- The hosted docs page uses the Scalar wrapper (`mx-auto flex w-full max-w-6xl flex-col gap-6`) with a title and subtitle. Redoc markup lives in a shared partial.
+
+### Upgrade notes
+- Bump to `0.28.0`. No MCP migration. Existing `recording_studio_mcp_docs_for` mounts pick up `{mount}/fullscreen`. No host route change.
+
 ## [0.27.0] - 2026-11-10
 
 ### Added
@@ -728,7 +739,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.26.1
 

@@ -1,8 +1,16 @@
-<div data-recording-studio-mcp-docs="<%= @page.api_key %>">
+<% recording_studio_page_nav_right do %>
+  <%= render FlatPack::Button::Component.new(
+    text: "Full width",
+    icon: "arrows-pointing-out",
+    style: :secondary,
+    size: :md,
+    href: @fullscreen_url
+  ) %>
+<% end %>
+
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-6" data-recording-studio-mcp-docs="<%= @page.api_key %>">
   <% content_for :title, @page.title %>
-  <redoc id="mcp-docs-redoc" disable-telemetry="true"></redoc>
-  <script type="module">
-    import { init } from <%= raw mcp_docs_redoc_path.to_json %>;
-    init(<%= raw mcp_docs_spec_path.to_json %>, { disableTelemetry: true }, document.getElementById("mcp-docs-redoc"));
-  </script>
+  <% content_for :subtitle, "Live tools for this API." %>
+
+  <%= render "recording_studio_mcp/mcp_docs/redoc" %>
 </div>

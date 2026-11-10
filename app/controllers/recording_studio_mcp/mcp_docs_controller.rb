@@ -9,10 +9,16 @@ module RecordingStudioMcp
     before_action :load_api_key
     before_action :ensure_documentation_enabled
     before_action :authorize_documentation
-    before_action :load_documentation_page, only: :show
+    before_action :load_documentation_page, only: %i[show fullscreen]
 
     def show
       @api_title = @page.title
+      @fullscreen_url = "#{helpers.docs_mount_path}/fullscreen"
+    end
+
+    def fullscreen
+      @api_title = @page.title
+      render :fullscreen, layout: false
     end
 
     def openapi

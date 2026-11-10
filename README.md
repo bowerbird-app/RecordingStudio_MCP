@@ -341,7 +341,7 @@ curl -N --no-buffer \
 
 Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds an OpenAPI 3.1 document from the host catalog for the named API on each request and renders it with vendored Redoc. Tools, resource templates, server instructions, and types stay in sync with what the host registered. There is no committed snapshot.
 
-The spec is `{mount}/openapi.json` behind the same `documentation_enabled` flag and `documentation_access` gate as the page. Redoc loads from `{mount}/redoc.js` in this gem. Nothing is fetched from a CDN. Telemetry is off.
+The spec is `{mount}/openapi.json` behind the same `documentation_enabled` flag and `documentation_access` gate as the page. `{mount}/fullscreen` is the same Redoc viewer without the host layout. Redoc loads from `{mount}/redoc.js` in this gem. Nothing is fetched from a CDN. Telemetry is off.
 
 The page includes a small inline `type="module"` script that imports that local bundle. If the host sets a Content-Security-Policy, allow that script with a nonce (or `script-src` that covers it). Do not add a CDN `script-src` for Redoc.
 
@@ -361,4 +361,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.27.0
+0.28.0

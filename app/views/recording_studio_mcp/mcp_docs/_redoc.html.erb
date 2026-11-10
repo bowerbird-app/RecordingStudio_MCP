@@ -1,0 +1,7 @@
+<% spec_url = local_assigns.fetch(:spec_path, mcp_docs_spec_path) %>
+<% redoc_url = local_assigns.fetch(:redoc_path, mcp_docs_redoc_path) %>
+<redoc id="mcp-docs-redoc" disable-telemetry="true"></redoc>
+<script type="module">
+  import { init } from <%= raw redoc_url.to_json %>;
+  init(<%= raw spec_url.to_json %>, { disableTelemetry: true }, document.getElementById("mcp-docs-redoc"));
+</script>
