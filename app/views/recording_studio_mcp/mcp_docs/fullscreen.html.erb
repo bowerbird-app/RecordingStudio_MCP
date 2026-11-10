@@ -6,6 +6,8 @@
     <title><%= @api_title %></title>
   </head>
   <body style="margin: 0;" data-recording-studio-mcp-docs="<%= @page.api_key %>">
-    <%= render "recording_studio_mcp/mcp_docs/redoc" %>
+    <%= render "recording_studio_mcp/mcp_docs/redoc",
+      spec_path: "#{docs_root_path}/openapi.json",
+      redoc_path: "#{docs_root_path}/redoc.js" %>
   </body>
 </html>

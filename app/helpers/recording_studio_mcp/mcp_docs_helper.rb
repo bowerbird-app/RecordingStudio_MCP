@@ -11,7 +11,11 @@ module RecordingStudioMcp
     end
 
     def docs_mount_path
-      request.path.chomp("/").delete_suffix("/fullscreen")
+      request.path.chomp("/")
+    end
+
+    def docs_root_path
+      docs_mount_path.delete_suffix("/fullscreen")
     end
   end
 end

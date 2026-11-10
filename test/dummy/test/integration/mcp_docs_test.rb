@@ -44,8 +44,10 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "disableTelemetry: true"
     assert_includes response.body, "#{public_api_mcp_docs_path}/openapi.json"
     assert_includes response.body, "#{public_api_mcp_docs_path}/redoc.js"
-    assert_includes response.body, "Full width"
-    assert_includes response.body, public_api_mcp_docs_fullscreen_path
+    assert_select %(a[href="#{public_api_mcp_docs_fullscreen_path}"]), text: "Full width"
+    assert_select '[data-recording-studio-default-layout]'
+    assert_includes response.body, "max-w-6xl"
+    assert_includes response.body, "Live tools for this API."
     fragment = response.body[%r{<div[^>]*data-recording-studio-mcp-docs.*?</script>\s*</div>}m]
     assert fragment.present?
     CDN_NEEDLES.each { |needle| refute_includes fragment, needle }
@@ -61,6 +63,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, 'data-recording-studio-mcp-docs="public"'
     assert_includes response.body, "#{public_api_mcp_docs_path}/openapi.json"
     assert_includes response.body, "#{public_api_mcp_docs_path}/redoc.js"
+    refute_includes response.body, "#{public_api_mcp_docs_fullscreen_path}/openapi.json"
+    refute_includes response.body, "#{public_api_mcp_docs_fullscreen_path}/redoc.js"
     assert_includes response.body, 'disable-telemetry="true"'
     refute_includes response.body, "Full width"
     refute_includes response.body, "max-w-6xl"

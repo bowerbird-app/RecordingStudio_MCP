@@ -12,11 +12,12 @@ module RecordingStudioMcp
     before_action :load_documentation_page, only: %i[show fullscreen]
 
     def show
-      prepare_docs_page
+      @api_title = @page.title
+      @fullscreen_url = "#{helpers.docs_mount_path}/fullscreen"
     end
 
     def fullscreen
-      prepare_docs_page
+      @api_title = @page.title
       render :fullscreen, layout: false
     end
 
@@ -69,15 +70,6 @@ module RecordingStudioMcp
 
     def deny_documentation(actor)
       head(actor.present? ? :forbidden : :unauthorized)
-    end
-
-    def prepare_docs_page
-      @api_title = @page.title
-      @fullscreen_url = "#{docs_page_mount}/fullscreen"
-    end
-
-    def docs_page_mount
-      request.path.chomp("/").delete_suffix("/fullscreen")
     end
 
     def load_documentation_page
