@@ -1,13 +1,35 @@
 # frozen_string_literal: true
 
+module RecordingStudioMcp
+  module Documentation
+    module Openapi
+      OPENAPI_VERSION = "3.1.0"
+
+      module Internals
+        module_function
+
+        def stringify(value)
+          return value.deep_stringify_keys if value.respond_to?(:deep_stringify_keys)
+          return value.as_json if value.respond_to?(:as_json)
+
+          value
+        end
+
+        def servers(api_key)
+          [{ "url" => NamedApi.mcp_path(api_key), "description" => "Streamable HTTP MCP" }]
+        end
+      end
+      private_constant :Internals
+    end
+  end
+end
+
 require_relative "openapi/mcp"
 require_relative "openapi/schemas"
 
 module RecordingStudioMcp
   module Documentation
     module Openapi
-      OPENAPI_VERSION = "3.1.0"
-
       module_function
 
       def document(page)
@@ -30,17 +52,14 @@ module RecordingStudioMcp
       end
 
       def servers(api_key)
-        [{ "url" => NamedApi.mcp_path(api_key), "description" => "Streamable HTTP MCP" }]
+        Internals.servers(api_key)
       end
 
       def stringify(value)
-        return value.deep_stringify_keys if value.respond_to?(:deep_stringify_keys)
-        return value.as_json if value.respond_to?(:as_json)
-
-        value
+        Internals.stringify(value)
       end
 
-      private_class_method :info
+      private_class_method :info, :servers, :stringify
     end
   end
 end

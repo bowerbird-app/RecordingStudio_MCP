@@ -12,8 +12,10 @@ class RedocVendorTest < Minitest::Test
     example.com
     github.com
     localhost
+    localhost:4000
     localhost:4318
     react.dev
+    www.w3.org
     reactrouter.com
     redocly.com
     yarnpkg.com
@@ -22,13 +24,22 @@ class RedocVendorTest < Minitest::Test
   def test_vendored_bundle_https_hosts_are_allowlisted
     js = File.binread(File.join(RecordingStudioMcp::Redoc::DIRECTORY, "redoc.standalone.js"))
              .force_encoding(Encoding::UTF_8)
-    hosts = https_hosts(js)
+    hosts = remote_hosts(js)
 
     unexpected = hosts - ALLOWED_HOSTS
-    assert_empty unexpected, "unexpected https/wss hosts in Redoc bundle: #{unexpected.sort.join(', ')}"
+    assert_empty unexpected, "unexpected http/https/wss hosts in Redoc bundle: #{unexpected.sort.join(', ')}"
     assert_includes js, "disableTelemetry"
     assert_includes js, RecordingStudioMcp::Redoc::LOGO_MINI_TOKEN
     assert_includes js, RecordingStudioMcp::Redoc::LOGO_MINI_FULL_TOKEN
+  end
+
+  def test_javascript_for_rewrites_logo_mini_svg
+    js = RecordingStudioMcp::Redoc.javascript_for("/admin/public-api/mcp-docs")
+
+    assert_includes js, "/admin/public-api/mcp-docs/logo-mini.svg"
+    assert_includes js, "/admin/public-api/mcp-docs/logo-mini-full.svg"
+    refute_includes js, RecordingStudioMcp::Redoc::LOGO_MINI_TOKEN
+    refute_includes js, RecordingStudioMcp::Redoc::LOGO_MINI_FULL_TOKEN
   end
 
   def test_license_and_assets_are_present
@@ -67,11 +78,11 @@ class RedocVendorTest < Minitest::Test
       uri.host
     end
   rescue URI::InvalidURIError
-    match = raw.match(%r{(?:https|wss)://([^/?#:]+)})
+    match = raw.match(%r{(?:https?|wss)://([^/?#:]+)})
     match && match[1]
   end
 
-  def https_hosts(source)
-    source.scan(%r{(?:https|wss)://[^\s"'\\<>`]+}).filter_map { |raw| host_from_url(raw) }.uniq
+  def remote_hosts(source)
+    source.scan(%r{(?:https?|wss)://[^\s"'\\<>`]+}).filter_map { |raw| host_from_url(raw) }.uniq
   end
 end

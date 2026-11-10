@@ -12,7 +12,7 @@ module RecordingStudioMcp
           {
             "protocolVersion" => RecordingStudioMcp.configuration.protocol_version,
             "instructions" => page.instructions.to_s,
-            "servers" => Openapi.servers(page.api_key),
+            "servers" => Internals.servers(page.api_key),
             "capabilities" => capabilities,
             "tools" => page.tools.map { |tool| tool_entry(tool) },
             "resources" => [resource(page.resource_template)],
@@ -29,17 +29,17 @@ module RecordingStudioMcp
         end
 
         def tool_entry(tool)
-          tool = Openapi.stringify(tool)
+          tool = Internals.stringify(tool)
           {
             "name" => tool.fetch("name"),
             "title" => tool["title"],
             "description" => tool["description"].presence || tool["title"].presence || tool["name"],
-            "inputSchema" => Openapi.stringify(tool["inputSchema"]) || { "type" => "object" }
+            "inputSchema" => Internals.stringify(tool["inputSchema"]) || { "type" => "object" }
           }.compact
         end
 
         def resource(template)
-          template = Openapi.stringify(template)
+          template = Internals.stringify(template)
           {
             "name" => template["name"],
             "description" => RESOURCE_DESCRIPTION,
@@ -49,7 +49,7 @@ module RecordingStudioMcp
         end
 
         def resource_template(template)
-          template = Openapi.stringify(template)
+          template = Internals.stringify(template)
           {
             "name" => template["name"],
             "description" => RESOURCE_DESCRIPTION,

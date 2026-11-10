@@ -36,6 +36,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `describe_payload` in MCP config. Return a hash. Unknown return values keep
   the default payload.
 
+## [0.26.1] - 2026-11-10
+
+### Changed
+- OpenAPI type schemas keep writable fields on `properties` only. The
+  `x-mcp-writable-fields` copy is gone.
+- `Documentation::Openapi.servers` and stringify are private.
+- The Redoc vendor host scan flags `http://` as well as `https://` and
+  `wss://`. `localhost:4318` stays allowlisted.
+
+### Upgrade notes
+- Bump to `0.26.1`. No MCP migration. Spec consumers should read writable
+  fields from each type schema's `properties`.
+
+
 ## [0.26.0] - 2026-11-10
 
 ### Added
@@ -715,7 +729,9 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
 [Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...HEAD
-[0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.27.0
+[0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0
+[0.26.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.26.1
+
 [0.26.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...v0.24.2
