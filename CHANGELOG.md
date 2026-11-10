@@ -18,6 +18,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - Bump to `0.28.0`. No MCP migration. Existing `recording_studio_mcp_docs_for` mounts pick up `{mount}/fullscreen`. No host route change.
 
+## [0.27.0] - 2026-11-10
+
+### Added
+- `list` advertises `parent_id` when `config.list_parent_id_types` names a type
+  that allows index on this named API. Builtin API index does not filter by
+  `parent_id`. Hosts that run Presskits or Support set the config.
+- Initialize tree instructions explain that records nest by `parent_id`, that
+  `root_id` is the workspace (not the parent record), and that `describe` shows
+  allowed children and actions. When `list` advertises `parent_id`, they also
+  say to walk down with `list` then `show`.
+- `describe` includes `output_keys`, extra `fields`, `relationships`, and
+  `allowed_children` from the named API resource registry.
+- Hosts and gems may set `config.describe_payload` to a callable that receives
+  the default describe hash plus `type:`, `registration:`, and `access_grant:`,
+  and returns a replacement hash.
+
+### Changed
+- `resolve_type!` accepts an unambiguous short type label (the demodulized name
+  list envelopes return, such as `PressKit`) in addition to the full constant
+  and the resource name. An ambiguous short label returns an error that lists
+  the matching full type names.
+
+### Upgrade notes
+- Bump to `0.27.0`. No MCP migration. `list` includes `parent_id` only for
+  types listed in `config.list_parent_id_types` that also allow index. Short
+  type labels work on tree tools. To extend `describe` per type, set
+  `describe_payload` in MCP config. Return a hash. Unknown return values keep
+  the default payload.
+
 ## [0.26.1] - 2026-11-10
 
 ### Changed
@@ -30,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - Bump to `0.26.1`. No MCP migration. Spec consumers should read writable
   fields from each type schema's `properties`.
+
 
 ## [0.26.0] - 2026-11-10
 
@@ -710,8 +740,10 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
 [Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...HEAD
-[0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.28.0
+[0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0
+[0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.26.1
+
 [0.26.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...v0.24.2

@@ -34,6 +34,9 @@ module RecordingStudioMcp
                    "tools. Discover and use relevant skills when appropriate."
     WRITE_FIELDS_BLURB = "Send writable fields at the top level, not under attributes."
     PAGINATION_BLURB = "For the next list page, pass meta.next_pagination_token as pagination_token."
+    TREE_NEST_BLURB = "Records nest by parent_id. root_id is the workspace, not the parent record. " \
+                      "Call describe to see allowed children and actions."
+    TREE_LIST_PARENT_BLURB = "Walk down with list using parent_id, then show."
 
     module_function
 
@@ -58,7 +61,9 @@ module RecordingStudioMcp
     def tree_blurb(surface)
       names = surface.tree_tool_names
       before = %w[create capability_action].select { |name| names.include?(name) }
-      parts = [describe_guidance(names, before)]
+      parts = [TREE_NEST_BLURB]
+      parts << TREE_LIST_PARENT_BLURB if surface.list_parent_id?
+      parts << describe_guidance(names, before)
       parts << WRITE_FIELDS_BLURB if names.intersect?(%w[create update])
       parts << PAGINATION_BLURB if names.include?("list")
       parts.compact.join(" ")

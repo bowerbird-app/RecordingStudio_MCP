@@ -19,11 +19,14 @@ class ConfigurationTest < Minitest::Test
     )
     assert_equal [], @configuration.allowed_origins
     assert_nil @configuration.instructions_suffix
+    assert_nil @configuration.describe_payload
     assert_nil @configuration.skill_policy
     assert_includes @configuration.to_h.keys, :mcp_mount_path
     assert_includes @configuration.to_h.keys, :instructions_suffix
+    assert_includes @configuration.to_h.keys, :describe_payload
     assert_includes @configuration.to_h.keys, :skill_policy
     assert_nil @configuration.to_h[:instructions_suffix]
+    assert_nil @configuration.to_h[:describe_payload]
     assert_nil @configuration.to_h[:skill_policy]
     assert_equal false, @configuration.events_enabled
     assert_equal 24.hours, @configuration.event_subscription_ttl
@@ -31,6 +34,8 @@ class ConfigurationTest < Minitest::Test
     assert_nil @configuration.event_callback_host_allowed
     assert_nil @configuration.catalog_metric_resources
     assert_nil @configuration.to_h[:catalog_metric_resources]
+    assert_nil @configuration.list_parent_id_types
+    assert_nil @configuration.to_h[:list_parent_id_types]
     assert_includes @configuration.to_h.keys, :events_enabled
     refute_includes @configuration.to_h.keys, :skill_catalog
     refute_includes @configuration.to_h.keys, :event_catalog
@@ -65,8 +70,10 @@ class ConfigurationTest < Minitest::Test
       protocol_version: "2025-03-26",
       allowed_origins: ["https://assistant.example"],
       instructions_suffix: "Fetch item detail before you draw a screen.",
+      describe_payload: ->(payload, **) { payload },
       skill_policy: ->(skill:, access_grant:) { skill && access_grant },
-      catalog_metric_resources: [:widgets, "widgets"]
+      catalog_metric_resources: [:widgets, "widgets"],
+      list_parent_id_types: [:Page, "Page"]
     )
 
     assert_equal "/.well-known/oauth-protected-resource/mcp", @configuration.oauth_protected_resource_path
@@ -75,10 +82,14 @@ class ConfigurationTest < Minitest::Test
     assert_equal ["https://assistant.example"], @configuration.allowed_origins
     assert_equal "Fetch item detail before you draw a screen.", @configuration.instructions_suffix
     assert_equal "Fetch item detail before you draw a screen.", @configuration.to_h[:instructions_suffix]
+    assert @configuration.describe_payload.respond_to?(:call)
+    assert_same @configuration.describe_payload, @configuration.to_h[:describe_payload]
     assert @configuration.skill_policy.respond_to?(:call)
     assert_same @configuration.skill_policy, @configuration.to_h[:skill_policy]
     assert_equal ["widgets"], @configuration.catalog_metric_resources
     assert_equal ["widgets"], @configuration.to_h[:catalog_metric_resources]
+    assert_equal ["Page"], @configuration.list_parent_id_types
+    assert_equal ["Page"], @configuration.to_h[:list_parent_id_types]
   end
 
   def test_merge_ignores_unknown_keys

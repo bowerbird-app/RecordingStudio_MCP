@@ -59,26 +59,49 @@ module RecordingStudioMcp
       tool(
         name: "list",
         title: "List records",
-        description: "List records of one type on this OauthClient's named API. " \
-                     "Use describe first if you do not know the type. " \
-                     "Send pagination_token from meta.next_pagination_token to get the next page. " \
-                     "Returns records and meta.",
+        description: list_description(catalog),
         read_only: true,
         idempotent: true,
         required: ["type"],
-        properties: {
-          type: catalog.type_schema_for(:index),
-          q: { type: "string", description: "Search query across writable and sortable fields." },
-          limit: { type: "integer", description: "Page size." },
-          sort: { type: "string" },
-          order: { type: "string", description: "asc or desc." },
-          filter: { type: "object", description: "Attribute filters allowed by the named API." },
-          pagination_token: {
-            type: "string",
-            description: "Pass meta.next_pagination_token from the previous list result to fetch the next page."
-          }
-        }
+        properties: list_properties(catalog)
       )
+    end
+
+    def list_description(catalog)
+      extra = if catalog.list_parent_id?
+                "Pass parent_id to list children of that parent. It only filters for the listed types. "
+              else
+                ""
+              end
+      "List records of one type on this OauthClient's named API. #{extra}" \
+        "Use describe first if you do not know the type. " \
+        "Send pagination_token from meta.next_pagination_token to get the next page. " \
+        "Returns records and meta."
+    end
+
+    def list_properties(catalog)
+      properties = {
+        type: catalog.type_schema_for(:index),
+        q: { type: "string", description: "Search query across writable and sortable fields." },
+        limit: { type: "integer", description: "Page size." },
+        sort: { type: "string" },
+        order: { type: "string", description: "asc or desc." },
+        filter: { type: "object", description: "Attribute filters allowed by the named API." },
+        pagination_token: {
+          type: "string",
+          description: "Pass meta.next_pagination_token from the previous list result to fetch the next page."
+        }
+      }
+      return properties unless catalog.list_parent_id?
+
+      {
+        type: properties[:type],
+        parent_id: {
+          type: "string",
+          description: "Parent recording id. Only filters for the listed types. " \
+                       "root_id on a record is the workspace, not this parent."
+        }
+      }.merge(properties.except(:type))
     end
 
     def show_tool(catalog)
@@ -193,6 +216,7 @@ module RecordingStudioMcp
 
     DESCRIBE_DESCRIPTION = "Describe one type on this named API. " \
                            "Returns operations, typed writable fields with requirements and allowed values, " \
+                           "output keys, extra fields, relationships and allowed children, " \
                            "enabled capability actions with input contracts, and parent rules. " \
                            "Each type's describe output lists its allowed operations."
 
@@ -244,6 +268,7 @@ module RecordingStudioMcp
     end
 
     private_class_method :tool, :endpoint_tool_options, :endpoint_title,
-                         :endpoint_description, :attach_meta, :attach_ui_meta
+                         :endpoint_description, :list_description, :list_properties,
+                         :attach_meta, :attach_ui_meta
   end
 end
