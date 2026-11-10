@@ -8,19 +8,19 @@ module RecordingStudioMcp
 
         def for(page)
           types = page.types.each_with_object({}) do |entry, acc|
-            entry = Openapi.stringify(entry)
+            entry = Internals.stringify(entry)
             name = entry["type"].to_s
             next if name.blank?
 
             acc[name] = type_schema(entry)
           end
-          types["TypeName"] = Openapi.stringify(page.type_schema)
+          types["TypeName"] = Internals.stringify(page.type_schema)
           types
         end
 
         def type_schema(entry)
-          fields = Array(entry["writable_fields"]).map { |field| Openapi.stringify(field) }
-          type_object_schema(entry, fields).merge(type_extensions(entry, fields)).compact
+          fields = Array(entry["writable_fields"]).map { |field| Internals.stringify(field) }
+          type_object_schema(entry, fields).merge(type_extensions(entry)).compact
         end
 
         def type_object_schema(entry, fields)
@@ -33,9 +33,8 @@ module RecordingStudioMcp
           }
         end
 
-        def type_extensions(entry, fields)
+        def type_extensions(entry)
           {
-            "x-mcp-writable-fields" => fields,
             "x-mcp-operations" => Array(entry["operations"]),
             "x-mcp-capability-actions" => Array(entry["capability_actions"]),
             "x-mcp-parent" => entry["parent"],

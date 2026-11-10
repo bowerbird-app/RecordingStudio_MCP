@@ -69,7 +69,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes schemas.keys, "Workspace"
     assert_includes schemas.keys, "Folder"
     assert_includes schemas.keys, "Page"
-    assert workspace.key?("x-mcp-writable-fields")
+    refute workspace.key?("x-mcp-writable-fields")
     assert_includes workspace.fetch("properties").keys, "name"
     assert_includes actions, "ping"
     assert_equal "recording://{id}", spec.dig("x-mcp", "resourceTemplates", 0, "uriTemplate")
@@ -98,16 +98,23 @@ class McpDocsTest < ActionDispatch::IntegrationTest
   test "redoc bundle rewrites logo urls to the gated mount" do
     sign_in_user
     logo = "#{public_api_mcp_docs_path}/logo-mini-full.svg"
+    logo_mini = "#{public_api_mcp_docs_path}/logo-mini.svg"
 
     get "#{public_api_mcp_docs_path}/redoc.js"
 
     assert_response :success
     assert_includes response.media_type, "javascript"
     assert_includes response.body, logo
+    assert_includes response.body, logo_mini
     refute_includes response.body, RecordingStudioMcp::Redoc::LOGO_MINI_FULL_TOKEN
+    refute_includes response.body, RecordingStudioMcp::Redoc::LOGO_MINI_TOKEN
     CDN_NEEDLES.each { |needle| refute_includes response.body, needle }
 
     get logo
+    assert_response :success
+    assert_includes response.media_type, "svg"
+
+    get logo_mini
     assert_response :success
     assert_includes response.media_type, "svg"
   end
