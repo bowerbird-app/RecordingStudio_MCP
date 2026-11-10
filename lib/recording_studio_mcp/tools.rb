@@ -69,7 +69,7 @@ module RecordingStudioMcp
 
     def list_description(catalog)
       extra = if catalog.list_parent_id?
-                "Pass parent_id to list children of that parent for types whose index handler filters by it. "
+                "Pass parent_id to list children of that parent. It only filters for the listed types. "
               else
                 ""
               end
@@ -98,8 +98,8 @@ module RecordingStudioMcp
         type: properties[:type],
         parent_id: {
           type: "string",
-          description: "Parent recording id. Lists children of that parent when the type's index handler " \
-                       "filters by parent_id. root_id on a record is the workspace, not this parent."
+          description: "Parent recording id. Only filters for the listed types. " \
+                       "root_id on a record is the workspace, not this parent."
         }
       }.merge(properties.except(:type))
     end

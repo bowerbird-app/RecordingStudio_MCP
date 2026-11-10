@@ -114,8 +114,10 @@ class ToolsTest < Minitest::Test
 
         assert_equal "string", parent_id.fetch(:type)
         assert_includes parent_id.fetch(:description), "Parent recording id"
+        assert_includes parent_id.fetch(:description), "listed types"
         assert_includes parent_id.fetch(:description), "root_id"
         assert_includes tool.fetch(:description), "parent_id"
+        assert_includes tool.fetch(:description), "listed types"
       end
     end
   end

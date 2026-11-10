@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.27.0] - 2026-11-10
 
 ### Added
-- `list` advertises `parent_id` when a type's index handler already filters by
-  it (Presskits `ResourceIo::Index`, Support page index, or
-  `config.list_parent_id_types`). Builtin API index does not filter by
-  `parent_id`.
+- `list` advertises `parent_id` when `config.list_parent_id_types` names a type
+  that allows index on this named API. Builtin API index does not filter by
+  `parent_id`. Hosts that run Presskits or Support set the config.
 - Initialize tree instructions explain that records nest by `parent_id`, that
   `root_id` is the workspace (not the parent record), and that `describe` shows
   allowed children and actions. When `list` advertises `parent_id`, they also
@@ -31,11 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the matching full type names.
 
 ### Upgrade notes
-- Bump to `0.27.0`. `0.26.0` is reserved by the live Redoc docs PR. No MCP
-  migration. `list` includes `parent_id` only for types whose index handler
-  filters by it. Short type labels work on tree tools. To extend `describe` per
-  type, set `describe_payload` in MCP config. Return a hash. Unknown return
-  values keep the default payload.
+- Bump to `0.27.0`. No MCP migration. `list` includes `parent_id` only for
+  types listed in `config.list_parent_id_types` that also allow index. Short
+  type labels work on tree tools. To extend `describe` per type, set
+  `describe_payload` in MCP config. Return a hash. Unknown return values keep
+  the default payload.
 
 ## [0.26.0] - 2026-11-10
 

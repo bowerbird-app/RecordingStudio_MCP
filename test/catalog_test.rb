@@ -331,6 +331,18 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_list_parent_id_is_off_until_configured
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Page")
+        catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+        assert_equal false, catalog.list_parent_id?
+        assert_equal [], catalog.list_parent_id_type_names
+      end
+    end
+  end
+
   def test_list_parent_id_types_are_the_configured_index_types
     with_isolated_mcp_configuration do
       with_isolated_api_configuration do
@@ -345,45 +357,17 @@ class CatalogTest < Minitest::Test
     end
   end
 
-  def test_list_parent_id_detects_presskits_index_handler
-    define_named_index_handler("RecordingStudioPresskits", %i[Api ResourceIo Index])
-    with_isolated_api_configuration do
-      register_tree_type("RecordingStudioPresskits::KitSection")
-      RecordingStudioApi.register_resource_handler(
-        "RecordingStudioPresskits::KitSection",
-        :index,
-        handler: RecordingStudioPresskits::Api::ResourceIo::Index
-      )
-      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+  def test_list_parent_id_types_intersect_with_index_types
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Folder")
+        register_tree_type("Page", operations: %i[show create])
+        RecordingStudioMcp.configuration.list_parent_id_types = %w[Page Folder Unknown]
+        catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
-      assert_equal true, catalog.list_parent_id?
-      assert_equal ["RecordingStudioPresskits::KitSection"], catalog.list_parent_id_type_names
+        assert_equal ["Folder"], catalog.list_parent_id_type_names
+      end
     end
-  ensure
-    remove_defined_index_handlers
-  end
-
-  def test_list_parent_id_detects_support_page_index_not_section
-    define_named_index_handler("RecordingStudioSupport", %i[Api Index])
-    with_isolated_api_configuration do
-      register_tree_type("RecordingStudioSupport::SupportPage")
-      register_tree_type("RecordingStudioSupport::SupportSection")
-      RecordingStudioApi.register_resource_handler(
-        "RecordingStudioSupport::SupportPage",
-        :index,
-        handler: RecordingStudioSupport::Api::Index
-      )
-      RecordingStudioApi.register_resource_handler(
-        "RecordingStudioSupport::SupportSection",
-        :index,
-        handler: RecordingStudioSupport::Api::Index
-      )
-      catalog = RecordingStudioMcp::Catalog.new(api: :public)
-
-      assert_equal ["RecordingStudioSupport::SupportPage"], catalog.list_parent_id_type_names
-    end
-  ensure
-    remove_defined_index_handlers
   end
 
   def test_unknown_type_message_names_the_allowed_set
@@ -398,31 +382,5 @@ class CatalogTest < Minitest::Test
     else
       assert_includes message, "Allowed types: (none)"
     end
-  end
-
-  private
-
-  def define_named_index_handler(root_name, path)
-    return if Object.const_defined?(root_name)
-
-    index = Class.new do
-      def self.call(_context)
-        { json: { records: [] } }
-      end
-    end
-    leaf = path.reverse.reduce(index) do |inner, name|
-      mod = Module.new
-      mod.const_set(name, inner)
-      mod
-    end
-    Object.const_set(root_name, leaf)
-    (@defined_index_roots ||= []) << root_name
-  end
-
-  def remove_defined_index_handlers
-    Array(@defined_index_roots).each do |name|
-      Object.send(:remove_const, name) if Object.const_defined?(name)
-    end
-    @defined_index_roots = []
   end
 end
