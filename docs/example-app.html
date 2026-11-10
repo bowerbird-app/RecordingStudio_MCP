@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Example dummy app MCP</title>
+  </head>
+  <body>
+    <p>Example dummy app. Generate <code>example-app.openapi.json</code> with <code>bin/docs-mcp</code>.</p>
+    <redoc id="mcp-docs-redoc" disable-telemetry="true"></redoc>
+    <script type="module">
+      import { init } from "../vendor/redoc/redoc.standalone.js";
+      init("./example-app.openapi.json", { disableTelemetry: true }, document.getElementById("mcp-docs-redoc"));
+    </script>
+  </body>
+</html>
