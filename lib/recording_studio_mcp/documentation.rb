@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "documentation/openapi"
+
 module RecordingStudioMcp
   module Documentation
     Page = Data.define(
@@ -19,6 +21,10 @@ module RecordingStudioMcp
       raise ArgumentError, "unknown API #{api_key}" unless NamedApi.known?(api_key)
 
       build_page(Catalog.new(api: api_key))
+    end
+
+    def openapi(api:)
+      Openapi.document(page(api: api))
     end
 
     def build_page(catalog)

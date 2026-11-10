@@ -1,7 +1,4 @@
----
-title: Connect with OAuth
-description: People Connect an app. MCP then uses that Accessible grant.
----
+# Connect with OAuth
 
 People Connect an OauthClient. The app gets its own Accessible grant. MCP uses that grant. The app does not act as the person.
 
@@ -19,4 +16,4 @@ Staff register the client in Oauth. There is no Dynamic Client Registration in t
 
 A view grant sees read tools. Create, update, and delete need edit. `describe` stays when the API has types.
 
-Replace `YOUR_HOST` and `YOUR_TOKEN` in the reference connection panel. Do not commit tokens.
+Do not commit tokens.

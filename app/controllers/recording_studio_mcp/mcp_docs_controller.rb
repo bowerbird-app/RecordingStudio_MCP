@@ -4,14 +4,30 @@ module RecordingStudioMcp
   class McpDocsController < ApplicationController
     helper RecordingStudioMcp::McpDocsHelper
     recording_studio_layout { documentation_layout }
+    skip_forgery_protection only: :asset
 
     before_action :load_api_key
     before_action :ensure_documentation_enabled
     before_action :authorize_documentation
-    before_action :load_documentation_page
+    before_action :load_documentation_page, only: :show
 
     def show
       @api_title = @page.title
+    end
+
+    def openapi
+      render json: Documentation.openapi(api: @api_key)
+    end
+
+    def asset
+      path, content_type = Redoc.file_for(params[:asset])
+      return head :not_found unless path
+
+      if params[:asset] == "redoc.js"
+        send_data Redoc.javascript_for(docs_asset_mount), type: content_type, disposition: "inline"
+      else
+        send_file path, type: content_type, disposition: "inline"
+      end
     end
 
     private
@@ -71,6 +87,10 @@ module RecordingStudioMcp
       return layout_name if layout_name.present?
 
       RecordingStudio.configuration.resolved_layout(controller: self)
+    end
+
+    def docs_asset_mount
+      request.path.sub(%r{/#{Regexp.escape(params[:asset].to_s)}\z}, "")
     end
   end
 end

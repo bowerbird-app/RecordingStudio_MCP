@@ -339,11 +339,17 @@ curl -N --no-buffer \
 
 ## MCP reference docs
 
-Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page reads the host catalog for the named API, not a committed snapshot.
+Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds an OpenAPI 3.1 document from the host catalog for the named API on each request and renders it with vendored Redoc. Tools, resource templates, server instructions, and types stay in sync with what the host registered. There is no committed snapshot.
 
-This repository also has a generated Sourcey site under `docs/mcp` (the gemspec does not ship `docs/`). That site is the **example dummy surface**. It covers the dummy snapshot of built-in tools only (`list`, `show`, `create`, `update`, `capability_action`, `describe`) plus the `recording://{id}` template. `delete` is also a built-in tool; it appears on `tools/list` when a host type allows destroy. The dummy snapshot does not advertise it. Host apps register extra tools at runtime, so those do not appear in the snapshot. JSON HTTP APIs stay on Scalar.
+The spec is `{mount}/openapi.json` behind the same `documentation_enabled` flag and `documentation_access` gate as the page. Redoc loads from `{mount}/redoc.js` in this gem. Nothing is fetched from a CDN. Telemetry is off.
 
-Refresh the dummy snapshot and static site with `bin/docs-mcp` (dummy MCP + an edit-role Seed MCP App token). Sourcey (AGPL-3.0) and mcp-parser (MIT) are docs-only; they are not gem runtime dependencies. The built HTML is gitignored. Do not mount `docs/mcp/dist` as the product docs.
+The page includes a small inline `type="module"` script that imports that local bundle. If the host sets a Content-Security-Policy, allow that script with a nonce (or `script-src` that covers it). Do not add a CDN `script-src` for Redoc.
+
+JSON HTTP APIs stay on Scalar.
+
+Guides for people connecting a client: [docs/introduction.md](docs/introduction.md), [docs/oauth.md](docs/oauth.md), [docs/cursor.md](docs/cursor.md), [docs/claude-code.md](docs/claude-code.md).
+
+`bin/docs-mcp` writes `docs/example-app.openapi.json` from the dummy app's live public catalog. That file is labelled as the **example dummy app**. Do not serve it as product docs. Open `docs/example-app.html` next to it if you want a static Redoc view of that example.
 
 ## Dummy
 
@@ -355,4 +361,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.25.0
+0.26.0
