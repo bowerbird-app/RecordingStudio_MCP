@@ -36,7 +36,6 @@ Metrics/ModuleLength:
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
     - 'lib/recording_studio_mcp/postgres_bus.rb'
-    - 'lib/recording_studio_mcp/documentation/openapi.rb'
 
 Metrics/MethodLength:
   Exclude:

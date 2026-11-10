@@ -1,0 +1,6 @@
+# Third-party notices
+
+This directory ships Redoc CE 3.1.0 as a standalone browser bundle.
+
+- Redoc CE (`redoc.standalone.js`, attribution logos) — MIT. Full text in `LICENSE`.
+- The standalone file also inlines Redoc's own runtime dependencies (React, the OpenAPI parser, and related libraries). Those stay under the licenses Redoc distributes; this gem does not add a separate copy of each.

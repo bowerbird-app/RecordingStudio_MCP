@@ -13,6 +13,8 @@ module RecordingStudioMcp
       draw_docs_page_route(mount_path, defaults, as.to_s)
     end
 
+    private
+
     def draw_docs_spec_route(mount_path, defaults, route_key)
       get "#{mount_path}/openapi.json",
           to: "recording_studio_mcp/mcp_docs#openapi",

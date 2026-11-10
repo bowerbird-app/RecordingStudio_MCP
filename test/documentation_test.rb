@@ -83,13 +83,23 @@ class DocumentationTest < Minitest::Test
   def test_openapi_document_uses_live_tools_types_and_resource_template
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
-      register_tree_type("Folder", operations: %i[index show create update])
+      register_tree_type("Folder", operations: %i[index show create update], capability_actions: %i[ping])
       register_tree_type("Page", operations: %i[index show create update])
+      register_ping_capability
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        openapi: { summary: "Ping" },
+        handler: ->(_context) { { ok: true } }
+      )
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       mcp = spec.fetch("x-mcp")
       names = mcp.fetch("tools").map { |tool| tool["name"] }
       schemas = spec.dig("components", "schemas")
+      folder = schemas.fetch("Folder")
+      actions = Array(folder["x-mcp-capability-actions"]).map { |action| action["name"] }
 
       assert_equal "3.1.0", spec["openapi"]
       assert_equal "Public MCP", spec.dig("info", "title")
@@ -97,9 +107,13 @@ class DocumentationTest < Minitest::Test
       assert_equal spec.dig("info", "description"), mcp["instructions"]
       assert_includes names, "list"
       assert_includes names, "describe"
+      assert_includes names, "ping"
       assert_includes schemas.keys, "Folder"
       assert_includes schemas.keys, "Page"
-      assert_includes Array(schemas.dig("Folder", "x-mcp-operations")), "index"
+      assert_includes Array(folder["x-mcp-operations"]), "index"
+      assert folder.key?("x-mcp-writable-fields")
+      assert_includes folder.fetch("properties").keys, "title"
+      assert_includes actions, "ping"
       assert_equal "recording://{id}", mcp.dig("resources", 0, "uri")
       assert_equal "recording://{id}", mcp.dig("resourceTemplates", 0, "uriTemplate")
     end

@@ -14,6 +14,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     jsdelivr
     otel.cloud.redocly.com
   ].freeze
+  DOCS_ASSETS = %w[redoc.js logo-mini.svg logo-mini-full.svg].freeze
 
   setup do
     @previous_enabled = RecordingStudioMcp.configuration.documentation_enabled
@@ -48,7 +49,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     CDN_NEEDLES.each { |needle| refute_includes fragment, needle }
   end
 
-  test "public spec lists registered tools and types" do
+  test "public spec lists registered tools types writable fields and capability actions" do
     sign_in_user
 
     get public_api_mcp_docs_openapi_path
@@ -57,13 +58,20 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     spec = JSON.parse(response.body)
     names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
     schemas = spec.dig("components", "schemas")
+    workspace = schemas.fetch("Workspace")
+    actions = Array(workspace["x-mcp-capability-actions"]).map { |action| action["name"] || action[:name] }
 
     assert_equal "3.1.0", spec["openapi"]
     assert_includes names, "list"
     assert_includes names, "describe"
+    assert_includes names, "ping"
+    assert_equal "Workspace", workspace["title"]
     assert_includes schemas.keys, "Workspace"
     assert_includes schemas.keys, "Folder"
     assert_includes schemas.keys, "Page"
+    assert workspace.key?("x-mcp-writable-fields")
+    assert_includes workspace.fetch("properties").keys, "name"
+    assert_includes actions, "ping"
     assert_equal "recording://{id}", spec.dig("x-mcp", "resourceTemplates", 0, "uriTemplate")
     refute_empty spec.dig("info", "description")
   end
@@ -87,15 +95,21 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_includes spec.dig("info", "description"), "Call describe before create"
   end
 
-  test "redoc bundle is served locally" do
+  test "redoc bundle rewrites logo urls to the gated mount" do
     sign_in_user
+    logo = "#{public_api_mcp_docs_path}/logo-mini-full.svg"
 
     get "#{public_api_mcp_docs_path}/redoc.js"
 
     assert_response :success
     assert_includes response.media_type, "javascript"
-    refute_includes response.body, "cdn.redocly.com"
-    refute_includes response.body, "otel.cloud.redocly.com"
+    assert_includes response.body, logo
+    refute_includes response.body, RecordingStudioMcp::Redoc::LOGO_MINI_FULL_TOKEN
+    CDN_NEEDLES.each { |needle| refute_includes response.body, needle }
+
+    get logo
+    assert_response :success
+    assert_includes response.media_type, "svg"
   end
 
   test "host gate callable allowing access returns 200" do
@@ -104,21 +118,16 @@ class McpDocsTest < ActionDispatch::IntegrationTest
       controller.present? && actor.present? && api.present?
     end
 
-    get public_api_mcp_docs_path
-    assert_response :success
-    get public_api_mcp_docs_openapi_path
-    assert_response :success
+    assert_docs_surfaces :success
   end
 
   test "public access with no actor returns 200" do
     RecordingStudioMcp.configuration.documentation_access = :public
 
-    get public_api_mcp_docs_path
-    assert_response :success
+    assert_docs_surfaces :success
     get public_api_mcp_docs_openapi_path
-    assert_response :success
     spec = JSON.parse(response.body)
-    assert_includes spec.dig("components", "schemas").keys, "Folder"
+    assert_includes spec.dig("components", "schemas").keys, "Workspace"
   end
 
   test "host gate denies signed-in visitors with 403" do
@@ -128,10 +137,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
       false
     end
 
-    get public_api_mcp_docs_path
-    assert_response :forbidden
-    get public_api_mcp_docs_openapi_path
-    assert_response :forbidden
+    assert_docs_surfaces :forbidden
   end
 
   test "host gate denies signed-out visitors with 401" do
@@ -139,27 +145,18 @@ class McpDocsTest < ActionDispatch::IntegrationTest
       false
     end
 
-    get public_api_mcp_docs_path
-    assert_response :unauthorized
-    get public_api_mcp_docs_openapi_path
-    assert_response :unauthorized
+    assert_docs_surfaces :unauthorized
   end
 
   test "authenticated docs require a signed-in actor" do
-    get public_api_mcp_docs_path
-    assert_response :unauthorized
-    get public_api_mcp_docs_openapi_path
-    assert_response :unauthorized
+    assert_docs_surfaces :unauthorized
   end
 
   test "disabled documentation is not exposed" do
     sign_in_user
     RecordingStudioMcp.configuration.documentation_enabled = false
 
-    get public_api_mcp_docs_path
-    assert_response :not_found
-    get public_api_mcp_docs_openapi_path
-    assert_response :not_found
+    assert_docs_surfaces :not_found
   end
 
   private
@@ -169,5 +166,16 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     Current.actor = user
     sign_in user
     user
+  end
+
+  def assert_docs_surfaces(status)
+    get public_api_mcp_docs_path
+    assert_response status
+    get public_api_mcp_docs_openapi_path
+    assert_response status
+    DOCS_ASSETS.each do |asset|
+      get "#{public_api_mcp_docs_path}/#{asset}"
+      assert_response status
+    end
   end
 end

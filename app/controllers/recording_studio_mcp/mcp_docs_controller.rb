@@ -23,7 +23,11 @@ module RecordingStudioMcp
       path, content_type = Redoc.file_for(params[:asset])
       return head :not_found unless path
 
-      send_file path, type: content_type, disposition: "inline"
+      if params[:asset] == "redoc.js"
+        send_data Redoc.javascript_for(docs_asset_mount), type: content_type, disposition: "inline"
+      else
+        send_file path, type: content_type, disposition: "inline"
+      end
     end
 
     private
@@ -83,6 +87,10 @@ module RecordingStudioMcp
       return layout_name if layout_name.present?
 
       RecordingStudio.configuration.resolved_layout(controller: self)
+    end
+
+    def docs_asset_mount
+      request.path.sub(%r{/#{Regexp.escape(params[:asset].to_s)}\z}, "")
     end
   end
 end

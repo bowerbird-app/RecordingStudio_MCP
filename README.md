@@ -343,6 +343,8 @@ Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds
 
 The spec is `{mount}/openapi.json` behind the same `documentation_enabled` flag and `documentation_access` gate as the page. Redoc loads from `{mount}/redoc.js` in this gem. Nothing is fetched from a CDN. Telemetry is off.
 
+The page includes a small inline `type="module"` script that imports that local bundle. If the host sets a Content-Security-Policy, allow that script with a nonce (or `script-src` that covers it). Do not add a CDN `script-src` for Redoc.
+
 JSON HTTP APIs stay on Scalar.
 
 Guides for people connecting a client: [docs/introduction.md](docs/introduction.md), [docs/oauth.md](docs/oauth.md), [docs/cursor.md](docs/cursor.md), [docs/claude-code.md](docs/claude-code.md).
@@ -359,4 +361,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.25.1
+0.26.0
