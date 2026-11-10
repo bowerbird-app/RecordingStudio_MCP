@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Fetch redoc@3.1.x, rewrite CDN/OTEL URLs, and copy LICENSE plus attribution logos.
+# Usage: bin/vendor-redoc [VERSION]
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION="${1:-3.1.0}"
+DEST="${ROOT}/vendor/redoc"
+LOGO_MINI_TOKEN="redoc-logo-mini.local"
+LOGO_MINI_FULL_TOKEN="redoc-logo-mini-full.local"
+
+case "${VERSION}" in
+  3.1.*) ;;
+  *)
+    echo "bin/vendor-redoc: version must be 3.1.x (got ${VERSION})" >&2
+    exit 1
+    ;;
+esac
+
+mkdir -p "${DEST}"
+TMP="$(mktemp -d)"
+trap 'rm -rf "${TMP}"' EXIT
+
+TGZ="${TMP}/redoc.tgz"
+curl -fsSL "https://registry.npmjs.org/redoc/-/redoc-${VERSION}.tgz" -o "${TGZ}"
+tar -xzf "${TGZ}" -C "${TMP}"
+
+cp "${TMP}/package/bundles/redoc.standalone.js" "${DEST}/redoc.standalone.js"
+cp "${TMP}/package/LICENSE" "${DEST}/LICENSE"
+curl -fsSL "https://cdn.redoc.ly/redoc/logo-mini.svg" -o "${DEST}/logo-mini.svg"
+curl -fsSL "https://cdn.redoc.ly/redoc/logo-mini-full.svg" -o "${DEST}/logo-mini-full.svg"
+
+python3 - "${DEST}/redoc.standalone.js" "${LOGO_MINI_TOKEN}" "${LOGO_MINI_FULL_TOKEN}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+logo_mini, logo_full = sys.argv[2], sys.argv[3]
+js = path.read_text(encoding="utf-8")
+replacements = {
+    "https://cdn.redocly.com/icons/fa/7.0.0": "",
+    "https://cdn.redocly.com/icons/code/5.24.0": "",
+    "https://cdn.redoc.ly/redoc/logo-mini-full.svg": logo_full,
+    "https://cdn.redoc.ly/redoc/logo-mini.svg": logo_mini,
+    "https://otel.cloud.redocly.com/v1/traces": "",
+}
+for old, new in replacements.items():
+    count = js.count(old)
+    if count == 0:
+        raise SystemExit(f"missing expected URL {old}")
+    js = js.replace(old, new)
+for banned in ("cdn.redocly.com", "cdn.redoc.ly", "unpkg.com", "jsdelivr", "otel.cloud.redocly.com"):
+    if banned in js:
+        raise SystemExit(f"bundle still contains {banned}")
+path.write_text(js, encoding="utf-8")
+PY
+
+echo "Vendored redoc@${VERSION} into ${DEST}"

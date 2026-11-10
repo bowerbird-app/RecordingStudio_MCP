@@ -2,12 +2,16 @@
 
 module RecordingStudioMcp
   module McpDocsHelper
-    def mcp_docs_json(value)
-      return "" if value.nil?
+    def mcp_docs_spec_path
+      "#{docs_mount_path}/openapi.json"
+    end
 
-      JSON.pretty_generate(value.as_json)
-    rescue JSON::GeneratorError, TypeError
-      value.to_s
+    def mcp_docs_redoc_path
+      "#{docs_mount_path}/redoc.js"
+    end
+
+    def docs_mount_path
+      request.path.chomp("/")
     end
   end
 end

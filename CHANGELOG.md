@@ -37,6 +37,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type, set `describe_payload` in MCP config. Return a hash. Unknown return
   values keep the default payload.
 
+## [0.26.0] - 2026-11-10
+
+### Added
+- `Documentation.openapi(api:)` builds an OpenAPI 3.1 document with Redoc's
+  `x-mcp` extension from the live named-API catalog.
+- `{mount}/openapi.json` and `{mount}/redoc.js` (plus attribution logos) sit
+  behind the same `documentation_access` gate as the mounted docs page.
+
+### Changed
+- Live MCP docs render with vendored Redoc CE 3.1.0 (MIT). The mounted page
+  points Redoc at the live spec. Telemetry is off. Assets are local.
+- Removed the Sourcey site, snapshot, and `npx sourcey` docs tooling. Guides
+  live under `docs/`. `bin/docs-mcp` exports the dummy app's live spec as an
+  example dummy app document. Refresh Redoc with `bin/vendor-redoc 3.1.0`.
+
+### Upgrade notes
+- Bump to `0.26.0`. No MCP migration. Keep `recording_studio_mcp_docs_for` and
+  `documentation_access`. The page is Redoc pointing at `{mount}/openapi.json`
+  and `{mount}/redoc.js`. Hosts that set a CSP need a nonce (or `script-src`)
+  for the inline module script on that page. Stop using `docs/mcp` Sourcey
+  output.
+
 ## [0.25.0] - 2026-11-09
 
 ### Added
@@ -694,7 +716,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
 [Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...HEAD
-[0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...v0.27.0
+[0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.2...v0.25.0
 [0.24.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.24.0...v0.24.1

@@ -40,16 +40,17 @@ class RecordingStudioMcpTest < Minitest::Test
   def test_gemspec_excludes_docs_and_sourcey
     spec = Gem::Specification.load(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
+    root = File.expand_path("..", __dir__)
     docs_files = spec.files.select { |path| path == "docs" || path.split("/").include?("docs") }
 
     assert_empty docs_files, "gemspec must not package docs/ (got #{docs_files.inspect})"
     refute_includes gemspec, "sourcey"
     refute_includes gemspec, "mcp-parser"
-
-    package = JSON.parse(File.read(File.expand_path("../docs/mcp/package.json", __dir__)))
-    refute package.key?("dependencies")
-    assert package.dig("devDependencies", "sourcey")
-    assert package.dig("devDependencies", "mcp-parser")
+    refute File.exist?(File.join(root, "docs/mcp/package.json"))
+    refute File.exist?(File.join(root, "docs/mcp/sourcey.config.ts"))
+    refute File.exist?(File.join(root, "docs/mcp/server.snapshot.json"))
+    assert_includes spec.files, "vendor/redoc/redoc.standalone.js"
+    assert_includes spec.files, "vendor/redoc/LICENSE"
   end
 
   def test_homepage_is_this_repo
@@ -125,8 +126,11 @@ class RecordingStudioMcpTest < Minitest::Test
 
     assert_includes readme, "Recording Studio MCP"
     assert_includes readme, "## MCP reference docs"
-    assert_includes readme, "built-in tools only"
+    assert_includes readme, "vendored Redoc"
+    assert_includes readme, "Telemetry is off"
+    refute_includes readme, "Sourcey"
     assert_includes readme, "## Version\n\n0.27.0\n"
+    assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."
     assert_includes readme, "Staff admin is the MCP section when `recording_studio_admin` is mounted."
