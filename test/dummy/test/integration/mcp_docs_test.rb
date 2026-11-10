@@ -44,9 +44,27 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "disableTelemetry: true"
     assert_includes response.body, "#{public_api_mcp_docs_path}/openapi.json"
     assert_includes response.body, "#{public_api_mcp_docs_path}/redoc.js"
-    fragment = response.body[%r{<div data-recording-studio-mcp-docs.*?</script>\s*</div>}m]
+    assert_includes response.body, "Full width"
+    assert_includes response.body, public_api_mcp_docs_fullscreen_path
+    fragment = response.body[%r{<div[^>]*data-recording-studio-mcp-docs.*?</script>\s*</div>}m]
     assert fragment.present?
     CDN_NEEDLES.each { |needle| refute_includes fragment, needle }
+  end
+
+  test "fullscreen docs render redoc with no host layout and the same gate" do
+    sign_in_user
+
+    get public_api_mcp_docs_fullscreen_path
+
+    assert_response :success
+    assert_match(/\A\s*<!doctype html>/i, response.body)
+    assert_includes response.body, 'data-recording-studio-mcp-docs="public"'
+    assert_includes response.body, "#{public_api_mcp_docs_path}/openapi.json"
+    assert_includes response.body, "#{public_api_mcp_docs_path}/redoc.js"
+    assert_includes response.body, 'disable-telemetry="true"'
+    refute_includes response.body, "Full width"
+    refute_includes response.body, "max-w-6xl"
+    refute_includes response.body, 'data-recording-studio-default-layout'
   end
 
   test "public spec lists registered tools types writable fields and capability actions" do
@@ -177,6 +195,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
 
   def assert_docs_surfaces(status)
     get public_api_mcp_docs_path
+    assert_response status
+    get public_api_mcp_docs_fullscreen_path
     assert_response status
     get public_api_mcp_docs_openapi_path
     assert_response status

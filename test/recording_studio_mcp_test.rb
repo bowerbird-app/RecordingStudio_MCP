@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_26_1
-    assert_equal "0.26.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_28_0
+    assert_equal "0.28.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -129,7 +129,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.26.1\n"
+    assert_includes readme, "## Version\n\n0.28.0\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."
@@ -155,7 +155,11 @@ class RecordingStudioMcpTest < Minitest::Test
     root = File.expand_path("..", __dir__)
     relative = erb_views.map { |path| path.delete_prefix("#{root}/") }
 
-    assert_equal ["app/views/recording_studio_mcp/mcp_docs/show.html.erb"], relative
+    assert_equal [
+      "app/views/recording_studio_mcp/mcp_docs/_redoc.html.erb",
+      "app/views/recording_studio_mcp/mcp_docs/fullscreen.html.erb",
+      "app/views/recording_studio_mcp/mcp_docs/show.html.erb"
+    ].sort, relative.sort
   end
 
   def test_dummy_home_is_dummy_only

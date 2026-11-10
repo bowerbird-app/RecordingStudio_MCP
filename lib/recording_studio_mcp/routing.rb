@@ -9,6 +9,7 @@ module RecordingStudioMcp
       mount_path = at.to_s.sub(%r{/+\z}, "")
       defaults = { api_key: api_name.to_s }
       draw_docs_spec_route(mount_path, defaults, as.to_s)
+      draw_docs_fullscreen_route(mount_path, defaults, as.to_s)
       draw_docs_asset_routes(mount_path, defaults)
       draw_docs_page_route(mount_path, defaults, as.to_s)
     end
@@ -20,6 +21,13 @@ module RecordingStudioMcp
           to: "recording_studio_mcp/mcp_docs#openapi",
           defaults: defaults,
           as: :"#{route_key}_openapi"
+    end
+
+    def draw_docs_fullscreen_route(mount_path, defaults, route_key)
+      get "#{mount_path}/fullscreen",
+          to: "recording_studio_mcp/mcp_docs#fullscreen",
+          defaults: defaults,
+          as: :"#{route_key}_fullscreen"
     end
 
     def draw_docs_asset_routes(mount_path, defaults)

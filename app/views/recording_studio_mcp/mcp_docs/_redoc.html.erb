@@ -1,0 +1,5 @@
+<redoc id="mcp-docs-redoc" disable-telemetry="true"></redoc>
+<script type="module">
+  import { init } from <%= raw mcp_docs_redoc_path.to_json %>;
+  init(<%= raw mcp_docs_spec_path.to_json %>, { disableTelemetry: true }, document.getElementById("mcp-docs-redoc"));
+</script>

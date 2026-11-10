@@ -9,10 +9,15 @@ module RecordingStudioMcp
     before_action :load_api_key
     before_action :ensure_documentation_enabled
     before_action :authorize_documentation
-    before_action :load_documentation_page, only: :show
+    before_action :load_documentation_page, only: %i[show fullscreen]
 
     def show
-      @api_title = @page.title
+      prepare_docs_page
+    end
+
+    def fullscreen
+      prepare_docs_page
+      render :fullscreen, layout: false
     end
 
     def openapi
@@ -64,6 +69,15 @@ module RecordingStudioMcp
 
     def deny_documentation(actor)
       head(actor.present? ? :forbidden : :unauthorized)
+    end
+
+    def prepare_docs_page
+      @api_title = @page.title
+      @fullscreen_url = "#{docs_page_mount}/fullscreen"
+    end
+
+    def docs_page_mount
+      request.path.chomp("/").delete_suffix("/fullscreen")
     end
 
     def load_documentation_page
