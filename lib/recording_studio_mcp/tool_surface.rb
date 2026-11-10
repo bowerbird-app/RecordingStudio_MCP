@@ -67,6 +67,10 @@ module RecordingStudioMcp
       catalog.type_names.any?
     end
 
+    def list_parent_id?
+      catalog.list_parent_id?
+    end
+
     def endpoints_enabled?
       endpoints.any?
     end

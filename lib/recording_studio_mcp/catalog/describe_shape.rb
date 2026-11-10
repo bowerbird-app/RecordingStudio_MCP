@@ -35,13 +35,7 @@ module RecordingStudioMcp
         return payload unless hook.respond_to?(:call)
 
         result = hook.call(payload, type: type, registration: registration, access_grant: access_grant)
-        result.is_a?(Hash) ? stringify_describe_payload(result) : payload
-      end
-
-      def stringify_describe_payload(payload)
-        JSON.parse(JSON.generate(payload))
-      rescue JSON::GeneratorError, TypeError
-        payload.transform_keys(&:to_s)
+        result.is_a?(Hash) ? result.deep_stringify_keys : payload
       end
 
       def field_names(registration)
@@ -55,7 +49,13 @@ module RecordingStudioMcp
         rels = registration&.relationships
         return [] unless rels.respond_to?(:each)
 
-        rels.sort_by { |name, _| name.to_s }.map { |name, rel| relationship_details(name, rel) }
+        rels.sort_by { |name, _| name.to_s }.filter_map do |name, rel|
+          relationship_details(name, rel) if advertised_relationship?(rel)
+        end
+      end
+
+      def advertised_relationship?(rel)
+        rel.child_type.blank? || registered_types.include?(rel.child_type)
       end
 
       def relationship_details(name, rel)
@@ -90,6 +90,7 @@ module RecordingStudioMcp
         return [] unless rels.respond_to?(:each)
 
         rels.filter_map { |_, rel| rel.child_type.presence }
+            .select { |type| registered_types.include?(type) }
       end
 
       def child_types_from_parent_rules(recordable_type)

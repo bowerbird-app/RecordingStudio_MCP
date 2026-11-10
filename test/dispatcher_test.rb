@@ -92,6 +92,10 @@ class DispatcherTest < Minitest::Test
     def registered_endpoints
       []
     end
+
+    def list_parent_id?
+      false
+    end
   end
 
   class DestroyCatalog < FakeCatalog

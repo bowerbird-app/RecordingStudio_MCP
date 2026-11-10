@@ -13,6 +13,9 @@ RecordingStudioMcp.configure do |config|
   # config.describe_payload = lambda { |payload, type:, registration:, access_grant:|
   #   type == "PressKit" ? payload.merge("hint" => "List sections with parent_id") : payload
   # }
+  # Optional. Type names whose list tool should advertise parent_id, in addition to
+  # handlers MCP already recognizes (Presskits ResourceIo::Index, Support page index).
+  # config.list_parent_id_types = %w[Page]
   # ChatGPT MCP Events (webhook delivery). Off by default. Generate migrations, migrate, then enable.
   # config.events_enabled = true
   # config.event_subscription_ttl = 24.hours

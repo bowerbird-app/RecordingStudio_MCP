@@ -16,7 +16,7 @@ module RecordingStudioMcp
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :describe_payload, :skill_policy, :events_enabled,
                   :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
-    attr_reader :catalog_metric_resources, :skill_catalog, :event_catalog
+    attr_reader :catalog_metric_resources, :list_parent_id_types, :skill_catalog, :event_catalog
 
     DOC_FIELDS.each do |public_name, field|
       define_method(public_name) { documentation.public_send(field) }
@@ -39,6 +39,7 @@ module RecordingStudioMcp
       @event_subscriptions_per_principal = 50
       @event_callback_host_allowed = nil
       @catalog_metric_resources = nil
+      @list_parent_id_types = nil
     end
 
     def documentation
@@ -47,6 +48,10 @@ module RecordingStudioMcp
 
     def catalog_metric_resources=(resources)
       @catalog_metric_resources = resources.nil? ? nil : Array(resources).map(&:to_s).uniq.freeze
+    end
+
+    def list_parent_id_types=(types)
+      @list_parent_id_types = types.nil? ? nil : Array(types).map(&:to_s).uniq.freeze
     end
 
     def to_h
@@ -98,7 +103,8 @@ module RecordingStudioMcp
         event_subscription_ttl: event_subscription_ttl,
         event_subscriptions_per_principal: event_subscriptions_per_principal,
         event_callback_host_allowed: event_callback_host_allowed,
-        catalog_metric_resources: catalog_metric_resources
+        catalog_metric_resources: catalog_metric_resources,
+        list_parent_id_types: list_parent_id_types
       }
     end
   end

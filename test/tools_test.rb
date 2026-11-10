@@ -98,12 +98,25 @@ class ToolsTest < Minitest::Test
 
       assert_equal ["type"], schema.fetch(:required)
       assert schema.fetch(:properties).key?(:pagination_token)
-      parent_id = schema.fetch(:properties).fetch(:parent_id)
+      refute schema.fetch(:properties).key?(:parent_id)
+      refute_includes tool.fetch(:description), "parent_id"
+    end
+  end
 
-      assert_equal "string", parent_id.fetch(:type)
-      assert_includes parent_id.fetch(:description), "Parent recording id"
-      assert_includes parent_id.fetch(:description), "root_id"
-      assert_includes tool.fetch(:description), "parent_id"
+  def test_list_advertises_parent_id_when_a_type_filters_by_it
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Page")
+        RecordingStudioMcp.configuration.list_parent_id_types = %w[Page]
+        tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "list" }
+        schema = tool.fetch(:inputSchema)
+        parent_id = schema.fetch(:properties).fetch(:parent_id)
+
+        assert_equal "string", parent_id.fetch(:type)
+        assert_includes parent_id.fetch(:description), "Parent recording id"
+        assert_includes parent_id.fetch(:description), "root_id"
+        assert_includes tool.fetch(:description), "parent_id"
+      end
     end
   end
 

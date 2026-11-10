@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.27.0] - 2026-11-10
 
 ### Added
-- `list` advertises `parent_id` so a client can list children of a parent record.
+- `list` advertises `parent_id` when a type's index handler already filters by
+  it (Presskits `ResourceIo::Index`, Support page index, or
+  `config.list_parent_id_types`). Builtin API index does not filter by
+  `parent_id`.
 - Initialize tree instructions explain that records nest by `parent_id`, that
-  `root_id` is the workspace (not the parent record), and that clients walk down
-  with `list` then `show`, using `describe` for allowed children and actions.
+  `root_id` is the workspace (not the parent record), and that `describe` shows
+  allowed children and actions. When `list` advertises `parent_id`, they also
+  say to walk down with `list` then `show`.
 - `describe` includes `output_keys`, extra `fields`, `relationships`, and
   `allowed_children` from the named API resource registry.
 - Hosts and gems may set `config.describe_payload` to a callable that receives
@@ -28,9 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrade notes
 - Bump to `0.27.0`. `0.26.0` is reserved by the live Redoc docs PR. No MCP
-  migration. Clients can pass `parent_id` on `list` and short type labels on
-  tree tools. To extend `describe` per type, set `describe_payload` in MCP
-  config. Return a hash. Unknown return values keep the default payload.
+  migration. `list` includes `parent_id` only for types whose index handler
+  filters by it. Short type labels work on tree tools. To extend `describe` per
+  type, set `describe_payload` in MCP config. Return a hash. Unknown return
+  values keep the default payload.
 
 ## [0.25.0] - 2026-11-09
 

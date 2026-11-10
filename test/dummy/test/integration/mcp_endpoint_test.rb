@@ -3,6 +3,16 @@
 require "test_helper"
 require "devise/test/integration_helpers"
 
+class ParentFilteredPageIndex < RecordingStudioApi::Services::ResourceOperations::Index
+  def filtered_recordings
+    relation = super
+    parent_id = context.parent_id.presence || params[:parent_id].presence
+    return relation if parent_id.blank?
+
+    relation.where(parent_recording_id: parent_id)
+  end
+end
+
 class McpEndpointTest < ActionDispatch::IntegrationTest
   include OauthDummyHelpers
   include Devise::Test::IntegrationHelpers
@@ -421,6 +431,45 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_empty first_ids & second_ids
   end
 
+  test "list parent_id returns only that parent's children and skips records outside the grant" do
+    original_types = RecordingStudioMcp.configuration.list_parent_id_types
+    RecordingStudioMcp.configuration.list_parent_id_types = %w[Page]
+    RecordingStudioApi.register_resource_handler("Page", :index, handler: ParentFilteredPageIndex)
+
+    token = issue_delegated_token(role: "edit")
+    left = record_child(Folder.create!(name: "Left #{SecureRandom.hex(4)}"), parent: @root_recording)
+    right = record_child(Folder.create!(name: "Right #{SecureRandom.hex(4)}"), parent: @root_recording)
+    left_page = record_child(Page.create!(title: "Left page #{SecureRandom.hex(4)}"), parent: left)
+    right_page = record_child(Page.create!(title: "Right page #{SecureRandom.hex(4)}"), parent: right)
+
+    outsider = create_user(email: "outsider-#{SecureRandom.hex(4)}@example.com")
+    outsider_root, = create_access_recording_for(user: outsider)
+    outsider_page = record_child(
+      Page.create!(title: "Secret page #{SecureRandom.hex(4)}"),
+      parent: outsider_root,
+      root: outsider_root,
+      actor: outsider
+    )
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/list").to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+    assert_response :success
+    list_tool = JSON.parse(response.body).dig("result", "tools").find { |tool| tool["name"] == "list" }
+    assert list_tool.dig("inputSchema", "properties", "parent_id")
+
+    left_ids = call_tool(token, "list", type: "Page", parent_id: left.id).fetch("records").map { |record| record["id"] }
+    right_ids = call_tool(token, "list", type: "Page", parent_id: right.id).fetch("records").map { |record| record["id"] }
+
+    assert_equal [left_page.id.to_s], left_ids
+    assert_equal [right_page.id.to_s], right_ids
+    refute_includes left_ids, outsider_page.id.to_s
+    refute_includes right_ids, outsider_page.id.to_s
+  ensure
+    RecordingStudioMcp.configuration.list_parent_id_types = original_types
+    clear_page_index_handler
+  end
+
   test "unknown type error lists allowed types" do
     token = issue_delegated_token
 
@@ -611,6 +660,23 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     return result.fetch("structuredContent") if result["structuredContent"].present?
 
     JSON.parse(result.dig("content", 0, "text"))
+  end
+
+  def record_child(recordable, parent:, root: @root_recording, actor: @user)
+    Current.actor = actor
+    RecordingStudio.record!(
+      action: "created",
+      recordable: recordable,
+      root_recording: root,
+      parent_recording: parent,
+      actor: actor
+    ).recording
+  end
+
+  def clear_page_index_handler
+    registry = RecordingStudioApi.configuration.fetch_api(:public).resource_handler_registry
+    store = registry.instance_variable_get(:@handlers)
+    store.delete(["Page", "index"]) if store.respond_to?(:delete)
   end
 
   def call_tool(token, name, **arguments)
