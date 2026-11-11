@@ -1,13 +1,12 @@
 # Upgrading Recording Studio MCP
 
-## 0.30.2
+## 0.30.1
 
 Previous version is `0.30.0`. No MCP protocol migration. Docs-only.
 
 Mounted MCP docs (`/mcp-docs`, Redoc) put each registered type and its
-capability actions under that type's Recording Studio API OpenAPI tag. Types
-with no tag stay under Types. Each tag still appears once. There is no default
-`x-tagGroups`.
+capability actions under their API tag group. Types with no tag stay under
+Types. Each tag still appears once. There is no default `x-tagGroups`.
 
 Each capability action entry explains that it is a capability action: call it
 through the `capability_action` tool with the type and action name. `describe`

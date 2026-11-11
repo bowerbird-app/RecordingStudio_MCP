@@ -27,7 +27,8 @@ module RecordingStudioMcp
 
     def type_tags(type_name, api:)
       registration = RecordingStudioApi.recordable_registration_for(type_name, api: api)
-      declared_type_tags(registration&.openapi).presence || [TYPES_TAG]
+      group = registration&.openapi&.dig(:tag, :group)
+      group.present? ? [group.to_s] : [TYPES_TAG]
     end
 
     def metric_group(name)
@@ -79,29 +80,5 @@ module RecordingStudioMcp
       ACRONYMS.include?(upper) ? upper : part.capitalize
     end
     private_class_method :humanize_part
-
-    def declared_type_tags(openapi)
-      return [] if openapi.blank?
-
-      list_tags(openapi).presence || single_tag(openapi)
-    end
-    private_class_method :declared_type_tags
-
-    def list_tags(openapi)
-      Array(openapi[:tags] || openapi["tags"]).map(&:to_s).reject(&:blank?)
-    end
-    private_class_method :list_tags
-
-    def single_tag(openapi)
-      Array(type_tag_label(openapi[:tag] || openapi["tag"])).map(&:to_s).reject(&:blank?)
-    end
-    private_class_method :single_tag
-
-    def type_tag_label(tag)
-      return tag unless tag.is_a?(Hash)
-
-      tag[:group] || tag["group"] || tag[:name] || tag["name"]
-    end
-    private_class_method :type_tag_label
   end
 end
