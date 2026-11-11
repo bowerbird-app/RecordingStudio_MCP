@@ -105,11 +105,15 @@ module RecordingStudioMcp
       @by_name.values.map(&:definition)
     end
 
+    def tool_entries
+      @by_name.values
+    end
+
     def tags_for(family)
       @by_name.each_value.flat_map do |entry|
         next [] unless entry.family == family
 
-        Array(entry.definition[:tags] || entry.definition["tags"]).map(&:to_s)
+        ToolDocs.tags_for_entry(entry)
       end.uniq
     end
 

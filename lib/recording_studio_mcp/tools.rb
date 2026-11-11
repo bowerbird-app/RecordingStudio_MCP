@@ -32,15 +32,16 @@ module RecordingStudioMcp
     end
 
     def endpoint_tool(endpoint, api: nil)
-      tool(endpoint_tool_options(endpoint, api))
+      ToolDocs.decorate(
+        tool(endpoint_tool_options(endpoint, api)),
+        output_schema: ToolDocs.endpoint_output_schema(endpoint)
+      )
     end
 
     def metric_tool(recordable_metric)
-      tool(
-        recordable_metric.definition_options.merge(
-          tags: ToolDocs.metric_tags(recordable_metric.name),
-          output_schema: ToolDocs.metric_output_schema
-        )
+      ToolDocs.decorate(
+        tool(recordable_metric.definition_options),
+        output_schema: ToolDocs.metric_output_schema
       )
     end
 
@@ -54,24 +55,23 @@ module RecordingStudioMcp
         destructive: endpoint.http_verb == :delete,
         idempotent: endpoint.http_verb == :get,
         required: schema.fetch(:required),
-        properties: schema.fetch(:properties),
-        tags: ToolDocs.endpoint_tags(endpoint),
-        output_schema: ToolDocs.endpoint_output_schema(endpoint)
+        properties: schema.fetch(:properties)
       }
       options[:additional_properties] = schema[:additionalProperties] if schema.key?(:additionalProperties)
       options.merge(api: api)
     end
 
     def list_tool(catalog)
-      tool(
-        name: "list",
-        title: "List records",
-        description: list_description(catalog),
-        read_only: true,
-        idempotent: true,
-        required: ["type"],
-        properties: list_properties(catalog),
-        tags: ToolDocs.tree_tags,
+      ToolDocs.decorate(
+        tool(
+          name: "list",
+          title: "List records",
+          description: list_description(catalog),
+          read_only: true,
+          idempotent: true,
+          required: ["type"],
+          properties: list_properties(catalog)
+        ),
         output_schema: ToolDocs.list_output_schema(catalog)
       )
     end
@@ -114,123 +114,129 @@ module RecordingStudioMcp
     end
 
     def show_tool(catalog)
-      tool(
-        name: "show",
-        title: "Show a record",
-        description: "Show one record by id. Use list or a create result to get ids. Returns the record.",
-        read_only: true,
-        idempotent: true,
-        required: %w[type id],
-        properties: {
-          type: catalog.type_schema_for(:show),
-          id: { type: "string", description: "Recording id." }
-        },
-        tags: ToolDocs.tree_tags,
+      ToolDocs.decorate(
+        tool(
+          name: "show",
+          title: "Show a record",
+          description: "Show one record by id. Use list or a create result to get ids. Returns the record.",
+          read_only: true,
+          idempotent: true,
+          required: %w[type id],
+          properties: {
+            type: catalog.type_schema_for(:show),
+            id: { type: "string", description: "Recording id." }
+          }
+        ),
         output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
     def create_tool(catalog)
-      tool(
-        name: "create",
-        title: "Create a record",
-        description: "Changes data by creating a record. Send writable fields at the root, " \
-                     "for example title, not nested under attributes. " \
-                     "Child types need parent_id. Call describe for writable fields and parent rules. " \
-                     "Returns the created record.",
-        read_only: false,
-        destructive: false,
-        idempotent: true,
-        additional_properties: true,
-        required: ["type"],
-        properties: {
-          type: catalog.type_schema_for(:create),
-          parent_id: {
-            type: "string",
-            description: "Parent recording id. Required for types that are not roots."
-          },
-          idempotency_key: {
-            type: "string",
-            description: "Create idempotency key. Same as the API Idempotency-Key header."
+      ToolDocs.decorate(
+        tool(
+          name: "create",
+          title: "Create a record",
+          description: "Changes data by creating a record. Send writable fields at the root, " \
+                       "for example title, not nested under attributes. " \
+                       "Child types need parent_id. Call describe for writable fields and parent rules. " \
+                       "Returns the created record.",
+          read_only: false,
+          destructive: false,
+          idempotent: true,
+          additional_properties: true,
+          required: ["type"],
+          properties: {
+            type: catalog.type_schema_for(:create),
+            parent_id: {
+              type: "string",
+              description: "Parent recording id. Required for types that are not roots."
+            },
+            idempotency_key: {
+              type: "string",
+              description: "Create idempotency key. Same as the API Idempotency-Key header."
+            }
           }
-        },
-        tags: ToolDocs.tree_tags,
+        ),
         output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
     def update_tool(catalog)
-      tool(
-        name: "update",
-        title: "Update a record",
-        description: "Changes data by updating a record. Send writable fields at the root, " \
-                     "for example title, not nested under attributes. " \
-                     "Call describe for the type. Returns the updated record.",
-        read_only: false,
-        destructive: false,
-        idempotent: false,
-        additional_properties: true,
-        required: %w[type id],
-        properties: {
-          type: catalog.type_schema_for(:update),
-          id: { type: "string", description: "Recording id." }
-        },
-        tags: ToolDocs.tree_tags,
+      ToolDocs.decorate(
+        tool(
+          name: "update",
+          title: "Update a record",
+          description: "Changes data by updating a record. Send writable fields at the root, " \
+                       "for example title, not nested under attributes. " \
+                       "Call describe for the type. Returns the updated record.",
+          read_only: false,
+          destructive: false,
+          idempotent: false,
+          additional_properties: true,
+          required: %w[type id],
+          properties: {
+            type: catalog.type_schema_for(:update),
+            id: { type: "string", description: "Recording id." }
+          }
+        ),
         output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
     def delete_tool(catalog)
-      tool(
-        name: "delete",
-        title: "Delete a record",
-        description: "May destructively change data by running the named API destroy operation. " \
-                     "Use describe to see which types allow destroy. Returns the delete result.",
-        read_only: false,
-        destructive: true,
-        idempotent: false,
-        required: %w[type id],
-        properties: {
-          type: catalog.destroy_type_schema,
-          id: { type: "string", description: "Recording id." }
-        },
-        tags: ToolDocs.tree_tags,
+      ToolDocs.decorate(
+        tool(
+          name: "delete",
+          title: "Delete a record",
+          description: "May destructively change data by running the named API destroy operation. " \
+                       "Use describe to see which types allow destroy. Returns the delete result.",
+          read_only: false,
+          destructive: true,
+          idempotent: false,
+          required: %w[type id],
+          properties: {
+            type: catalog.destroy_type_schema,
+            id: { type: "string", description: "Recording id." }
+          }
+        ),
         output_schema: ToolDocs.delete_output_schema
       )
     end
 
     def capability_action_tool(catalog)
-      tool(
-        name: "capability_action",
-        title: "Run a capability action",
-        description: "May destructively change data by running one named API capability action on a record. " \
-                     "Call describe for the type to see which actions are enabled. " \
-                     "Returns the action result.",
-        read_only: false,
-        destructive: true,
-        idempotent: false,
-        required: %w[type id action],
-        properties: {
-          type: catalog.type_schema,
-          id: { type: "string", description: "Recording id." },
-          action: { type: "string", description: "Enabled capability action name for this type." },
-          params: { type: "object", description: "Action input as the named API expects it." }
-        },
-        tags: ToolDocs.tree_tags,
+      ToolDocs.decorate(
+        tool(
+          name: "capability_action",
+          title: "Run a capability action",
+          description: "May destructively change data by running one named API capability action on a record. " \
+                       "Call describe for the type to see which actions are enabled. " \
+                       "Returns the action result.",
+          read_only: false,
+          destructive: true,
+          idempotent: false,
+          required: %w[type id action],
+          properties: {
+            type: catalog.type_schema,
+            id: { type: "string", description: "Recording id." },
+            action: { type: "string", description: "Enabled capability action name for this type." },
+            params: { type: "object", description: "Action input as the named API expects it." }
+          }
+        ),
         output_schema: ToolDocs.action_output_schema
       )
     end
 
     def describe_tool(catalog)
-      tool(
-        name: "describe",
-        title: "Describe a type",
-        description: DESCRIBE_DESCRIPTION,
-        read_only: true,
-        idempotent: true,
-        required: ["type"],
-        properties: { type: catalog.type_schema },
-        tags: ToolDocs.tree_tags,
+      ToolDocs.decorate(
+        tool(
+          name: "describe",
+          title: "Describe a type",
+          description: DESCRIBE_DESCRIPTION,
+          read_only: true,
+          idempotent: true,
+          required: ["type"],
+          properties: { type: catalog.type_schema }
+        ),
         output_schema: ToolDocs.describe_output_schema
       )
     end
@@ -253,40 +259,25 @@ module RecordingStudioMcp
     end
 
     def tool(options)
-      payload = tool_payload(options)
-      payload[:annotations] = tool_annotations(options)
-      attach_meta(payload, options)
-    end
-
-    def tool_payload(options)
-      payload = {
-        name: options.fetch(:name),
-        title: options.fetch(:title),
-        description: options.fetch(:description),
-        inputSchema: input_schema(options),
-        tags: Array(options[:tags])
-      }
-      payload[:outputSchema] = options[:output_schema] if options[:output_schema]
-      payload
-    end
-
-    def input_schema(options)
       schema = {
         type: "object",
         properties: options.fetch(:properties),
         required: options.fetch(:required)
       }
       schema[:additionalProperties] = options[:additional_properties] if options.key?(:additional_properties)
-      schema
-    end
-
-    def tool_annotations(options)
-      {
+      payload = {
+        name: options.fetch(:name),
+        title: options.fetch(:title),
+        description: options.fetch(:description),
+        inputSchema: schema
+      }
+      payload[:annotations] = {
         readOnlyHint: options.fetch(:read_only, false),
         destructiveHint: options.fetch(:destructive, false),
         idempotentHint: options.fetch(:idempotent, false),
         openWorldHint: false
       }
+      attach_meta(payload, options)
     end
 
     def attach_meta(payload, options)
@@ -303,8 +294,7 @@ module RecordingStudioMcp
       payload[:_meta] = (payload[:_meta] || {}).merge(ui: { resourceUri: uri })
     end
 
-    private_class_method :tool, :tool_payload, :input_schema, :tool_annotations,
-                         :endpoint_tool_options, :endpoint_title,
+    private_class_method :tool, :endpoint_tool_options, :endpoint_title,
                          :endpoint_description, :list_description, :list_properties,
                          :attach_meta, :attach_ui_meta
   end

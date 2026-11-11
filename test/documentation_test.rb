@@ -172,6 +172,11 @@ class DocumentationTest < Minitest::Test
       ping = Array(folder["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
       description = spec.dig("info", "description")
 
+      listed = RecordingStudioMcp::Tools.definitions.index_by { |tool| tool[:name] }
+      refute listed.fetch("list").key?(:tags)
+      refute listed.fetch("list_agent_chats").key?(:tags)
+      assert listed.fetch("list").key?(:outputSchema)
+
       assert_equal ["Core"], tools.fetch("list")["tags"]
       assert_equal ["Core"], tools.fetch("describe")["tags"]
       assert_equal ["Agent chats"], tools.fetch("list_agent_chats")["tags"]

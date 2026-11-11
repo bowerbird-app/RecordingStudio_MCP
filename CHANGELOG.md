@@ -10,26 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.29.0] - 2026-11-11
 
 ### Added
-- MCP docs group tools in the Redoc sidebar. Each `x-mcp.tools[]` entry has `tags`.
-  Tree tools use `Core`. Endpoint tools reuse `RecordingStudioApi` `openapi[:tags]`
-  (default `Endpoints`). Metric tools named `<group>-<metric>` use a humanized
-  prefix (`ai_runs` → `AI Runs`). The spec emits matching top-level `tags` and
+- MCP docs group tools in the Redoc sidebar. Each docs `x-mcp.tools[]` entry has
+  `tags`. Tags stay out of the protocol `tools/list` payload. Tree tools use
+  `Core`. Endpoint tools reuse `RecordingStudioApi` `openapi[:tags]` (default
+  `Endpoints`). Metric tools named `<group>-<metric>` use a humanized prefix
+  (`ai_runs` → `AI Runs`). The spec emits matching top-level `tags` and
   `x-tagGroups` (`Core`, `Endpoints`, `Metrics`, `Types`).
 - Type schemas list allowed operations, writable fields, and enabled capability
   actions with input contracts from `describe`, so Public docs show PressKit
   actions without a `describe` call.
 - Tree, metric, and (when present) endpoint tools advertise optional MCP
-  `outputSchema` on `tools/list` and in the docs entry.
+  `outputSchema` on `tools/list` and in the docs entry. Endpoint `outputSchema`
+  is a 2xx `application/json` object schema only.
 - The mounted docs overview (`info.description`) is human Markdown with sections
   that match the page's tool surface. Agent `instructions` stay on `x-mcp.instructions`.
 
 ### Upgrade notes
-- Bump to `0.29.0`. No MCP migration. `tags` and `outputSchema` are optional and
-  additive. Docs consumers that treated `info.description` as initialize
-  instructions should read `x-mcp.instructions` instead. Endpoint tools only
-  get `outputSchema` when the endpoint's registered `openapi` already carries a
-  success JSON schema. `register_endpoint` has no dedicated response-schema
-  argument; that stays an API gem decision.
+- Bump to `0.29.0`. No MCP migration. `outputSchema` is an optional MCP Tool
+  field on `tools/list`. Docs `tags` are optional and additive. Docs consumers
+  that treated `info.description` as initialize instructions should read
+  `x-mcp.instructions` instead. Endpoint tools only get `outputSchema` when the
+  endpoint's registered `openapi` already carries a 2xx `application/json`
+  object schema. `register_endpoint` has no dedicated response-schema argument;
+  that stays an API gem decision.
 
 ## [0.28.0] - 2026-11-10
 

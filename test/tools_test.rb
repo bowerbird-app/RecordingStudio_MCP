@@ -14,7 +14,7 @@ class ToolsTest < Minitest::Test
 
       assert_equal %w[list show create update describe], names
       list = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }
-      assert_equal ["Core"], list[:tags]
+      refute list.key?(:tags)
       assert_equal "array", list.dig(:outputSchema, :properties, :records, :type)
       describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
       assert describe.key?(:outputSchema)
@@ -247,7 +247,7 @@ class ToolsTest < Minitest::Test
     assert_equal true, tool.dig(:annotations, :idempotentHint)
     assert_equal false, tool.dig(:annotations, :destructiveHint)
     assert_equal ["name"], tool.dig(:inputSchema, :required)
-    assert_equal ["Endpoints"], tool[:tags]
+    refute tool.key?(:tags)
     refute tool.key?(:outputSchema)
   end
 
@@ -274,7 +274,7 @@ class ToolsTest < Minitest::Test
 
     tool = RecordingStudioMcp::Tools.endpoint_tool(endpoint)
 
-    assert_equal ["Agent chats"], tool[:tags]
+    refute tool.key?(:tags)
     assert_equal "array", tool.dig(:outputSchema, :properties, :chats, :type)
   end
 

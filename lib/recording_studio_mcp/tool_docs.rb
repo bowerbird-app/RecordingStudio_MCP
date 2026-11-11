@@ -2,6 +2,7 @@
 
 require_relative "tool_docs/output"
 require_relative "tool_docs/endpoint"
+require_relative "tool_docs/listing"
 
 module RecordingStudioMcp
   module ToolDocs
@@ -46,7 +47,9 @@ module RecordingStudioMcp
     end
 
     def openapi_tags(groups)
-      Array(groups).flat_map { |group| Array(group["tags"]) }.uniq.map { |name| { "name" => name } }
+      Array(groups).flat_map { |group| Array(group["tags"]) }.uniq.map do |name|
+        { "name" => name }
+      end
     end
 
     def list_output_schema(catalog)
@@ -89,7 +92,10 @@ module RecordingStudioMcp
       names = Array(tags).map(&:to_s).reject(&:blank?).uniq
       return if names.empty?
 
-      groups << { "name" => name, "tags" => names }
+      groups << {
+        "name" => name,
+        "tags" => names
+      }
     end
     private_class_method :add_group
   end

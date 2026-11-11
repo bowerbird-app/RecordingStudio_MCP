@@ -30,24 +30,13 @@ module RecordingStudioMcp
 
         def tool_entry(tool)
           tool = Internals.stringify(tool)
-          with_optional_fields(base_tool_entry(tool), tool).compact
-        end
-
-        def base_tool_entry(tool)
-          {
+          entry = {
             "name" => tool.fetch("name"),
             "title" => tool["title"],
             "description" => tool["description"].presence || tool["title"].presence || tool["name"],
             "inputSchema" => Internals.stringify(tool["inputSchema"]) || { "type" => "object" }
-          }
-        end
-
-        def with_optional_fields(entry, tool)
-          tags = Array(tool["tags"]).map(&:to_s).reject(&:blank?)
-          entry["tags"] = tags if tags.any?
-          schema = Internals.stringify(tool["outputSchema"])
-          entry["outputSchema"] = schema if schema.present?
-          entry
+          }.compact
+          entry.merge(ToolDocs.openapi_extras(entry, tool))
         end
 
         def resource(template)
@@ -70,8 +59,7 @@ module RecordingStudioMcp
           }.compact
         end
 
-        private_class_method :capabilities, :tool_entry, :base_tool_entry, :with_optional_fields,
-                             :resource, :resource_template
+        private_class_method :capabilities, :tool_entry, :resource, :resource_template
       end
     end
   end
