@@ -58,19 +58,29 @@ module RecordingStudioMcp
       end
 
       def metrics(surface)
-        bullets = []
-        if surface.recordable_metric_tools?
-          bullets << "- Type metric tools are read-only. Arguments are that metric's query parameters."
-          bullets << "- Pass list filters as a `filter` object of field names."
-        end
-        if surface.catalog_metric_tools?
-          bullets << "- API metric tools are read-only. A timeseries takes `from` and `to`."
-          bullets << "- `start` and `start_at` are the same as `from`. `end` and `end_at` are the same as `to`."
-          bullets << "- Pass metric filters as a `filters` object."
-        end
+        bullets = type_metric_bullets(surface) + api_metric_bullets(surface)
         return if bullets.empty?
 
         ["## Metrics", *bullets].join("\n")
+      end
+
+      def type_metric_bullets(surface)
+        return [] unless surface.recordable_metric_tools?
+
+        [
+          "- Type metric tools are read-only. Arguments are that metric's query parameters.",
+          "- Pass list filters as a `filter` object of field names."
+        ]
+      end
+
+      def api_metric_bullets(surface)
+        return [] unless surface.catalog_metric_tools?
+
+        [
+          "- API metric tools are read-only. A timeseries takes `from` and `to`.",
+          "- `start` and `start_at` are the same as `from`. `end` and `end_at` are the same as `to`.",
+          "- Pass metric filters as a `filters` object."
+        ]
       end
 
       def endpoint_tools(surface)
@@ -104,7 +114,8 @@ module RecordingStudioMcp
       end
 
       private_class_method :intro, :authentication, :records_and_parents, :listing_and_pagination,
-                           :metrics, :endpoint_tools, :live_updates, :skills
+                           :metrics, :type_metric_bullets, :api_metric_bullets, :endpoint_tools,
+                           :live_updates, :skills
     end
   end
 end

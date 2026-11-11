@@ -253,27 +253,40 @@ module RecordingStudioMcp
     end
 
     def tool(options)
+      payload = tool_payload(options)
+      payload[:annotations] = tool_annotations(options)
+      attach_meta(payload, options)
+    end
+
+    def tool_payload(options)
+      payload = {
+        name: options.fetch(:name),
+        title: options.fetch(:title),
+        description: options.fetch(:description),
+        inputSchema: input_schema(options),
+        tags: Array(options[:tags])
+      }
+      payload[:outputSchema] = options[:output_schema] if options[:output_schema]
+      payload
+    end
+
+    def input_schema(options)
       schema = {
         type: "object",
         properties: options.fetch(:properties),
         required: options.fetch(:required)
       }
       schema[:additionalProperties] = options[:additional_properties] if options.key?(:additional_properties)
-      payload = {
-        name: options.fetch(:name),
-        title: options.fetch(:title),
-        description: options.fetch(:description),
-        inputSchema: schema,
-        tags: Array(options[:tags])
-      }
-      payload[:outputSchema] = options[:output_schema] if options[:output_schema]
-      payload[:annotations] = {
+      schema
+    end
+
+    def tool_annotations(options)
+      {
         readOnlyHint: options.fetch(:read_only, false),
         destructiveHint: options.fetch(:destructive, false),
         idempotentHint: options.fetch(:idempotent, false),
         openWorldHint: false
       }
-      attach_meta(payload, options)
     end
 
     def attach_meta(payload, options)
@@ -290,7 +303,8 @@ module RecordingStudioMcp
       payload[:_meta] = (payload[:_meta] || {}).merge(ui: { resourceUri: uri })
     end
 
-    private_class_method :tool, :endpoint_tool_options, :endpoint_title,
+    private_class_method :tool, :tool_payload, :input_schema, :tool_annotations,
+                         :endpoint_tool_options, :endpoint_title,
                          :endpoint_description, :list_description, :list_properties,
                          :attach_meta, :attach_ui_meta
   end

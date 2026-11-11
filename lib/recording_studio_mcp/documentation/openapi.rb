@@ -33,7 +33,13 @@ module RecordingStudioMcp
       module_function
 
       def document(page)
-        spec = {
+        spec = document_body(page)
+        attach_sidebar!(spec, page)
+        spec
+      end
+
+      def document_body(page)
+        {
           "openapi" => OPENAPI_VERSION,
           "info" => info(page),
           "servers" => servers(page.api_key),
@@ -41,10 +47,12 @@ module RecordingStudioMcp
           "components" => { "schemas" => Schemas.for(page) },
           "x-mcp" => Mcp.section(page)
         }
+      end
+
+      def attach_sidebar!(spec, page)
         tags = ToolDocs.openapi_tags(page.tag_groups)
         spec["tags"] = tags if tags.any?
         spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
-        spec
       end
 
       def info(page)
@@ -63,7 +71,7 @@ module RecordingStudioMcp
         Internals.stringify(value)
       end
 
-      private_class_method :info, :servers, :stringify
+      private_class_method :info, :servers, :stringify, :document_body, :attach_sidebar!
     end
   end
 end

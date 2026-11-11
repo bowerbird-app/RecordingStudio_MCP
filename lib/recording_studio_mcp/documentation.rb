@@ -33,17 +33,17 @@ module RecordingStudioMcp
     def build_page(catalog)
       surface = ToolSurface.for(api: catalog.api)
       types = describe_types(catalog)
-      Page.new(
-        api_key: catalog.api,
-        title: title_for(catalog.api),
+      Page.new(**page_fields(catalog, surface, types))
+    end
+
+    def page_fields(catalog, surface, types)
+      {
+        api_key: catalog.api, title: title_for(catalog.api),
         instructions: Instructions.text(access_grant: nil, api: catalog.api, surface: surface).to_s,
-        overview: Overview.markdown(surface),
-        tools: Array(surface.tool_definitions),
-        type_schema: catalog.type_schema || empty_type_schema,
-        types: types,
-        resource_template: resource_template,
-        tag_groups: ToolDocs.tag_groups(surface, types: types)
-      )
+        overview: Overview.markdown(surface), tools: Array(surface.tool_definitions),
+        type_schema: catalog.type_schema || empty_type_schema, types: types,
+        resource_template: resource_template, tag_groups: ToolDocs.tag_groups(surface, types: types)
+      }
     end
 
     def resource_template
@@ -86,7 +86,7 @@ module RecordingStudioMcp
       }
     end
 
-    private_class_method :build_page, :title_for, :describe_types, :describe_type,
+    private_class_method :build_page, :page_fields, :title_for, :describe_types, :describe_type,
                          :empty_type_describe, :empty_type_schema, :resource_template
   end
 end
