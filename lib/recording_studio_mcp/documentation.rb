@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "documentation/overview"
 require_relative "documentation/openapi"
 
 module RecordingStudioMcp
@@ -11,8 +12,14 @@ module RecordingStudioMcp
       :tools,
       :type_schema,
       :types,
-      :resource_template
-    )
+      :resource_template,
+      :overview,
+      :tag_groups
+    ) do
+      def initialize(overview: nil, tag_groups: nil, **members)
+        super
+      end
+    end
 
     module_function
 
@@ -20,7 +27,8 @@ module RecordingStudioMcp
       api_key = NamedApi.normalize(api)
       raise ArgumentError, "unknown API #{api_key}" unless NamedApi.known?(api_key)
 
-      build_page(Catalog.new(api: api_key))
+      catalog = Catalog.new(api: api_key)
+      ToolDocs.docs_page(build_page(catalog), catalog)
     end
 
     def openapi(api:)

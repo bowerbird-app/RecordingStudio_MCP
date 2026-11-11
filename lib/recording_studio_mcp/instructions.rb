@@ -40,8 +40,8 @@ module RecordingStudioMcp
 
     module_function
 
-    def text(access_grant: nil, api: nil)
-      surface = ToolSurface.for(access_grant: access_grant, api: api)
+    def text(access_grant: nil, api: nil, surface: nil)
+      surface ||= ToolSurface.for(access_grant: access_grant, api: api)
       parts = [AUTH_BLURB, *surface_blurbs(surface), REFRESH_BLURB]
       parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
       parts << SKILLS_BLURB

@@ -72,6 +72,40 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     assert_equal 2, unfiltered.dig("structuredContent", "value")
   end
 
+  test "tools/call structuredContent matches advertised outputSchema" do
+    create_folder("Ada")
+    token = issue_token
+    listed = mcp(token, "tools/list").dig("result", "tools").index_by { |tool| tool.fetch("name") }
+
+    refute listed.fetch("list").key?("tags")
+    refute listed.fetch("show").key?("tags")
+    refute listed.fetch("folders-total").key?("tags")
+    assert listed.fetch("list").key?("outputSchema")
+    assert listed.fetch("show").key?("outputSchema")
+    assert listed.fetch("folders-total").key?("outputSchema")
+
+    list_result = call_tool(token, "list", type: "Workspace")
+    show_result = call_tool(token, "show", type: "Workspace", id: @root_recording.id)
+    metric_result = call_tool(token, "folders-total")
+
+    assert_equal false, list_result.fetch("isError")
+    assert_equal false, show_result.fetch("isError")
+    assert_equal false, metric_result.fetch("isError")
+
+    assert_empty OutputSchemaCheck.errors(
+      listed.fetch("list").fetch("outputSchema"),
+      list_result.fetch("structuredContent")
+    )
+    assert_empty OutputSchemaCheck.errors(
+      listed.fetch("show").fetch("outputSchema"),
+      show_result.fetch("structuredContent")
+    )
+    assert_empty OutputSchemaCheck.errors(
+      listed.fetch("folders-total").fetch("outputSchema"),
+      metric_result.fetch("structuredContent")
+    )
+  end
+
   test "unknown filters and rejected windows match the api" do
     token = issue_token
 
