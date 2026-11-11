@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.30.1] - 2026-11-11
+## [0.30.2] - 2026-11-11
 
 ### Fixed
 - MCP maps `ActiveRecord::RecordInvalid` (validation messages) and `RecordingStudio::AuthorizationError` (`Not authorized`) to tool errors (`isError`). HTTP Recording Studio API still returns 500 for `RecordingStudio::AuthorizationError`; MCP maps that write-gate denial so it is not a JSON-RPC internal. Builtin create converts `RecordingStudio::InvalidParent` to `InvalidActionInputError` in Recording Studio API, which MCP already maps. Other `StandardError`s stay JSON-RPC `-32603`.
@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint `input_contract` failures include `contract_result.errors` in the tool message (for example `Unknown parameters: foo`).
 
 ### Upgrade notes
-- Bump to `0.30.1` after `0.30.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`. API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may record the Accessible grant actor and set the OAuth client as impersonator.
+- Bump to `0.30.2` after `0.30.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`. API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may record the Accessible grant actor and set the OAuth client as impersonator.
 
 ## [0.30.0] - 2026-11-11
 
@@ -791,8 +791,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.1...HEAD
-[0.30.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.1
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...HEAD
+[0.30.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.2
 [0.30.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0

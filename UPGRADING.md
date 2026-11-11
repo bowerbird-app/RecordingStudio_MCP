@@ -1,6 +1,6 @@
 # Upgrading Recording Studio MCP
 
-## 0.30.1
+## 0.30.2
 
 No MCP protocol migration. `ActiveRecord::RecordInvalid` and
 `RecordingStudio::AuthorizationError` now return MCP `isError` tool results.
