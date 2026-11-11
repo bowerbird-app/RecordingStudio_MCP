@@ -206,8 +206,9 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     refute_includes names, outsider.name
   end
 
-  test "oauth mcp update records authorized_by and keeps the oauth client as actor" do
+  test "oauth mcp update records authorized_by and uses the API write actor" do
     token = issue_delegated_token(role: "edit")
+    grant = RecordingStudioMcp::Authenticator.access_grant("Bearer #{token}").access_grant
     Current.actor = nil
     Current.impersonator = nil
 
@@ -225,8 +226,8 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     event = recording.events.find_by!(action: "updated")
     metadata = event.metadata.with_indifferent_access
 
-    assert_equal @oauth_client, event.actor
-    assert_nil event.impersonator
+    assert_equal grant.actor, event.actor
+    assert_equal @oauth_client, event.impersonator
     assert_equal "User", metadata[:authorized_by_type]
     assert_equal @user.id, metadata[:authorized_by_id]
     assert_nil Current.actor
@@ -485,6 +486,32 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes message, "Folder"
     assert_includes message, "Page"
     assert_includes message, "Workspace"
+  end
+
+  test "create with a disallowed parent is a tool error from API InvalidActionInputError" do
+    token = issue_delegated_token(role: "edit")
+    parent_page = call_tool(
+      token,
+      "create",
+      type: "Page",
+      parent_id: @root_recording.id,
+      title: "Parent page"
+    )
+
+    post "/recording_studio_mcp",
+         params: rpc(
+           "tools/call",
+           name: "create",
+           arguments: { type: "Page", parent_id: parent_page.fetch("id"), title: "Nested page" }
+         ).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    payload = JSON.parse(response.body)
+    assert_equal true, payload.dig("result", "isError")
+    message = payload.dig("result", "content", 0, "text")
+    assert_includes message, "Page cannot be recorded under Page"
+    refute_includes message, "parent_id"
   end
 
   test "mcp does not serve records when api access is disabled" do

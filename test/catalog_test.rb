@@ -85,6 +85,22 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_describe_includes_auto_enabled_capability_actions
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type("Workspace", capability_actions: %i[ping])
+      ping = RecordingStudioApi.capability_action(:ping, api: :public)
+      grant = Struct.new(:name, :input_contract).new(:grant_access, nil)
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      RecordingStudioApi.stub(:capability_actions_for, [ping, grant]) do
+        names = catalog.describe("Workspace").fetch("capability_actions").map { |entry| entry["name"] }
+
+        assert_equal %w[grant_access ping], names.sort
+      end
+    end
+  end
+
   def test_listed_actions_stay_off_tools_when_the_api_has_not_enabled_them
     with_isolated_api_configuration do
       register_tree_type("Workspace", capability_actions: %i[ping])

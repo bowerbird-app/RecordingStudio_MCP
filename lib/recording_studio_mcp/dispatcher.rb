@@ -33,12 +33,8 @@ module RecordingStudioMcp
     def call(tool_name, arguments)
       AuthorizedBy.enter(access_grant)
       dispatch_named(tool_name, arguments)
-    rescue RecordingStudioApi::AuthorizationError,
-           RecordingStudioApi::NotFoundError,
-           RecordingStudioApi::UnsupportedActionError,
-           RecordingStudioApi::InvalidActionInputError,
-           RecordingStudioApi::InvalidPaginationTokenError => e
-      error_result(e.message)
+    rescue *TOOL_ERROR_CLASSES => e
+      tool_error_for(e)
     ensure
       AuthorizedBy.leave
     end
@@ -84,3 +80,4 @@ require "recording_studio_mcp/dispatcher/endpoint"
 require "recording_studio_mcp/dispatcher/contexts"
 require "recording_studio_mcp/dispatcher/recordings"
 require "recording_studio_mcp/dispatcher/results"
+require "recording_studio_mcp/dispatcher/tool_errors"

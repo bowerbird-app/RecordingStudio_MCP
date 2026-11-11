@@ -87,9 +87,9 @@ class DocumentationTest < Minitest::Test
   def test_openapi_document_uses_live_tools_types_and_resource_template
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
+      register_ping_capability
       register_tree_type("Folder", operations: %i[index show create update], capability_actions: %i[ping])
       register_tree_type("Page", operations: %i[index show create update])
-      register_ping_capability
       RecordingStudioApi.register_endpoint(
         :ping,
         http_verb: :get,

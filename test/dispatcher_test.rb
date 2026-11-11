@@ -204,6 +204,62 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_record_invalid_is_tool_error
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise ActiveRecord::RecordInvalid, invalid_record(["Title can't be blank"])
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { "type" => "Workspace" })
+
+              assert result[:isError]
+              assert_equal "Title can't be blank", result.dig(:content, 0, :text)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_recording_studio_authorization_error_is_tool_error
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise RecordingStudio::AuthorizationError, "write denied"
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { "type" => "Workspace" })
+
+              assert result[:isError]
+              assert_equal "Not authorized", result.dig(:content, 0, :text)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_standard_error_is_not_a_tool_error
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise StandardError, "boom"
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              error = assert_raises(StandardError) { dispatch("list", { "type" => "Workspace" }) }
+
+              assert_equal "boom", error.message
+            end
+          end
+        end
+      end
+    end
+  end
+
   def test_authorization_error_is_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
@@ -697,6 +753,29 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_endpoint_contract_errors_are_named_in_the_tool_message
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :shout,
+        http_verb: :post,
+        path: "shout",
+        input_contract: {
+          fields: {
+            message: { type: :string, required: true, allow_blank: false }
+          }
+        },
+        handler: ->(_context) { { ok: true } }
+      )
+
+      result = dispatch("shout", { foo: "bar" })
+
+      assert result[:isError]
+      text = result.dig(:content, 0, :text)
+      assert_includes text, "Invalid input for endpoint shout"
+      assert_includes text, "foo"
+    end
+  end
+
   def test_endpoint_missing_path_token_is_tool_error
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(
@@ -868,6 +947,19 @@ class DispatcherTest < Minitest::Test
   end
 
   private
+
+  def invalid_record(messages)
+    errors = Object.new
+    errors.define_singleton_method(:full_messages) { messages }
+    record = Object.new
+    record.define_singleton_method(:errors) { errors }
+    record.define_singleton_method(:class) do
+      klass = Class.new
+      klass.define_singleton_method(:i18n_scope) { :activerecord }
+      klass
+    end
+    record
+  end
 
   def dispatch(tool_name, arguments)
     call_as(@grant, tool_name, arguments)
