@@ -95,7 +95,24 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes workspace.fetch("properties").keys, "name"
     assert_includes actions, "ping"
     assert_equal "recording://{id}", spec.dig("x-mcp", "resourceTemplates", 0, "uriTemplate")
-    refute_empty spec.dig("info", "description")
+    description = spec.dig("info", "description")
+    refute_empty description
+    assert_includes description, "## Authentication"
+    assert_includes description, "## Records and parents"
+    assert_includes description, "\n- "
+    refute_equal description, spec.dig("x-mcp", "instructions")
+    tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+    assert_equal ["Core"], tools.fetch("list")["tags"]
+    assert_equal ["Endpoints"], tools.fetch("ping")["tags"]
+    assert tools.fetch("list").key?("outputSchema")
+    assert_includes workspace["description"], "Allowed operations:"
+    assert_includes workspace["description"], "`ping`"
+    ping = Array(workspace["x-mcp-capability-actions"]).find { |action| (action["name"] || action[:name]) == "ping" }
+    assert ping["params"] || ping[:params]
+    groups = spec.fetch("x-tagGroups").index_by { |group| group["name"] }
+    assert_equal ["Core"], groups.fetch("Core")["tags"]
+    assert_includes groups.fetch("Endpoints")["tags"], "Endpoints"
+    assert_equal ["Types"], groups.fetch("Types")["tags"]
   end
 
   test "operations spec is the operations catalog not dummy tree types" do
@@ -114,7 +131,13 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes names, "ops_ping"
     refute_includes schemas.keys, "Workspace"
     refute_includes schemas.keys, "Folder"
-    refute_includes spec.dig("info", "description"), "Call describe before create"
+    description = spec.dig("info", "description")
+    refute_includes description, "Call describe before create"
+    refute_includes description, "## Records and parents"
+    assert_includes description, "## Endpoint tools"
+    assert_includes description, "## Authentication"
+    ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ops_ping" }
+    assert_equal ["Endpoints"], ping["tags"]
   end
 
   test "redoc bundle rewrites logo urls to the gated mount" do

@@ -36,7 +36,12 @@ module RecordingStudioMcp
     end
 
     def metric_tool(recordable_metric)
-      tool(recordable_metric.definition_options)
+      tool(
+        recordable_metric.definition_options.merge(
+          tags: ToolDocs.metric_tags(recordable_metric.name),
+          output_schema: ToolDocs.metric_output_schema
+        )
+      )
     end
 
     def endpoint_tool_options(endpoint, api)
@@ -49,7 +54,9 @@ module RecordingStudioMcp
         destructive: endpoint.http_verb == :delete,
         idempotent: endpoint.http_verb == :get,
         required: schema.fetch(:required),
-        properties: schema.fetch(:properties)
+        properties: schema.fetch(:properties),
+        tags: ToolDocs.endpoint_tags(endpoint),
+        output_schema: ToolDocs.endpoint_output_schema(endpoint)
       }
       options[:additional_properties] = schema[:additionalProperties] if schema.key?(:additionalProperties)
       options.merge(api: api)
@@ -63,7 +70,9 @@ module RecordingStudioMcp
         read_only: true,
         idempotent: true,
         required: ["type"],
-        properties: list_properties(catalog)
+        properties: list_properties(catalog),
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.list_output_schema(catalog)
       )
     end
 
@@ -115,7 +124,9 @@ module RecordingStudioMcp
         properties: {
           type: catalog.type_schema_for(:show),
           id: { type: "string", description: "Recording id." }
-        }
+        },
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
@@ -142,7 +153,9 @@ module RecordingStudioMcp
             type: "string",
             description: "Create idempotency key. Same as the API Idempotency-Key header."
           }
-        }
+        },
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
@@ -161,7 +174,9 @@ module RecordingStudioMcp
         properties: {
           type: catalog.type_schema_for(:update),
           id: { type: "string", description: "Recording id." }
-        }
+        },
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
@@ -178,7 +193,9 @@ module RecordingStudioMcp
         properties: {
           type: catalog.destroy_type_schema,
           id: { type: "string", description: "Recording id." }
-        }
+        },
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.delete_output_schema
       )
     end
 
@@ -198,7 +215,9 @@ module RecordingStudioMcp
           id: { type: "string", description: "Recording id." },
           action: { type: "string", description: "Enabled capability action name for this type." },
           params: { type: "object", description: "Action input as the named API expects it." }
-        }
+        },
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.action_output_schema
       )
     end
 
@@ -210,7 +229,9 @@ module RecordingStudioMcp
         read_only: true,
         idempotent: true,
         required: ["type"],
-        properties: { type: catalog.type_schema }
+        properties: { type: catalog.type_schema },
+        tags: ToolDocs.tree_tags,
+        output_schema: ToolDocs.describe_output_schema
       )
     end
 
@@ -242,8 +263,10 @@ module RecordingStudioMcp
         name: options.fetch(:name),
         title: options.fetch(:title),
         description: options.fetch(:description),
-        inputSchema: schema
+        inputSchema: schema,
+        tags: Array(options[:tags])
       }
+      payload[:outputSchema] = options[:output_schema] if options[:output_schema]
       payload[:annotations] = {
         readOnlyHint: options.fetch(:read_only, false),
         destructiveHint: options.fetch(:destructive, false),

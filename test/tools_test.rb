@@ -13,7 +13,11 @@ class ToolsTest < Minitest::Test
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
       assert_equal %w[list show create update describe], names
+      list = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }
+      assert_equal ["Core"], list[:tags]
+      assert_equal "array", list.dig(:outputSchema, :properties, :records, :type)
       describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
+      assert describe.key?(:outputSchema)
       assert_includes describe[:description], "Each type's describe output lists its allowed operations"
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "Call describe before"
@@ -243,6 +247,35 @@ class ToolsTest < Minitest::Test
     assert_equal true, tool.dig(:annotations, :idempotentHint)
     assert_equal false, tool.dig(:annotations, :destructiveHint)
     assert_equal ["name"], tool.dig(:inputSchema, :required)
+    assert_equal ["Endpoints"], tool[:tags]
+    refute tool.key?(:outputSchema)
+  end
+
+  def test_endpoint_output_schema_passes_through_openapi_responses
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :list_agent_chats,
+      http_verb: :get,
+      path: "agent_chats",
+      handler: ->(_context) { { chats: [] } },
+      openapi: {
+        summary: "List agent chats",
+        tags: ["Agent chats"],
+        responses: {
+          "200" => {
+            content: {
+              "application/json" => {
+                schema: { type: "object", properties: { chats: { type: "array" } } }
+              }
+            }
+          }
+        }
+      }
+    )
+
+    tool = RecordingStudioMcp::Tools.endpoint_tool(endpoint)
+
+    assert_equal ["Agent chats"], tool[:tags]
+    assert_equal "array", tool.dig(:outputSchema, :properties, :chats, :type)
   end
 
   def test_endpoint_contract_closes_additional_properties

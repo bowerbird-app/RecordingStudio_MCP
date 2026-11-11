@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "documentation/overview"
 require_relative "documentation/openapi"
 
 module RecordingStudioMcp
@@ -8,10 +9,12 @@ module RecordingStudioMcp
       :api_key,
       :title,
       :instructions,
+      :overview,
       :tools,
       :type_schema,
       :types,
-      :resource_template
+      :resource_template,
+      :tag_groups
     )
 
     module_function
@@ -28,14 +31,18 @@ module RecordingStudioMcp
     end
 
     def build_page(catalog)
+      surface = ToolSurface.for(api: catalog.api)
+      types = describe_types(catalog)
       Page.new(
         api_key: catalog.api,
         title: title_for(catalog.api),
-        instructions: Instructions.text(access_grant: nil, api: catalog.api).to_s,
-        tools: Array(Tools.definitions(api: catalog.api)),
+        instructions: Instructions.text(access_grant: nil, api: catalog.api, surface: surface).to_s,
+        overview: Overview.markdown(surface),
+        tools: Array(surface.tool_definitions),
         type_schema: catalog.type_schema || empty_type_schema,
-        types: describe_types(catalog),
-        resource_template: resource_template
+        types: types,
+        resource_template: resource_template,
+        tag_groups: ToolDocs.tag_groups(surface, types: types)
       )
     end
 

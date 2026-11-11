@@ -29,6 +29,10 @@ module RecordingStudioMcp
       @type_names ||= registered_types.sort.freeze
     end
 
+    def union_output_keys
+      type_names.flat_map { |type| Array(registration_for(type)&.output_keys).map(&:to_s) }.uniq.sort
+    end
+
     def type_schema
       {
         type: "string",

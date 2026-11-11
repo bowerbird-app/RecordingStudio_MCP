@@ -30,12 +30,17 @@ module RecordingStudioMcp
 
         def tool_entry(tool)
           tool = Internals.stringify(tool)
-          {
+          entry = {
             "name" => tool.fetch("name"),
             "title" => tool["title"],
             "description" => tool["description"].presence || tool["title"].presence || tool["name"],
             "inputSchema" => Internals.stringify(tool["inputSchema"]) || { "type" => "object" }
-          }.compact
+          }
+          tags = Array(tool["tags"]).map(&:to_s).reject(&:blank?)
+          entry["tags"] = tags if tags.any?
+          schema = Internals.stringify(tool["outputSchema"])
+          entry["outputSchema"] = schema if schema.present?
+          entry.compact
         end
 
         def resource(template)

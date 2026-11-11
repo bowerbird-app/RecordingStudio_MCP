@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-11
+
+### Added
+- MCP docs group tools in the Redoc sidebar. Each `x-mcp.tools[]` entry has `tags`.
+  Tree tools use `Core`. Endpoint tools reuse `RecordingStudioApi` `openapi[:tags]`
+  (default `Endpoints`). Metric tools named `<group>-<metric>` use a humanized
+  prefix (`ai_runs` → `AI Runs`). The spec emits matching top-level `tags` and
+  `x-tagGroups` (`Core`, `Endpoints`, `Metrics`, `Types`).
+- Type schemas list allowed operations, writable fields, and enabled capability
+  actions with input contracts from `describe`, so Public docs show PressKit
+  actions without a `describe` call.
+- Tree, metric, and (when present) endpoint tools advertise optional MCP
+  `outputSchema` on `tools/list` and in the docs entry.
+- The mounted docs overview (`info.description`) is human Markdown with sections
+  that match the page's tool surface. Agent `instructions` stay on `x-mcp.instructions`.
+
+### Upgrade notes
+- Bump to `0.29.0`. No MCP migration. `tags` and `outputSchema` are optional and
+  additive. Docs consumers that treated `info.description` as initialize
+  instructions should read `x-mcp.instructions` instead. Endpoint tools only
+  get `outputSchema` when the endpoint's registered `openapi` already carries a
+  success JSON schema. `register_endpoint` has no dedicated response-schema
+  argument; that stays an API gem decision.
+
 ## [0.28.0] - 2026-11-10
 
 ### Added
@@ -739,7 +763,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.26.1

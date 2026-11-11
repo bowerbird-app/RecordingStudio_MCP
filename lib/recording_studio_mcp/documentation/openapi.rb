@@ -33,7 +33,7 @@ module RecordingStudioMcp
       module_function
 
       def document(page)
-        {
+        spec = {
           "openapi" => OPENAPI_VERSION,
           "info" => info(page),
           "servers" => servers(page.api_key),
@@ -41,13 +41,17 @@ module RecordingStudioMcp
           "components" => { "schemas" => Schemas.for(page) },
           "x-mcp" => Mcp.section(page)
         }
+        tags = ToolDocs.openapi_tags(page.tag_groups)
+        spec["tags"] = tags if tags.any?
+        spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
+        spec
       end
 
       def info(page)
         {
           "title" => page.title,
           "version" => RecordingStudioMcp::VERSION,
-          "description" => page.instructions.to_s
+          "description" => page.overview.to_s
         }
       end
 
