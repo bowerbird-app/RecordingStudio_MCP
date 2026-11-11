@@ -113,5 +113,14 @@ module RecordingStudioMcp
     rescue JSON::GeneratorError, TypeError
       payload
     end
+
+    def error_result(message, details: nil)
+      result = {
+        content: [{ type: "text", text: message.to_s }],
+        isError: true
+      }
+      result[:structuredContent] = { "details" => stringify_payload(details) } if details.present?
+      result
+    end
   end
 end

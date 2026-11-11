@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.31.1] - 2026-11-11
 
 ### Fixed
-- MCP maps `RecordingStudio::ActorRequired` and `RecordingStudio::InvalidParent` to tool errors (`isError`) instead of JSON-RPC `-32603`. Actor failures say actor is required. Parent failures name `parent_id`. Tool errors that already carry a `details` list or hash (API `InvalidActionInputError`, including unknown fields) now include that `details` payload on the tool result. Other `StandardError`s still become `-32603`.
+- MCP maps `RecordingStudio::ActorRequired` and `RecordingStudio::InvalidParent` to tool errors (`isError`) instead of JSON-RPC `-32603`. Actor and parent failures keep `error.message`. Tool errors that already respond to `details` (API `InvalidActionInputError`, including parent input) copy that payload onto `structuredContent.details`. Other `StandardError`s still become `-32603`.
 
 ### Upgrade notes
 - Bump to `0.31.1`. Previous version is `0.31.0`. No MCP migration. Clients that treated a missing actor or a disallowed parent as a protocol internal now see `isError` tool results. Read `structuredContent.details` when present for field names such as `parent_id`.

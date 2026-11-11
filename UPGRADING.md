@@ -4,7 +4,7 @@
 
 Previous version is `0.31.0`. No MCP protocol migration.
 
-`RecordingStudio::ActorRequired` and `RecordingStudio::InvalidParent` now return MCP `isError` tool results instead of JSON-RPC `-32603`. Parent messages name `parent_id`. Tool errors that already have a `details` payload (API `InvalidActionInputError`) expose it as `structuredContent.details`. Unexpected `StandardError`s still return `-32603`.
+`RecordingStudio::ActorRequired` and `RecordingStudio::InvalidParent` now return MCP `isError` tool results instead of JSON-RPC `-32603`. The tool text is `error.message`. Tool errors that already have a `details` payload (API `InvalidActionInputError`) expose it as `structuredContent.details`. Unexpected `StandardError`s still return `-32603`.
 
 ## 0.31.0
 

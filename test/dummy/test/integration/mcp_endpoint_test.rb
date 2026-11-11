@@ -511,6 +511,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_equal true, payload.dig("result", "isError")
     message = payload.dig("result", "content", 0, "text")
     assert_includes message, "Page cannot be recorded under Page"
+    refute_includes message, "parent_id"
     assert_equal "parent_id", payload.dig("result", "structuredContent", "details", 0, "attribute")
   end
 

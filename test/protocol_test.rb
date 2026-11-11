@@ -804,7 +804,7 @@ class ProtocolTest < Minitest::Test
 
     assert_nil result.body[:error]
     assert_equal true, result.body.dig(:result, :isError)
-    assert_includes result.body.dig(:result, :content, 0, :text), "parent_id"
+    assert_equal "Page cannot be recorded under Folder", result.body.dig(:result, :content, 0, :text)
   end
 
   def test_tools_list_and_call_follow_the_grant_role

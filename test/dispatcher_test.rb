@@ -261,7 +261,7 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_invalid_parent_is_tool_error_naming_parent_id
+  def test_invalid_parent_is_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
         RecordingStudioApi.stub(:resource_action, lambda { |*|
@@ -272,13 +272,8 @@ class DispatcherTest < Minitest::Test
               result = dispatch("create", { "type" => "Folder", "parent_id" => "page-1" })
 
               assert result[:isError]
-              text = result.dig(:content, 0, :text)
-              assert_includes text, "parent_id"
-              assert_includes text, "Folder cannot be recorded under Page"
-              assert_equal(
-                { "parent_id" => "parent_id is not allowed: Folder cannot be recorded under Page" },
-                result.dig(:structuredContent, "details")
-              )
+              assert_equal "Folder cannot be recorded under Page", result.dig(:content, 0, :text)
+              refute result.key?(:structuredContent)
             end
           end
         end
