@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - MCP docs no longer wrap tool tags in Redoc `x-tagGroups` (`Core`,
   `Endpoints`, `Metrics`, `Types`). Each tag is a top-level sidebar section and
-  appears once. The `tags` list, order, and descriptions are unchanged. A host
+  appears once. The `tags` list and descriptions are unchanged. Tag order
+  follows `x-mcp.tools[]` plus Types. A host
   that sets `tag_groups` on the docs page still gets those groups.
 
 ### Upgrade notes

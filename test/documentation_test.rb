@@ -5,6 +5,7 @@ require "test_helper"
 class DocumentationTest < Minitest::Test
   Openapi = RecordingStudioMcp::Documentation::Openapi
   include IsolatedApiConfiguration
+  include RecordableMetricToolHelpers
 
   def test_page_lists_registered_types_tools_and_resource_template
     with_isolated_api_configuration do
@@ -239,32 +240,35 @@ class DocumentationTest < Minitest::Test
 
   def test_openapi_lists_overlapping_endpoint_and_metric_tags_once
     with_isolated_api_configuration do
-      RecordingStudioApi.configuration.api :public
-      register_tree_type("Folder", operations: %i[index show])
-      RecordingStudioApi.register_endpoint(
-        :users,
-        http_verb: :get,
-        path: "users",
-        openapi: { summary: "Users", tags: ["Users"] },
-        handler: ->(_context) { { users: [] } }
-      )
-      RecordingStudioApi.register_endpoint(
-        :users_total,
-        http_verb: :get,
-        path: "users-total",
-        openapi: { summary: "Users total", tags: ["Users"] },
-        handler: ->(_context) { { total: 0 } }
-      )
+      with_recordable_metric_registry do
+        RecordingStudioApi.configuration.api :public
+        register_tree_type("Folder", operations: %i[index show])
+        RecordingStudioApi.register_endpoint(
+          :users,
+          http_verb: :get,
+          path: "users",
+          openapi: { summary: "Users", tags: ["Users"] },
+          handler: ->(_context) { { users: [] } }
+        )
+        RecordingStudioMetrics.register(
+          :users,
+          model: Folder,
+          blast_radius: :site,
+          api_authorize: ->(_context) { true }
+        ) do
+          count :total, title: "Users", description: "How many users.", expose: { api: [:public] }
+        end
 
-      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
-      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+        spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+        tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+        tag_names = spec.fetch("tags").map { |tag| tag["name"] }
 
-      assert_equal ["Users"], tools.fetch("users")["tags"]
-      assert_equal ["Users"], tools.fetch("users_total")["tags"]
-      assert_equal 1, tag_names.count("Users")
-      assert_equal tag_names.uniq, tag_names
-      refute spec.key?("x-tagGroups")
+        assert_equal ["Users"], tools.fetch("users")["tags"]
+        assert_equal ["Users"], tools.fetch("users-total")["tags"]
+        assert_equal 1, tag_names.count("Users")
+        assert_equal tag_names.uniq, tag_names
+        refute spec.key?("x-tagGroups")
+      end
     end
   end
 
