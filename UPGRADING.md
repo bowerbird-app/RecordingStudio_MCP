@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.31.0
+
+Previous version is `0.30.3`. No MCP protocol migration. Docs-only.
+
+Mounted MCP docs list each enabled capability action as a tool in the Redoc
+sidebar, under the type's existing tag. Types that only host those actions in
+this view stay in the OpenAPI schemas and in MCP; the sidebar does not also
+list them as SCHEMA entries. Type class, operations, and writable fields are
+on the action tool pages. `tools/list` still advertises only `capability_action`.
+
 ## 0.30.3
 
 Previous version is `0.30.2`. No MCP protocol migration. Docs-only.

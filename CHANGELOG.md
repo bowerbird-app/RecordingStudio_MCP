@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-11
+
+### Changed
+- MCP docs list each enabled capability action as its own Redoc tool entry
+  (not a SCHEMA) under the type's existing tag. The title is the humanized
+  action name. The page opens with the type's core label, then the type class,
+  operations, writable fields, the existing `Tool: capability_action` line, and
+  the input contract. The action's registered OpenAPI summary is included when
+  present. Types with those actions stay in `components.schemas` and keep
+  working in the API and MCP; the docs builder omits `x-tags` on those schemas
+  so Redoc does not also list them as SCHEMA entries. `tools/list` is unchanged.
+
+### Upgrade notes
+- Bump to `0.31.0`. Previous version is `0.30.3`. No MCP migration. Docs-only.
+  Sidebar capability actions are extra `x-mcp.tools[]` entries named
+  `{type}--{action}`. They are documentation, not protocol tools.
+
 ## [0.30.3] - 2026-11-11
 
 ### Changed
@@ -822,7 +839,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.3...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.0...HEAD
+[0.31.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.3...v0.31.0
 [0.30.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...v0.30.3
 [0.30.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.1...v0.30.2
 [0.30.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.1

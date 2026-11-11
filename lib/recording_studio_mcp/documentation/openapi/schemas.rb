@@ -40,8 +40,14 @@ module RecordingStudioMcp
             "x-mcp-operations" => Array(entry["operations"]),
             "x-mcp-capability-actions" => TypeActions.documented(entry),
             "x-mcp-parent" => entry["parent"],
-            "x-tags" => ToolDocs.type_tags(entry["type"], api: api_key, group_tags: group_tags).presence
+            "x-tags" => schema_sidebar_tags(entry, api_key, group_tags).presence
           }
+        end
+
+        def schema_sidebar_tags(entry, api_key, group_tags)
+          return [] if Array(entry["capability_actions"]).any?
+
+          ToolDocs.type_tags(entry["type"], api: api_key, group_tags: group_tags)
         end
 
         def type_properties(fields)
@@ -104,9 +110,9 @@ module RecordingStudioMcp
           "Writable fields: #{names.join(', ')}."
         end
 
-        private_class_method :type_schema, :type_object_schema, :type_extensions, :type_properties,
-                             :type_required, :field_schema, :type_description, :type_summary,
-                             :registered_type_description, :operations_line, :writable_line
+        private_class_method :type_schema, :type_object_schema, :type_extensions, :schema_sidebar_tags,
+                             :type_properties, :type_required, :field_schema, :type_description, :type_summary,
+                             :registered_type_description
       end
     end
   end

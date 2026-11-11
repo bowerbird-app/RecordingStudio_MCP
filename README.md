@@ -339,7 +339,7 @@ curl -N --no-buffer \
 
 ## MCP reference docs
 
-Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds an OpenAPI 3.1 document from the host catalog for the named API on each request and renders it with vendored Redoc. Tools, resource templates, server instructions, and types stay in sync with what the host registered. There is no committed snapshot. The Redoc sidebar lists each tool tag once (`Core`, endpoint OpenAPI tags, metric prefixes). Types sit under the same tag as that gem's endpoint tools. Types with no registered tag stay ungrouped. It does not wrap those tags in Core / Endpoints / Metrics / Types groups. Each type schema lists operations, writable fields, and capability actions from `describe`. Tools may advertise `outputSchema`. The page overview is human Markdown. MCP initialize `instructions` stay on `x-mcp.instructions`.
+Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds an OpenAPI 3.1 document from the host catalog for the named API on each request and renders it with vendored Redoc. Tools, resource templates, server instructions, and types stay in sync with what the host registered. There is no committed snapshot. The Redoc sidebar lists each tool tag once (`Core`, endpoint OpenAPI tags, metric prefixes). Types sit under the same tag as that gem's endpoint tools. Types with no registered tag stay ungrouped. It does not wrap those tags in Core / Endpoints / Metrics / Types groups. Each type schema lists operations and writable fields. Each enabled capability action is a sidebar tool under that type's tag, with the type class, operations, writable fields, and a `capability_action` invocation line from `describe`. Types that host those actions stay in the spec; the sidebar does not also list them as SCHEMA entries. Tools may advertise `outputSchema`. The page overview is human Markdown. MCP initialize `instructions` stay on `x-mcp.instructions`.
 
 The spec is `{mount}/openapi.json` behind the same `documentation_enabled` flag and `documentation_access` gate as the page. `{mount}/fullscreen` is the same Redoc viewer without the host layout. Redoc loads from `{mount}/redoc.js` in this gem. Nothing is fetched from a CDN. Telemetry is off.
 
@@ -361,4 +361,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.30.3
+0.31.0

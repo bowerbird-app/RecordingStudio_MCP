@@ -8,17 +8,23 @@ module RecordingStudioMcp
 
         module_function
 
-        def section(page)
+        def section(page, group_tags: nil)
           surface = ToolSurface.for(api: page.api_key)
           {
             "protocolVersion" => RecordingStudioMcp.configuration.protocol_version,
             "instructions" => page.instructions.to_s,
             "servers" => Internals.servers(page.api_key),
             "capabilities" => capabilities,
-            "tools" => page.tools.map { |tool| tool_entry(tool, surface) },
+            "tools" => documented_tools(page, surface, group_tags),
             "resources" => [resource(page.resource_template)],
             "resourceTemplates" => [resource_template(page.resource_template)]
           }
+        end
+
+        def documented_tools(page, surface, group_tags)
+          protocol = page.tools.map { |tool| tool_entry(tool, surface) }
+          actions = TypeActions.tools(page, group_tags: group_tags).map { |tool| tool_entry(tool, surface) }
+          protocol + actions
         end
 
         def capabilities
@@ -60,7 +66,7 @@ module RecordingStudioMcp
           }.compact
         end
 
-        private_class_method :capabilities, :tool_entry, :resource, :resource_template
+        private_class_method :documented_tools, :capabilities, :tool_entry, :resource, :resource_template
       end
     end
   end
