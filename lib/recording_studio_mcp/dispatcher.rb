@@ -30,14 +30,18 @@ module RecordingStudioMcp
       @catalog = @surface.catalog
     end
 
-    def call(tool_name, arguments)
+    def call(tool_name, arguments) # rubocop:disable Metrics/MethodLength -- rescue list is the mapped tool-error classes
       AuthorizedBy.enter(access_grant)
       dispatch_named(tool_name, arguments)
-    rescue StandardError => e
-      mapped = tool_error_for(e)
-      raise unless mapped
-
-      mapped
+    rescue RecordingStudioApi::AuthorizationError,
+           RecordingStudioApi::NotFoundError,
+           RecordingStudioApi::UnsupportedActionError,
+           RecordingStudioApi::InvalidActionInputError,
+           RecordingStudioApi::InvalidPaginationTokenError,
+           ActiveRecord::RecordInvalid,
+           RecordingStudio::InvalidParent,
+           RecordingStudio::AuthorizationError => e
+      tool_error_for(e)
     ensure
       AuthorizedBy.leave
     end
