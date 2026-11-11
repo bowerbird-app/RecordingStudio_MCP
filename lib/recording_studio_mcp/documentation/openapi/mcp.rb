@@ -43,6 +43,7 @@ module RecordingStudioMcp
             "description" => tool["description"].presence || tool["title"].presence || tool["name"],
             "inputSchema" => Internals.stringify(tool["inputSchema"]) || { "type" => "object" }
           }.compact
+          entry["x-mcp-docs-only"] = true if tool["x-mcp-docs-only"]
           entry.merge(ToolDocs.openapi_extras(entry, tool, surface))
         end
 

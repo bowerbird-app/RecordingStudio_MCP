@@ -44,19 +44,29 @@ module RecordingStudioMcp
           action_name = action["name"].to_s
           tagged_tool(
             name: "#{type_name}--#{action_name}",
-            title: action_name.to_s.humanize.titleize,
+            title: action_name.humanize.titleize,
             description: page_description(entry, action, api_key),
-            tags: ToolDocs.type_tags(type_name, api: api_key, group_tags: group_tags)
+            tags: ToolDocs.type_tags(type_name, api: api_key, group_tags: group_tags),
+            input_schema: action_input_schema(action)
           )
         end
         private_class_method :action_tool
 
-        def tagged_tool(name:, title:, description:, tags:)
+        def action_input_schema(action)
+          params = action["params"]
+          return { "type" => "object" } if params.blank?
+
+          JSON.parse(JSON.generate(params))
+        end
+        private_class_method :action_input_schema
+
+        def tagged_tool(name:, title:, description:, tags:, input_schema:)
           tool = {
             "name" => name,
             "title" => title,
             "description" => description,
-            "inputSchema" => { "type" => "object" }
+            "inputSchema" => input_schema,
+            "x-mcp-docs-only" => true
           }
           tool["tags"] = tags if tags.any?
           tool

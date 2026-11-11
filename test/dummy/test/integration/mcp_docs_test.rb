@@ -114,6 +114,9 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes ping["description"], "capability_action"
     ping_tool = tools.fetch("Workspace--ping")
     assert_equal "Ping", ping_tool["title"]
+    assert ping_tool["x-mcp-docs-only"]
+    refute tools.fetch("list").key?("x-mcp-docs-only")
+    assert ping_tool.dig("inputSchema", "fields")
     assert_includes ping_tool["description"], "Runs on a Workspace (Workspace)."
     assert_includes ping_tool["description"], "Type: `Workspace`"
     assert_includes ping_tool["description"], "Allowed operations:"

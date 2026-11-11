@@ -141,9 +141,7 @@ module RecordingStudioMcp
         end
 
         def declared_non_root?(parent_name)
-          return false unless defined?(RecordingStudio::RecordableDeclarations)
-
-          declaration = RecordingStudio::RecordableDeclarations.declaration_for(parent_name)
+          declaration = RecordingStudio.recordable_declaration_for(parent_name)
           declaration.present? && !declaration.root?
         end
 

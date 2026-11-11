@@ -18,13 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   present. Types with those actions stay in `components.schemas` and keep
   working in the API and MCP. Child and section types (those whose registered
   parent is another non-root recordable) omit `x-tags` so Redoc does not also
-  list them as SCHEMA entries. Top-level types keep their schema sidebar entry
-  and still get the action tool entries. `tools/list` is unchanged.
+  list them as SCHEMA entries. The hide check is `any?` over allowed parents, so
+  a type allowed under both a root and a nested parent also loses its sidebar
+  schema entry. Top-level types keep their schema sidebar entry and still get
+  the action tool entries. Those action tools set `x-mcp-docs-only` and use the
+  action's input contract as `inputSchema` when one is present (`{type: object}`
+  otherwise). `tools/list` is unchanged.
 
 ### Upgrade notes
 - Bump to `0.31.0`. Previous version is `0.30.3`. No MCP migration. Docs-only.
   Sidebar capability actions are extra `x-mcp.tools[]` entries named
-  `{type}--{action}`. They are documentation, not protocol tools.
+  `{type}--{action}` with `x-mcp-docs-only: true`. They are documentation, not
+  protocol tools. A type allowed under both a root and a nested parent omits
+  its SCHEMA sidebar entry, same as a nested-only type.
 
 ## [0.30.3] - 2026-11-11
 

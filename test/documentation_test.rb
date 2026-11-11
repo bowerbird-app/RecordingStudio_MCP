@@ -203,6 +203,10 @@ class DocumentationTest < Minitest::Test
       refute_includes folder["description"], "style"
       ping_tool = tools.fetch("Folder--ping")
       assert_equal "Ping", ping_tool["title"]
+      assert ping_tool["x-mcp-docs-only"]
+      refute tools.fetch("list").key?("x-mcp-docs-only")
+      assert_equal "string", ping_tool.dig("inputSchema", "fields", "style", "type")
+      assert_equal %w[quiet loud], ping_tool.dig("inputSchema", "fields", "style", "enum")
       assert_includes ping_tool["description"], "Runs on a Folder (Folder)."
       assert_includes ping_tool["description"], "Type: `Folder`"
       assert_includes ping_tool["description"], "Allowed operations:"
@@ -420,6 +424,12 @@ class DocumentationTest < Minitest::Test
       add = tools.fetch("RecordingStudioPresskits::CreditsSection--add_credit")
       reorder = tools.fetch("RecordingStudioPresskits::CreditsSection--reorder_credits")
       remove = tools.fetch("RecordingStudioPresskits::CreditLine--remove_credit")
+      assert add["x-mcp-docs-only"]
+      assert reorder["x-mcp-docs-only"]
+      assert remove["x-mcp-docs-only"]
+      assert_equal "string", add.dig("inputSchema", "fields", "credit_id", "type")
+      assert_equal({ "type" => "object" }, reorder["inputSchema"])
+      assert_equal({ "type" => "object" }, remove["inputSchema"])
       assert_equal "Add Credit", add["title"]
       assert_equal ["Press Kit"], add["tags"]
       assert_equal ["Press Kit"], reorder["tags"]
@@ -492,6 +502,9 @@ class DocumentationTest < Minitest::Test
       remove = tools.fetch("GallerySlide--remove_slide")
       protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
 
+      assert publish["x-mcp-docs-only"]
+      assert_equal({ "type" => "object" }, publish["inputSchema"])
+      assert_equal({ "type" => "object" }, add["inputSchema"])
       assert_equal "Publish", publish["title"]
       assert_equal ["Galleries"], publish["tags"]
       assert_includes publish["description"], "Runs on a Gallery (Gallery)."
