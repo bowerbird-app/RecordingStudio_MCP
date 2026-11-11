@@ -9,8 +9,12 @@ module RecordingStudioMcp
       payload
     end
 
-    def docs_tools(surface)
-      Array(surface.tool_entries).map { |entry| docs_tool(entry) }
+    def docs_page(page, catalog)
+      surface = ToolSurface.for(api: catalog.api)
+      page.with(
+        overview: Documentation::Overview.markdown(surface),
+        tag_groups: tag_groups(surface, types: page.types)
+      )
     end
 
     def tags_for_entry(entry)
@@ -22,9 +26,9 @@ module RecordingStudioMcp
       end
     end
 
-    def openapi_extras(_entry, tool)
+    def openapi_extras(_entry, tool, surface = nil)
       extras = {}
-      tags = Array(tool["tags"]).map(&:to_s).reject(&:blank?)
+      tags = tags_for_openapi(tool, surface)
       extras["tags"] = tags if tags.any?
       schema = stringify_schema(tool["outputSchema"])
       extras["outputSchema"] = schema if schema.present?
@@ -38,13 +42,21 @@ module RecordingStudioMcp
       spec
     end
 
-    def docs_tool(entry)
-      payload = entry.definition.dup
-      tags = tags_for_entry(entry)
-      payload[:tags] = tags if tags.any?
-      payload
+    def tags_for_openapi(tool, surface)
+      found = entry_for_tool(tool, surface)
+      return tags_for_entry(found) if found
+
+      Array(tool["tags"]).map(&:to_s).reject(&:blank?)
     end
-    private_class_method :docs_tool
+    private_class_method :tags_for_openapi
+
+    def entry_for_tool(tool, surface)
+      return unless surface
+
+      name = (tool["name"] || tool[:name]).to_s
+      surface.tool_entries.find { |item| item.definition[:name].to_s == name }
+    end
+    private_class_method :entry_for_tool
 
     def stringify_schema(value)
       return value.deep_stringify_keys if value.respond_to?(:deep_stringify_keys)

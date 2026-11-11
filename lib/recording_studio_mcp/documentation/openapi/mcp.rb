@@ -9,12 +9,13 @@ module RecordingStudioMcp
         module_function
 
         def section(page)
+          surface = ToolSurface.for(api: page.api_key)
           {
             "protocolVersion" => RecordingStudioMcp.configuration.protocol_version,
             "instructions" => page.instructions.to_s,
             "servers" => Internals.servers(page.api_key),
             "capabilities" => capabilities,
-            "tools" => page.tools.map { |tool| tool_entry(tool) },
+            "tools" => page.tools.map { |tool| tool_entry(tool, surface) },
             "resources" => [resource(page.resource_template)],
             "resourceTemplates" => [resource_template(page.resource_template)]
           }
@@ -28,7 +29,7 @@ module RecordingStudioMcp
           }
         end
 
-        def tool_entry(tool)
+        def tool_entry(tool, surface)
           tool = Internals.stringify(tool)
           entry = {
             "name" => tool.fetch("name"),
@@ -36,7 +37,7 @@ module RecordingStudioMcp
             "description" => tool["description"].presence || tool["title"].presence || tool["name"],
             "inputSchema" => Internals.stringify(tool["inputSchema"]) || { "type" => "object" }
           }.compact
-          entry.merge(ToolDocs.openapi_extras(entry, tool))
+          entry.merge(ToolDocs.openapi_extras(entry, tool, surface))
         end
 
         def resource(template)

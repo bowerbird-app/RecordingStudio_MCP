@@ -2,7 +2,6 @@
 
 require_relative "documentation/overview"
 require_relative "documentation/openapi"
-require_relative "documentation/page_fields"
 
 module RecordingStudioMcp
   module Documentation
@@ -10,13 +9,17 @@ module RecordingStudioMcp
       :api_key,
       :title,
       :instructions,
-      :overview,
       :tools,
       :type_schema,
       :types,
       :resource_template,
+      :overview,
       :tag_groups
-    )
+    ) do
+      def initialize(overview: nil, tag_groups: nil, **members)
+        super
+      end
+    end
 
     module_function
 
@@ -24,7 +27,8 @@ module RecordingStudioMcp
       api_key = NamedApi.normalize(api)
       raise ArgumentError, "unknown API #{api_key}" unless NamedApi.known?(api_key)
 
-      build_page(Catalog.new(api: api_key))
+      catalog = Catalog.new(api: api_key)
+      ToolDocs.docs_page(build_page(catalog), catalog)
     end
 
     def openapi(api:)
@@ -32,7 +36,15 @@ module RecordingStudioMcp
     end
 
     def build_page(catalog)
-      Page.new(**page_fields(catalog))
+      Page.new(
+        api_key: catalog.api,
+        title: title_for(catalog.api),
+        instructions: Instructions.text(access_grant: nil, api: catalog.api).to_s,
+        tools: Array(Tools.definitions(api: catalog.api)),
+        type_schema: catalog.type_schema || empty_type_schema,
+        types: describe_types(catalog),
+        resource_template: resource_template
+      )
     end
 
     def resource_template
@@ -75,7 +87,7 @@ module RecordingStudioMcp
       }
     end
 
-    private_class_method :build_page, :page_fields, :title_for, :describe_types, :describe_type,
+    private_class_method :build_page, :title_for, :describe_types, :describe_type,
                          :empty_type_describe, :empty_type_schema, :resource_template
   end
 end
