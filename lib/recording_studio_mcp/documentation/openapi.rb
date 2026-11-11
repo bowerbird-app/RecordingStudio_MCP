@@ -34,16 +34,13 @@ module RecordingStudioMcp
       module_function
 
       def document(page)
+        group_tags = ToolDocs.endpoint_group_tags(api: page.api_key)
         spec = {
-          "openapi" => OPENAPI_VERSION,
-          "info" => info(page),
-          "servers" => servers(page.api_key),
-          "paths" => {},
-          "components" => { "schemas" => Schemas.for(page) },
+          "openapi" => OPENAPI_VERSION, "info" => info(page), "servers" => servers(page.api_key),
+          "paths" => {}, "components" => { "schemas" => Schemas.for(page, group_tags: group_tags) },
           "x-mcp" => Mcp.section(page)
         }
-        ToolDocs.attach_sidebar!(spec, page)
-        spec
+        ToolDocs.attach_sidebar!(spec, page, group_tags: group_tags)
       end
 
       def info(page)

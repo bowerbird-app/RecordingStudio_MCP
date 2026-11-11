@@ -6,39 +6,41 @@ module RecordingStudioMcp
       module Schemas
         module_function
 
-        def for(page)
+        def for(page, group_tags: nil)
           types = page.types.each_with_object({}) do |entry, acc|
             entry = Internals.stringify(entry)
             name = entry["type"].to_s
             next if name.blank?
 
-            acc[name] = type_schema(entry, page.api_key)
+            acc[name] = type_schema(entry, page.api_key, group_tags: group_tags)
           end
           types["TypeName"] = Internals.stringify(page.type_schema)
           types
         end
 
-        def type_schema(entry, api_key)
+        def type_schema(entry, api_key, group_tags: nil)
           fields = Array(entry["writable_fields"]).map { |field| Internals.stringify(field) }
-          type_object_schema(entry, fields, api_key).merge(type_extensions(entry, api_key)).compact
+          type_object_schema(entry, fields, api_key).merge(
+            type_extensions(entry, api_key, group_tags: group_tags)
+          ).compact
         end
 
         def type_object_schema(entry, fields, api_key)
           {
             "type" => "object",
-            "title" => type_title(entry),
+            "title" => RecordingStudio.recordable_type_label(entry["type"]),
             "description" => type_description(entry, api_key),
             "properties" => type_properties(fields),
             "required" => type_required(fields)
           }
         end
 
-        def type_extensions(entry, api_key)
+        def type_extensions(entry, api_key, group_tags: nil)
           {
             "x-mcp-operations" => Array(entry["operations"]),
             "x-mcp-capability-actions" => TypeActions.documented(entry),
             "x-mcp-parent" => entry["parent"],
-            "x-tags" => ToolDocs.type_tags(entry["type"], api: api_key).presence
+            "x-tags" => ToolDocs.type_tags(entry["type"], api: api_key, group_tags: group_tags).presence
           }
         end
 
@@ -63,12 +65,6 @@ module RecordingStudioMcp
           schema
         end
 
-        def type_title(entry)
-          type_name = entry["type"].to_s
-          declaration = RecordingStudio.recordable_declaration_for(type_name)
-          declaration&.label.presence || type_name
-        end
-
         def type_description(entry, api_key)
           [
             type_summary(entry, api_key),
@@ -81,7 +77,7 @@ module RecordingStudioMcp
 
         def type_summary(entry, api_key)
           registered_type_description(entry["type"], api_key).presence ||
-            "A #{type_title(entry).downcase} record in this workspace."
+            "A #{RecordingStudio.recordable_type_label(entry['type']).downcase} record in this workspace."
         end
 
         def registered_type_description(type_name, api_key)
@@ -109,7 +105,7 @@ module RecordingStudioMcp
         end
 
         private_class_method :type_schema, :type_object_schema, :type_extensions, :type_properties,
-                             :type_required, :field_schema, :type_title, :type_description, :type_summary,
+                             :type_required, :field_schema, :type_description, :type_summary,
                              :registered_type_description, :operations_line, :writable_line
       end
     end

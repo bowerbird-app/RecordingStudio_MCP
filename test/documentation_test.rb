@@ -302,7 +302,7 @@ class DocumentationTest < Minitest::Test
         handler: ->(_context) { { ok: true } }
       )
 
-      spec = openapi_with_credit_label
+      spec = openapi_with_credit_label!
       credit = spec.dig("components", "schemas", "RecordingStudioPresskits::Credit")
       folder = spec.dig("components", "schemas", "Folder")
       ping = Array(credit["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
@@ -347,24 +347,28 @@ class DocumentationTest < Minitest::Test
       register_tree_type("Folder", operations: %i[index show])
       page = RecordingStudioMcp::Documentation.page(api: :public)
       grouped = page.with(
-        tag_groups: [{ "name" => "Host", "tags" => %w[Core Types] }]
+        tag_groups: [{ "name" => "Host", "tags" => %w[Core] }]
       )
 
       spec = Openapi.document(grouped)
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
 
-      assert_equal [{ "name" => "Host", "tags" => %w[Core Types] }], spec["x-tagGroups"]
+      assert_equal [{ "name" => "Host", "tags" => %w[Core] }], spec["x-tagGroups"]
       assert_equal %w[Core], tag_names
     end
   end
 
-  def openapi_with_credit_label
-    declaration = Struct.new(:label).new("Credit")
-    lookup = lambda do |type|
-      type.to_s == "RecordingStudioPresskits::Credit" ? declaration : nil
-    end
-    RecordingStudio.stub(:recordable_declaration_for, lookup) do
-      RecordingStudioMcp::Documentation.openapi(api: :public)
+  def openapi_with_credit_label!
+    type = "RecordingStudioPresskits::Credit"
+    store = RecordingStudio::Labels.formatters.fetch(:type_label)
+    previous = store[type]
+    RecordingStudio::Labels.register_formatter(type, type_label: ->(*) { "Credit" })
+    RecordingStudioMcp::Documentation.openapi(api: :public)
+  ensure
+    if previous
+      store[type] = previous
+    else
+      store.delete(type)
     end
   end
 end
