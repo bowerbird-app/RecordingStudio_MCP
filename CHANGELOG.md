@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.1] - 2026-11-11
+## [0.30.1] - 2026-11-11
 
 ### Fixed
 - MCP maps `ActiveRecord::RecordInvalid` (validation messages), `RecordingStudio::InvalidParent` (`parent_id` detail), and `RecordingStudio::AuthorizationError` (`Not authorized`) to tool errors (`isError`), matching HTTP Recording Studio API. Other `StandardError`s stay JSON-RPC `-32603`.
@@ -15,7 +15,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint `input_contract` failures include `contract_result.errors` in the tool message (for example `Unknown parameters: foo`).
 
 ### Upgrade notes
-- Bump to `0.29.1` after `0.29.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed.
+- Bump to `0.30.1` after `0.30.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`.
+
+## [0.30.0] - 2026-11-11
+
+### Changed
+- MCP docs no longer wrap tool tags in Redoc `x-tagGroups` (`Core`,
+  `Endpoints`, `Metrics`, `Types`). Each tag is a top-level sidebar section and
+  appears once. The `tags` list and descriptions are unchanged. Tag order
+  follows `x-mcp.tools[]` plus Types. A host
+  that sets `tag_groups` on the docs page still gets those groups.
+
+### Upgrade notes
+- Bump to `0.30.0`. No MCP migration. The docs sidebar no longer groups tags
+  under Core / Endpoints / Metrics / Types. Tool `tags` on `x-mcp.tools[]` are
+  the same. If you relied on default `x-tagGroups`, drop that or set
+  `tag_groups` on the documentation page.
+
+## [0.29.0] - 2026-11-11
+
+### Added
+- MCP docs group tools in the Redoc sidebar. Each docs `x-mcp.tools[]` entry has
+  `tags`. Tags stay out of the protocol `tools/list` payload. Tree tools use
+  `Core`. Endpoint tools reuse `RecordingStudioApi` `openapi[:tags]` (default
+  `Endpoints`). Metric tools named `<group>-<metric>` use a humanized prefix
+  (`ai_runs` → `AI Runs`). The spec emits matching top-level `tags` and
+  `x-tagGroups` (`Core`, `Endpoints`, `Metrics`, `Types`).
+- Type schemas list allowed operations, writable fields, and enabled capability
+  actions with input contracts from `describe`, so Public docs show PressKit
+  actions without a `describe` call.
+- Tree, metric, and (when present) endpoint tools advertise optional MCP
+  `outputSchema` on `tools/list` and in the docs entry. Endpoint `outputSchema`
+  is a 2xx `application/json` object schema only.
+- The mounted docs overview (`info.description`) is human Markdown with sections
+  that match the page's tool surface. Agent `instructions` stay on `x-mcp.instructions`.
+
+### Upgrade notes
+- Bump to `0.29.0`. No MCP migration. `outputSchema` is an optional MCP Tool
+  field on `tools/list`. Docs `tags` are optional and additive. Docs consumers
+  that treated `info.description` as initialize instructions should read
+  `x-mcp.instructions` instead. Endpoint tools only get `outputSchema` when the
+  endpoint's registered `openapi` already carries a 2xx `application/json`
+  object schema. `register_endpoint` has no dedicated response-schema argument;
+  that stays an API gem decision.
 
 ## [0.28.0] - 2026-11-10
 
@@ -749,8 +791,9 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.1...HEAD
-[0.29.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.29.1
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.1...HEAD
+[0.30.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.1
+[0.30.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0

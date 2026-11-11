@@ -5,6 +5,7 @@ require "test_helper"
 class DocumentationTest < Minitest::Test
   Openapi = RecordingStudioMcp::Documentation::Openapi
   include IsolatedApiConfiguration
+  include RecordableMetricToolHelpers
 
   def test_page_lists_registered_types_tools_and_resource_template
     with_isolated_api_configuration do
@@ -17,6 +18,8 @@ class DocumentationTest < Minitest::Test
       assert_equal "public", page.api_key
       assert_equal "Public MCP", page.title
       refute_empty page.instructions
+      assert_includes page.overview, "## Authentication"
+      refute_equal page.overview, page.instructions
       names = page.tools.map { |tool| tool[:name] || tool["name"] }
       assert_includes names, "list"
       assert_includes names, "describe"
@@ -105,7 +108,9 @@ class DocumentationTest < Minitest::Test
       assert_equal "3.1.0", spec["openapi"]
       assert_equal "Public MCP", spec.dig("info", "title")
       refute_empty spec.dig("info", "description")
-      assert_equal spec.dig("info", "description"), mcp["instructions"]
+      refute_equal spec.dig("info", "description"), mcp["instructions"]
+      assert_includes spec.dig("info", "description"), "## Authentication"
+      assert_includes mcp["instructions"], "Call describe before create"
       assert_includes names, "list"
       assert_includes names, "describe"
       assert_includes names, "ping"
@@ -119,6 +124,168 @@ class DocumentationTest < Minitest::Test
       assert_equal "recording://{id}", mcp.dig("resourceTemplates", 0, "uriTemplate")
       refute Openapi.respond_to?(:servers)
       refute Openapi.respond_to?(:stringify)
+    end
+  end
+
+  def test_openapi_groups_tools_and_lists_type_actions_and_output_schemas
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("Folder", operations: %i[index show create update], capability_actions: %i[ping])
+      RecordingStudioApi.register_capability_action(
+        :ping,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        input_contract: {
+          fields: {
+            style: { type: :string, required: false, enum: %w[quiet loud] }
+          }
+        }
+      )
+      RecordingStudioApi.register_endpoint(
+        :list_agent_chats,
+        http_verb: :get,
+        path: "agent_chats",
+        openapi: {
+          summary: "List agent chats",
+          tags: ["Agent chats"],
+          responses: {
+            "200" => {
+              description: "ok",
+              content: {
+                "application/json" => {
+                  schema: {
+                    type: "object",
+                    properties: { chats: { type: "array" } },
+                    required: ["chats"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        handler: ->(_context) { { chats: [] } }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      mcp = spec.fetch("x-mcp")
+      tools = mcp.fetch("tools").index_by { |tool| tool["name"] }
+      folder = spec.dig("components", "schemas", "Folder")
+      ping = Array(folder["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
+      description = spec.dig("info", "description")
+
+      listed = RecordingStudioMcp::Tools.definitions.index_by { |tool| tool[:name] }
+      refute listed.fetch("list").key?(:tags)
+      refute listed.fetch("list_agent_chats").key?(:tags)
+      assert listed.fetch("list").key?(:outputSchema)
+
+      assert_equal ["Core"], tools.fetch("list")["tags"]
+      assert_equal ["Core"], tools.fetch("describe")["tags"]
+      assert_equal ["Agent chats"], tools.fetch("list_agent_chats")["tags"]
+      assert tools.fetch("list").key?("outputSchema")
+      assert_equal "array", tools.dig("list", "outputSchema", "properties", "records", "type")
+      assert_equal "object", tools.dig("show", "outputSchema", "type")
+      assert_equal ["chats"], tools.dig("list_agent_chats", "outputSchema", "required")
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      assert_includes tag_names, "Core"
+      assert_includes tag_names, "Agent chats"
+      assert_includes tag_names, "Types"
+      assert_equal tag_names.uniq, tag_names
+      refute spec.key?("x-tagGroups")
+      assert_includes folder["description"], "Allowed operations:"
+      assert_includes folder["description"], "index"
+      assert_includes folder["description"], "create"
+      assert_includes folder["description"], "Writable fields: title."
+      assert_includes folder["description"], "`ping`"
+      assert_includes folder["description"], "style"
+      assert ping.dig("params", "fields", "style")
+      assert_includes description, "## Authentication"
+      assert_includes description, "## Records and parents"
+      assert_includes description, "## Listing and pagination"
+      assert_includes description, "## Endpoint tools"
+      assert_includes description, "## Skills"
+      assert_match(/^## /m, description)
+      assert_includes description, "\n- "
+      refute_includes description, mcp["instructions"]
+    end
+  end
+
+  def test_operations_overview_omits_tree_sections
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :operations
+      RecordingStudioApi.register_endpoint(
+        :ops_ping,
+        api: :operations,
+        http_verb: :get,
+        path: "ping",
+        openapi: { summary: "Ops ping" },
+        handler: ->(_context) { { ok: true } }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :operations)
+      description = spec.dig("info", "description")
+      ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ops_ping" }
+
+      assert_includes description, "## Authentication"
+      assert_includes description, "## Endpoint tools"
+      refute_includes description, "## Records and parents"
+      refute_includes description, "## Listing and pagination"
+      refute_includes description, "Call describe before create"
+      assert_equal ["Endpoints"], ping["tags"]
+      refute ping.key?("outputSchema")
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      assert_equal tag_names.uniq, tag_names
+      refute spec.key?("x-tagGroups")
+    end
+  end
+
+  def test_openapi_lists_overlapping_endpoint_and_metric_tags_once
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        RecordingStudioApi.configuration.api :public
+        register_tree_type("Folder", operations: %i[index show])
+        RecordingStudioApi.register_endpoint(
+          :users,
+          http_verb: :get,
+          path: "users",
+          openapi: { summary: "Users", tags: ["Users"] },
+          handler: ->(_context) { { users: [] } }
+        )
+        RecordingStudioMetrics.register(
+          :users,
+          model: Folder,
+          blast_radius: :site,
+          api_authorize: ->(_context) { true }
+        ) do
+          count :total, title: "Users", description: "How many users.", expose: { api: [:public] }
+        end
+
+        spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+        tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+        tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+
+        assert_equal ["Users"], tools.fetch("users")["tags"]
+        assert_equal ["Users"], tools.fetch("users-total")["tags"]
+        assert_equal 1, tag_names.count("Users")
+        assert_equal tag_names.uniq, tag_names
+        refute spec.key?("x-tagGroups")
+      end
+    end
+  end
+
+  def test_host_tag_groups_are_emitted_when_set_on_the_page
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("Folder", operations: %i[index show])
+      page = RecordingStudioMcp::Documentation.page(api: :public)
+      grouped = page.with(
+        tag_groups: [{ "name" => "Host", "tags" => %w[Core Types] }]
+      )
+
+      spec = Openapi.document(grouped)
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+
+      assert_equal [{ "name" => "Host", "tags" => %w[Core Types] }], spec["x-tagGroups"]
+      assert_equal %w[Core Types], tag_names
     end
   end
 end

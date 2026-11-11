@@ -9,6 +9,12 @@ module RecordingStudioMcp
       RecordingStudioApi::InvalidActionInputError,
       RecordingStudioApi::InvalidPaginationTokenError
     ].freeze
+    DOMAIN_TOOL_ERRORS = [
+      ActiveRecord::RecordInvalid,
+      RecordingStudio::InvalidParent,
+      RecordingStudio::AuthorizationError
+    ].freeze
+    TOOL_ERROR_CLASSES = (API_TOOL_ERRORS + DOMAIN_TOOL_ERRORS).freeze
 
     private
 

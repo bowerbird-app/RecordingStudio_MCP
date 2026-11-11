@@ -32,11 +32,17 @@ module RecordingStudioMcp
     end
 
     def endpoint_tool(endpoint, api: nil)
-      tool(endpoint_tool_options(endpoint, api))
+      ToolDocs.decorate(
+        tool(endpoint_tool_options(endpoint, api)),
+        output_schema: ToolDocs.endpoint_output_schema(endpoint)
+      )
     end
 
     def metric_tool(recordable_metric)
-      tool(recordable_metric.definition_options)
+      ToolDocs.decorate(
+        tool(recordable_metric.definition_options),
+        output_schema: ToolDocs.metric_output_schema
+      )
     end
 
     def endpoint_tool_options(endpoint, api)
@@ -56,14 +62,17 @@ module RecordingStudioMcp
     end
 
     def list_tool(catalog)
-      tool(
-        name: "list",
-        title: "List records",
-        description: list_description(catalog),
-        read_only: true,
-        idempotent: true,
-        required: ["type"],
-        properties: list_properties(catalog)
+      ToolDocs.decorate(
+        tool(
+          name: "list",
+          title: "List records",
+          description: list_description(catalog),
+          read_only: true,
+          idempotent: true,
+          required: ["type"],
+          properties: list_properties(catalog)
+        ),
+        output_schema: ToolDocs.list_output_schema(catalog)
       )
     end
 
@@ -105,112 +114,130 @@ module RecordingStudioMcp
     end
 
     def show_tool(catalog)
-      tool(
-        name: "show",
-        title: "Show a record",
-        description: "Show one record by id. Use list or a create result to get ids. Returns the record.",
-        read_only: true,
-        idempotent: true,
-        required: %w[type id],
-        properties: {
-          type: catalog.type_schema_for(:show),
-          id: { type: "string", description: "Recording id." }
-        }
+      ToolDocs.decorate(
+        tool(
+          name: "show",
+          title: "Show a record",
+          description: "Show one record by id. Use list or a create result to get ids. Returns the record.",
+          read_only: true,
+          idempotent: true,
+          required: %w[type id],
+          properties: {
+            type: catalog.type_schema_for(:show),
+            id: { type: "string", description: "Recording id." }
+          }
+        ),
+        output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
     def create_tool(catalog)
-      tool(
-        name: "create",
-        title: "Create a record",
-        description: "Changes data by creating a record. Send writable fields at the root, " \
-                     "for example title, not nested under attributes. " \
-                     "Child types need parent_id. Call describe for writable fields and parent rules. " \
-                     "Returns the created record.",
-        read_only: false,
-        destructive: false,
-        idempotent: true,
-        additional_properties: true,
-        required: ["type"],
-        properties: {
-          type: catalog.type_schema_for(:create),
-          parent_id: {
-            type: "string",
-            description: "Parent recording id. Required for types that are not roots."
-          },
-          idempotency_key: {
-            type: "string",
-            description: "Create idempotency key. Same as the API Idempotency-Key header."
+      ToolDocs.decorate(
+        tool(
+          name: "create",
+          title: "Create a record",
+          description: "Changes data by creating a record. Send writable fields at the root, " \
+                       "for example title, not nested under attributes. " \
+                       "Child types need parent_id. Call describe for writable fields and parent rules. " \
+                       "Returns the created record.",
+          read_only: false,
+          destructive: false,
+          idempotent: true,
+          additional_properties: true,
+          required: ["type"],
+          properties: {
+            type: catalog.type_schema_for(:create),
+            parent_id: {
+              type: "string",
+              description: "Parent recording id. Required for types that are not roots."
+            },
+            idempotency_key: {
+              type: "string",
+              description: "Create idempotency key. Same as the API Idempotency-Key header."
+            }
           }
-        }
+        ),
+        output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
     def update_tool(catalog)
-      tool(
-        name: "update",
-        title: "Update a record",
-        description: "Changes data by updating a record. Send writable fields at the root, " \
-                     "for example title, not nested under attributes. " \
-                     "Call describe for the type. Returns the updated record.",
-        read_only: false,
-        destructive: false,
-        idempotent: false,
-        additional_properties: true,
-        required: %w[type id],
-        properties: {
-          type: catalog.type_schema_for(:update),
-          id: { type: "string", description: "Recording id." }
-        }
+      ToolDocs.decorate(
+        tool(
+          name: "update",
+          title: "Update a record",
+          description: "Changes data by updating a record. Send writable fields at the root, " \
+                       "for example title, not nested under attributes. " \
+                       "Call describe for the type. Returns the updated record.",
+          read_only: false,
+          destructive: false,
+          idempotent: false,
+          additional_properties: true,
+          required: %w[type id],
+          properties: {
+            type: catalog.type_schema_for(:update),
+            id: { type: "string", description: "Recording id." }
+          }
+        ),
+        output_schema: ToolDocs.record_output_schema(catalog)
       )
     end
 
     def delete_tool(catalog)
-      tool(
-        name: "delete",
-        title: "Delete a record",
-        description: "May destructively change data by running the named API destroy operation. " \
-                     "Use describe to see which types allow destroy. Returns the delete result.",
-        read_only: false,
-        destructive: true,
-        idempotent: false,
-        required: %w[type id],
-        properties: {
-          type: catalog.destroy_type_schema,
-          id: { type: "string", description: "Recording id." }
-        }
+      ToolDocs.decorate(
+        tool(
+          name: "delete",
+          title: "Delete a record",
+          description: "May destructively change data by running the named API destroy operation. " \
+                       "Use describe to see which types allow destroy. Returns the delete result.",
+          read_only: false,
+          destructive: true,
+          idempotent: false,
+          required: %w[type id],
+          properties: {
+            type: catalog.destroy_type_schema,
+            id: { type: "string", description: "Recording id." }
+          }
+        ),
+        output_schema: ToolDocs.delete_output_schema
       )
     end
 
     def capability_action_tool(catalog)
-      tool(
-        name: "capability_action",
-        title: "Run a capability action",
-        description: "May destructively change data by running one named API capability action on a record. " \
-                     "Call describe for the type to see which actions are enabled. " \
-                     "Returns the action result.",
-        read_only: false,
-        destructive: true,
-        idempotent: false,
-        required: %w[type id action],
-        properties: {
-          type: catalog.type_schema,
-          id: { type: "string", description: "Recording id." },
-          action: { type: "string", description: "Enabled capability action name for this type." },
-          params: { type: "object", description: "Action input as the named API expects it." }
-        }
+      ToolDocs.decorate(
+        tool(
+          name: "capability_action",
+          title: "Run a capability action",
+          description: "May destructively change data by running one named API capability action on a record. " \
+                       "Call describe for the type to see which actions are enabled. " \
+                       "Returns the action result.",
+          read_only: false,
+          destructive: true,
+          idempotent: false,
+          required: %w[type id action],
+          properties: {
+            type: catalog.type_schema,
+            id: { type: "string", description: "Recording id." },
+            action: { type: "string", description: "Enabled capability action name for this type." },
+            params: { type: "object", description: "Action input as the named API expects it." }
+          }
+        ),
+        output_schema: ToolDocs.action_output_schema
       )
     end
 
     def describe_tool(catalog)
-      tool(
-        name: "describe",
-        title: "Describe a type",
-        description: DESCRIBE_DESCRIPTION,
-        read_only: true,
-        idempotent: true,
-        required: ["type"],
-        properties: { type: catalog.type_schema }
+      ToolDocs.decorate(
+        tool(
+          name: "describe",
+          title: "Describe a type",
+          description: DESCRIBE_DESCRIPTION,
+          read_only: true,
+          idempotent: true,
+          required: ["type"],
+          properties: { type: catalog.type_schema }
+        ),
+        output_schema: ToolDocs.describe_output_schema
       )
     end
 
