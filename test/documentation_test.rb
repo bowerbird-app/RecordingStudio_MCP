@@ -5,6 +5,7 @@ require "test_helper"
 class DocumentationTest < Minitest::Test
   Openapi = RecordingStudioMcp::Documentation::Openapi
   include IsolatedApiConfiguration
+  include RecordableMetricToolHelpers
 
   def test_page_lists_registered_types_tools_and_resource_template
     with_isolated_api_configuration do
@@ -184,13 +185,12 @@ class DocumentationTest < Minitest::Test
       assert_equal "array", tools.dig("list", "outputSchema", "properties", "records", "type")
       assert_equal "object", tools.dig("show", "outputSchema", "type")
       assert_equal ["chats"], tools.dig("list_agent_chats", "outputSchema", "required")
-      assert_includes spec.fetch("tags").map { |tag| tag["name"] }, "Core"
-      assert_includes spec.fetch("tags").map { |tag| tag["name"] }, "Agent chats"
-      assert_includes spec.fetch("tags").map { |tag| tag["name"] }, "Types"
-      groups = spec.fetch("x-tagGroups").index_by { |group| group["name"] }
-      assert_equal ["Core"], groups.fetch("Core")["tags"]
-      assert_equal ["Agent chats"], groups.fetch("Endpoints")["tags"]
-      assert_equal ["Types"], groups.fetch("Types")["tags"]
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      assert_includes tag_names, "Core"
+      assert_includes tag_names, "Agent chats"
+      assert_includes tag_names, "Types"
+      assert_equal tag_names.uniq, tag_names
+      refute spec.key?("x-tagGroups")
       assert_includes folder["description"], "Allowed operations:"
       assert_includes folder["description"], "index"
       assert_includes folder["description"], "create"
@@ -232,6 +232,60 @@ class DocumentationTest < Minitest::Test
       refute_includes description, "Call describe before create"
       assert_equal ["Endpoints"], ping["tags"]
       refute ping.key?("outputSchema")
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      assert_equal tag_names.uniq, tag_names
+      refute spec.key?("x-tagGroups")
+    end
+  end
+
+  def test_openapi_lists_overlapping_endpoint_and_metric_tags_once
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        RecordingStudioApi.configuration.api :public
+        register_tree_type("Folder", operations: %i[index show])
+        RecordingStudioApi.register_endpoint(
+          :users,
+          http_verb: :get,
+          path: "users",
+          openapi: { summary: "Users", tags: ["Users"] },
+          handler: ->(_context) { { users: [] } }
+        )
+        RecordingStudioMetrics.register(
+          :users,
+          model: Folder,
+          blast_radius: :site,
+          api_authorize: ->(_context) { true }
+        ) do
+          count :total, title: "Users", description: "How many users.", expose: { api: [:public] }
+        end
+
+        spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+        tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+        tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+
+        assert_equal ["Users"], tools.fetch("users")["tags"]
+        assert_equal ["Users"], tools.fetch("users-total")["tags"]
+        assert_equal 1, tag_names.count("Users")
+        assert_equal tag_names.uniq, tag_names
+        refute spec.key?("x-tagGroups")
+      end
+    end
+  end
+
+  def test_host_tag_groups_are_emitted_when_set_on_the_page
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("Folder", operations: %i[index show])
+      page = RecordingStudioMcp::Documentation.page(api: :public)
+      grouped = page.with(
+        tag_groups: [{ "name" => "Host", "tags" => %w[Core Types] }]
+      )
+
+      spec = Openapi.document(grouped)
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+
+      assert_equal [{ "name" => "Host", "tags" => %w[Core Types] }], spec["x-tagGroups"]
+      assert_equal %w[Core Types], tag_names
     end
   end
 end

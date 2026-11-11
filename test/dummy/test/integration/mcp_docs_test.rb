@@ -109,10 +109,12 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes workspace["description"], "`ping`"
     ping = Array(workspace["x-mcp-capability-actions"]).find { |action| (action["name"] || action[:name]) == "ping" }
     assert ping["params"] || ping[:params]
-    groups = spec.fetch("x-tagGroups").index_by { |group| group["name"] }
-    assert_equal ["Core"], groups.fetch("Core")["tags"]
-    assert_includes groups.fetch("Endpoints")["tags"], "Endpoints"
-    assert_equal ["Types"], groups.fetch("Types")["tags"]
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    assert_includes tag_names, "Core"
+    assert_includes tag_names, "Endpoints"
+    assert_includes tag_names, "Types"
+    assert_equal tag_names.uniq, tag_names
+    refute spec.key?("x-tagGroups")
   end
 
   test "operations spec is the operations catalog not dummy tree types" do
@@ -138,6 +140,9 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes description, "## Authentication"
     ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ops_ping" }
     assert_equal ["Endpoints"], ping["tags"]
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    assert_equal tag_names.uniq, tag_names
+    refute spec.key?("x-tagGroups")
   end
 
   test "redoc bundle rewrites logo urls to the gated mount" do

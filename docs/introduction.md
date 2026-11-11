@@ -13,4 +13,4 @@ Hosts mount live docs with `recording_studio_mcp_docs_for`. That page reads the 
 
 JSON HTTP APIs stay on Scalar. This gem's docs page is MCP only.
 
-Host apps register extra tools at runtime: endpoints, metrics, widgets, skills. Those show up on the mounted live page for that named API. The sidebar nests tools under Core, endpoint tags, and metric groups. Each type lists its operations, writable fields, and actions. The overview is written for people. Agent instructions stay on the MCP session.
+Host apps register extra tools at runtime: endpoints, metrics, widgets, skills. Those show up on the mounted live page for that named API. The sidebar lists each tool tag once. Each type lists its operations, writable fields, and actions. The overview is written for people. Agent instructions stay on the MCP session.

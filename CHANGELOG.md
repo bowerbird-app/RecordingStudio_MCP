@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-11
+
+### Changed
+- MCP docs no longer wrap tool tags in Redoc `x-tagGroups` (`Core`,
+  `Endpoints`, `Metrics`, `Types`). Each tag is a top-level sidebar section and
+  appears once. The `tags` list and descriptions are unchanged. Tag order
+  follows `x-mcp.tools[]` plus Types. A host
+  that sets `tag_groups` on the docs page still gets those groups.
+
+### Upgrade notes
+- Bump to `0.30.0`. No MCP migration. The docs sidebar no longer groups tags
+  under Core / Endpoints / Metrics / Types. Tool `tags` on `x-mcp.tools[]` are
+  the same. If you relied on default `x-tagGroups`, drop that or set
+  `tag_groups` on the documentation page.
+
 ## [0.29.0] - 2026-11-11
 
 ### Added
@@ -766,7 +781,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0
