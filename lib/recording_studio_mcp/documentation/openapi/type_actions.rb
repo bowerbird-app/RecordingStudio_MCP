@@ -11,7 +11,7 @@ module RecordingStudioMcp
         def documented(entry)
           Array(entry["capability_actions"]).map do |action|
             action = Internals.stringify(action)
-            action.merge("description" => note(entry["type"], action["name"]))
+            action.merge("description" => tool_line(entry["type"], action["name"]))
           end
         end
 
@@ -19,18 +19,21 @@ module RecordingStudioMcp
           actions = Array(entry["capability_actions"]).map { |action| Internals.stringify(action) }
           return "Enabled capability actions: none." if actions.empty?
 
-          (["Enabled capability actions:"] + actions.flat_map { |action| lines(entry, action) }).join("\n")
+          (actions.flat_map { |action| lines(entry, action) } + [runtime_note]).join("\n\n")
         end
 
-        def note(type_name, action_name)
-          "Capability action. Call it through the `capability_action` tool with type `#{type_name}` " \
-            "and action `#{action_name}`. `describe` lists it at runtime."
+        def tool_line(type_name, action_name)
+          "Tool: capability_action with type `#{type_name}` and action `#{action_name}`"
+        end
+
+        def runtime_note
+          "These run through the `capability_action` tool; `describe` lists them at runtime."
         end
 
         def lines(entry, action)
           [
-            "- `#{action['name']}`",
-            note(entry["type"], action["name"]),
+            "**#{action['name']}**",
+            tool_line(entry["type"], action["name"]),
             contract_suffix(action).presence
           ].compact
         end
@@ -40,7 +43,7 @@ module RecordingStudioMcp
           params = action["params"]
           return "" if params.blank?
 
-          "\n\n```json\n#{JSON.pretty_generate(params)}\n```"
+          "```json\n#{JSON.pretty_generate(params)}\n```"
         end
         private_class_method :contract_suffix
       end

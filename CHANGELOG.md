@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.3] - 2026-11-11
+
+### Changed
+- MCP docs type schemas use the core recordable `label` as the Redoc title
+  (class name when no label is registered). The schema component key stays the
+  class name. The description starts with the type's registered OpenAPI
+  description when present, then `Type: \`ClassName\``, allowed operations,
+  writable fields, and one short entry per capability action. A single note
+  under that list says those actions run through `capability_action`.
+- Type sidebar tags use the same OpenAPI `tags` as endpoint tools. Types no
+  longer sit under a Types fallback, and they no longer use Scalar
+  `openapi.tag.group` as a sidebar name. When a type has a tag group, MCP
+  reuses explicit `tags` from endpoints that share that group.
+
+### Upgrade notes
+- Bump to `0.30.3`. Previous version is `0.30.2`. No MCP migration. Docs-only.
+
 ## [0.30.2] - 2026-11-11
 
 ### Fixed
@@ -805,7 +822,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.3...HEAD
+[0.30.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...v0.30.3
 [0.30.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.1...v0.30.2
 [0.30.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.30.0

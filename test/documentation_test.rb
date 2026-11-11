@@ -188,20 +188,23 @@ class DocumentationTest < Minitest::Test
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
       assert_includes tag_names, "Core"
       assert_includes tag_names, "Agent chats"
-      assert_includes tag_names, "Types"
+      refute_includes tag_names, "Types"
       assert_equal tag_names.uniq, tag_names
       refute spec.key?("x-tagGroups")
+      assert_equal "Folder", folder["title"]
+      assert_includes folder["description"], "A folder record in this workspace."
+      assert_includes folder["description"], "Type: `Folder`"
       assert_includes folder["description"], "Allowed operations:"
       assert_includes folder["description"], "index"
       assert_includes folder["description"], "create"
       assert_includes folder["description"], "Writable fields: title."
-      assert_includes folder["description"], "`ping`"
+      assert_includes folder["description"], "**ping**"
       assert_includes folder["description"], "style"
       assert_includes folder["description"], "capability_action"
-      assert_includes folder["description"], "`describe` lists it at runtime"
+      assert_includes folder["description"], "`describe` lists them at runtime"
       assert ping.dig("params", "fields", "style")
-      assert_includes ping["description"], "capability_action"
-      assert_equal ["Types"], folder["x-tags"]
+      assert_equal "Tool: capability_action with type `Folder` and action `ping`", ping["description"]
+      refute folder.key?("x-tags")
       assert_includes description, "## Authentication"
       assert_includes description, "## Records and parents"
       assert_includes description, "## Listing and pagination"
@@ -283,7 +286,7 @@ class DocumentationTest < Minitest::Test
         "RecordingStudioPresskits::Credit",
         operations: %i[index show],
         capability_actions: %i[ping],
-        openapi: { tag: { group: "Press kits" } }
+        openapi: { tag: { group: "Press kits", description: "Credits on a press kit." } }
       )
       register_tree_type("Folder", operations: %i[index show])
       register_ping_capability
@@ -291,11 +294,15 @@ class DocumentationTest < Minitest::Test
         :press_kit_ping,
         http_verb: :get,
         path: "press_kit_ping",
-        openapi: { summary: "Press kit ping", tags: ["Press kits"] },
+        openapi: {
+          summary: "Press kit ping",
+          tag: { group: "Press kits" },
+          tags: ["Press Kit"]
+        },
         handler: ->(_context) { { ok: true } }
       )
 
-      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      spec = openapi_with_credit_label!
       credit = spec.dig("components", "schemas", "RecordingStudioPresskits::Credit")
       folder = spec.dig("components", "schemas", "Folder")
       ping = Array(credit["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
@@ -305,25 +312,31 @@ class DocumentationTest < Minitest::Test
         Array(schema["x-tags"]).map { |tag| [name, tag] }
       end
 
-      assert_equal ["Press kits"], credit["x-tags"]
-      assert_equal ["Types"], folder["x-tags"]
-      assert_includes credit["description"], "Capability action. Call it through the `capability_action` tool"
-      assert_includes credit["description"], "type `RecordingStudioPresskits::Credit`"
-      assert_includes credit["description"], "action `ping`"
-      assert_includes credit["description"], "`describe` lists it at runtime."
+      assert_equal ["Press Kit"], credit["x-tags"]
+      refute folder.key?("x-tags")
+      assert_equal "Credit", credit["title"]
+      assert_equal "Folder", folder["title"]
+      assert_includes credit["description"], "Credits on a press kit."
+      assert_includes credit["description"], "Type: `RecordingStudioPresskits::Credit`"
+      refute_includes credit["description"], "Registered type"
+      assert_includes credit["description"], "**ping**"
+      assert_includes credit["description"],
+                      "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`"
+      assert_includes credit["description"],
+                      "These run through the `capability_action` tool; `describe` lists them at runtime."
+      refute_includes credit["description"], "Capability action. Call it through"
       assert_equal(
-        "Capability action. Call it through the `capability_action` tool with type " \
-        "`RecordingStudioPresskits::Credit` and action `ping`. `describe` lists it at runtime.",
+        "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`",
         ping["description"]
       )
-      assert_includes tag_names, "Press kits"
-      assert_includes tag_names, "Types"
-      assert_equal 1, tag_names.count("Press kits")
-      assert_equal 1, tag_names.count("Types")
+      assert_includes tag_names, "Press Kit"
+      refute_includes tag_names, "Press kits"
+      refute_includes tag_names, "Types"
+      assert_equal 1, tag_names.count("Press Kit")
       assert_equal tag_names.uniq, tag_names
       refute spec.key?("x-tagGroups")
       assert_equal schema_tag_pairs.uniq, schema_tag_pairs
-      refute_includes folder["x-tags"], "Press kits"
+      refute_includes Array(folder["x-tags"]), "Press Kit"
       refute_includes credit["x-tags"], "Types"
     end
   end
@@ -334,14 +347,28 @@ class DocumentationTest < Minitest::Test
       register_tree_type("Folder", operations: %i[index show])
       page = RecordingStudioMcp::Documentation.page(api: :public)
       grouped = page.with(
-        tag_groups: [{ "name" => "Host", "tags" => %w[Core Types] }]
+        tag_groups: [{ "name" => "Host", "tags" => %w[Core] }]
       )
 
       spec = Openapi.document(grouped)
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
 
-      assert_equal [{ "name" => "Host", "tags" => %w[Core Types] }], spec["x-tagGroups"]
-      assert_equal %w[Core Types], tag_names
+      assert_equal [{ "name" => "Host", "tags" => %w[Core] }], spec["x-tagGroups"]
+      assert_equal %w[Core], tag_names
+    end
+  end
+
+  def openapi_with_credit_label!
+    type = "RecordingStudioPresskits::Credit"
+    store = RecordingStudio::Labels.formatters.fetch(:type_label)
+    previous = store[type]
+    RecordingStudio::Labels.register_formatter(type, type_label: ->(*) { "Credit" })
+    RecordingStudioMcp::Documentation.openapi(api: :public)
+  ensure
+    if previous
+      store[type] = previous
+    else
+      store.delete(type)
     end
   end
 end

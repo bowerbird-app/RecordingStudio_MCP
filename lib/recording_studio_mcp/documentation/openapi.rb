@@ -39,10 +39,10 @@ module RecordingStudioMcp
           "info" => info(page),
           "servers" => servers(page.api_key),
           "paths" => {},
-          "components" => { "schemas" => Schemas.for(page) },
+          "components" => { "schemas" => Schemas.for(page, group_tags: group_tags_for(page)) },
           "x-mcp" => Mcp.section(page)
         }
-        ToolDocs.attach_sidebar!(spec, page)
+        ToolDocs.attach_sidebar!(spec, page, group_tags: group_tags_for(page))
         spec
       end
 
@@ -62,7 +62,11 @@ module RecordingStudioMcp
         Internals.stringify(value)
       end
 
-      private_class_method :info, :servers, :stringify
+      def group_tags_for(page)
+        ToolDocs.endpoint_group_tags(api: page.api_key)
+      end
+
+      private_class_method :info, :servers, :stringify, :group_tags_for
     end
   end
 end

@@ -88,6 +88,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes names, "describe"
     assert_includes names, "ping"
     assert_equal "Workspace", workspace["title"]
+    assert_includes workspace["description"], "Type: `Workspace`"
     assert_includes schemas.keys, "Workspace"
     assert_includes schemas.keys, "Folder"
     assert_includes schemas.keys, "Page"
@@ -106,16 +107,16 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_equal ["Endpoints"], tools.fetch("ping")["tags"]
     assert tools.fetch("list").key?("outputSchema")
     assert_includes workspace["description"], "Allowed operations:"
-    assert_includes workspace["description"], "`ping`"
+    assert_includes workspace["description"], "**ping**"
     ping = Array(workspace["x-mcp-capability-actions"]).find { |action| (action["name"] || action[:name]) == "ping" }
     assert ping["params"] || ping[:params]
     assert_includes ping["description"], "capability_action"
-    assert_includes workspace["description"], "`describe` lists it at runtime"
-    assert_equal ["Types"], workspace["x-tags"]
+    assert_includes workspace["description"], "`describe` lists them at runtime"
+    refute workspace.key?("x-tags")
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_includes tag_names, "Core"
     assert_includes tag_names, "Endpoints"
-    assert_includes tag_names, "Types"
+    refute_includes tag_names, "Types"
     assert_equal tag_names.uniq, tag_names
     refute spec.key?("x-tagGroups")
   end

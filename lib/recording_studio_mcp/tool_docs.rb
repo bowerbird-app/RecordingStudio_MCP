@@ -7,7 +7,6 @@ require_relative "tool_docs/listing"
 module RecordingStudioMcp
   module ToolDocs
     CORE_TAG = "Core"
-    TYPES_TAG = "Types"
     ACRONYMS = %w[AI API CSRF CSS HTML HTTP HTTPS ID JSON MCP SSE UI URL].freeze
 
     module_function
@@ -25,10 +24,28 @@ module RecordingStudioMcp
         [RecordingStudioApi::RegisteredEndpoint::DEFAULT_OPENAPI_TAG]
     end
 
-    def type_tags(type_name, api:)
+    def type_tags(type_name, api:, group_tags: nil)
       registration = RecordingStudioApi.recordable_registration_for(type_name, api: api)
+      tags = registered_openapi_tags(registration)
+      return tags if tags.any?
+
       group = registration&.openapi&.dig(:tag, :group)
-      group.present? ? [group.to_s] : [TYPES_TAG]
+      return [] if group.blank?
+
+      Array((group_tags || endpoint_group_tags(api: api))[group.to_s])
+    end
+
+    def endpoint_group_tags(api:)
+      Catalog.new(api: api).registered_endpoints.each_with_object({}) do |endpoint, acc|
+        group = endpoint.openapi&.dig(:tag, :group)
+        next if group.blank?
+
+        names = registered_openapi_tags(endpoint)
+        next if names.empty?
+
+        key = group.to_s
+        acc[key] = (Array(acc[key]) + names).uniq
+      end
     end
 
     def metric_group(name)
@@ -72,6 +89,11 @@ module RecordingStudioMcp
     def endpoint_output_schema(endpoint)
       Endpoint.output_schema(endpoint)
     end
+
+    def registered_openapi_tags(source)
+      openapi_tags(source&.openapi&.[](:tags)).map { |tag| tag["name"] }
+    end
+    private_class_method :registered_openapi_tags
 
     def humanize_part(part)
       return "OAuth" if part.casecmp("oauth").zero?

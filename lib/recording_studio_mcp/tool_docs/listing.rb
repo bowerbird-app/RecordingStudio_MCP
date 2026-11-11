@@ -32,8 +32,8 @@ module RecordingStudioMcp
       extras
     end
 
-    def attach_sidebar!(spec, page)
-      tags = openapi_tags(tool_sidebar_tags(spec) + type_sidebar_tags(page))
+    def attach_sidebar!(spec, page, group_tags: nil)
+      tags = openapi_tags(tool_sidebar_tags(spec) + type_sidebar_tags(page, group_tags: group_tags))
       spec["tags"] = tags if tags.any?
       spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
       spec
@@ -44,12 +44,12 @@ module RecordingStudioMcp
     end
     private_class_method :tool_sidebar_tags
 
-    def type_sidebar_tags(page)
+    def type_sidebar_tags(page, group_tags: nil)
       Array(page.types).flat_map do |entry|
         type_name = (entry["type"] || entry[:type]).to_s
         next [] if type_name.blank?
 
-        type_tags(type_name, api: page.api_key)
+        type_tags(type_name, api: page.api_key, group_tags: group_tags)
       end
     end
     private_class_method :type_sidebar_tags

@@ -1,5 +1,16 @@
 # Upgrading Recording Studio MCP
 
+## 0.30.3
+
+Previous version is `0.30.2`. No MCP protocol migration. Docs-only.
+
+Type schema titles use the core recordable label. The class name stays in
+`Type: \`ClassName\`` and as the schema component key. Capability actions are
+short `Tool: capability_action` entries, with one runtime note under the list.
+
+Type entries use the same OpenAPI `tags` as that gem's endpoint tools. There is
+no Types fallback group. Scalar `tag.group` is not a sidebar name.
+
 ## 0.30.2
 
 Previous version is `0.30.1`. No MCP protocol migration. `ActiveRecord::RecordInvalid` and
