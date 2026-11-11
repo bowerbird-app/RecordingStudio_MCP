@@ -25,6 +25,12 @@ module RecordingStudioMcp
         [RecordingStudioApi::RegisteredEndpoint::DEFAULT_OPENAPI_TAG]
     end
 
+    def type_tags(type_name, api:)
+      registration = RecordingStudioApi.recordable_registration_for(type_name, api: api)
+      group = registration&.openapi&.dig(:tag, :group)
+      group.present? ? [group.to_s] : [TYPES_TAG]
+    end
+
     def metric_group(name)
       name.to_s.split("-", 2).first.to_s
     end

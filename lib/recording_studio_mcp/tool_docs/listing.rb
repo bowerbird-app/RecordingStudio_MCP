@@ -45,7 +45,12 @@ module RecordingStudioMcp
     private_class_method :tool_sidebar_tags
 
     def type_sidebar_tags(page)
-      Array(page.types).any? ? [TYPES_TAG] : []
+      Array(page.types).flat_map do |entry|
+        type_name = (entry["type"] || entry[:type]).to_s
+        next [] if type_name.blank?
+
+        type_tags(type_name, api: page.api_key)
+      end
     end
     private_class_method :type_sidebar_tags
 

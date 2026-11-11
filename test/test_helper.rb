@@ -25,7 +25,7 @@ module IsolatedApiConfiguration
   end
 
   def register_tree_type(name = "Page", api: :public, operations: %i[index show create update],
-                         capability_actions: nil)
+                         capability_actions: nil, openapi: nil)
     attrs = {
       api: api,
       serializer: ->(*) { { title: "Title" } },
@@ -34,6 +34,7 @@ module IsolatedApiConfiguration
       operations: operations
     }
     attrs[:capability_actions] = capability_actions if capability_actions
+    attrs[:openapi] = openapi if openapi
     RecordingStudioApi.register_recordable_type_api(name, **attrs)
   end
 
