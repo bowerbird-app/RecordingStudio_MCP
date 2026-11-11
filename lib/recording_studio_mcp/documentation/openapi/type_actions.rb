@@ -23,9 +23,8 @@ module RecordingStudioMcp
         end
 
         def tools(page, group_tags: nil)
-          Array(page.types).flat_map do |entry|
-            tools_for(entry, page.api_key, group_tags)
-          end.sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
+          listed = Array(page.types).flat_map { |entry| tools_for(entry, page.api_key, group_tags) }
+          listed.sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
         end
 
         def tool_line(type_name, action_name)
@@ -43,17 +42,26 @@ module RecordingStudioMcp
         def action_tool(entry, action, api_key, group_tags)
           type_name = entry["type"].to_s
           action_name = action["name"].to_s
-          tags = ToolDocs.type_tags(type_name, api: api_key, group_tags: group_tags)
+          tagged_tool(
+            name: "#{type_name}--#{action_name}",
+            title: action_name.to_s.humanize.titleize,
+            description: page_description(entry, action, api_key),
+            tags: ToolDocs.type_tags(type_name, api: api_key, group_tags: group_tags)
+          )
+        end
+        private_class_method :action_tool
+
+        def tagged_tool(name:, title:, description:, tags:)
           tool = {
-            "name" => "#{type_name}--#{action_name}",
-            "title" => action_name.to_s.humanize.titleize,
-            "description" => page_description(entry, action, api_key),
+            "name" => name,
+            "title" => title,
+            "description" => description,
             "inputSchema" => { "type" => "object" }
           }
           tool["tags"] = tags if tags.any?
           tool
         end
-        private_class_method :action_tool
+        private_class_method :tagged_tool
 
         def page_description(entry, action, api_key)
           [
