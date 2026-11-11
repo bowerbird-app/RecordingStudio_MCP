@@ -15,6 +15,8 @@ contract error text (the bad field).
 Pin runtime API `>= 0.17, < 0.22`. Development and dummy Gemfiles use API
 `v0.21.0` and Oauth `v0.21.5` (Oauth `v0.21.0` still caps API below `0.18`).
 API `0.21.0` needs Moveable `v4.1.0` and Icons `v0.2.0` on those Gemfiles.
+API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may use the
+Accessible grant actor and store the OAuth client as impersonator.
 
 ## 0.30.0
 

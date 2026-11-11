@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint `input_contract` failures include `contract_result.errors` in the tool message (for example `Unknown parameters: foo`).
 
 ### Upgrade notes
-- Bump to `0.30.1` after `0.30.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`.
+- Bump to `0.30.1` after `0.30.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`. API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may record the Accessible grant actor and set the OAuth client as impersonator.
 
 ## [0.30.0] - 2026-11-11
 

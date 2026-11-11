@@ -206,8 +206,9 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     refute_includes names, outsider.name
   end
 
-  test "oauth mcp update records authorized_by and keeps the oauth client as actor" do
+  test "oauth mcp update records authorized_by and uses the API write actor" do
     token = issue_delegated_token(role: "edit")
+    grant = RecordingStudioMcp::Authenticator.access_grant("Bearer #{token}").access_grant
     Current.actor = nil
     Current.impersonator = nil
 
@@ -225,8 +226,8 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     event = recording.events.find_by!(action: "updated")
     metadata = event.metadata.with_indifferent_access
 
-    assert_equal @oauth_client, event.actor
-    assert_nil event.impersonator
+    assert_equal grant.actor, event.actor
+    assert_equal @oauth_client, event.impersonator
     assert_equal "User", metadata[:authorized_by_type]
     assert_equal @user.id, metadata[:authorized_by_id]
     assert_nil Current.actor
