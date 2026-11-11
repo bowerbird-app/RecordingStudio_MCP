@@ -16,8 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operations, writable fields, the existing `Tool: capability_action` line, and
   the input contract. The action's registered OpenAPI summary is included when
   present. Types with those actions stay in `components.schemas` and keep
-  working in the API and MCP; the docs builder omits `x-tags` on those schemas
-  so Redoc does not also list them as SCHEMA entries. `tools/list` is unchanged.
+  working in the API and MCP. Child and section types (those whose registered
+  parent is another non-root recordable) omit `x-tags` so Redoc does not also
+  list them as SCHEMA entries. Top-level types keep their schema sidebar entry
+  and still get the action tool entries. `tools/list` is unchanged.
 
 ### Upgrade notes
 - Bump to `0.31.0`. Previous version is `0.30.3`. No MCP migration. Docs-only.

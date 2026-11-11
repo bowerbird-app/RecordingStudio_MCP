@@ -320,7 +320,7 @@ class DocumentationTest < Minitest::Test
         Array(schema["x-tags"]).map { |tag| [name, tag] }
       end
 
-      refute credit.key?("x-tags")
+      assert_equal ["Press Kit"], credit["x-tags"]
       refute folder.key?("x-tags")
       assert_equal "Credit", credit["title"]
       assert_equal "Folder", folder["title"]
@@ -367,6 +367,11 @@ class DocumentationTest < Minitest::Test
         openapi: { tags: ["Press Kit"] }
       )
       register_tree_type(
+        "RecordingStudioPresskits::KitSection",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_tree_type(
         "RecordingStudioPresskits::CreditLine",
         operations: %i[index show],
         capability_actions: %i[remove_credit],
@@ -390,11 +395,16 @@ class DocumentationTest < Minitest::Test
       register_named_capability(:reorder_credits, summary: "Reorder credits in this section")
       register_named_capability(:remove_credit, summary: "Remove a credit from this section")
 
-      spec = openapi_with_labels!(
-        "RecordingStudioPresskits::Credit" => "Credit",
-        "RecordingStudioPresskits::CreditLine" => "credit line",
-        "RecordingStudioPresskits::CreditsSection" => "Credits section"
-      )
+      spec = stub_allowed_parents(
+        "RecordingStudioPresskits::CreditLine" => ["RecordingStudioPresskits::CreditsSection"],
+        "RecordingStudioPresskits::CreditsSection" => ["RecordingStudioPresskits::KitSection"]
+      ) do
+        openapi_with_labels!(
+          "RecordingStudioPresskits::Credit" => "Credit",
+          "RecordingStudioPresskits::CreditLine" => "credit line",
+          "RecordingStudioPresskits::CreditsSection" => "Credits section"
+        )
+      end
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
       titles = spec.dig("x-mcp", "tools").filter_map do |tool|
         tool["title"] if tool["name"].to_s.include?("--")
@@ -449,6 +459,7 @@ class DocumentationTest < Minitest::Test
       register_tree_type(
         "Gallery",
         operations: %i[index show],
+        capability_actions: %i[publish],
         openapi: { tags: ["Galleries"] }
       )
       register_tree_type(
@@ -463,19 +474,27 @@ class DocumentationTest < Minitest::Test
         capability_actions: %i[remove_slide],
         openapi: { tags: ["Galleries"] }
       )
+      register_named_capability(:publish, summary: "Publish this gallery")
       register_named_capability(:add_slide, summary: "Add a slide to this section")
       register_named_capability(:remove_slide, summary: "Remove this slide")
 
-      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      spec = stub_allowed_parents(
+        "GallerySection" => ["Gallery"],
+        "GallerySlide" => ["GallerySection"]
+      ) { RecordingStudioMcp::Documentation.openapi(api: :public) }
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
       schemas = spec.dig("components", "schemas")
       gallery = schemas.fetch("Gallery")
       section = schemas.fetch("GallerySection")
       slide = schemas.fetch("GallerySlide")
+      publish = tools.fetch("Gallery--publish")
       add = tools.fetch("GallerySection--add_slide")
       remove = tools.fetch("GallerySlide--remove_slide")
       protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
 
+      assert_equal "Publish", publish["title"]
+      assert_equal ["Galleries"], publish["tags"]
+      assert_includes publish["description"], "Runs on a Gallery (Gallery)."
       assert_equal "Add Slide", add["title"]
       assert_equal ["Galleries"], add["tags"]
       assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
@@ -492,6 +511,7 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Galleries"], gallery["x-tags"]
       refute section.key?("x-tags")
       refute slide.key?("x-tags")
+      assert_includes gallery["description"], "Enabled capability actions appear as tools in this sidebar group."
       assert_includes schemas.keys, "GallerySection"
       assert_includes schemas.keys, "GallerySlide"
     end
@@ -533,6 +553,14 @@ class DocumentationTest < Minitest::Test
         store.delete(type)
       end
     end
+  end
+
+  def stub_allowed_parents(map, &)
+    original = RecordingStudio.method(:allowed_parent_types_for)
+    RecordingStudio.stub(:allowed_parent_types_for, lambda { |type|
+      name = type.to_s
+      map.key?(name) ? Array(map.fetch(name)) : original.call(type)
+    }, &)
   end
 
   def register_named_capability(name, summary:, input_contract: nil)

@@ -7,21 +7,25 @@ module RecordingStudioMcp
         module_function
 
         def for(page, group_tags: nil)
-          types = page.types.each_with_object({}) do |entry, acc|
-            entry = Internals.stringify(entry)
-            name = entry["type"].to_s
-            next if name.blank?
-
-            acc[name] = type_schema(entry, page.api_key, group_tags: group_tags)
+          types_by_name = indexed_types(page)
+          schemas = types_by_name.transform_values do |entry|
+            type_schema(entry, page.api_key, group_tags: group_tags, types_by_name: types_by_name)
           end
-          types["TypeName"] = Internals.stringify(page.type_schema)
-          types
+          schemas.merge("TypeName" => Internals.stringify(page.type_schema))
         end
 
-        def type_schema(entry, api_key, group_tags: nil)
+        def indexed_types(page)
+          page.types.each_with_object({}) do |entry, acc|
+            entry = Internals.stringify(entry)
+            name = entry["type"].to_s
+            acc[name] = entry if name.present?
+          end
+        end
+
+        def type_schema(entry, api_key, group_tags: nil, types_by_name: {})
           fields = Array(entry["writable_fields"]).map { |field| Internals.stringify(field) }
           type_object_schema(entry, fields, api_key).merge(
-            type_extensions(entry, api_key, group_tags: group_tags)
+            type_extensions(entry, api_key, group_tags: group_tags, types_by_name: types_by_name)
           ).compact
         end
 
@@ -35,19 +39,13 @@ module RecordingStudioMcp
           }
         end
 
-        def type_extensions(entry, api_key, group_tags: nil)
+        def type_extensions(entry, api_key, group_tags: nil, types_by_name: {})
           {
             "x-mcp-operations" => Array(entry["operations"]),
             "x-mcp-capability-actions" => TypeActions.documented(entry),
             "x-mcp-parent" => entry["parent"],
-            "x-tags" => schema_sidebar_tags(entry, api_key, group_tags).presence
+            "x-tags" => SchemaSidebar.tags(entry, api_key, group_tags, types_by_name).presence
           }
-        end
-
-        def schema_sidebar_tags(entry, api_key, group_tags)
-          return [] if Array(entry["capability_actions"]).any?
-
-          ToolDocs.type_tags(entry["type"], api: api_key, group_tags: group_tags)
         end
 
         def type_properties(fields)
@@ -110,10 +108,48 @@ module RecordingStudioMcp
           "Writable fields: #{names.join(', ')}."
         end
 
-        private_class_method :type_schema, :type_object_schema, :type_extensions, :schema_sidebar_tags,
-                             :type_properties, :type_required, :field_schema, :type_description, :type_summary,
-                             :registered_type_description
+        private_class_method :indexed_types, :type_schema, :type_object_schema, :type_extensions,
+                             :type_properties, :type_required, :field_schema, :type_description,
+                             :type_summary, :registered_type_description
       end
+
+      module SchemaSidebar
+        module_function
+
+        def tags(entry, api_key, group_tags, types_by_name)
+          return [] if hide?(entry, types_by_name)
+
+          ToolDocs.type_tags(entry["type"], api: api_key, group_tags: group_tags)
+        end
+
+        def hide?(entry, types_by_name)
+          return false if Array(entry["capability_actions"]).empty?
+
+          Array(entry.dig("parent", "allowed_parent_types")).any? do |parent_name|
+            nested_parent?(parent_name, types_by_name)
+          end
+        end
+
+        def nested_parent?(parent_name, types_by_name)
+          parent_name = parent_name.to_s
+          return false if parent_name.blank?
+
+          parent_entry = types_by_name[parent_name]
+          return parent_entry.dig("parent", "root") == false if parent_entry
+
+          declared_non_root?(parent_name)
+        end
+
+        def declared_non_root?(parent_name)
+          return false unless defined?(RecordingStudio::RecordableDeclarations)
+
+          declaration = RecordingStudio::RecordableDeclarations.declaration_for(parent_name)
+          declaration.present? && !declaration.root?
+        end
+
+        private_class_method :hide?, :nested_parent?, :declared_non_root?
+      end
+      private_constant :SchemaSidebar
     end
   end
 end
