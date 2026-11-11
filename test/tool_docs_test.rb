@@ -5,16 +5,32 @@ require "test_helper"
 class ToolDocsTest < Minitest::Test
   include IsolatedApiConfiguration
 
-  def test_type_tags_use_the_registered_openapi_group
+  def test_type_tags_use_registered_endpoint_tags_not_the_scalar_group
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       register_tree_type("Credit", openapi: { tag: { group: "Press kits" } })
       register_tree_type("Folder")
+      RecordingStudioApi.register_endpoint(
+        :list_published_press_kits,
+        http_verb: :get,
+        path: "published_press_kits",
+        openapi: { tag: { group: "Press kits" }, tags: ["Press Kit"] },
+        handler: ->(_context) { { records: [] } }
+      )
 
       docs = RecordingStudioMcp::ToolDocs
 
-      assert_equal ["Press kits"], docs.type_tags("Credit", api: :public)
-      assert_equal ["Types"], docs.type_tags("Folder", api: :public)
+      assert_equal ["Press Kit"], docs.type_tags("Credit", api: :public)
+      assert_equal [], docs.type_tags("Folder", api: :public)
+    end
+  end
+
+  def test_type_tags_use_the_type_registration_tags_when_present
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("PressCenter", openapi: { tags: ["Press Center"] })
+
+      assert_equal ["Press Center"], RecordingStudioMcp::ToolDocs.type_tags("PressCenter", api: :public)
     end
   end
 
