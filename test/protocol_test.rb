@@ -791,6 +791,22 @@ class ProtocolTest < Minitest::Test
     end
   end
 
+  def test_actor_required_is_a_tool_error_not_internal
+    result = protocol_create_raising(RecordingStudio::ActorRequired.new("actor is required for RecordingStudio writes"))
+
+    assert_nil result.body[:error]
+    assert_equal true, result.body.dig(:result, :isError)
+    assert_includes result.body.dig(:result, :content, 0, :text), "actor is required"
+  end
+
+  def test_invalid_parent_is_a_tool_error_not_internal
+    result = protocol_create_raising(RecordingStudio::InvalidParent.new("Page cannot be recorded under Folder"))
+
+    assert_nil result.body[:error]
+    assert_equal true, result.body.dig(:result, :isError)
+    assert_includes result.body.dig(:result, :content, 0, :text), "parent_id"
+  end
+
   def test_tools_list_and_call_follow_the_grant_role
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[index show create update destroy])
@@ -815,6 +831,14 @@ class ProtocolTest < Minitest::Test
       refute call_tool(admin, "create").body.dig(:result, :isError)
       assert_includes call_tool(deleted, "list").body.dig(:result, :content, 0, :text), "Unknown tool"
       refute call_tool(deleted, "describe", "Page").body.dig(:result, :isError)
+    end
+  end
+
+  def protocol_create_raising(error)
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index show create])
+      RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { raise error })
+      call_tool(role_grant(:admin), "create")
     end
   end
 

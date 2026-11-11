@@ -242,6 +242,92 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_actor_required_is_tool_error
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise RecordingStudio::ActorRequired, "actor is required for RecordingStudio writes"
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { "type" => "Workspace" })
+
+              assert result[:isError]
+              assert_includes result.dig(:content, 0, :text), "actor is required"
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_invalid_parent_is_tool_error_naming_parent_id
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise RecordingStudio::InvalidParent, "Folder cannot be recorded under Page"
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("create", { "type" => "Folder", "parent_id" => "page-1" })
+
+              assert result[:isError]
+              text = result.dig(:content, 0, :text)
+              assert_includes text, "parent_id"
+              assert_includes text, "Folder cannot be recorded under Page"
+              assert_equal(
+                { "parent_id" => "parent_id is not allowed: Folder cannot be recorded under Page" },
+                result.dig(:structuredContent, "details")
+              )
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_invalid_action_input_details_are_in_the_tool_error
+    details = [
+      {
+        attribute: :unknown_field,
+        message: "is unknown",
+        full_message: "unknown_field is unknown",
+        type: :unknown
+      }
+    ]
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise RecordingStudioApi::InvalidActionInputError.new(
+            "Unknown parameters: unknown_field",
+            details: details
+          )
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("update", { "type" => "Workspace" })
+
+              assert result[:isError]
+              assert_includes result.dig(:content, 0, :text), "unknown_field"
+              assert_equal(
+                [
+                  {
+                    "attribute" => "unknown_field",
+                    "message" => "is unknown",
+                    "full_message" => "unknown_field is unknown",
+                    "type" => "unknown"
+                  }
+                ],
+                result.dig(:structuredContent, "details")
+              )
+            end
+          end
+        end
+      end
+    end
+  end
+
   def test_standard_error_is_not_a_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do

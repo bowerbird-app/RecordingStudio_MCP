@@ -113,12 +113,5 @@ module RecordingStudioMcp
     rescue JSON::GeneratorError, TypeError
       payload
     end
-
-    def error_result(message)
-      {
-        content: [{ type: "text", text: message.to_s }],
-        isError: true
-      }
-    end
   end
 end
