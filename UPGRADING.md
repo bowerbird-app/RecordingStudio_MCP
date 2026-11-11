@@ -1,5 +1,14 @@
 # Upgrading Recording Studio MCP
 
+## 0.30.0
+
+No MCP protocol migration. The mounted docs sidebar no longer groups tags under
+Core, Endpoints, Metrics, and Types. Each tool tag is a top-level Redoc section
+and appears once. `x-mcp.tools[]` `tags` are unchanged.
+
+If you consumed default `x-tagGroups`, stop. Pass `tag_groups` on the
+documentation page only when you want a custom grouping.
+
 ## 0.29.0
 
 No MCP protocol migration. Optional MCP `outputSchema` may appear on `tools/list`.

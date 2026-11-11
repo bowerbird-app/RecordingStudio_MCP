@@ -11,10 +11,7 @@ module RecordingStudioMcp
 
     def docs_page(page, catalog)
       surface = ToolSurface.for(api: catalog.api)
-      page.with(
-        overview: Documentation::Overview.markdown(surface),
-        tag_groups: tag_groups(surface, types: page.types)
-      )
+      page.with(overview: Documentation::Overview.markdown(surface))
     end
 
     def tags_for_entry(entry)
@@ -36,11 +33,21 @@ module RecordingStudioMcp
     end
 
     def attach_sidebar!(spec, page)
-      tags = openapi_tags(page.tag_groups)
+      tags = openapi_tags(tool_sidebar_tags(spec) + type_sidebar_tags(page))
       spec["tags"] = tags if tags.any?
       spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
       spec
     end
+
+    def tool_sidebar_tags(spec)
+      Array(spec.dig("x-mcp", "tools")).flat_map { |tool| Array(tool["tags"]) }
+    end
+    private_class_method :tool_sidebar_tags
+
+    def type_sidebar_tags(page)
+      Array(page.types).any? ? [TYPES_TAG] : []
+    end
+    private_class_method :type_sidebar_tags
 
     def tags_for_openapi(tool, surface)
       found = entry_for_tool(tool, surface)

@@ -8,10 +8,6 @@ module RecordingStudioMcp
   module ToolDocs
     CORE_TAG = "Core"
     TYPES_TAG = "Types"
-    CORE_GROUP = "Core"
-    ENDPOINTS_GROUP = "Endpoints"
-    METRICS_GROUP = "Metrics"
-    TYPES_GROUP = "Types"
     ACRONYMS = %w[AI API CSRF CSS HTML HTTP HTTPS ID JSON MCP SSE UI URL].freeze
 
     module_function
@@ -37,17 +33,8 @@ module RecordingStudioMcp
       prefix.to_s.split("_").map { |part| humanize_part(part) }.join(" ")
     end
 
-    def tag_groups(surface, types:)
-      groups = []
-      add_group(groups, CORE_GROUP, surface.tags_for(:tree))
-      add_group(groups, ENDPOINTS_GROUP, surface.tags_for(:endpoint))
-      add_group(groups, METRICS_GROUP, surface.tags_for(:metric))
-      add_group(groups, TYPES_GROUP, [TYPES_TAG]) if Array(types).any?
-      groups
-    end
-
-    def openapi_tags(groups)
-      Array(groups).flat_map { |group| Array(group["tags"]) }.uniq.map do |name|
+    def openapi_tags(names)
+      Array(names).map(&:to_s).reject(&:blank?).uniq.map do |name|
         { "name" => name }
       end
     end
@@ -87,16 +74,5 @@ module RecordingStudioMcp
       ACRONYMS.include?(upper) ? upper : part.capitalize
     end
     private_class_method :humanize_part
-
-    def add_group(groups, name, tags)
-      names = Array(tags).map(&:to_s).reject(&:blank?).uniq
-      return if names.empty?
-
-      groups << {
-        "name" => name,
-        "tags" => names
-      }
-    end
-    private_class_method :add_group
   end
 end
