@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "json"
-
 module RecordingStudioMcp
   module Documentation
     module Openapi
@@ -14,15 +12,15 @@ module RecordingStudioMcp
             name = entry["type"].to_s
             next if name.blank?
 
-            acc[name] = type_schema(entry)
+            acc[name] = type_schema(entry, page.api_key)
           end
           types["TypeName"] = Internals.stringify(page.type_schema)
           types
         end
 
-        def type_schema(entry)
+        def type_schema(entry, api_key)
           fields = Array(entry["writable_fields"]).map { |field| Internals.stringify(field) }
-          type_object_schema(entry, fields).merge(type_extensions(entry)).compact
+          type_object_schema(entry, fields).merge(type_extensions(entry, api_key)).compact
         end
 
         def type_object_schema(entry, fields)
@@ -35,12 +33,12 @@ module RecordingStudioMcp
           }
         end
 
-        def type_extensions(entry)
+        def type_extensions(entry, api_key)
           {
             "x-mcp-operations" => Array(entry["operations"]),
-            "x-mcp-capability-actions" => Array(entry["capability_actions"]),
+            "x-mcp-capability-actions" => TypeActions.documented(entry),
             "x-mcp-parent" => entry["parent"],
-            "x-tags" => ["Types"]
+            "x-tags" => ToolDocs.type_tags(entry["type"], api: api_key)
           }
         end
 
@@ -70,7 +68,7 @@ module RecordingStudioMcp
             "Registered type #{entry['type']}.",
             operations_line(entry),
             writable_line(entry),
-            actions_block(entry)
+            TypeActions.block(entry)
           ].compact.join("\n\n")
         end
 
@@ -91,27 +89,9 @@ module RecordingStudioMcp
           "Writable fields: #{names.join(', ')}."
         end
 
-        def actions_block(entry)
-          actions = Array(entry["capability_actions"]).map { |action| Internals.stringify(action) }
-          return "Enabled capability actions: none." if actions.empty?
-
-          lines = ["Enabled capability actions (run with `capability_action`):"]
-          actions.each do |action|
-            lines << "- `#{action['name']}`#{action_contract_suffix(action)}"
-          end
-          lines.join("\n")
-        end
-
-        def action_contract_suffix(action)
-          params = action["params"]
-          return "" if params.blank?
-
-          "\n\n```json\n#{JSON.pretty_generate(params)}\n```"
-        end
-
         private_class_method :type_schema, :type_object_schema, :type_extensions, :type_properties,
                              :type_required, :field_schema, :type_description, :operations_line,
-                             :writable_line, :actions_block, :action_contract_suffix
+                             :writable_line
       end
     end
   end

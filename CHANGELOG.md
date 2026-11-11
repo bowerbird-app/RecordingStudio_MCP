@@ -15,7 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint `input_contract` failures include `contract_result.errors` in the tool message (for example `Unknown parameters: foo`).
 
 ### Upgrade notes
-- Bump to `0.30.2` after `0.30.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`. API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may record the Accessible grant actor and set the OAuth client as impersonator.
+- Bump to `0.30.2`. Previous version is `0.30.1`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed. Runtime API is `>= 0.17, < 0.22`. Development and dummy Gemfiles pin API `v0.21.0`, Oauth `v0.21.5`, Moveable `v4.1.0`, and Icons `v0.2.0`. API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may record the Accessible grant actor and set the OAuth client as impersonator.
+
+## [0.30.1] - 2026-11-11
+
+### Changed
+- MCP docs place each registered type, and its capability actions, under their
+  API tag group (`openapi: { tag: { group: ... } }`). Types with no tag stay
+  under Types. Tags still appear once. There is no default `x-tagGroups`.
+- Each capability action docs entry notes that it is a capability action: call
+  it through the `capability_action` tool with the type and action name.
+  `describe` lists it at runtime.
+
+### Upgrade notes
+- Bump to `0.30.1`. Previous version is `0.30.0`. No MCP migration. Docs-only.
+  Sidebar type entries may move from Types to their API tag group.
 
 ## [0.30.0] - 2026-11-11
 
@@ -792,7 +806,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
 [Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...HEAD
-[0.30.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.2
+[0.30.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.1...v0.30.2
+[0.30.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0

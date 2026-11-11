@@ -2,7 +2,7 @@
 
 ## 0.30.2
 
-No MCP protocol migration. `ActiveRecord::RecordInvalid` and
+Previous version is `0.30.1`. No MCP protocol migration. `ActiveRecord::RecordInvalid` and
 `RecordingStudio::AuthorizationError` now return MCP `isError` tool results.
 HTTP Recording Studio API still returns 500 for `RecordingStudio::AuthorizationError`.
 MCP maps that write-gate denial so it is not a JSON-RPC internal. Builtin create
@@ -20,6 +20,18 @@ Pin runtime API `>= 0.17, < 0.22`. Development and dummy Gemfiles use API
 API `0.21.0` needs Moveable `v4.1.0` and Icons `v0.2.0` on those Gemfiles.
 API `write_actor` is `AccessGrant#actor`; delegated OAuth writes may use the
 Accessible grant actor and store the OAuth client as impersonator.
+
+## 0.30.1
+
+Previous version is `0.30.0`. No MCP protocol migration. Docs-only.
+
+Mounted MCP docs (`/mcp-docs`, Redoc) put each registered type and its
+capability actions under their API tag group. Types with no tag stay under
+Types. Each tag still appears once. There is no default `x-tagGroups`.
+
+Each capability action entry explains that it is a capability action: call it
+through the `capability_action` tool with the type and action name. `describe`
+lists it at runtime.
 
 ## 0.30.0
 

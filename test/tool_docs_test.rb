@@ -3,6 +3,21 @@
 require "test_helper"
 
 class ToolDocsTest < Minitest::Test
+  include IsolatedApiConfiguration
+
+  def test_type_tags_use_the_registered_openapi_group
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("Credit", openapi: { tag: { group: "Press kits" } })
+      register_tree_type("Folder")
+
+      docs = RecordingStudioMcp::ToolDocs
+
+      assert_equal ["Press kits"], docs.type_tags("Credit", api: :public)
+      assert_equal ["Types"], docs.type_tags("Folder", api: :public)
+    end
+  end
+
   def test_metric_group_tags_keep_common_acronyms_uppercase
     docs = RecordingStudioMcp::ToolDocs
 

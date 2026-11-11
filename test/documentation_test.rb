@@ -197,7 +197,11 @@ class DocumentationTest < Minitest::Test
       assert_includes folder["description"], "Writable fields: title."
       assert_includes folder["description"], "`ping`"
       assert_includes folder["description"], "style"
+      assert_includes folder["description"], "capability_action"
+      assert_includes folder["description"], "`describe` lists it at runtime"
       assert ping.dig("params", "fields", "style")
+      assert_includes ping["description"], "capability_action"
+      assert_equal ["Types"], folder["x-tags"]
       assert_includes description, "## Authentication"
       assert_includes description, "## Records and parents"
       assert_includes description, "## Listing and pagination"
@@ -269,6 +273,58 @@ class DocumentationTest < Minitest::Test
         assert_equal tag_names.uniq, tag_names
         refute spec.key?("x-tagGroups")
       end
+    end
+  end
+
+  def test_openapi_places_tagged_types_and_actions_under_the_type_tag
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Credit",
+        operations: %i[index show],
+        capability_actions: %i[ping],
+        openapi: { tag: { group: "Press kits" } }
+      )
+      register_tree_type("Folder", operations: %i[index show])
+      register_ping_capability
+      RecordingStudioApi.register_endpoint(
+        :press_kit_ping,
+        http_verb: :get,
+        path: "press_kit_ping",
+        openapi: { summary: "Press kit ping", tags: ["Press kits"] },
+        handler: ->(_context) { { ok: true } }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      credit = spec.dig("components", "schemas", "RecordingStudioPresskits::Credit")
+      folder = spec.dig("components", "schemas", "Folder")
+      ping = Array(credit["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      tagged_schemas = spec.dig("components", "schemas").except("TypeName")
+      schema_tag_pairs = tagged_schemas.flat_map do |name, schema|
+        Array(schema["x-tags"]).map { |tag| [name, tag] }
+      end
+
+      assert_equal ["Press kits"], credit["x-tags"]
+      assert_equal ["Types"], folder["x-tags"]
+      assert_includes credit["description"], "Capability action. Call it through the `capability_action` tool"
+      assert_includes credit["description"], "type `RecordingStudioPresskits::Credit`"
+      assert_includes credit["description"], "action `ping`"
+      assert_includes credit["description"], "`describe` lists it at runtime."
+      assert_equal(
+        "Capability action. Call it through the `capability_action` tool with type " \
+        "`RecordingStudioPresskits::Credit` and action `ping`. `describe` lists it at runtime.",
+        ping["description"]
+      )
+      assert_includes tag_names, "Press kits"
+      assert_includes tag_names, "Types"
+      assert_equal 1, tag_names.count("Press kits")
+      assert_equal 1, tag_names.count("Types")
+      assert_equal tag_names.uniq, tag_names
+      refute spec.key?("x-tagGroups")
+      assert_equal schema_tag_pairs.uniq, schema_tag_pairs
+      refute_includes folder["x-tags"], "Press kits"
+      refute_includes credit["x-tags"], "Types"
     end
   end
 
