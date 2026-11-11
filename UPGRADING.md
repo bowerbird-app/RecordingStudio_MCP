@@ -1,5 +1,19 @@
 # Upgrading Recording Studio MCP
 
+## 0.31.0
+
+Previous version is `0.30.3`. No MCP protocol migration. Docs-only.
+
+Mounted MCP docs list each enabled capability action as a tool in the Redoc
+sidebar, under the type's existing tag. Those entries set `x-mcp-docs-only`
+and use the action input contract as `inputSchema` when present. Types stay in
+the OpenAPI schemas and in MCP. Child and section types (registered under
+another non-root recordable) omit a SCHEMA sidebar entry. The hide check is
+`any?` over allowed parents, so a type allowed under both a root and a nested
+parent also loses that sidebar entry. Top-level types keep theirs. Type class,
+operations, and writable fields are on the action tool pages. `tools/list`
+still advertises only `capability_action`.
+
 ## 0.30.3
 
 Previous version is `0.30.2`. No MCP protocol migration. Docs-only.

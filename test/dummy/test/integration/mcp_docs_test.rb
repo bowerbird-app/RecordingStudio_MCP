@@ -107,11 +107,23 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_equal ["Endpoints"], tools.fetch("ping")["tags"]
     assert tools.fetch("list").key?("outputSchema")
     assert_includes workspace["description"], "Allowed operations:"
-    assert_includes workspace["description"], "**ping**"
+    assert_includes workspace["description"], "Enabled capability actions appear as tools in this sidebar group."
+    refute_includes workspace["description"], "**ping**"
     ping = Array(workspace["x-mcp-capability-actions"]).find { |action| (action["name"] || action[:name]) == "ping" }
     assert ping["params"] || ping[:params]
     assert_includes ping["description"], "capability_action"
-    assert_includes workspace["description"], "`describe` lists them at runtime"
+    ping_tool = tools.fetch("Workspace--ping")
+    assert_equal "Ping", ping_tool["title"]
+    assert ping_tool["x-mcp-docs-only"]
+    refute tools.fetch("list").key?("x-mcp-docs-only")
+    assert ping_tool.dig("inputSchema", "fields")
+    assert_includes ping_tool["description"], "Runs on a Workspace (Workspace)."
+    assert_includes ping_tool["description"], "Type: `Workspace`"
+    assert_includes ping_tool["description"], "Allowed operations:"
+    assert_includes ping_tool["description"], "Writable fields:"
+    assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
+    assert_includes ping_tool["description"], "style"
+    refute workspace.key?("x-tags")
     refute workspace.key?("x-tags")
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_includes tag_names, "Core"

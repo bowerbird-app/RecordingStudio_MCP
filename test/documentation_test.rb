@@ -198,13 +198,25 @@ class DocumentationTest < Minitest::Test
       assert_includes folder["description"], "index"
       assert_includes folder["description"], "create"
       assert_includes folder["description"], "Writable fields: title."
-      assert_includes folder["description"], "**ping**"
-      assert_includes folder["description"], "style"
-      assert_includes folder["description"], "capability_action"
-      assert_includes folder["description"], "`describe` lists them at runtime"
+      assert_includes folder["description"], "Enabled capability actions appear as tools in this sidebar group."
+      refute_includes folder["description"], "**ping**"
+      refute_includes folder["description"], "style"
+      ping_tool = tools.fetch("Folder--ping")
+      assert_equal "Ping", ping_tool["title"]
+      assert ping_tool["x-mcp-docs-only"]
+      refute tools.fetch("list").key?("x-mcp-docs-only")
+      assert_equal "string", ping_tool.dig("inputSchema", "fields", "style", "type")
+      assert_equal %w[quiet loud], ping_tool.dig("inputSchema", "fields", "style", "enum")
+      assert_includes ping_tool["description"], "Runs on a Folder (Folder)."
+      assert_includes ping_tool["description"], "Type: `Folder`"
+      assert_includes ping_tool["description"], "Allowed operations:"
+      assert_includes ping_tool["description"], "Writable fields: title."
+      assert_includes ping_tool["description"], "Tool: capability_action with type `Folder` and action `ping`"
+      assert_includes ping_tool["description"], "style"
+      refute ping_tool.key?("tags")
+      refute folder.key?("x-tags")
       assert ping.dig("params", "fields", "style")
       assert_equal "Tool: capability_action with type `Folder` and action `ping`", ping["description"]
-      refute folder.key?("x-tags")
       assert_includes description, "## Authentication"
       assert_includes description, "## Records and parents"
       assert_includes description, "## Listing and pagination"
@@ -319,11 +331,20 @@ class DocumentationTest < Minitest::Test
       assert_includes credit["description"], "Credits on a press kit."
       assert_includes credit["description"], "Type: `RecordingStudioPresskits::Credit`"
       refute_includes credit["description"], "Registered type"
-      assert_includes credit["description"], "**ping**"
-      assert_includes credit["description"],
-                      "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`"
-      assert_includes credit["description"],
+      assert_includes credit["description"], "Enabled capability actions appear as tools in this sidebar group."
+      refute_includes credit["description"], "**ping**"
+      refute_includes credit["description"],
                       "These run through the `capability_action` tool; `describe` lists them at runtime."
+      ping_tool = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Credit--ping" }
+      assert_equal "Ping", ping_tool["title"]
+      assert_equal ["Press Kit"], ping_tool["tags"]
+      assert_includes ping_tool["description"],
+                      "Runs on a Credit (RecordingStudioPresskits::Credit)."
+      assert_includes ping_tool["description"], "Type: `RecordingStudioPresskits::Credit`"
+      assert_includes ping_tool["description"], "Allowed operations:"
+      assert_includes ping_tool["description"], "Writable fields:"
+      assert_includes ping_tool["description"],
+                      "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`"
       refute_includes credit["description"], "Capability action. Call it through"
       assert_equal(
         "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`",
@@ -337,7 +358,175 @@ class DocumentationTest < Minitest::Test
       refute spec.key?("x-tagGroups")
       assert_equal schema_tag_pairs.uniq, schema_tag_pairs
       refute_includes Array(folder["x-tags"]), "Press Kit"
-      refute_includes credit["x-tags"], "Types"
+      refute_includes Array(credit["x-tags"]), "Types"
+    end
+  end
+
+  def test_openapi_lists_capability_actions_as_tagged_tool_entries
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Credit",
+        operations: %i[index show create update destroy],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::KitSection",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::CreditLine",
+        operations: %i[index show],
+        capability_actions: %i[remove_credit],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::CreditsSection",
+        operations: %i[index show],
+        capability_actions: %i[add_credit reorder_credits],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_named_capability(
+        :add_credit,
+        summary: "Add a workspace credit to this section",
+        input_contract: {
+          fields: {
+            credit_id: { type: :string, required: true }
+          }
+        }
+      )
+      register_named_capability(:reorder_credits, summary: "Reorder credits in this section")
+      register_named_capability(:remove_credit, summary: "Remove a credit from this section")
+
+      spec = stub_allowed_parents(
+        "RecordingStudioPresskits::CreditLine" => ["RecordingStudioPresskits::CreditsSection"],
+        "RecordingStudioPresskits::CreditsSection" => ["RecordingStudioPresskits::KitSection"]
+      ) do
+        openapi_with_labels!(
+          "RecordingStudioPresskits::Credit" => "Credit",
+          "RecordingStudioPresskits::CreditLine" => "credit line",
+          "RecordingStudioPresskits::CreditsSection" => "Credits section"
+        )
+      end
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      titles = spec.dig("x-mcp", "tools").filter_map do |tool|
+        tool["title"] if tool["name"].to_s.include?("--")
+      end
+      schemas = spec.dig("components", "schemas")
+      credit = schemas.fetch("RecordingStudioPresskits::Credit")
+      line = schemas.fetch("RecordingStudioPresskits::CreditLine")
+      section = schemas.fetch("RecordingStudioPresskits::CreditsSection")
+      protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
+
+      assert_equal ["Add Credit", "Remove Credit", "Reorder Credits"], titles
+      refute_includes protocol_names, "RecordingStudioPresskits::CreditsSection--add_credit"
+      add = tools.fetch("RecordingStudioPresskits::CreditsSection--add_credit")
+      reorder = tools.fetch("RecordingStudioPresskits::CreditsSection--reorder_credits")
+      remove = tools.fetch("RecordingStudioPresskits::CreditLine--remove_credit")
+      assert add["x-mcp-docs-only"]
+      assert reorder["x-mcp-docs-only"]
+      assert remove["x-mcp-docs-only"]
+      assert_equal "string", add.dig("inputSchema", "fields", "credit_id", "type")
+      assert_equal({ "type" => "object" }, reorder["inputSchema"])
+      assert_equal({ "type" => "object" }, remove["inputSchema"])
+      assert_equal "Add Credit", add["title"]
+      assert_equal ["Press Kit"], add["tags"]
+      assert_equal ["Press Kit"], reorder["tags"]
+      assert_equal ["Press Kit"], remove["tags"]
+      assert_includes add["description"], "Runs on a Credits section (RecordingStudioPresskits::CreditsSection)."
+      assert_includes add["description"], "Type: `RecordingStudioPresskits::CreditsSection`"
+      assert_includes add["description"], "Allowed operations:"
+      assert_includes add["description"], "Writable fields:"
+      assert_includes add["description"], "Add a workspace credit to this section"
+      assert_includes add["description"],
+                      "Tool: capability_action with type `RecordingStudioPresskits::CreditsSection` " \
+                      "and action `add_credit`"
+      assert_includes add["description"], "credit_id"
+      assert_includes reorder["description"], "Reorder credits in this section"
+      assert_includes remove["description"], "Runs on a credit line (RecordingStudioPresskits::CreditLine)."
+      assert_includes remove["description"], "Type: `RecordingStudioPresskits::CreditLine`"
+      assert_includes remove["description"], "Allowed operations:"
+      assert_includes remove["description"], "Writable fields:"
+      assert_equal ["Press Kit"], credit["x-tags"]
+      refute line.key?("x-tags")
+      refute section.key?("x-tags")
+      assert_includes schemas.keys, "RecordingStudioPresskits::CreditLine"
+      assert_includes schemas.keys, "RecordingStudioPresskits::CreditsSection"
+      assert_includes credit["description"], "Type: `RecordingStudioPresskits::Credit`"
+      assert_includes credit["description"], "Allowed operations:"
+      assert_includes credit["description"], "Writable fields:"
+      assert_includes credit["description"], "Enabled capability actions: none."
+      assert_includes line["description"], "Enabled capability actions appear as tools in this sidebar group."
+      refute_includes line["description"], "**remove_credit**"
+      refute_includes section["description"], "**add_credit**"
+    end
+  end
+
+  def test_capability_action_docs_follow_any_registered_type
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Gallery",
+        operations: %i[index show],
+        capability_actions: %i[publish],
+        openapi: { tags: ["Galleries"] }
+      )
+      register_tree_type(
+        "GallerySection",
+        operations: %i[index show],
+        capability_actions: %i[add_slide],
+        openapi: { tags: ["Galleries"] }
+      )
+      register_tree_type(
+        "GallerySlide",
+        operations: %i[index show update],
+        capability_actions: %i[remove_slide],
+        openapi: { tags: ["Galleries"] }
+      )
+      register_named_capability(:publish, summary: "Publish this gallery")
+      register_named_capability(:add_slide, summary: "Add a slide to this section")
+      register_named_capability(:remove_slide, summary: "Remove this slide")
+
+      spec = stub_allowed_parents(
+        "GallerySection" => ["Gallery"],
+        "GallerySlide" => ["GallerySection"]
+      ) { RecordingStudioMcp::Documentation.openapi(api: :public) }
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      schemas = spec.dig("components", "schemas")
+      gallery = schemas.fetch("Gallery")
+      section = schemas.fetch("GallerySection")
+      slide = schemas.fetch("GallerySlide")
+      publish = tools.fetch("Gallery--publish")
+      add = tools.fetch("GallerySection--add_slide")
+      remove = tools.fetch("GallerySlide--remove_slide")
+      protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
+
+      assert publish["x-mcp-docs-only"]
+      assert_equal({ "type" => "object" }, publish["inputSchema"])
+      assert_equal({ "type" => "object" }, add["inputSchema"])
+      assert_equal "Publish", publish["title"]
+      assert_equal ["Galleries"], publish["tags"]
+      assert_includes publish["description"], "Runs on a Gallery (Gallery)."
+      assert_equal "Add Slide", add["title"]
+      assert_equal ["Galleries"], add["tags"]
+      assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
+      assert_includes add["description"], "Type: `GallerySection`"
+      assert_includes add["description"], "Allowed operations:"
+      assert_includes add["description"], "Writable fields:"
+      assert_includes add["description"], "Add a slide to this section"
+      assert_includes add["description"],
+                      "Tool: capability_action with type `GallerySection` and action `add_slide`"
+      assert_equal "Remove Slide", remove["title"]
+      assert_equal ["Galleries"], remove["tags"]
+      assert_includes remove["description"], "Runs on a Gallery slide (GallerySlide)."
+      refute_includes protocol_names, "GallerySection--add_slide"
+      assert_equal ["Galleries"], gallery["x-tags"]
+      refute section.key?("x-tags")
+      refute slide.key?("x-tags")
+      assert_includes gallery["description"], "Enabled capability actions appear as tools in this sidebar group."
+      assert_includes schemas.keys, "GallerySection"
+      assert_includes schemas.keys, "GallerySlide"
     end
   end
 
@@ -359,16 +548,41 @@ class DocumentationTest < Minitest::Test
   end
 
   def openapi_with_credit_label!
-    type = "RecordingStudioPresskits::Credit"
+    openapi_with_labels!("RecordingStudioPresskits::Credit" => "Credit")
+  end
+
+  def openapi_with_labels!(labels)
     store = RecordingStudio::Labels.formatters.fetch(:type_label)
-    previous = store[type]
-    RecordingStudio::Labels.register_formatter(type, type_label: ->(*) { "Credit" })
+    previous = labels.keys.index_with { |type| store[type] }
+    labels.each do |type, label|
+      RecordingStudio::Labels.register_formatter(type, type_label: ->(*) { label })
+    end
     RecordingStudioMcp::Documentation.openapi(api: :public)
   ensure
-    if previous
-      store[type] = previous
-    else
-      store.delete(type)
+    previous&.each do |type, value|
+      if value
+        store[type] = value
+      else
+        store.delete(type)
+      end
     end
+  end
+
+  def stub_allowed_parents(map, &)
+    original = RecordingStudio.method(:allowed_parent_types_for)
+    RecordingStudio.stub(:allowed_parent_types_for, lambda { |type|
+      name = type.to_s
+      map.key?(name) ? Array(map.fetch(name)) : original.call(type)
+    }, &)
+  end
+
+  def register_named_capability(name, summary:, input_contract: nil)
+    attrs = {
+      capability: :accessible,
+      handler: ->(_context) { { json: { ok: true } } },
+      openapi: { summary: summary }
+    }
+    attrs[:input_contract] = input_contract if input_contract
+    RecordingStudioApi.register_capability_action(name, **attrs)
   end
 end
