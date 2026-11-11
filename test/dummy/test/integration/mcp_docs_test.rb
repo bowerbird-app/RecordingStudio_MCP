@@ -109,6 +109,9 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes workspace["description"], "`ping`"
     ping = Array(workspace["x-mcp-capability-actions"]).find { |action| (action["name"] || action[:name]) == "ping" }
     assert ping["params"] || ping[:params]
+    assert_includes ping["description"], "capability_action"
+    assert_includes workspace["description"], "`describe` lists it at runtime"
+    assert_equal ["Types"], workspace["x-tags"]
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_includes tag_names, "Core"
     assert_includes tag_names, "Endpoints"

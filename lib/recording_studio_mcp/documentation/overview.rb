@@ -38,7 +38,7 @@ module RecordingStudioMcp
         bullets = [
           "- Records nest under `parent_id`.",
           "- `root_id` is the workspace, not the parent record.",
-          "- Each type in the sidebar lists allowed operations, writable fields, and actions."
+          "- Each type lists operations, fields, and actions under its API tag, or Types if it has none."
         ]
         if surface.tree_tool_names.intersect?(%w[create update])
           bullets << "- Send writable fields at the top level, not under `attributes`."
