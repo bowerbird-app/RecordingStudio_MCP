@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.30.1] - 2026-11-11
 
 ### Fixed
-- MCP maps `ActiveRecord::RecordInvalid` (validation messages), `RecordingStudio::InvalidParent` (`parent_id` detail), and `RecordingStudio::AuthorizationError` (`Not authorized`) to tool errors (`isError`), matching HTTP Recording Studio API. Other `StandardError`s stay JSON-RPC `-32603`.
+- MCP maps `ActiveRecord::RecordInvalid` (validation messages) and `RecordingStudio::AuthorizationError` (`Not authorized`) to tool errors (`isError`). HTTP Recording Studio API still returns 500 for `RecordingStudio::AuthorizationError`; MCP maps that write-gate denial so it is not a JSON-RPC internal. Builtin create converts `RecordingStudio::InvalidParent` to `InvalidActionInputError` in Recording Studio API, which MCP already maps. Other `StandardError`s stay JSON-RPC `-32603`.
 - `describe` and allowed-action lists union the type's explicit `capability_actions` with `RecordingStudioApi.capability_actions_for`, so auto-enabled Accessible actions (`list_access`, `grant_access`, `update_access`, `revoke_access`) match dispatch.
 - Endpoint `input_contract` failures include `contract_result.errors` in the tool message (for example `Unknown parameters: foo`).
 

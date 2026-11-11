@@ -64,10 +64,8 @@ module RecordingStudioMcp
 
     def contract_errors_text(errors)
       return if errors.blank?
-      return errors if errors.is_a?(String)
-      return errors.to_sentence if errors.respond_to?(:to_sentence) && !errors.is_a?(Hash)
 
-      errors.to_s
+      errors.to_sentence
     end
 
     def serialize_endpoint_result(endpoint, result)

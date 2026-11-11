@@ -2,10 +2,13 @@
 
 ## 0.30.1
 
-No MCP protocol migration. Domain failures (`ActiveRecord::RecordInvalid`,
-`RecordingStudio::InvalidParent`, `RecordingStudio::AuthorizationError`) now
-return MCP `isError` tool results, matching HTTP Recording Studio API. Other
-`StandardError`s stay JSON-RPC `-32603`.
+No MCP protocol migration. `ActiveRecord::RecordInvalid` and
+`RecordingStudio::AuthorizationError` now return MCP `isError` tool results.
+HTTP Recording Studio API still returns 500 for `RecordingStudio::AuthorizationError`.
+MCP maps that write-gate denial so it is not a JSON-RPC internal. Builtin create
+converts `RecordingStudio::InvalidParent` to `InvalidActionInputError` in
+Recording Studio API, which MCP already maps. Other `StandardError`s stay
+JSON-RPC `-32603`.
 
 `describe` unions explicit `capability_actions` with
 `RecordingStudioApi.capability_actions_for`, so auto-enabled Accessible access

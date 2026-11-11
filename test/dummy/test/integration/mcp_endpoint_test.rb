@@ -488,6 +488,32 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes message, "Workspace"
   end
 
+  test "create with a disallowed parent is a tool error from API InvalidActionInputError" do
+    token = issue_delegated_token(role: "edit")
+    parent_page = call_tool(
+      token,
+      "create",
+      type: "Page",
+      parent_id: @root_recording.id,
+      title: "Parent page"
+    )
+
+    post "/recording_studio_mcp",
+         params: rpc(
+           "tools/call",
+           name: "create",
+           arguments: { type: "Page", parent_id: parent_page.fetch("id"), title: "Nested page" }
+         ).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    payload = JSON.parse(response.body)
+    assert_equal true, payload.dig("result", "isError")
+    message = payload.dig("result", "content", 0, "text")
+    assert_includes message, "Page cannot be recorded under Page"
+    refute_includes message, "parent_id"
+  end
+
   test "mcp does not serve records when api access is disabled" do
     token = issue_delegated_token
     setting = RecordingStudioApi::ApiSetting.find_or_create_by!(key: "api")

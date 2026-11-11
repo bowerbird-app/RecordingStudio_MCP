@@ -223,26 +223,6 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_invalid_parent_is_tool_error
-    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
-      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-        RecordingStudioApi.stub(:resource_action, lambda { |*|
-          raise RecordingStudio::InvalidParent, "Page cannot nest under that parent"
-        }) do
-          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
-            RecordingStudioApi.stub(:default_api_version, "v1") do
-              result = dispatch("list", { "type" => "Workspace" })
-
-              assert result[:isError]
-              assert_includes result.dig(:content, 0, :text), "Page cannot nest under that parent"
-              assert_includes result.dig(:content, 0, :text), "parent_id"
-            end
-          end
-        end
-      end
-    end
-  end
-
   def test_recording_studio_authorization_error_is_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
