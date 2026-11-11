@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-11-11
+
+### Fixed
+- MCP maps `ActiveRecord::RecordInvalid` (validation messages), `RecordingStudio::InvalidParent` (`parent_id` detail), and `RecordingStudio::AuthorizationError` (`Not authorized`) to tool errors (`isError`), matching HTTP Recording Studio API. Other `StandardError`s stay JSON-RPC `-32603`.
+- `describe` and allowed-action lists union the type's explicit `capability_actions` with `RecordingStudioApi.capability_actions_for`, so auto-enabled Accessible actions (`list_access`, `grant_access`, `update_access`, `revoke_access`) match dispatch.
+- Endpoint `input_contract` failures include `contract_result.errors` in the tool message (for example `Unknown parameters: foo`).
+
+### Upgrade notes
+- Bump to `0.29.1` after `0.29.0`. No MCP migration. Clients that treated those domain failures as protocol internals now see `isError` tool results. `describe` may list Accessible access actions that dispatch already allowed.
+
 ## [0.28.0] - 2026-11-10
 
 ### Added
@@ -739,7 +749,9 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.1...HEAD
+[0.29.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.29.0...v0.29.1
+[0.29.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.26.0...v0.26.1
