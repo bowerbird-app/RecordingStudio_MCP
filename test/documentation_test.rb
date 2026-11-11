@@ -443,6 +443,60 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_capability_action_docs_follow_any_registered_type
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Gallery",
+        operations: %i[index show],
+        openapi: { tags: ["Galleries"] }
+      )
+      register_tree_type(
+        "GallerySection",
+        operations: %i[index show],
+        capability_actions: %i[add_slide],
+        openapi: { tags: ["Galleries"] }
+      )
+      register_tree_type(
+        "GallerySlide",
+        operations: %i[index show update],
+        capability_actions: %i[remove_slide],
+        openapi: { tags: ["Galleries"] }
+      )
+      register_named_capability(:add_slide, summary: "Add a slide to this section")
+      register_named_capability(:remove_slide, summary: "Remove this slide")
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      schemas = spec.dig("components", "schemas")
+      gallery = schemas.fetch("Gallery")
+      section = schemas.fetch("GallerySection")
+      slide = schemas.fetch("GallerySlide")
+      add = tools.fetch("GallerySection--add_slide")
+      remove = tools.fetch("GallerySlide--remove_slide")
+      protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
+
+      assert_equal "Add Slide", add["title"]
+      assert_equal ["Galleries"], add["tags"]
+      assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
+      assert_includes add["description"], "Type: `GallerySection`"
+      assert_includes add["description"], "Allowed operations:"
+      assert_includes add["description"], "Writable fields:"
+      assert_includes add["description"], "Add a slide to this section"
+      assert_includes add["description"],
+                      "Tool: capability_action with type `GallerySection` and action `add_slide`"
+      assert_equal "Remove Slide", remove["title"]
+      assert_equal ["Galleries"], remove["tags"]
+      assert_includes remove["description"], "Runs on a Gallery slide (GallerySlide)."
+      refute_includes protocol_names, "GallerySection--add_slide"
+      assert_equal ["Galleries"], gallery["x-tags"]
+      refute section.key?("x-tags")
+      refute slide.key?("x-tags")
+      assert_includes schemas.keys, "GallerySection"
+      assert_includes schemas.keys, "GallerySlide"
+    end
+  end
+
   def test_host_tag_groups_are_emitted_when_set_on_the_page
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
