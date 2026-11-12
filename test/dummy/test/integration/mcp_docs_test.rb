@@ -120,6 +120,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_includes ping_tool["description"], "Writable fields:"
     assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
     refute_includes ping_tool["description"], "style"
+    refute_includes ping_description, "No input fields."
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_includes tag_names, "Core"
     assert_includes tag_names, "Endpoints"

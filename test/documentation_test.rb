@@ -782,6 +782,55 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_openapi_empty_fields_action_page_says_no_input_fields
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::CreditLine",
+        operations: %i[index show],
+        capability_actions: %i[remove_credit],
+        openapi: { description: "A credit line on a press kit." }
+      )
+      register_capability_with_role(:remove_credit, summary: "Remove a credit from this section", role: :edit)
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      remove = tools.fetch("RecordingStudioPresskits::CreditLine--remove_credit")
+      description = remove.fetch("description")
+      access_at = description.index("Access: Edit.")
+      no_input_at = description.index("No input fields.")
+      tool_at = description.index("Tool: capability_action")
+
+      assert_equal({ "type" => "object" }, remove["inputSchema"])
+      assert_includes description, "No input fields."
+      assert_operator access_at, :<, no_input_at
+      assert_operator no_input_at, :<, tool_at
+    end
+  end
+
+  def test_openapi_action_page_with_fields_omits_no_input_fields
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("Folder", operations: %i[index show], capability_actions: %i[ping])
+      RecordingStudioApi.register_capability_action(
+        :ping,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        input_contract: {
+          fields: {
+            style: { type: :string, required: false, enum: %w[quiet loud] }
+          }
+        }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      ping = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }.fetch("Folder--ping")
+
+      refute_includes ping.fetch("description"), "No input fields."
+      assert ping.dig("inputSchema", "properties", "style")
+    end
+  end
+
   def test_openapi_action_page_includes_registered_description_under_summary
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

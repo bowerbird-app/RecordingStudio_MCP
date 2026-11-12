@@ -70,6 +70,7 @@ module RecordingStudioMcp
             action_description(action["name"], api_key),
             Schemas.registered_type_description(entry["type"], api_key),
             access_line(action["name"], api_key),
+            no_input_fields_line(action),
             tool_line(entry["type"], action["name"])
           ]
         end
@@ -93,6 +94,13 @@ module RecordingStudioMcp
           )
         end
         private_class_method :access_line
+
+        def no_input_fields_line(action)
+          return if action["params"].present?
+
+          "No input fields."
+        end
+        private_class_method :no_input_fields_line
       end
     end
   end

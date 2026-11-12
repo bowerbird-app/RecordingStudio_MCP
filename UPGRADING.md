@@ -7,7 +7,8 @@ Previous version is `0.33.0`. No MCP protocol migration. Docs-only.
 Action tool pages show the action description, then the type description,
 then `Access: View`, `Access: Edit`, or `Access: Admin` from the enforced
 RS_API role (host `capability_action_roles` override, else the registered
-`required_role`), then the `Tool: capability_action` line. Other role
+`required_role`), then `No input fields.` when the action has none, then
+the `Tool: capability_action` line. Other role
 names are humanized. The line is omitted when no role is set. The
 per-request `capability_action_role_resolver` cannot be shown in static
 docs. `Tool name:`, `Runs on a <type>`, and `Type: <class>` are no longer

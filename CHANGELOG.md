@@ -19,9 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - MCP docs action pages list the action description, the type
-  description, Access, then `Tool: capability_action with type … and
-  action …`. They no longer include `Tool name:`, `Runs on a <type>`, or
-  `Type: <class>`. Titles and sidebar grouping are unchanged.
+  description, Access, then `No input fields.` when the action has none,
+  then `Tool: capability_action with type … and action …`. They no
+  longer include `Tool name:`, `Runs on a <type>`, or `Type: <class>`.
+  Titles and sidebar grouping are unchanged.
 
 ### Upgrade notes
 - Bump to `0.34.0`. Previous version is `0.33.0`. No MCP protocol
