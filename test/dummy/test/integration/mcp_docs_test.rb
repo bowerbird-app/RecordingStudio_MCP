@@ -102,7 +102,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_equal ["Endpoints"], tools.fetch("ping")["tags"]
     assert tools.fetch("list").key?("outputSchema")
     ping_tool = tools.fetch("Workspace--ping")
-    assert_equal "Ping Workspace", ping_tool["title"]
+    assert_equal "Workspace - Ping", ping_tool["title"]
     assert ping_tool["x-mcp-docs-only"]
     refute tools.fetch("list").key?("x-mcp-docs-only")
     assert ping_tool.dig("inputSchema", "properties", "style")

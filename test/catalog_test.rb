@@ -78,14 +78,14 @@ class CatalogTest < Minitest::Test
       assert_equal true, catalog.capability_actions?
       ping = catalog.describe("Workspace").fetch("capability_actions")
 
-      assert_equal [{ "name" => "ping" }], ping
-      refute ping.first.key?("title")
+      assert_equal [{ "name" => "ping", "title" => "Workspace - Ping" }], ping
       refute ping.first.key?("summary")
       refute ping.first.key?("description")
 
       RecordingStudio.stub(:capability_enabled?, false) do
         assert_equal true, catalog.capability_actions?
-        assert_equal [{ "name" => "ping" }], catalog.describe("Workspace").fetch("capability_actions")
+        assert_equal [{ "name" => "ping", "title" => "Workspace - Ping" }],
+                     catalog.describe("Workspace").fetch("capability_actions")
       end
     end
   end
@@ -107,7 +107,7 @@ class CatalogTest < Minitest::Test
       ping = described.fetch("capability_actions").first
 
       assert_equal "ping", ping.fetch("name")
-      assert_equal "Ping Workspace", ping.fetch("title")
+      assert_equal "Workspace - Ping Workspace", ping.fetch("title")
       assert_equal "Ping this workspace", ping.fetch("summary")
       assert_equal "A longer note about ping.", ping.fetch("description")
     end
@@ -125,7 +125,7 @@ class CatalogTest < Minitest::Test
       described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
       ping = described.fetch("capability_actions").first
 
-      assert_equal({ "name" => "ping" }, ping)
+      assert_equal({ "name" => "ping", "title" => "Workspace - Ping" }, ping)
     end
   end
 

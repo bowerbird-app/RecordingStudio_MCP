@@ -1,5 +1,16 @@
 # Upgrading Recording Studio MCP
 
+## 0.33.0
+
+Previous version is `0.32.0`. No MCP protocol migration. Docs-only.
+
+Capability action titles in MCP docs and `describe` are type first. A gem
+OpenAPI title that already contains ` - ` stays. Other titles become
+`<singular type> - <gem title or humanized action name>`. Duplicate-title
+insertion is gone. Action pages show the gem OpenAPI description under
+the summary when set. Protocol tools, routes, and action behaviour are
+unchanged.
+
 ## 0.32.0
 
 Previous version is `0.31.2`. No MCP protocol migration.

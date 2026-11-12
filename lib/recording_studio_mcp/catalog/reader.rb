@@ -64,15 +64,17 @@ module RecordingStudioMcp
 
       def enabled_capability_actions(recordable_type)
         enabled_action_registrations(recordable_type).sort_by { |action| action.name.to_s }.map do |action|
-          capability_action_details(action)
+          capability_action_details(action, recordable_type)
         end
       end
 
-      def capability_action_details(action)
+      def capability_action_details(action, recordable_type)
         details = { "name" => action.name.to_s }
         contract = action.input_contract&.as_json
         details["params"] = contract.deep_stringify_keys if contract.present?
-        details.merge(Documentation::Openapi::ActionDocs.raw_copy(action))
+        fields = details.merge(Documentation::Openapi::ActionDocs.raw_copy(action))
+        fields["title"] = Documentation::Openapi::ActionDocs.title(action.name, api, recordable_type)
+        fields
       end
 
       def enabled_action_registrations(recordable_type)
