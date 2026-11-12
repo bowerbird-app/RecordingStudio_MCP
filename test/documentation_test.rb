@@ -205,14 +205,20 @@ class DocumentationTest < Minitest::Test
       assert_equal "Ping", ping_tool["title"]
       assert ping_tool["x-mcp-docs-only"]
       refute tools.fetch("list").key?("x-mcp-docs-only")
-      assert_equal "string", ping_tool.dig("inputSchema", "fields", "style", "type")
-      assert_equal %w[quiet loud], ping_tool.dig("inputSchema", "fields", "style", "enum")
+      assert_equal "object", ping_tool.dig("inputSchema", "type")
+      assert_equal "string", ping_tool.dig("inputSchema", "properties", "style", "type")
+      assert_equal %w[quiet loud], ping_tool.dig("inputSchema", "properties", "style", "enum")
+      assert_equal false, ping_tool.dig("inputSchema", "additionalProperties")
+      assert_equal "quiet", ping_tool.dig("inputSchema", "example", "style")
+      refute ping_tool["inputSchema"].key?("fields")
+      refute ping_tool["inputSchema"].key?("reject_unknown")
       assert_includes ping_tool["description"], "Runs on a Folder (Folder)."
       assert_includes ping_tool["description"], "Type: `Folder`"
-      assert_includes ping_tool["description"], "Allowed operations:"
-      assert_includes ping_tool["description"], "Writable fields: title."
+      refute_includes ping_tool["description"], "Allowed operations:"
+      refute_includes ping_tool["description"], "Writable fields:"
       assert_includes ping_tool["description"], "Tool: capability_action with type `Folder` and action `ping`"
-      assert_includes ping_tool["description"], "style"
+      refute_includes ping_tool["description"], "style"
+      refute_includes ping_tool["description"], "reject_unknown"
       refute ping_tool.key?("tags")
       refute folder.key?("x-tags")
       assert ping.dig("params", "fields", "style")
@@ -341,8 +347,8 @@ class DocumentationTest < Minitest::Test
       assert_includes ping_tool["description"],
                       "Runs on a Credit (RecordingStudioPresskits::Credit)."
       assert_includes ping_tool["description"], "Type: `RecordingStudioPresskits::Credit`"
-      assert_includes ping_tool["description"], "Allowed operations:"
-      assert_includes ping_tool["description"], "Writable fields:"
+      refute_includes ping_tool["description"], "Allowed operations:"
+      refute_includes ping_tool["description"], "Writable fields:"
       assert_includes ping_tool["description"],
                       "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`"
       refute_includes credit["description"], "Capability action. Call it through"
@@ -391,8 +397,9 @@ class DocumentationTest < Minitest::Test
         :add_credit,
         summary: "Add a workspace credit to this section",
         input_contract: {
+          reject_unknown: true,
           fields: {
-            credit_id: { type: :string, required: true }
+            credit_id: { type: :string, required: true, allow_blank: false }
           }
         }
       )
@@ -427,7 +434,12 @@ class DocumentationTest < Minitest::Test
       assert add["x-mcp-docs-only"]
       assert reorder["x-mcp-docs-only"]
       assert remove["x-mcp-docs-only"]
-      assert_equal "string", add.dig("inputSchema", "fields", "credit_id", "type")
+      assert_equal "string", add.dig("inputSchema", "properties", "credit_id", "type")
+      assert_equal 1, add.dig("inputSchema", "properties", "credit_id", "minLength")
+      assert_equal ["credit_id"], add.dig("inputSchema", "required")
+      assert_equal false, add.dig("inputSchema", "additionalProperties")
+      assert_equal "credit_id", add.dig("inputSchema", "example", "credit_id")
+      refute add["inputSchema"].key?("fields")
       assert_equal({ "type" => "object" }, reorder["inputSchema"])
       assert_equal({ "type" => "object" }, remove["inputSchema"])
       assert_equal "Add Credit", add["title"]
@@ -436,18 +448,19 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Press Kit"], remove["tags"]
       assert_includes add["description"], "Runs on a Credits section (RecordingStudioPresskits::CreditsSection)."
       assert_includes add["description"], "Type: `RecordingStudioPresskits::CreditsSection`"
-      assert_includes add["description"], "Allowed operations:"
-      assert_includes add["description"], "Writable fields:"
+      refute_includes add["description"], "Allowed operations:"
+      refute_includes add["description"], "Writable fields:"
       assert_includes add["description"], "Add a workspace credit to this section"
       assert_includes add["description"],
                       "Tool: capability_action with type `RecordingStudioPresskits::CreditsSection` " \
                       "and action `add_credit`"
-      assert_includes add["description"], "credit_id"
+      refute_includes add["description"], "credit_id"
+      refute_includes add["description"], "reject_unknown"
       assert_includes reorder["description"], "Reorder credits in this section"
       assert_includes remove["description"], "Runs on a credit line (RecordingStudioPresskits::CreditLine)."
       assert_includes remove["description"], "Type: `RecordingStudioPresskits::CreditLine`"
-      assert_includes remove["description"], "Allowed operations:"
-      assert_includes remove["description"], "Writable fields:"
+      refute_includes remove["description"], "Allowed operations:"
+      refute_includes remove["description"], "Writable fields:"
       assert_equal ["Press Kit"], credit["x-tags"]
       refute line.key?("x-tags")
       refute section.key?("x-tags")
@@ -512,8 +525,8 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Galleries"], add["tags"]
       assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
       assert_includes add["description"], "Type: `GallerySection`"
-      assert_includes add["description"], "Allowed operations:"
-      assert_includes add["description"], "Writable fields:"
+      refute_includes add["description"], "Allowed operations:"
+      refute_includes add["description"], "Writable fields:"
       assert_includes add["description"], "Add a slide to this section"
       assert_includes add["description"],
                       "Tool: capability_action with type `GallerySection` and action `add_slide`"
@@ -527,6 +540,79 @@ class DocumentationTest < Minitest::Test
       assert_includes gallery["description"], "Enabled capability actions appear as tools in this sidebar group."
       assert_includes schemas.keys, "GallerySection"
       assert_includes schemas.keys, "GallerySlide"
+    end
+  end
+
+  def test_openapi_files_actions_use_the_gem_type_group
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::PressKit",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::Files",
+        operations: %i[index show],
+        capability_actions: %i[add_file]
+      )
+      register_named_capability(:add_file, summary: "Add a file to this section")
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      add = tools.fetch("RecordingStudioPresskits::Files--add_file")
+      files = spec.dig("components", "schemas", "RecordingStudioPresskits::Files")
+
+      assert_equal ["Press Kit"], add["tags"]
+      refute files.key?("x-tags")
+    end
+  end
+
+  def test_openapi_disambiguates_duplicate_action_titles_in_a_group
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      %w[PressKit Podcast Quote].each do |name|
+        register_tree_type(
+          "RecordingStudioPresskits::#{name}",
+          operations: %i[index show],
+          capability_actions: %i[create_upload],
+          openapi: { tags: ["Press Kit"] }
+        )
+      end
+      register_named_capability(:create_upload, summary: "Create an upload")
+
+      spec = openapi_with_labels!(
+        "RecordingStudioPresskits::PressKit" => "Press Kit",
+        "RecordingStudioPresskits::Podcast" => "Podcast",
+        "RecordingStudioPresskits::Quote" => "Quote"
+      )
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+
+      assert_equal "Create Press Kit Upload", tools.fetch("RecordingStudioPresskits::PressKit--create_upload")["title"]
+      assert_equal "Create Podcast Upload", tools.fetch("RecordingStudioPresskits::Podcast--create_upload")["title"]
+      assert_equal "Create Quote Upload", tools.fetch("RecordingStudioPresskits::Quote--create_upload")["title"]
+    end
+  end
+
+  def test_openapi_uses_the_action_openapi_title_when_present
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::ListSection",
+        operations: %i[index show],
+        capability_actions: %i[remove_item],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_named_capability(
+        :remove_item,
+        summary: "Remove a row from this list",
+        title: "Remove List Item"
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      remove = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::ListSection--remove_item" }
+
+      assert_equal "Remove List Item", remove["title"]
     end
   end
 
@@ -576,11 +662,13 @@ class DocumentationTest < Minitest::Test
     }, &)
   end
 
-  def register_named_capability(name, summary:, input_contract: nil)
+  def register_named_capability(name, summary:, title: nil, input_contract: nil)
+    openapi = { summary: summary }
+    openapi[:title] = title if title
     attrs = {
       capability: :accessible,
       handler: ->(_context) { { json: { ok: true } } },
-      openapi: { summary: summary }
+      openapi: openapi
     }
     attrs[:input_contract] = input_contract if input_contract
     RecordingStudioApi.register_capability_action(name, **attrs)

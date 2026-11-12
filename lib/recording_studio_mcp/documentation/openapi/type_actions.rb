@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "json"
-
 module RecordingStudioMcp
   module Documentation
     module Openapi
@@ -23,30 +21,36 @@ module RecordingStudioMcp
         end
 
         def tools(page, group_tags: nil)
-          listed = Array(page.types).flat_map { |entry| tools_for(entry, page.api_key, group_tags) }
-          listed.sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
+          type_names = page_type_names(page)
+          listed = Array(page.types).flat_map { |entry| tools_for(entry, page.api_key, group_tags, type_names) }
+          ActionDocs.disambiguate_titles(listed).sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
         end
 
         def tool_line(type_name, action_name)
           "Tool: capability_action with type `#{type_name}` and action `#{action_name}`"
         end
 
-        def tools_for(entry, api_key, group_tags)
+        def page_type_names(page)
+          Array(page.types).map { |entry| Internals.stringify(entry)["type"].to_s }
+        end
+        private_class_method :page_type_names
+
+        def tools_for(entry, api_key, group_tags, type_names)
           entry = Internals.stringify(entry)
           Array(entry["capability_actions"]).map do |action|
-            action_tool(entry, Internals.stringify(action), api_key, group_tags)
+            action_tool(entry, Internals.stringify(action), api_key, group_tags, type_names)
           end
         end
         private_class_method :tools_for
 
-        def action_tool(entry, action, api_key, group_tags)
+        def action_tool(entry, action, api_key, group_tags, type_names)
           type_name = entry["type"].to_s
           action_name = action["name"].to_s
           tagged_tool(
             name: "#{type_name}--#{action_name}",
-            title: action_name.humanize.titleize,
+            title: ActionDocs.title(action_name, api_key),
             description: page_description(entry, action, api_key),
-            tags: ToolDocs.type_tags(type_name, api: api_key, group_tags: group_tags),
+            tags: ToolDocs.action_tags(type_name, api: api_key, group_tags: group_tags, type_names: type_names),
             input_schema: action_input_schema(action)
           )
         end
@@ -56,7 +60,9 @@ module RecordingStudioMcp
           params = action["params"]
           return { "type" => "object" } if params.blank?
 
-          JSON.parse(JSON.generate(params))
+          schema = ActionDocs.schema(params)
+          schema[:example] = ActionDocs.example(schema[:properties]) if schema[:properties].present?
+          Internals.stringify(schema)
         end
         private_class_method :action_input_schema
 
@@ -77,11 +83,8 @@ module RecordingStudioMcp
           [
             runs_on_line(entry["type"]),
             "Type: `#{entry['type']}`",
-            Schemas.operations_line(entry),
-            Schemas.writable_line(entry),
             action_summary(action["name"], api_key),
-            tool_line(entry["type"], action["name"]),
-            contract_suffix(action).presence
+            tool_line(entry["type"], action["name"])
           ].compact.join("\n\n")
         end
         private_class_method :page_description
@@ -99,14 +102,6 @@ module RecordingStudioMcp
           openapi[:summary].presence
         end
         private_class_method :action_summary
-
-        def contract_suffix(action)
-          params = action["params"]
-          return "" if params.blank?
-
-          "```json\n#{JSON.pretty_generate(params)}\n```"
-        end
-        private_class_method :contract_suffix
       end
     end
   end

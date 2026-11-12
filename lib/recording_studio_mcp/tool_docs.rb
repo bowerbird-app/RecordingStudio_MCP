@@ -35,6 +35,13 @@ module RecordingStudioMcp
       Array((group_tags || endpoint_group_tags(api: api))[group.to_s])
     end
 
+    def action_tags(type_name, api:, group_tags: nil, type_names: [])
+      tags = type_tags(type_name, api: api, group_tags: group_tags)
+      return tags if tags.any?
+
+      namespaced_action_tags(type_name, api: api, group_tags: group_tags, type_names: type_names)
+    end
+
     def endpoint_group_tags(api:)
       Catalog.new(api: api).registered_endpoints.each_with_object({}) do |endpoint, acc|
         group = endpoint.openapi&.dig(:tag, :group)
@@ -94,6 +101,19 @@ module RecordingStudioMcp
       openapi_tags(source&.openapi&.[](:tags)).map { |tag| tag["name"] }
     end
     private_class_method :registered_openapi_tags
+
+    def namespaced_action_tags(type_name, api:, group_tags:, type_names:)
+      prefix = type_name.to_s.deconstantize
+      return [] if prefix.blank?
+
+      Array(type_names).flat_map do |other|
+        next [] if other.to_s == type_name.to_s
+        next [] unless other.to_s.start_with?("#{prefix}::")
+
+        type_tags(other, api: api, group_tags: group_tags)
+      end.uniq
+    end
+    private_class_method :namespaced_action_tags
 
     def humanize_part(part)
       return "OAuth" if part.casecmp("oauth").zero?

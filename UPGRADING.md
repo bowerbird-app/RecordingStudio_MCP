@@ -1,5 +1,16 @@
 # Upgrading Recording Studio MCP
 
+## 0.31.2
+
+Previous version is `0.31.1`. No MCP protocol migration. Docs-only.
+
+Capability action docs tools now use a JSON Schema `inputSchema` built from
+the RS_API params definition (`EndpointSchema.build`), with a filled
+example. The raw params dump is gone. Duplicate titles in one sidebar group
+include the type label. Untagged namespaced types inherit that gem's type
+group for action tools only. Action pages no longer list the type's writable
+fields or allowed operations.
+
 ## 0.31.1
 
 Previous version is `0.31.0`. No MCP protocol migration.
