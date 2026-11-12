@@ -512,6 +512,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     message = payload.dig("result", "content", 0, "text")
     assert_includes message, "Page cannot be recorded under Page"
     refute_includes message, "parent_id"
+    assert_equal "parent_id", payload.dig("result", "structuredContent", "details", 0, "attribute")
   end
 
   test "mcp does not serve records when api access is disabled" do

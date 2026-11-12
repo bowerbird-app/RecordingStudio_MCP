@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-11-11
+
+### Fixed
+- MCP maps `RecordingStudio::ActorRequired` and `RecordingStudio::InvalidParent` to tool errors (`isError`) instead of JSON-RPC `-32603`. Actor and parent failures keep `error.message`. Tool errors that already respond to `details` (API `InvalidActionInputError`, including parent input) copy that payload onto `structuredContent.details`. Other `StandardError`s still become `-32603`.
+
+### Upgrade notes
+- Bump to `0.31.1`. Previous version is `0.31.0`. No MCP migration. Clients that treated a missing actor or a disallowed parent as a protocol internal now see `isError` tool results. Read `structuredContent.details` when present for field names such as `parent_id`.
+
 ## [0.31.0] - 2026-11-11
 
 ### Changed
@@ -847,7 +855,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...HEAD
+[0.31.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.3...v0.31.0
 [0.30.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...v0.30.3
 [0.30.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.1...v0.30.2

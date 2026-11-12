@@ -155,17 +155,19 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     connection.subscribe(uri)
 
     received = Queue.new
+    listening = Queue.new
     listen_connection = ActiveRecord::Base.connection_pool.checkout
     listen_thread = Thread.new do
       listen_connection.execute("LISTEN #{RecordingStudioMcp::PostgresBus::CHANNEL}")
-      listen_connection.raw_connection.wait_for_notify(3) do |_channel, _pid, payload|
+      listening << true
+      listen_connection.raw_connection.wait_for_notify(5) do |_channel, _pid, payload|
         received << payload
       end
     end
-    sleep 0.1
+    listening.pop
     RecordingStudioMcp::Fanout.publish(event_name: "recording updated", recording_id: @page_recording.id)
-    listen_thread.join(4)
-    payload = received.pop(true)
+    listen_thread.join(6)
+    payload = received.pop(timeout: 5)
     parsed = JSON.parse(payload)
 
     assert_equal "recording updated", parsed["event"]
