@@ -66,15 +66,22 @@ module RecordingStudioMcp
         private_class_method :tagged_tool
 
         def page_description(entry, action, api_key)
-          [
+          compact_description [
             runs_on_line(entry["type"]),
             Schemas.registered_type_description(entry["type"], api_key),
             "Type: `#{entry['type']}`",
-            *action_copy_lines(action["name"], api_key),
+            action_summary(action["name"], api_key),
+            ActionDocs.raw_copy(RecordingStudioApi.capability_action(action["name"], api: api_key))["description"],
+            access_line(action["name"], api_key),
             tool_line(entry["type"], action["name"])
-          ].compact.join("\n\n")
+          ]
         end
         private_class_method :page_description
+
+        def compact_description(lines)
+          lines.compact.join("\n\n")
+        end
+        private_class_method :compact_description
 
         def runs_on_line(type_name)
           label = RecordingStudio.recordable_type_label(type_name)
@@ -82,12 +89,18 @@ module RecordingStudioMcp
         end
         private_class_method :runs_on_line
 
-        def action_copy_lines(action_name, api_key)
-          registered = RecordingStudioApi.capability_action(action_name, api: api_key)
-          copy = ActionDocs.raw_copy(registered)
-          [copy["summary"], copy["description"], ActionDocs.access_line(registered&.required_role)]
+        def action_summary(action_name, api_key)
+          ActionDocs.raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["summary"]
         end
-        private_class_method :action_copy_lines
+        private_class_method :action_summary
+
+        def access_line(action_name, api_key)
+          registered = RecordingStudioApi.capability_action(action_name, api: api_key)
+          ActionDocs.access_line(
+            RecordingStudioApi.configuration.capability_action_roles.fetch(action_name, registered&.required_role)
+          )
+        end
+        private_class_method :access_line
       end
     end
   end

@@ -742,6 +742,28 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_openapi_action_page_shows_host_overridden_access_role
+    with_isolated_api_configuration do
+      previous_roles = RecordingStudioApi.configuration.capability_action_roles.dup
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Folder",
+        operations: %i[index show],
+        capability_actions: %i[peek]
+      )
+      register_capability_with_role(:peek, summary: "Peek at this folder", role: :view)
+      RecordingStudioApi.configuration.capability_action_roles = { peek: :admin }
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      peek = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }.fetch("Folder--peek").fetch("description")
+
+      assert_includes peek, "Access: Admin."
+      refute_includes peek, "Access: View."
+    ensure
+      RecordingStudioApi.configuration.capability_action_roles = previous_roles
+    end
+  end
+
   def test_openapi_action_page_includes_registered_description_under_summary
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

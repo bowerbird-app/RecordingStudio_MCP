@@ -253,11 +253,9 @@ module RecordingStudioMcp
 
     def endpoint_description(endpoint)
       openapi = endpoint.openapi || {}
-      body = openapi[:description].presence ||
-             openapi[:summary].presence ||
-             "#{endpoint_title(endpoint)}. #{endpoint.http_verb.to_s.upcase} #{endpoint.path}."
-      role = endpoint.required_role if endpoint.respond_to?(:required_role)
-      [body, Documentation::Openapi::ActionDocs.access_line(role)].compact.join("\n\n")
+      openapi[:description].presence ||
+        openapi[:summary].presence ||
+        "#{endpoint_title(endpoint)}. #{endpoint.http_verb.to_s.upcase} #{endpoint.path}."
     end
 
     def tool(options)
