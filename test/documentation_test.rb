@@ -199,8 +199,9 @@ class DocumentationTest < Minitest::Test
       assert_equal "quiet", ping_tool.dig("inputSchema", "example", "style")
       refute ping_tool["inputSchema"].key?("fields")
       refute ping_tool["inputSchema"].key?("reject_unknown")
-      assert_includes ping_tool["description"], "Runs on a Folder (Folder)."
-      assert_includes ping_tool["description"], "Type: `Folder`"
+      refute_includes ping_tool["description"], "Tool name:"
+      refute_includes ping_tool["description"], "Runs on a "
+      refute_includes ping_tool["description"], "Type: `Folder`"
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
       refute_includes ping_tool["description"], "A folder record in this workspace."
@@ -310,20 +311,18 @@ class DocumentationTest < Minitest::Test
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
       ping_tool = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Credit--ping" }
       ping_description = ping_tool.fetch("description")
-      runs_at = ping_description.index("Runs on a Credit (RecordingStudioPresskits::Credit).")
       type_description_at = ping_description.index("Credits on a press kit.")
-      type_line_at = ping_description.index("Type: `RecordingStudioPresskits::Credit`")
+      tool_at = ping_description.index("Tool: capability_action")
 
       refute_includes spec.dig("components", "schemas").keys, "RecordingStudioPresskits::Credit"
       refute_includes spec.dig("components", "schemas").keys, "Folder"
       assert_equal "Credit - Ping", ping_tool["title"]
       assert_equal ["Press Kit"], ping_tool["tags"]
-      assert_includes ping_tool["description"],
-                      "Runs on a Credit (RecordingStudioPresskits::Credit)."
       assert_includes ping_tool["description"], "Credits on a press kit."
-      assert_operator type_description_at, :>, runs_at
-      assert_operator type_line_at, :>, type_description_at
-      assert_includes ping_tool["description"], "Type: `RecordingStudioPresskits::Credit`"
+      refute_includes ping_tool["description"], "Tool name:"
+      refute_includes ping_tool["description"], "Runs on a "
+      refute_includes ping_tool["description"], "Type: `RecordingStudioPresskits::Credit`"
+      assert_operator tool_at, :>, type_description_at
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
       assert_includes ping_tool["description"],
@@ -404,11 +403,15 @@ class DocumentationTest < Minitest::Test
         "RecordingStudioPresskits::CreditsSection",
         operations: %i[index show],
         capability_actions: %i[add_credit reorder_credits],
-        openapi: { tags: ["Press Kit"] }
+        openapi: {
+          tags: ["Press Kit"],
+          description: "A Credits section lists the people credited on a press kit. It lives under a kit section."
+        }
       )
       register_named_capability(
         :add_credit,
         summary: "Add a workspace credit to this section",
+        description: "Add a named person from this workspace to this Credits section.",
         input_contract: {
           reject_unknown: true,
           fields: {
@@ -460,19 +463,28 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Press Kit"], add["tags"]
       assert_equal ["Press Kit"], reorder["tags"]
       assert_equal ["Press Kit"], remove["tags"]
-      assert_includes add["description"], "Runs on a Credits section (RecordingStudioPresskits::CreditsSection)."
-      assert_includes add["description"], "Type: `RecordingStudioPresskits::CreditsSection`"
+      add_description = add["description"]
+      add_action_at = add_description.index("Add a named person from this workspace to this Credits section.")
+      add_type_at = add_description.index(
+        "A Credits section lists the people credited on a press kit. It lives under a kit section."
+      )
+      add_tool_at = add_description.index("Tool: capability_action")
+      refute_includes add_description, "Tool name:"
+      refute_includes add_description, "Runs on a "
+      refute_includes add_description, "Type: `RecordingStudioPresskits::CreditsSection`"
       refute_includes add["description"], "Allowed operations:"
       refute_includes add["description"], "Writable fields:"
-      assert_includes add["description"], "Add a workspace credit to this section"
+      refute_includes add_description, "Add a workspace credit to this section"
+      assert_operator add_type_at, :>, add_action_at
+      assert_operator add_tool_at, :>, add_type_at
       assert_includes add["description"],
                       "Tool: capability_action with type `RecordingStudioPresskits::CreditsSection` " \
                       "and action `add_credit`"
       refute_includes add["description"], "credit_id"
       refute_includes add["description"], "reject_unknown"
       assert_includes reorder["description"], "Reorder credits in this section"
-      assert_includes remove["description"], "Runs on a credit line (RecordingStudioPresskits::CreditLine)."
-      assert_includes remove["description"], "Type: `RecordingStudioPresskits::CreditLine`"
+      refute_includes remove["description"], "Runs on a "
+      refute_includes remove["description"], "Type: `RecordingStudioPresskits::CreditLine`"
       refute_includes remove["description"], "Allowed operations:"
       refute_includes remove["description"], "Writable fields:"
       assert_equal ["TypeName"], schemas.keys
@@ -523,11 +535,11 @@ class DocumentationTest < Minitest::Test
       assert_equal({ "type" => "object" }, add["inputSchema"])
       assert_equal "Gallery - Publish", publish["title"]
       assert_equal ["Galleries"], publish["tags"]
-      assert_includes publish["description"], "Runs on a Gallery (Gallery)."
+      refute_includes publish["description"], "Runs on a "
       assert_equal "Gallery section - Add Slide", add["title"]
       assert_equal ["Galleries"], add["tags"]
-      assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
-      assert_includes add["description"], "Type: `GallerySection`"
+      refute_includes add["description"], "Runs on a "
+      refute_includes add["description"], "Type: `GallerySection`"
       refute_includes add["description"], "Allowed operations:"
       refute_includes add["description"], "Writable fields:"
       assert_includes add["description"], "Add a slide to this section"
@@ -535,7 +547,7 @@ class DocumentationTest < Minitest::Test
                       "Tool: capability_action with type `GallerySection` and action `add_slide`"
       assert_equal "Gallery slide - Remove Slide", remove["title"]
       assert_equal ["Galleries"], remove["tags"]
-      assert_includes remove["description"], "Runs on a Gallery slide (GallerySlide)."
+      refute_includes remove["description"], "Runs on a "
       refute_includes protocol_names, "GallerySection--add_slide"
       assert_equal ["TypeName"], schemas.keys
       refute_includes schemas.keys, "Gallery"
@@ -706,7 +718,8 @@ class DocumentationTest < Minitest::Test
       register_tree_type(
         "Folder",
         operations: %i[index show],
-        capability_actions: %i[peek rename lock stats]
+        capability_actions: %i[peek rename lock stats],
+        openapi: { description: "A folder record in this workspace." }
       )
       register_capability_with_role(:peek, summary: "Peek at this folder", role: :view)
       register_capability_with_role(:rename, summary: "Rename this folder", role: :edit)
@@ -729,11 +742,16 @@ class DocumentationTest < Minitest::Test
       health = tools.fetch("health").fetch("description")
 
       assert_includes peek, "Peek at this folder"
-      peek_summary_at = peek.index("Peek at this folder")
+      peek_action_at = peek.index("Peek at this folder")
+      peek_type_at = peek.index("A folder record in this workspace.")
       peek_access_at = peek.index("Access: View.")
       peek_tool_at = peek.index("Tool: capability_action")
       assert_includes peek, "Access: View."
-      assert_operator peek_access_at, :>, peek_summary_at
+      refute_includes peek, "Tool name:"
+      refute_includes peek, "Runs on a "
+      refute_includes peek, "Type: `Folder`"
+      assert_operator peek_type_at, :>, peek_action_at
+      assert_operator peek_access_at, :>, peek_type_at
       assert_operator peek_tool_at, :>, peek_access_at
       assert_includes rename, "Access: Edit."
       assert_includes lock, "Access: Admin."
@@ -782,12 +800,13 @@ class DocumentationTest < Minitest::Test
       spec = openapi_with_labels!("RecordingStudioPresskits::Files" => "Files")
       attach = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Files--attach" }
       page = attach.fetch("description")
-      summary_at = page.index("Attach a file")
       description_at = page.index("Signed blob from create_upload, or a list of attachments.")
       tool_at = page.index("Tool: capability_action")
 
       assert_equal "File - Attach", attach["title"]
-      assert_operator description_at, :>, summary_at
+      refute_includes page, "Attach a file"
+      refute_includes page, "Tool name:"
+      refute_includes page, "Runs on a "
       assert_operator tool_at, :>, description_at
     end
   end

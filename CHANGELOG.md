@@ -13,10 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MCP docs action pages show `Access: View`, `Access: Edit`, or
   `Access: Admin` from the enforced RS_API role (host
   `capability_action_roles` override, else the registered `required_role`),
-  in the same style as `Runs on a <type>`, directly under the action
-  description. Other role names are humanized. The line is omitted when
-  no role is set. The per-request `capability_action_role_resolver`
-  cannot be shown in static docs.
+  directly under the action and type descriptions. Other role names are
+  humanized. The line is omitted when no role is set. The per-request
+  `capability_action_role_resolver` cannot be shown in static docs.
+
+### Changed
+- MCP docs action pages list the action description, the type
+  description, Access, then `Tool: capability_action with type … and
+  action …`. They no longer include `Tool name:`, `Runs on a <type>`, or
+  `Type: <class>`. Titles and sidebar grouping are unchanged.
 
 ### Upgrade notes
 - Bump to `0.34.0`. Previous version is `0.33.0`. No MCP protocol

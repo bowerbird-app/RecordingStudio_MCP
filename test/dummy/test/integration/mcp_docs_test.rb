@@ -107,9 +107,14 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute tools.fetch("list").key?("x-mcp-docs-only")
     assert ping_tool.dig("inputSchema", "properties", "style")
     refute ping_tool["inputSchema"].key?("fields")
-    assert_includes ping_tool["description"], "Runs on a Workspace (Workspace)."
-    assert_includes ping_tool["description"], "Access: View."
-    assert_includes ping_tool["description"], "Type: `Workspace`"
+    ping_description = ping_tool["description"]
+    ping_access_at = ping_description.index("Access: View.")
+    ping_tool_at = ping_description.index("Tool: capability_action")
+    refute_includes ping_description, "Tool name:"
+    refute_includes ping_description, "Runs on a "
+    refute_includes ping_description, "Type: `Workspace`"
+    assert_includes ping_description, "Access: View."
+    assert_operator ping_tool_at, :>, ping_access_at
     refute_includes tools.fetch("ping")["description"], "Access:"
     refute_includes ping_tool["description"], "Allowed operations:"
     refute_includes ping_tool["description"], "Writable fields:"
