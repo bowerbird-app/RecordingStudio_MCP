@@ -66,27 +66,41 @@ module RecordingStudioMcp
         private_class_method :tagged_tool
 
         def page_description(entry, action, api_key)
-          [
-            runs_on_line(entry["type"]),
+          compact_description [
+            action_description(action["name"], api_key),
             Schemas.registered_type_description(entry["type"], api_key),
-            "Type: `#{entry['type']}`",
-            action_summary(action["name"], api_key),
-            ActionDocs.raw_copy(RecordingStudioApi.capability_action(action["name"], api: api_key))["description"],
+            access_line(action["name"], api_key),
+            no_input_fields_line(action),
             tool_line(entry["type"], action["name"])
-          ].compact.join("\n\n")
+          ]
         end
         private_class_method :page_description
 
-        def runs_on_line(type_name)
-          label = RecordingStudio.recordable_type_label(type_name)
-          "Runs on a #{label} (#{type_name})."
+        def compact_description(lines)
+          lines.compact.join("\n\n")
         end
-        private_class_method :runs_on_line
+        private_class_method :compact_description
 
-        def action_summary(action_name, api_key)
-          ActionDocs.raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["summary"]
+        def action_description(action_name, api_key)
+          copy = ActionDocs.raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))
+          copy["description"].presence || copy["summary"]
         end
-        private_class_method :action_summary
+        private_class_method :action_description
+
+        def access_line(action_name, api_key)
+          registered = RecordingStudioApi.capability_action(action_name, api: api_key)
+          ActionDocs.access_line(
+            RecordingStudioApi.configuration.capability_action_roles.fetch(action_name, registered&.required_role)
+          )
+        end
+        private_class_method :access_line
+
+        def no_input_fields_line(action)
+          return if action["params"].present?
+
+          "No input fields."
+        end
+        private_class_method :no_input_fields_line
       end
     end
   end
