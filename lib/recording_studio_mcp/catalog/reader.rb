@@ -72,7 +72,7 @@ module RecordingStudioMcp
         details = { "name" => action.name.to_s }
         contract = action.input_contract&.as_json
         details["params"] = contract.deep_stringify_keys if contract.present?
-        details
+        details.merge(Documentation::Openapi::ActionDocs.raw_copy(action))
       end
 
       def enabled_action_registrations(recordable_type)

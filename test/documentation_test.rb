@@ -102,8 +102,6 @@ class DocumentationTest < Minitest::Test
       mcp = spec.fetch("x-mcp")
       names = mcp.fetch("tools").map { |tool| tool["name"] }
       schemas = spec.dig("components", "schemas")
-      folder = schemas.fetch("Folder")
-      actions = Array(folder["x-mcp-capability-actions"]).map { |action| action["name"] }
 
       assert_equal "3.1.0", spec["openapi"]
       assert_equal "Public MCP", spec.dig("info", "title")
@@ -114,12 +112,10 @@ class DocumentationTest < Minitest::Test
       assert_includes names, "list"
       assert_includes names, "describe"
       assert_includes names, "ping"
-      assert_includes schemas.keys, "Folder"
-      assert_includes schemas.keys, "Page"
-      assert_includes Array(folder["x-mcp-operations"]), "index"
-      refute folder.key?("x-mcp-writable-fields")
-      assert_includes folder.fetch("properties").keys, "title"
-      assert_includes actions, "ping"
+      assert_includes names, "Folder--ping"
+      assert_equal ["TypeName"], schemas.keys
+      refute_includes schemas.keys, "Folder"
+      refute_includes schemas.keys, "Page"
       assert_equal "recording://{id}", mcp.dig("resources", 0, "uri")
       assert_equal "recording://{id}", mcp.dig("resourceTemplates", 0, "uriTemplate")
       refute Openapi.respond_to?(:servers)
@@ -169,8 +165,7 @@ class DocumentationTest < Minitest::Test
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       mcp = spec.fetch("x-mcp")
       tools = mcp.fetch("tools").index_by { |tool| tool["name"] }
-      folder = spec.dig("components", "schemas", "Folder")
-      ping = Array(folder["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
+      schemas = spec.dig("components", "schemas")
       description = spec.dig("info", "description")
 
       listed = RecordingStudioMcp::Tools.definitions.index_by { |tool| tool[:name] }
@@ -191,16 +186,8 @@ class DocumentationTest < Minitest::Test
       refute_includes tag_names, "Types"
       assert_equal tag_names.uniq, tag_names
       refute spec.key?("x-tagGroups")
-      assert_equal "Folder", folder["title"]
-      assert_includes folder["description"], "A folder record in this workspace."
-      assert_includes folder["description"], "Type: `Folder`"
-      assert_includes folder["description"], "Allowed operations:"
-      assert_includes folder["description"], "index"
-      assert_includes folder["description"], "create"
-      assert_includes folder["description"], "Writable fields: title."
-      assert_includes folder["description"], "Enabled capability actions appear as tools in this sidebar group."
-      refute_includes folder["description"], "**ping**"
-      refute_includes folder["description"], "style"
+      assert_equal ["TypeName"], schemas.keys
+      refute_includes schemas.keys, "Folder"
       ping_tool = tools.fetch("Folder--ping")
       assert_equal "Ping", ping_tool["title"]
       assert ping_tool["x-mcp-docs-only"]
@@ -216,13 +203,11 @@ class DocumentationTest < Minitest::Test
       assert_includes ping_tool["description"], "Type: `Folder`"
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
+      refute_includes ping_tool["description"], "A folder record in this workspace."
       assert_includes ping_tool["description"], "Tool: capability_action with type `Folder` and action `ping`"
       refute_includes ping_tool["description"], "style"
       refute_includes ping_tool["description"], "reject_unknown"
       refute ping_tool.key?("tags")
-      refute folder.key?("x-tags")
-      assert ping.dig("params", "fields", "style")
-      assert_equal "Tool: capability_action with type `Folder` and action `ping`", ping["description"]
       assert_includes description, "## Authentication"
       assert_includes description, "## Records and parents"
       assert_includes description, "## Listing and pagination"
@@ -321,50 +306,78 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = openapi_with_credit_label!
-      credit = spec.dig("components", "schemas", "RecordingStudioPresskits::Credit")
-      folder = spec.dig("components", "schemas", "Folder")
-      ping = Array(credit["x-mcp-capability-actions"]).find { |action| action["name"] == "ping" }
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
-      tagged_schemas = spec.dig("components", "schemas").except("TypeName")
-      schema_tag_pairs = tagged_schemas.flat_map do |name, schema|
-        Array(schema["x-tags"]).map { |tag| [name, tag] }
-      end
-
-      assert_equal ["Press Kit"], credit["x-tags"]
-      refute folder.key?("x-tags")
-      assert_equal "Credit", credit["title"]
-      assert_equal "Folder", folder["title"]
-      assert_includes credit["description"], "Credits on a press kit."
-      assert_includes credit["description"], "Type: `RecordingStudioPresskits::Credit`"
-      refute_includes credit["description"], "Registered type"
-      assert_includes credit["description"], "Enabled capability actions appear as tools in this sidebar group."
-      refute_includes credit["description"], "**ping**"
-      refute_includes credit["description"],
-                      "These run through the `capability_action` tool; `describe` lists them at runtime."
+      press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
       ping_tool = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Credit--ping" }
+      ping_description = ping_tool.fetch("description")
+      runs_at = ping_description.index("Runs on a Credit (RecordingStudioPresskits::Credit).")
+      type_description_at = ping_description.index("Credits on a press kit.")
+      type_line_at = ping_description.index("Type: `RecordingStudioPresskits::Credit`")
+
+      refute_includes spec.dig("components", "schemas").keys, "RecordingStudioPresskits::Credit"
+      refute_includes spec.dig("components", "schemas").keys, "Folder"
       assert_equal "Ping", ping_tool["title"]
       assert_equal ["Press Kit"], ping_tool["tags"]
       assert_includes ping_tool["description"],
                       "Runs on a Credit (RecordingStudioPresskits::Credit)."
+      assert_includes ping_tool["description"], "Credits on a press kit."
+      assert_operator type_description_at, :>, runs_at
+      assert_operator type_line_at, :>, type_description_at
       assert_includes ping_tool["description"], "Type: `RecordingStudioPresskits::Credit`"
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
       assert_includes ping_tool["description"],
                       "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`"
-      refute_includes credit["description"], "Capability action. Call it through"
-      assert_equal(
-        "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`",
-        ping["description"]
-      )
+      assert_equal "Credits on a press kit.", press_kit["description"]
       assert_includes tag_names, "Press Kit"
       refute_includes tag_names, "Press kits"
       refute_includes tag_names, "Types"
       assert_equal 1, tag_names.count("Press Kit")
       assert_equal tag_names.uniq, tag_names
       refute spec.key?("x-tagGroups")
-      assert_equal schema_tag_pairs.uniq, schema_tag_pairs
-      refute_includes Array(folder["x-tags"]), "Press Kit"
-      refute_includes Array(credit["x-tags"]), "Types"
+    end
+  end
+
+  def test_openapi_describes_a_shared_tag_when_type_descriptions_match
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Credit",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::KitSection",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
+
+      assert_equal "Credits on a press kit.", press_kit["description"]
+    end
+  end
+
+  def test_openapi_leaves_a_shared_tag_undescribed_when_type_descriptions_differ
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Credit",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::KitSection",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"], description: "Sections in a press kit." }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
+
+      assert_equal "Press Kit", press_kit["name"]
+      refute press_kit.key?("description")
     end
   end
 
@@ -421,9 +434,6 @@ class DocumentationTest < Minitest::Test
         tool["title"] if tool["name"].to_s.include?("--")
       end
       schemas = spec.dig("components", "schemas")
-      credit = schemas.fetch("RecordingStudioPresskits::Credit")
-      line = schemas.fetch("RecordingStudioPresskits::CreditLine")
-      section = schemas.fetch("RecordingStudioPresskits::CreditsSection")
       protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
 
       assert_equal ["Add Credit", "Remove Credit", "Reorder Credits"], titles
@@ -461,18 +471,10 @@ class DocumentationTest < Minitest::Test
       assert_includes remove["description"], "Type: `RecordingStudioPresskits::CreditLine`"
       refute_includes remove["description"], "Allowed operations:"
       refute_includes remove["description"], "Writable fields:"
-      assert_equal ["Press Kit"], credit["x-tags"]
-      refute line.key?("x-tags")
-      refute section.key?("x-tags")
-      assert_includes schemas.keys, "RecordingStudioPresskits::CreditLine"
-      assert_includes schemas.keys, "RecordingStudioPresskits::CreditsSection"
-      assert_includes credit["description"], "Type: `RecordingStudioPresskits::Credit`"
-      assert_includes credit["description"], "Allowed operations:"
-      assert_includes credit["description"], "Writable fields:"
-      assert_includes credit["description"], "Enabled capability actions: none."
-      assert_includes line["description"], "Enabled capability actions appear as tools in this sidebar group."
-      refute_includes line["description"], "**remove_credit**"
-      refute_includes section["description"], "**add_credit**"
+      assert_equal ["TypeName"], schemas.keys
+      refute_includes schemas.keys, "RecordingStudioPresskits::Credit"
+      refute_includes schemas.keys, "RecordingStudioPresskits::CreditLine"
+      refute_includes schemas.keys, "RecordingStudioPresskits::CreditsSection"
     end
   end
 
@@ -507,9 +509,6 @@ class DocumentationTest < Minitest::Test
       ) { RecordingStudioMcp::Documentation.openapi(api: :public) }
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
       schemas = spec.dig("components", "schemas")
-      gallery = schemas.fetch("Gallery")
-      section = schemas.fetch("GallerySection")
-      slide = schemas.fetch("GallerySlide")
       publish = tools.fetch("Gallery--publish")
       add = tools.fetch("GallerySection--add_slide")
       remove = tools.fetch("GallerySlide--remove_slide")
@@ -534,12 +533,10 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Galleries"], remove["tags"]
       assert_includes remove["description"], "Runs on a Gallery slide (GallerySlide)."
       refute_includes protocol_names, "GallerySection--add_slide"
-      assert_equal ["Galleries"], gallery["x-tags"]
-      refute section.key?("x-tags")
-      refute slide.key?("x-tags")
-      assert_includes gallery["description"], "Enabled capability actions appear as tools in this sidebar group."
-      assert_includes schemas.keys, "GallerySection"
-      assert_includes schemas.keys, "GallerySlide"
+      assert_equal ["TypeName"], schemas.keys
+      refute_includes schemas.keys, "Gallery"
+      refute_includes schemas.keys, "GallerySection"
+      refute_includes schemas.keys, "GallerySlide"
     end
   end
 
@@ -561,10 +558,9 @@ class DocumentationTest < Minitest::Test
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
       add = tools.fetch("RecordingStudioPresskits::Files--add_file")
-      files = spec.dig("components", "schemas", "RecordingStudioPresskits::Files")
 
       assert_equal ["Press Kit"], add["tags"]
-      refute files.key?("x-tags")
+      refute_includes spec.dig("components", "schemas").keys, "RecordingStudioPresskits::Files"
     end
   end
 

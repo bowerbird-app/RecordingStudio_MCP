@@ -80,21 +80,16 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     spec = JSON.parse(response.body)
     names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
     schemas = spec.dig("components", "schemas")
-    workspace = schemas.fetch("Workspace")
-    actions = Array(workspace["x-mcp-capability-actions"]).map { |action| action["name"] || action[:name] }
 
     assert_equal "3.1.0", spec["openapi"]
     assert_includes names, "list"
     assert_includes names, "describe"
     assert_includes names, "ping"
-    assert_equal "Workspace", workspace["title"]
-    assert_includes workspace["description"], "Type: `Workspace`"
-    assert_includes schemas.keys, "Workspace"
-    assert_includes schemas.keys, "Folder"
-    assert_includes schemas.keys, "Page"
-    refute workspace.key?("x-mcp-writable-fields")
-    assert_includes workspace.fetch("properties").keys, "name"
-    assert_includes actions, "ping"
+    assert_includes names, "Workspace--ping"
+    assert_equal ["TypeName"], schemas.keys
+    refute_includes schemas.keys, "Workspace"
+    refute_includes schemas.keys, "Folder"
+    refute_includes schemas.keys, "Page"
     assert_equal "recording://{id}", spec.dig("x-mcp", "resourceTemplates", 0, "uriTemplate")
     description = spec.dig("info", "description")
     refute_empty description
@@ -106,12 +101,6 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_equal ["Core"], tools.fetch("list")["tags"]
     assert_equal ["Endpoints"], tools.fetch("ping")["tags"]
     assert tools.fetch("list").key?("outputSchema")
-    assert_includes workspace["description"], "Allowed operations:"
-    assert_includes workspace["description"], "Enabled capability actions appear as tools in this sidebar group."
-    refute_includes workspace["description"], "**ping**"
-    ping = Array(workspace["x-mcp-capability-actions"]).find { |action| (action["name"] || action[:name]) == "ping" }
-    assert ping["params"] || ping[:params]
-    assert_includes ping["description"], "capability_action"
     ping_tool = tools.fetch("Workspace--ping")
     assert_equal "Ping Workspace", ping_tool["title"]
     assert ping_tool["x-mcp-docs-only"]
@@ -124,8 +113,6 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_includes ping_tool["description"], "Writable fields:"
     assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
     refute_includes ping_tool["description"], "style"
-    refute workspace.key?("x-tags")
-    refute workspace.key?("x-tags")
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_includes tag_names, "Core"
     assert_includes tag_names, "Endpoints"
@@ -150,6 +137,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes names, "ops_ping"
     refute_includes schemas.keys, "Workspace"
     refute_includes schemas.keys, "Folder"
+    assert_includes schemas.keys, "TypeName"
     description = spec.dig("info", "description")
     refute_includes description, "Call describe before create"
     refute_includes description, "## Records and parents"
@@ -201,7 +189,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_docs_surfaces :success
     get public_api_mcp_docs_openapi_path
     spec = JSON.parse(response.body)
-    assert_includes spec.dig("components", "schemas").keys, "Workspace"
+    assert_includes spec.dig("components", "schemas").keys, "TypeName"
+    refute_includes spec.dig("components", "schemas").keys, "Workspace"
   end
 
   test "host gate denies signed-in visitors with 403" do

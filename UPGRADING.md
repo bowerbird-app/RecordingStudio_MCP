@@ -1,5 +1,18 @@
 # Upgrading Recording Studio MCP
 
+## 0.32.0
+
+Previous version is `0.31.2`. No MCP protocol migration.
+
+`describe` now includes capability action `title` and `summary` from the
+RS_API OpenAPI registration, plus `description` when that field is set.
+Blank keys stay off the payload. The type's registered OpenAPI description
+is included when present.
+
+MCP docs no longer emit per-type schema components. Action tool pages and
+sidebar tags carry the type description instead. Protocol tools, API, and
+`describe` contracts besides those extra keys are unchanged.
+
 ## 0.31.2
 
 Previous version is `0.31.1`. No MCP protocol migration. Docs-only.

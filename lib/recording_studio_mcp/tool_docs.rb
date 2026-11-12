@@ -63,9 +63,11 @@ module RecordingStudioMcp
       prefix.to_s.split("_").map { |part| humanize_part(part) }.join(" ")
     end
 
-    def openapi_tags(names)
+    def openapi_tags(names, descriptions: {})
       Array(names).map(&:to_s).reject(&:blank?).uniq.map do |name|
-        { "name" => name }
+        tag = { "name" => name }
+        tag["description"] = descriptions[name] if descriptions[name].present?
+        tag
       end
     end
 

@@ -14,6 +14,9 @@ module RecordingStudioMcp
       def describe_core(recordable_type, registration)
         {
           "type" => recordable_type,
+          "description" => Documentation::Openapi::Schemas.registered_type_description(
+            recordable_type, api
+          ),
           "operations" => Array(registration&.operations).map(&:to_s),
           "writable_fields" => FieldSchema.for(recordable_type, registration),
           "capability_actions" => enabled_capability_actions(recordable_type)

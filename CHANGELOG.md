@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-11-12
+
+### Changed
+- `describe` includes each capability action's registered OpenAPI `title` and
+  `summary`, plus `description` when set. Blank keys are omitted. The type's
+  registered OpenAPI description is on the describe payload when present.
+- MCP docs drop per-type schema components and their SCHEMA sidebar entries.
+  Action tool pages show the type description after `Runs on a <type>`. That
+  text is the sidebar tag description when types that share the tag have one
+  unique description. Conflicting descriptions leave the tag undescribed.
+  `TypeName`, API, describe, and tool input schemas stay.
+
+### Upgrade notes
+- Bump to `0.32.0`. Previous version is `0.31.2`. No MCP protocol migration.
+  Clients that parse `describe` may see new keys (`title`, `summary`,
+  `description` on actions, `description` on the type). Docs no longer list
+  type SCHEMA pages.
+
 ## [0.31.2] - 2026-11-12
 
 ### Fixed
@@ -877,7 +895,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.32.0...HEAD
+[0.32.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...v0.31.2
 [0.31.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.3...v0.31.0

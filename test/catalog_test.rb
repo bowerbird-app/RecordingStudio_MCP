@@ -76,7 +76,12 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal true, catalog.capability_actions?
-      assert_equal [{ "name" => "ping" }], catalog.describe("Workspace").fetch("capability_actions")
+      ping = catalog.describe("Workspace").fetch("capability_actions")
+
+      assert_equal [{ "name" => "ping" }], ping
+      refute ping.first.key?("title")
+      refute ping.first.key?("summary")
+      refute ping.first.key?("description")
 
       RecordingStudio.stub(:capability_enabled?, false) do
         assert_equal true, catalog.capability_actions?
@@ -85,12 +90,81 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_describe_includes_action_title_and_summary_when_registered
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :ping,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: {
+          title: "Ping Workspace",
+          summary: "Ping this workspace",
+          description: "A longer note about ping."
+        }
+      )
+      register_tree_type("Workspace", capability_actions: %i[ping])
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+      ping = described.fetch("capability_actions").first
+
+      assert_equal "ping", ping.fetch("name")
+      assert_equal "Ping Workspace", ping.fetch("title")
+      assert_equal "Ping this workspace", ping.fetch("summary")
+      assert_equal "A longer note about ping.", ping.fetch("description")
+    end
+  end
+
+  def test_describe_omits_blank_action_openapi_fields
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :ping,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: { title: "", summary: "   " }
+      )
+      register_tree_type("Workspace", capability_actions: %i[ping])
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+      ping = described.fetch("capability_actions").first
+
+      assert_equal({ "name" => "ping" }, ping)
+    end
+  end
+
+  def test_describe_includes_type_description_when_registered
+    with_isolated_api_configuration do
+      register_tree_type("Workspace", openapi: { description: "A workspace root." })
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+
+      assert_equal "A workspace root.", described.fetch("description")
+    end
+  end
+
+  def test_describe_uses_tag_description_when_type_description_is_unset
+    with_isolated_api_configuration do
+      register_tree_type(
+        "Workspace",
+        openapi: { tag: { description: "Credits on a press kit." } }
+      )
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+
+      assert_equal "Credits on a press kit.", described.fetch("description")
+    end
+  end
+
+  def test_describe_omits_type_description_when_unset
+    with_isolated_api_configuration do
+      register_tree_type("Workspace")
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+
+      refute described.key?("description")
+    end
+  end
+
   def test_describe_includes_auto_enabled_capability_actions
     with_isolated_api_configuration do
       register_ping_capability
       register_tree_type("Workspace", capability_actions: %i[ping])
       ping = RecordingStudioApi.capability_action(:ping, api: :public)
-      grant = Struct.new(:name, :input_contract).new(:grant_access, nil)
+      grant = Struct.new(:name, :input_contract, :openapi).new(:grant_access, nil, nil)
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       RecordingStudioApi.stub(:capability_actions_for, [ping, grant]) do

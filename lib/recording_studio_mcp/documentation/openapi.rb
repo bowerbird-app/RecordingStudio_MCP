@@ -47,7 +47,7 @@ module RecordingStudioMcp
           "info" => info(page),
           "servers" => servers(page.api_key),
           "paths" => {},
-          "components" => { "schemas" => Schemas.for(page, group_tags: group_tags) },
+          "components" => { "schemas" => Schemas.for(page) },
           "x-mcp" => Mcp.section(page, group_tags: group_tags)
         }
       end

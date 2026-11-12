@@ -6,9 +6,18 @@ module RecordingStudioMcp
       module ActionDocs
         module_function
 
+        def raw_copy(action)
+          openapi = action&.openapi
+          return {} unless openapi.is_a?(Hash)
+
+          %w[title summary description].each_with_object({}) do |key, fields|
+            value = openapi[key.to_sym].presence || openapi[key].presence
+            fields[key] = value if value
+          end
+        end
+
         def title(action_name, api_key)
-          openapi = RecordingStudioApi.capability_action(action_name, api: api_key)&.openapi
-          documented = openapi.is_a?(Hash) && (openapi[:title].presence || openapi["title"].presence)
+          documented = raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["title"]
           documented.presence || action_name.humanize.titleize
         end
 
