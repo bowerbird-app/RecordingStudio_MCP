@@ -5,6 +5,18 @@ require "test_helper"
 class ToolDocsTest < Minitest::Test
   include IsolatedApiConfiguration
 
+  def test_describe_output_schema_includes_action_title_and_summary
+    schema = RecordingStudioMcp::ToolDocs.describe_output_schema
+    properties = schema.fetch(:properties)
+    action = properties.fetch(:capability_actions).fetch(:items).fetch(:properties)
+
+    assert_equal "string", properties.dig(:description, :type)
+    assert_equal "string", action.dig(:name, :type)
+    assert_equal "string", action.dig(:title, :type)
+    assert_equal "string", action.dig(:summary, :type)
+    assert_equal "string", action.dig(:description, :type)
+  end
+
   def test_type_tags_use_registered_endpoint_tags_not_the_scalar_group
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

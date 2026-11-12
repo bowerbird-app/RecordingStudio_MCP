@@ -15,11 +15,23 @@ module RecordingStudioMcp
         additionalProperties: true
       }.freeze
       ACTION = { type: "object", additionalProperties: true }.freeze
+      CAPABILITY_ACTION = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          title: { type: "string" },
+          summary: { type: "string" },
+          description: { type: "string" },
+          params: ACTION
+        },
+        additionalProperties: true
+      }.freeze
       DESCRIBE_PROPERTIES = {
         type: { type: "string" },
+        description: { type: "string" },
         operations: { type: "array", items: { type: "string" } },
         writable_fields: { type: "array", items: ACTION },
-        capability_actions: { type: "array", items: ACTION },
+        capability_actions: { type: "array", items: CAPABILITY_ACTION },
         output_keys: { type: "array", items: { type: "string" } },
         fields: { type: "array", items: { type: "string" } },
         relationships: { type: "array", items: ACTION },

@@ -33,7 +33,8 @@ module RecordingStudioMcp
     end
 
     def attach_sidebar!(spec, page, group_tags: nil)
-      tags = openapi_tags(tool_sidebar_tags(spec) + type_sidebar_tags(page, group_tags: group_tags))
+      names = tool_sidebar_tags(spec) + type_sidebar_tags(page, group_tags: group_tags)
+      tags = openapi_tags(names, descriptions: type_tag_descriptions(page, group_tags: group_tags))
       spec["tags"] = tags if tags.any?
       spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
       spec
@@ -53,6 +54,26 @@ module RecordingStudioMcp
       end
     end
     private_class_method :type_sidebar_tags
+
+    def type_tag_descriptions(page, group_tags: nil)
+      Array(page.types).each_with_object({}) do |entry, acc|
+        assign_type_tag_description(acc, entry, page, group_tags)
+      end
+    end
+    private_class_method :type_tag_descriptions
+
+    def assign_type_tag_description(acc, entry, page, group_tags)
+      type_name = (entry["type"] || entry[:type]).to_s
+      return if type_name.blank?
+
+      description = Documentation::Openapi::Schemas.registered_type_description(type_name, page.api_key)
+      return if description.blank?
+
+      type_tags(type_name, api: page.api_key, group_tags: group_tags).each do |tag|
+        acc[tag] = [acc[tag], description].compact.uniq.join("\n\n")
+      end
+    end
+    private_class_method :assign_type_tag_description
 
     def tags_for_openapi(tool, surface)
       found = entry_for_tool(tool, surface)

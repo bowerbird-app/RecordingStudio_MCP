@@ -38,7 +38,7 @@ module RecordingStudioMcp
         bullets = [
           "- Records nest under `parent_id`.",
           "- `root_id` is the workspace, not the parent record.",
-          "- Each type lists operations and fields. Capability actions appear as tools under the same tag."
+          "- Capability actions appear as tools under the type's tag. The type description is on those pages."
         ]
         if surface.tree_tool_names.intersect?(%w[create update])
           bullets << "- Send writable fields at the top level, not under `attributes`."

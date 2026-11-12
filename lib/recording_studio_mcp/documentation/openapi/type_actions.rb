@@ -6,20 +6,6 @@ module RecordingStudioMcp
       module TypeActions
         module_function
 
-        def documented(entry)
-          Array(entry["capability_actions"]).map do |action|
-            action = Internals.stringify(action)
-            action.merge("description" => tool_line(entry["type"], action["name"]))
-          end
-        end
-
-        def block(entry)
-          actions = Array(entry["capability_actions"]).map { |action| Internals.stringify(action) }
-          return "Enabled capability actions: none." if actions.empty?
-
-          "Enabled capability actions appear as tools in this sidebar group."
-        end
-
         def tools(page, group_tags: nil)
           type_names = page_type_names(page)
           listed = Array(page.types).flat_map { |entry| tools_for(entry, page.api_key, group_tags, type_names) }
@@ -82,6 +68,7 @@ module RecordingStudioMcp
         def page_description(entry, action, api_key)
           [
             runs_on_line(entry["type"]),
+            Schemas.registered_type_description(entry["type"], api_key),
             "Type: `#{entry['type']}`",
             action_summary(action["name"], api_key),
             tool_line(entry["type"], action["name"])
