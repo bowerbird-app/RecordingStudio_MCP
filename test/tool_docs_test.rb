@@ -25,6 +25,23 @@ class ToolDocsTest < Minitest::Test
     end
   end
 
+  def test_action_tags_inherit_the_gem_namespace_type_group
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("RecordingStudioPresskits::PressKit", openapi: { tags: ["Press Kit"] })
+      register_tree_type("RecordingStudioPresskits::Files")
+      register_tree_type("Folder")
+      docs = RecordingStudioMcp::ToolDocs
+      names = ["RecordingStudioPresskits::PressKit", "RecordingStudioPresskits::Files", "Folder"]
+
+      assert_equal ["Press Kit"], docs.action_tags(
+        "RecordingStudioPresskits::Files", api: :public, type_names: names
+      )
+      assert_equal [], docs.type_tags("RecordingStudioPresskits::Files", api: :public)
+      assert_equal [], docs.action_tags("Folder", api: :public, type_names: names)
+    end
+  end
+
   def test_type_tags_use_the_type_registration_tags_when_present
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

@@ -25,6 +25,7 @@ module RecordingStudioMcp
 end
 
 require_relative "openapi/mcp"
+require_relative "openapi/action_docs"
 require_relative "openapi/type_actions"
 require_relative "openapi/schemas"
 

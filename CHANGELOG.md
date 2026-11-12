@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.2] - 2026-11-12
+
+### Fixed
+- MCP docs convert a capability action's RS_API params definition into a JSON
+  Schema `inputSchema` (properties, required, enums, `additionalProperties`
+  false when `reject_unknown` is true, `minLength` 1 when `allow_blank` is
+  false) by reusing `EndpointSchema.build`. Action pages show a real input
+  example and no longer dump the raw params JSON in the description.
+- Action tools whose type has no OpenAPI tags inherit the sidebar group from
+  other types in the same Ruby namespace, so gem types such as
+  `RecordingStudioPresskits::Files` sit under Press Kit instead of the generic
+  Tools list. Type SCHEMA tags are unchanged, so ungrouped types stay off the
+  schema sidebar.
+- Duplicate action titles in the same sidebar group insert the type's human
+  label after the verb (`Create Press Kit Upload`). An action OpenAPI `title`
+  is used when the owning gem sets one.
+- Action tool pages keep `Runs on a <type>` and drop the type's allowed
+  operations and writable fields. Type schema pages still list those.
+
+### Upgrade notes
+- Bump to `0.31.2`. Previous version is `0.31.1`. No MCP migration. Docs-only.
+
 ## [0.31.1] - 2026-11-11
 
 ### Fixed
@@ -855,7 +877,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...HEAD
+[0.31.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...v0.31.2
 [0.31.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.3...v0.31.0
 [0.30.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.30.2...v0.30.3
