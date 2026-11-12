@@ -83,10 +83,7 @@ module RecordingStudioMcp
         private_class_method :runs_on_line
 
         def action_summary(action_name, api_key)
-          openapi = RecordingStudioApi.capability_action(action_name, api: api_key)&.openapi
-          return unless openapi.is_a?(Hash)
-
-          openapi[:summary].presence
+          ActionDocs.raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["summary"]
         end
         private_class_method :action_summary
       end

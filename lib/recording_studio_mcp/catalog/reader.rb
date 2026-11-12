@@ -72,17 +72,7 @@ module RecordingStudioMcp
         details = { "name" => action.name.to_s }
         contract = action.input_contract&.as_json
         details["params"] = contract.deep_stringify_keys if contract.present?
-        details.merge(action_openapi_fields(action))
-      end
-
-      def action_openapi_fields(action)
-        openapi = action.openapi if action.respond_to?(:openapi)
-        return {} unless openapi.is_a?(Hash)
-
-        %w[title summary description].each_with_object({}) do |key, fields|
-          value = openapi[key.to_sym].presence || openapi[key].presence
-          fields[key] = value if value
-        end
+        details.merge(Documentation::Openapi::ActionDocs.raw_copy(action))
       end
 
       def enabled_action_registrations(recordable_type)

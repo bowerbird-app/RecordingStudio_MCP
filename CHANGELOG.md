@@ -14,9 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `summary`, plus `description` when set. Blank keys are omitted. The type's
   registered OpenAPI description is on the describe payload when present.
 - MCP docs drop per-type schema components and their SCHEMA sidebar entries.
-  Action tool pages show the type description after `Runs on a <type>`. The
-  same text is the sidebar tag description. `TypeName`, API, describe, and
-  tool input schemas stay.
+  Action tool pages show the type description after `Runs on a <type>`. That
+  text is the sidebar tag description when types that share the tag have one
+  unique description. Conflicting descriptions leave the tag undescribed.
+  `TypeName`, API, describe, and tool input schemas stay.
 
 ### Upgrade notes
 - Bump to `0.32.0`. Previous version is `0.31.2`. No MCP protocol migration.

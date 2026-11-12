@@ -70,10 +70,19 @@ module RecordingStudioMcp
       return if description.blank?
 
       type_tags(type_name, api: page.api_key, group_tags: group_tags).each do |tag|
-        acc[tag] = [acc[tag], description].compact.uniq.join("\n\n")
+        remember_tag_description(acc, tag, description)
       end
     end
     private_class_method :assign_type_tag_description
+
+    def remember_tag_description(acc, tag, description)
+      if !acc.key?(tag)
+        acc[tag] = description
+      elsif acc[tag] != description
+        acc[tag] = nil
+      end
+    end
+    private_class_method :remember_tag_description
 
     def tags_for_openapi(tool, surface)
       found = entry_for_tool(tool, surface)
