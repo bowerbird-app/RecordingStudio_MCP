@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-11-12
+
+### Changed
+- MCP docs and `describe` show capability action titles type first
+  (`File - Create Upload`, `Podcast - Add`). A gem OpenAPI title that
+  already contains ` - ` is used as is. A short title is prefixed with
+  the singular type label. Otherwise the humanized action name is
+  prefixed. Duplicate-title insertion is gone.
+- Action tool pages show the gem OpenAPI description under the summary
+  when that field is set.
+
+### Upgrade notes
+- Bump to `0.33.0`. Previous version is `0.32.0`. No MCP protocol
+  migration. Docs and `describe` titles change. Protocol tools, routes,
+  and action behaviour are unchanged.
+
 ## [0.32.0] - 2026-11-12
 
 ### Changed
@@ -895,7 +911,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...v0.31.2
 [0.31.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.0...v0.31.1

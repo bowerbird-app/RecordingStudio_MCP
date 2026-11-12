@@ -189,7 +189,7 @@ class DocumentationTest < Minitest::Test
       assert_equal ["TypeName"], schemas.keys
       refute_includes schemas.keys, "Folder"
       ping_tool = tools.fetch("Folder--ping")
-      assert_equal "Ping", ping_tool["title"]
+      assert_equal "Folder - Ping", ping_tool["title"]
       assert ping_tool["x-mcp-docs-only"]
       refute tools.fetch("list").key?("x-mcp-docs-only")
       assert_equal "object", ping_tool.dig("inputSchema", "type")
@@ -316,7 +316,7 @@ class DocumentationTest < Minitest::Test
 
       refute_includes spec.dig("components", "schemas").keys, "RecordingStudioPresskits::Credit"
       refute_includes spec.dig("components", "schemas").keys, "Folder"
-      assert_equal "Ping", ping_tool["title"]
+      assert_equal "Credit - Ping", ping_tool["title"]
       assert_equal ["Press Kit"], ping_tool["tags"]
       assert_includes ping_tool["description"],
                       "Runs on a Credit (RecordingStudioPresskits::Credit)."
@@ -436,7 +436,11 @@ class DocumentationTest < Minitest::Test
       schemas = spec.dig("components", "schemas")
       protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
 
-      assert_equal ["Add Credit", "Remove Credit", "Reorder Credits"], titles
+      assert_equal [
+        "Credits section - Add Credit",
+        "Credits section - Reorder Credits",
+        "credit line - Remove Credit"
+      ], titles
       refute_includes protocol_names, "RecordingStudioPresskits::CreditsSection--add_credit"
       add = tools.fetch("RecordingStudioPresskits::CreditsSection--add_credit")
       reorder = tools.fetch("RecordingStudioPresskits::CreditsSection--reorder_credits")
@@ -452,7 +456,7 @@ class DocumentationTest < Minitest::Test
       refute add["inputSchema"].key?("fields")
       assert_equal({ "type" => "object" }, reorder["inputSchema"])
       assert_equal({ "type" => "object" }, remove["inputSchema"])
-      assert_equal "Add Credit", add["title"]
+      assert_equal "Credits section - Add Credit", add["title"]
       assert_equal ["Press Kit"], add["tags"]
       assert_equal ["Press Kit"], reorder["tags"]
       assert_equal ["Press Kit"], remove["tags"]
@@ -517,10 +521,10 @@ class DocumentationTest < Minitest::Test
       assert publish["x-mcp-docs-only"]
       assert_equal({ "type" => "object" }, publish["inputSchema"])
       assert_equal({ "type" => "object" }, add["inputSchema"])
-      assert_equal "Publish", publish["title"]
+      assert_equal "Gallery - Publish", publish["title"]
       assert_equal ["Galleries"], publish["tags"]
       assert_includes publish["description"], "Runs on a Gallery (Gallery)."
-      assert_equal "Add Slide", add["title"]
+      assert_equal "Gallery section - Add Slide", add["title"]
       assert_equal ["Galleries"], add["tags"]
       assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
       assert_includes add["description"], "Type: `GallerySection`"
@@ -529,7 +533,7 @@ class DocumentationTest < Minitest::Test
       assert_includes add["description"], "Add a slide to this section"
       assert_includes add["description"],
                       "Tool: capability_action with type `GallerySection` and action `add_slide`"
-      assert_equal "Remove Slide", remove["title"]
+      assert_equal "Gallery slide - Remove Slide", remove["title"]
       assert_equal ["Galleries"], remove["tags"]
       assert_includes remove["description"], "Runs on a Gallery slide (GallerySlide)."
       refute_includes protocol_names, "GallerySection--add_slide"
@@ -564,7 +568,7 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_openapi_disambiguates_duplicate_action_titles_in_a_group
+  def test_openapi_prefixes_humanized_action_names_when_no_title_is_set
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       %w[PressKit Podcast Quote].each do |name|
@@ -584,13 +588,59 @@ class DocumentationTest < Minitest::Test
       )
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
 
-      assert_equal "Create Press Kit Upload", tools.fetch("RecordingStudioPresskits::PressKit--create_upload")["title"]
-      assert_equal "Create Podcast Upload", tools.fetch("RecordingStudioPresskits::Podcast--create_upload")["title"]
-      assert_equal "Create Quote Upload", tools.fetch("RecordingStudioPresskits::Quote--create_upload")["title"]
+      assert_equal "Press Kit - Create Upload", tools.fetch("RecordingStudioPresskits::PressKit--create_upload")["title"]
+      assert_equal "Podcast - Create Upload", tools.fetch("RecordingStudioPresskits::Podcast--create_upload")["title"]
+      assert_equal "Quote - Create Upload", tools.fetch("RecordingStudioPresskits::Quote--create_upload")["title"]
     end
   end
 
-  def test_openapi_uses_the_action_openapi_title_when_present
+  def test_openapi_keeps_a_gem_title_that_already_names_the_type
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Podcast",
+        operations: %i[index show],
+        capability_actions: %i[add],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_named_capability(
+        :add,
+        summary: "Add this podcast",
+        title: "Podcast - Add"
+      )
+
+      spec = openapi_with_labels!("RecordingStudioPresskits::Podcast" => "Podcast")
+      add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Podcast--add" }
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("RecordingStudioPresskits::Podcast")
+
+      assert_equal "Podcast - Add", add["title"]
+      assert_equal "Podcast - Add", described.fetch("capability_actions").first.fetch("title")
+    end
+  end
+
+  def test_openapi_prefixes_a_type_neutral_upload_title
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Files",
+        operations: %i[index show],
+        capability_actions: %i[create_upload],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_named_capability(
+        :create_upload,
+        summary: "Create an upload",
+        title: "Upload"
+      )
+
+      spec = openapi_with_labels!("RecordingStudioPresskits::Files" => "Files")
+      upload = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Files--create_upload" }
+
+      assert_equal "File - Upload", upload["title"]
+    end
+  end
+
+  def test_openapi_prefixes_a_short_openapi_title_with_the_singular_type
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       register_tree_type(
@@ -608,7 +658,73 @@ class DocumentationTest < Minitest::Test
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       remove = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::ListSection--remove_item" }
 
-      assert_equal "Remove List Item", remove["title"]
+      assert_equal "List section - Remove List Item", remove["title"]
+    end
+  end
+
+  def test_openapi_singularizes_type_labels_for_files_images_and_podcast_actions
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      %w[Files Images Podcast].each do |name|
+        register_tree_type(
+          "RecordingStudioPresskits::#{name}",
+          operations: %i[index show],
+          capability_actions: %i[create_upload attach],
+          openapi: { tags: ["Press Kit"] }
+        )
+      end
+      register_named_capability(:create_upload, summary: "Create an upload")
+      register_named_capability(:attach, summary: "Attach a file")
+
+      spec = openapi_with_labels!(
+        "RecordingStudioPresskits::Files" => "Files",
+        "RecordingStudioPresskits::Images" => "Images",
+        "RecordingStudioPresskits::Podcast" => "Podcast"
+      )
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("RecordingStudioPresskits::Files")
+      describe_titles = described.fetch("capability_actions").to_h do |action|
+        [action.fetch("name"), action.fetch("title")]
+      end
+
+      assert_equal "File - Create Upload", tools.fetch("RecordingStudioPresskits::Files--create_upload")["title"]
+      assert_equal "File - Attach", tools.fetch("RecordingStudioPresskits::Files--attach")["title"]
+      assert_equal "Image - Create Upload", tools.fetch("RecordingStudioPresskits::Images--create_upload")["title"]
+      assert_equal "Image - Attach", tools.fetch("RecordingStudioPresskits::Images--attach")["title"]
+      assert_equal "Podcast - Create Upload", tools.fetch("RecordingStudioPresskits::Podcast--create_upload")["title"]
+      assert_equal "Podcast - Attach", tools.fetch("RecordingStudioPresskits::Podcast--attach")["title"]
+      assert_equal tools.fetch("RecordingStudioPresskits::Files--create_upload")["title"],
+                   describe_titles.fetch("create_upload")
+      assert_equal tools.fetch("RecordingStudioPresskits::Files--attach")["title"],
+                   describe_titles.fetch("attach")
+    end
+  end
+
+  def test_openapi_action_page_includes_registered_description_under_summary
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Files",
+        operations: %i[index show],
+        capability_actions: %i[attach],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_named_capability(
+        :attach,
+        summary: "Attach a file",
+        description: "Signed blob from create_upload, or a list of attachments."
+      )
+
+      spec = openapi_with_labels!("RecordingStudioPresskits::Files" => "Files")
+      attach = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Files--attach" }
+      page = attach.fetch("description")
+      summary_at = page.index("Attach a file")
+      description_at = page.index("Signed blob from create_upload, or a list of attachments.")
+      tool_at = page.index("Tool: capability_action")
+
+      assert_equal "File - Attach", attach["title"]
+      assert_operator description_at, :>, summary_at
+      assert_operator tool_at, :>, description_at
     end
   end
 
@@ -658,9 +774,10 @@ class DocumentationTest < Minitest::Test
     }, &)
   end
 
-  def register_named_capability(name, summary:, title: nil, input_contract: nil)
+  def register_named_capability(name, summary:, title: nil, description: nil, input_contract: nil)
     openapi = { summary: summary }
     openapi[:title] = title if title
+    openapi[:description] = description if description
     attrs = {
       capability: :accessible,
       handler: ->(_context) { { json: { ok: true } } },

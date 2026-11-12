@@ -16,27 +16,13 @@ module RecordingStudioMcp
           end
         end
 
-        def title(action_name, api_key)
+        def title(action_name, api_key, type_name)
           documented = raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["title"]
-          documented.presence || action_name.humanize.titleize
-        end
+          return documented if documented.to_s.include?(" - ")
 
-        def disambiguate_titles(tools)
-          tools.group_by { |tool| Array(tool["tags"]).join("\0") }.each_value do |group|
-            disambiguate_group(group)
-          end
-          tools
+          action_title = documented.presence || action_name.to_s.humanize.titleize
+          "#{RecordingStudio.recordable_type_label(type_name).to_s.singularize} - #{action_title}"
         end
-
-        def disambiguate_group(group)
-          counts = group.map { |tool| tool["title"].to_s }.tally
-          group.each do |tool|
-            next unless counts[tool["title"].to_s] > 1
-
-            tool["title"] = title_with_type_label(tool)
-          end
-        end
-        private_class_method :disambiguate_group
 
         def schema(definition)
           built = EndpointSchema.build(contract_endpoint(definition))
@@ -49,15 +35,6 @@ module RecordingStudioMcp
             acc[name.to_s] = example_value(name, property)
           end
         end
-
-        def title_with_type_label(tool)
-          type_name = tool["name"].to_s.split("--", 2).first
-          label = RecordingStudio.recordable_type_label(type_name)
-          words = tool["title"].to_s.split
-          rest = words.drop(1).join(" ")
-          [words.first, label, rest].reject(&:blank?).join(" ")
-        end
-        private_class_method :title_with_type_label
 
         def contract_endpoint(definition)
           RecordingStudioApi::RegisteredEndpoint.new(

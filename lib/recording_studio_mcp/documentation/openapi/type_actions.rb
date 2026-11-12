@@ -9,7 +9,7 @@ module RecordingStudioMcp
         def tools(page, group_tags: nil)
           type_names = page_type_names(page)
           listed = Array(page.types).flat_map { |entry| tools_for(entry, page.api_key, group_tags, type_names) }
-          ActionDocs.disambiguate_titles(listed).sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
+          listed.sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
         end
 
         def tool_line(type_name, action_name)
@@ -34,7 +34,7 @@ module RecordingStudioMcp
           action_name = action["name"].to_s
           tagged_tool(
             name: "#{type_name}--#{action_name}",
-            title: ActionDocs.title(action_name, api_key),
+            title: ActionDocs.title(action_name, api_key, type_name),
             description: page_description(entry, action, api_key),
             tags: ToolDocs.action_tags(type_name, api: api_key, group_tags: group_tags, type_names: type_names),
             input_schema: action_input_schema(action)
@@ -71,6 +71,7 @@ module RecordingStudioMcp
             Schemas.registered_type_description(entry["type"], api_key),
             "Type: `#{entry['type']}`",
             action_summary(action["name"], api_key),
+            ActionDocs.raw_copy(RecordingStudioApi.capability_action(action["name"], api: api_key))["description"],
             tool_line(entry["type"], action["name"])
           ].compact.join("\n\n")
         end
