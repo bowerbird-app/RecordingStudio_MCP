@@ -1,5 +1,14 @@
 # Upgrading Recording Studio MCP
 
+## 0.34.0
+
+Previous version is `0.33.0`. No MCP protocol migration. Docs-only.
+
+Action tool pages show `Access: View`, `Access: Edit`, or `Access: Admin`
+from the registered RS_API `required_role`, under the action description.
+Other role names are humanized. The line is omitted when no role is set.
+Protocol tools, routes, and action behaviour are unchanged.
+
 ## 0.33.0
 
 Previous version is `0.32.0`. No MCP protocol migration. Docs-only.

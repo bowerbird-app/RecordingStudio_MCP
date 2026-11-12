@@ -24,6 +24,12 @@ module RecordingStudioMcp
           "#{RecordingStudio.recordable_type_label(type_name).to_s.singularize} - #{action_title}"
         end
 
+        def access_line(role)
+          return if role.blank?
+
+          "Access: #{role.to_s.humanize}."
+        end
+
         def schema(definition)
           built = EndpointSchema.build(contract_endpoint(definition))
           apply_allow_blank(built, definition)

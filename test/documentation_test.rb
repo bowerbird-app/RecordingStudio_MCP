@@ -700,6 +700,48 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_openapi_action_page_shows_access_from_the_registered_role
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Folder",
+        operations: %i[index show],
+        capability_actions: %i[peek rename lock stats]
+      )
+      register_capability_with_role(:peek, summary: "Peek at this folder", role: :view)
+      register_capability_with_role(:rename, summary: "Rename this folder", role: :edit)
+      register_capability_with_role(:lock, summary: "Lock this folder", role: :admin)
+      register_capability_with_role(:stats, summary: "Folder stats", role: nil, scope: :collection)
+      RecordingStudioApi.register_endpoint(
+        :health,
+        http_verb: :get,
+        path: "health",
+        openapi: { summary: "Health", description: "Named API health check." },
+        handler: ->(_context) { { ok: true } }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      peek = tools.fetch("Folder--peek").fetch("description")
+      rename = tools.fetch("Folder--rename").fetch("description")
+      lock = tools.fetch("Folder--lock").fetch("description")
+      stats = tools.fetch("Folder--stats").fetch("description")
+      health = tools.fetch("health").fetch("description")
+
+      assert_includes peek, "Peek at this folder"
+      peek_summary_at = peek.index("Peek at this folder")
+      peek_access_at = peek.index("Access: View.")
+      peek_tool_at = peek.index("Tool: capability_action")
+      assert_includes peek, "Access: View."
+      assert_operator peek_access_at, :>, peek_summary_at
+      assert_operator peek_tool_at, :>, peek_access_at
+      assert_includes rename, "Access: Edit."
+      assert_includes lock, "Access: Admin."
+      refute_includes stats, "Access:"
+      refute_includes health, "Access:"
+    end
+  end
+
   def test_openapi_action_page_includes_registered_description_under_summary
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
@@ -785,5 +827,16 @@ class DocumentationTest < Minitest::Test
     }
     attrs[:input_contract] = input_contract if input_contract
     RecordingStudioApi.register_capability_action(name, **attrs)
+  end
+
+  def register_capability_with_role(name, summary:, role:, scope: :member)
+    RecordingStudioApi.register_capability_action(
+      name,
+      capability: :accessible,
+      handler: ->(_context) { { json: { ok: true } } },
+      openapi: { summary: summary },
+      required_role: role,
+      scope: scope
+    )
   end
 end
