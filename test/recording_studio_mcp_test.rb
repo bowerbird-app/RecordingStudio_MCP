@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_33_1
-    assert_equal "0.33.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_33_2
+    assert_equal "0.33.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -15,10 +15,10 @@ class RecordingStudioMcpTest < Minitest::Test
   def test_gemspec_pins_live_addons
     gemspec = File.read(File.expand_path("../recording_studio_mcp.gemspec", __dir__))
 
-    assert_includes gemspec, 'spec.add_dependency "recording_studio", ">= 6.1.0"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio", "~> 6.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.0", "< 3.0"'
     refute_includes gemspec, '"recording_studio_admin", ">= 2.0", "< 2.6"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.17", "< 0.23"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 0.17.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.7.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.3.0", "< 1.0"'
     refute_includes gemspec, "recording_studio_mcp_ui"
@@ -133,7 +133,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.33.1\n"
+    assert_includes readme, "## Version\n\n0.33.2\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."
