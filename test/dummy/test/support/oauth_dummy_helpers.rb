@@ -151,13 +151,24 @@ module OauthDummyHelpers
     "/recording_studio_mcp/apis/#{api}"
   end
 
+  def with_default_switch_root(root_recording)
+    scope = RecordingStudioRootSwitchable.configuration.scopes.fetch("all_workspaces")
+    previous = scope.default_root
+    scope.default_root = ->(**) { root_recording }
+    yield
+  ensure
+    scope.default_root = previous if scope
+  end
+
   def switch_to_root!(root_recording)
-    patch recording_studio_root_switchable.root_switch_path(scope: "all_workspaces"), params: {
-      root_switch: {
-        root_recording_id: root_recording.id,
-        return_to: "/"
+    with_default_switch_root(root_recording) do
+      patch recording_studio_root_switchable.root_switch_path(scope: "all_workspaces"), params: {
+        root_switch: {
+          root_recording_id: root_recording.id,
+          return_to: "/"
+        }
       }
-    }
-    follow_redirect! if response.redirect?
+      follow_redirect! if response.redirect?
+    end
   end
 end
