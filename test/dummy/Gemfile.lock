@@ -9,16 +9,16 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: 2c794e6fba77b38be5f46a2b720a04cb8b41ecc1
-  tag: v0.21.5
+  revision: 9ced7b387908e43cf2e38563e1b541886f926722
+  tag: v0.21.6
   specs:
-    recording_studio_oauth (0.21.5)
+    recording_studio_oauth (0.21.6)
       flat_pack (>= 0.1.341)
       rails (~> 8.1.0)
       recording_studio (>= 6.1.0)
       recording_studio_accessible (>= 0.18)
       recording_studio_admin (~> 2.0)
-      recording_studio_api (>= 0.5.2, < 0.22)
+      recording_studio_api (>= 0.5.2, < 0.23)
       recording_studio_cache (~> 0.5)
       recording_studio_metrics (>= 0.3, < 1.0)
       recording_studio_site_settings (~> 0.2)
@@ -48,10 +48,10 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_api.git
-  revision: b541ca7ba732a9af38eaaf42c12299efad39858e
-  tag: v0.21.0
+  revision: 0c085a435cbea419f4c7fe29b2e28cff1ac121a8
+  tag: v0.22.1
   specs:
-    recording_studio_api (0.21.0)
+    recording_studio_api (0.22.1)
       flat_pack (>= 0.1.341)
       rails (~> 8.1.0)
       recording_studio (>= 6.1.0)
@@ -176,11 +176,11 @@ GIT
 PATH
   remote: ../..
   specs:
-    recording_studio_mcp (0.33.0)
+    recording_studio_mcp (0.33.1)
       rails (~> 8.1.0)
       recording_studio (>= 6.1.0)
       recording_studio_admin (>= 2.0)
-      recording_studio_api (>= 0.17, < 0.22)
+      recording_studio_api (>= 0.17, < 0.23)
       recording_studio_logs (>= 0.7.0, < 1.0)
       recording_studio_metrics (>= 0.3.0, < 1.0)
       recording_studio_oauth (~> 0.10)
@@ -751,15 +751,15 @@ CHECKSUMS
   recording_studio (6.3.0)
   recording_studio_accessible (0.24.1)
   recording_studio_admin (2.5.1)
-  recording_studio_api (0.21.0)
+  recording_studio_api (0.22.1)
   recording_studio_attachable (0.22.0)
   recording_studio_cache (0.6.2)
   recording_studio_icons (0.2.0)
   recording_studio_logs (0.7.3)
-  recording_studio_mcp (0.33.0)
+  recording_studio_mcp (0.33.1)
   recording_studio_metrics (0.7.2)
   recording_studio_moveable (4.1.0)
-  recording_studio_oauth (0.21.5)
+  recording_studio_oauth (0.21.6)
   recording_studio_root_switchable (0.11.5)
   recording_studio_site_settings (0.5.2)
   recording_studio_trashable (0.12.2)

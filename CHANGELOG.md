@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-11-12
+## [0.33.1] - 2026-11-13
+
+### Changed
+- Runtime requires `recording_studio_api` `>= 0.17, < 0.23`. Development and dummy Gemfiles pin API tag `v0.22.1` (`f145a46b`). Those Gemfiles temporarily pin Oauth branch `cursor/allow-api-0-22-7efb` because every released Oauth tag still caps API below `0.22`.
+- A path parameter's OpenAPI `description` is the MCP tool argument description. API 0.22 copies that description onto `openapi_path_parameters`. A path parameter with no description still uses `Path parameter <name>.`
+
+### Upgrade notes
+- Bump to `0.33.1`. Previous version is `0.33.0`. No MCP migration.
+- Pin API `>= 0.17, < 0.23` (git tag `v0.22.1`). Released Oauth tags still cap API below `0.22`, so a host cannot install API `0.22.x` until Oauth allows `< 0.23`. Replace the temporary Oauth branch pin with that tag when it exists.
+- Path parameter descriptions passed in `openapi.parameters` (`in: "path"`) now show on MCP tool arguments.
+
+
 
 ### Changed
 - MCP docs and `describe` show capability action titles type first
@@ -911,7 +922,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.1...HEAD
+[0.33.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...v0.31.2
