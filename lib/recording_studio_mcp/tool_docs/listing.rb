@@ -56,13 +56,13 @@ module RecordingStudioMcp
     private_class_method :type_sidebar_tags
 
     def type_tag_descriptions(page, group_tags: nil)
-      Array(page.types).each_with_object({}) do |entry, acc|
-        assign_shared_tag_description(acc, entry, page, group_tags)
-      end.tap do |acc|
-        Array(page.types).each do |entry|
-          assign_type_tag_description(acc, entry, page, group_tags)
-        end
+      tag_copy = {}
+      type_copy = {}
+      Array(page.types).each do |entry|
+        assign_shared_tag_description(tag_copy, entry, page, group_tags)
+        assign_type_tag_description(type_copy, entry, page, group_tags)
       end
+      type_copy.merge(tag_copy)
     end
     private_class_method :type_tag_descriptions
 
@@ -88,8 +88,6 @@ module RecordingStudioMcp
       return if description.blank?
 
       type_tags(type_name, api: page.api_key, group_tags: group_tags).each do |tag|
-        next if acc.key?(tag)
-
         remember_tag_description(acc, tag, description)
       end
     end

@@ -1,5 +1,16 @@
 # Upgrading Recording Studio MCP
 
+## 0.34.0
+
+Previous version is `0.33.0`. No MCP protocol migration. Docs-only.
+
+MCP docs sidebar tags use a gem's `openapi[:tag][:description]` when every
+type that shares the tag sets the same non-empty text. Conflicting tag
+descriptions leave the heading blank. When no type sets a tag description,
+the heading still uses the shared type description, or stays blank when
+those differ. Per-type descriptions on action pages and in `describe` are
+unchanged.
+
 ## 0.33.0
 
 Previous version is `0.32.0`. No MCP protocol migration. Docs-only.
