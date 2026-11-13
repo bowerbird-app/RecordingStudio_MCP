@@ -94,11 +94,8 @@ module RecordingStudioMcp
     private_class_method :assign_type_tag_description
 
     def remember_tag_description(acc, tag, description)
-      if !acc.key?(tag)
-        acc[tag] = description
-      elsif acc[tag] != description
-        acc[tag] = nil
-      end
+      acc[tag] = description unless acc.key?(tag)
+      acc[tag] = nil if acc[tag] != description
     end
     private_class_method :remember_tag_description
 
