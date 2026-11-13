@@ -9,8 +9,8 @@ GIT
 
 GIT
   remote: https://github.com/bowerbird-app/RecordingStudio_Oauth.git
-  revision: 793b93b7e760d4b8146abda8cabb5b207e6db695
-  branch: cursor/allow-api-0-22-7efb
+  revision: 9ced7b387908e43cf2e38563e1b541886f926722
+  tag: v0.21.6
   specs:
     recording_studio_oauth (0.21.6)
       flat_pack (>= 0.1.341)

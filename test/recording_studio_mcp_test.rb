@@ -100,7 +100,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_moveable", tag: "v4.1.0"'
     assert_includes root_gemfile, 'github: "bowerbird-app/RecordingStudio_moveable", tag: "v4.1.0"'
     refute_includes gemfile, "recording_studio_mcp_ui"
-    oauth_pin = 'github: "bowerbird-app/RecordingStudio_Oauth", branch: "cursor/allow-api-0-22-7efb"'
+    oauth_pin = 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.21.6"'
     assert_includes gemfile, oauth_pin
     assert_includes root_gemfile, oauth_pin
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.22.0"'
