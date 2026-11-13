@@ -99,7 +99,7 @@ class EndpointSchemaTest < Minitest::Test
           { name: "from", in: "query", description: "Alias for start.",
             schema: { type: "string", format: "date-time" } },
           { name: "interval", in: "query", required: true, schema: { type: "string", enum: %w[day week] } },
-          { name: "resource", in: "path", description: "Ignored here." },
+          { name: "resource", in: "path", description: "Which metric family." },
           { name: "X-Trace", in: "header", schema: { type: "string" } }
         ]
       }
@@ -111,7 +111,7 @@ class EndpointSchemaTest < Minitest::Test
                  schema.dig(:properties, :from))
     assert_equal %w[day week], schema.dig(:properties, :interval, :enum)
     assert_equal %w[resource name interval], schema[:required]
-    assert_equal({ type: "string", description: "Path parameter resource." }, schema.dig(:properties, :resource))
+    assert_equal({ type: "string", description: "Which metric family." }, schema.dig(:properties, :resource))
     refute schema[:properties].key?(:"X-Trace")
     refute schema.key?(:additionalProperties)
   end

@@ -1,5 +1,19 @@
 # Upgrading Recording Studio MCP
 
+## 0.33.1
+
+Previous version is `0.33.0`. No MCP migration.
+
+Runtime API is `>= 0.17, < 0.23`. Development and dummy Gemfiles pin API
+tag `v0.22.1`. Released Oauth tags still cap API below `0.22`, so those
+Gemfiles temporarily use Oauth branch `cursor/allow-api-0-22-7efb` until
+a tag allows `< 0.23`. A host cannot install API `0.22.x` with Oauth
+`v0.21.5`.
+
+API 0.22 copies a matching `openapi.parameters` path entry's `description`
+onto `openapi_path_parameters`. MCP tool arguments use that description.
+A path parameter with no description still uses `Path parameter <name>.`
+
 ## 0.33.0
 
 Previous version is `0.32.0`. No MCP protocol migration. Docs-only.
