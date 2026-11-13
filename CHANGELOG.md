@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.2] - 2026-11-13
+
+### Changed
+- Runtime requires `recording_studio` `~> 6.0`, `recording_studio_admin` `>= 2.0, < 3.0`, and `recording_studio_api` `>= 0.17.0, < 1.0`. Logs (`>= 0.7.0, < 1.0`), metrics (`>= 0.3.0, < 1.0`), and Oauth (`~> 0.10`) stay on their `0.x` lines. Development and dummy Gemfiles still pin API tag `v0.22.1`.
+
+### Upgrade notes
+- Bump to `0.33.2`. Previous version is `0.33.1`. No MCP migration.
+- Hosts may install API `0.23` and later `0.x` releases. Stay below API `1.0`, Admin `3.0`, and Recording Studio `7.0`.
+
 ## [0.33.1] - 2026-11-13
 
 ### Changed
@@ -922,7 +931,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.2...HEAD
+[0.33.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.1...v0.33.2
 [0.33.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...v0.32.0

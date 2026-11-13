@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.33.2
+
+Previous version is `0.33.1`. No MCP migration.
+
+Runtime Recording Studio is `~> 6.0`. Runtime Admin is `>= 2.0, < 3.0`.
+Runtime API is `>= 0.17.0, < 1.0`. Logs, metrics, and Oauth stay on their
+`0.x` lines. Development and dummy Gemfiles still pin API tag `v0.22.1`.
+
 ## 0.33.1
 
 Previous version is `0.33.0`. No MCP migration.
