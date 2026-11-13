@@ -83,7 +83,9 @@ jobs:
           cache-version: ${{ hashFiles('test/dummy/Gemfile.lock') }}
 
       - name: Install dummy app dependencies
-        run: bundle install
+        # One job avoids a Bundler git hardlink race on Ruby 3.4 when many
+        # GitHub gems clone into the same cache.
+        run: bundle install --jobs 1
         working-directory: test/dummy
         env:
           BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}

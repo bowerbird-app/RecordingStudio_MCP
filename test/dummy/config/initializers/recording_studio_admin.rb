@@ -14,7 +14,7 @@ RecordingStudioAdmin.configure do |config|
     ).find_by(recordable: admin_root, parent_recording_id: nil)
   end
   config.site_admin_recording_resolver = config.access_recording_resolver
-  config.engine_layout = "recording_studio/default_layout"
+  config.layout = "recording_studio/default_layout"
 end
 
 class DummyAdminRootSection < RecordingStudioAdmin::Section
