@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-13
+
+### Changed
+- MCP docs show a sidebar tag description from a gem's
+  `openapi[:tag][:description]` when every type that shares the tag
+  sets the same non-empty text. Conflicting tag descriptions leave the
+  heading blank. When no type sets a tag description, the heading still
+  uses the shared type description, or stays blank when those differ.
+  Per-type descriptions on action pages and in `describe` are unchanged.
+
+### Upgrade notes
+- Bump to `0.34.0`. Previous version is `0.33.0`. No MCP protocol
+  migration. Docs-only. Gems that set `openapi[:tag][:description]` on
+  types that share a tag see that text on the docs sidebar.
+
 ## [0.33.0] - 2026-11-12
 
 ### Changed

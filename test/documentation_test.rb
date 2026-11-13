@@ -381,6 +381,74 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_openapi_describes_a_shared_tag_from_tag_description_when_type_descriptions_differ
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_ping_capability
+      register_tree_type(
+        "RecordingStudioPresskits::Credit",
+        operations: %i[index show],
+        capability_actions: %i[ping],
+        openapi: {
+          tags: ["Press Kit"],
+          description: "Credits on a press kit.",
+          tag: { description: "A press kit and the records under it." }
+        }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::KitSection",
+        operations: %i[index show],
+        capability_actions: %i[ping],
+        openapi: {
+          tags: ["Press Kit"],
+          description: "Sections in a press kit.",
+          tag: { description: "A press kit and the records under it." }
+        }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
+      credit_ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Credit--ping" }
+      section_ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::KitSection--ping" }
+
+      assert_equal "A press kit and the records under it.", press_kit["description"]
+      assert_includes credit_ping.fetch("description"), "Credits on a press kit."
+      refute_includes credit_ping.fetch("description"), "Sections in a press kit."
+      assert_includes section_ping.fetch("description"), "Sections in a press kit."
+      refute_includes section_ping.fetch("description"), "Credits on a press kit."
+    end
+  end
+
+  def test_openapi_leaves_a_shared_tag_undescribed_when_tag_descriptions_differ
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::Credit",
+        operations: %i[index show],
+        openapi: {
+          tags: ["Press Kit"],
+          description: "Credits on a press kit.",
+          tag: { description: "Credits heading." }
+        }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::KitSection",
+        operations: %i[index show],
+        openapi: {
+          tags: ["Press Kit"],
+          description: "Credits on a press kit.",
+          tag: { description: "Sections heading." }
+        }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
+
+      assert_equal "Press Kit", press_kit["name"]
+      refute press_kit.key?("description")
+    end
+  end
+
   def test_openapi_lists_capability_actions_as_tagged_tool_entries
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

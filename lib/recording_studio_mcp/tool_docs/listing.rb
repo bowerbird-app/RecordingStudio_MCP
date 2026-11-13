@@ -57,10 +57,28 @@ module RecordingStudioMcp
 
     def type_tag_descriptions(page, group_tags: nil)
       Array(page.types).each_with_object({}) do |entry, acc|
-        assign_type_tag_description(acc, entry, page, group_tags)
+        assign_shared_tag_description(acc, entry, page, group_tags)
+      end.tap do |acc|
+        Array(page.types).each do |entry|
+          assign_type_tag_description(acc, entry, page, group_tags)
+        end
       end
     end
     private_class_method :type_tag_descriptions
+
+    def assign_shared_tag_description(acc, entry, page, group_tags)
+      type_name = (entry["type"] || entry[:type]).to_s
+      return if type_name.blank?
+
+      openapi = RecordingStudioApi.recordable_registration_for(type_name, api: page.api_key)&.openapi
+      description = openapi.is_a?(Hash) ? openapi.dig(:tag, :description).presence : nil
+      return if description.blank?
+
+      type_tags(type_name, api: page.api_key, group_tags: group_tags).each do |tag|
+        remember_tag_description(acc, tag, description)
+      end
+    end
+    private_class_method :assign_shared_tag_description
 
     def assign_type_tag_description(acc, entry, page, group_tags)
       type_name = (entry["type"] || entry[:type]).to_s
@@ -70,6 +88,8 @@ module RecordingStudioMcp
       return if description.blank?
 
       type_tags(type_name, api: page.api_key, group_tags: group_tags).each do |tag|
+        next if acc.key?(tag)
+
         remember_tag_description(acc, tag, description)
       end
     end
