@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-13
+
+### Changed
+- MCP docs show a sidebar tag description from a gem's
+  `openapi[:tag][:description]` when every type that shares the tag
+  sets the same non-empty text. Conflicting tag descriptions leave the
+  heading blank. When no type sets a tag description, the heading still
+  uses the shared type description, or stays blank when those differ.
+  Per-type descriptions on action pages and in `describe` are unchanged.
+
+### Upgrade notes
+- Bump to `0.34.0`. Previous version is `0.33.0`. No MCP protocol
+  migration. Docs-only. Gems that set `openapi[:tag][:description]` on
+  types that share a tag see that text on the docs sidebar.
+
 ## [0.33.0] - 2026-11-12
 
 ### Changed
@@ -911,7 +926,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.0...HEAD
+[0.34.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.2...v0.32.0
 [0.31.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.31.1...v0.31.2
