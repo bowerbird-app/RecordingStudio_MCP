@@ -222,7 +222,7 @@ The dummy host registers `demo_progress` through `RecordingStudioApi.register_en
 
 ## Install
 
-1. Add the gem. Pin Recording Studio `~> 6.0` (development tag `v6.7.0`), API `>= 0.17.0, < 1.0` (git tag `v0.23.1`), Oauth `~> 0.10` (development tag `v0.21.8`), Accessible `v0.32.0`, Cache `v0.6.3`, Admin `v2.13.0` (runtime `>= 2.0, < 3.0`), Site Settings `v0.5.6`, Attachable `v0.23.0`, Trashable `v0.14.0` (`require: false`), Moveable `v4.1.1`, Icons `v0.2.1`, Metrics `>= 0.3.0, < 1.0` (git tag `v0.8.0`), Logs `>= 0.7.0, < 1.0` (git tag `v0.7.4`), and Flatpack `v0.1.357`. Dummy also pins Root Switchable `v0.15.0`. MCP UI is optional and is not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to tag `v0.4.1`. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
+1. Add the gem. Pin Recording Studio `>= 6.0, < 8.0` (development tag `v6.7.0`), API `>= 0.17.0, < 1.0` (git tag `v0.23.1`), Oauth `~> 0.10` (development tag `v0.21.8`), Accessible `v0.32.0`, Cache `v0.6.3`, Admin `v2.13.0` (runtime `>= 2.0, < 3.0`), Site Settings `v0.5.6`, Attachable `v0.23.0`, Trashable `v0.14.0` (`require: false`), Moveable `v4.1.1`, Icons `v0.2.1`, Metrics `>= 0.3.0, < 1.0` (git tag `v0.8.0`), Logs `>= 0.7.0, < 1.0` (git tag `v0.7.4`), and Flatpack `v0.1.357`. Dummy also pins Root Switchable `v0.15.0`. MCP UI is optional and is not a gemspec dependency. Hosts that want widgets pin `recording_studio_mcp_ui` to tag `v0.4.1`. Then pass `ui:` on the API operation and register the widget in MCP UI. Nothing else to wire.
 2. Install and mount API and Oauth first. Allow `RecordingStudioOauth::OauthAuthorization` in Accessible `access_actor_types`.
 3. Run `bin/rails generate recording_studio_mcp:install`.
 4. Draw Oauth origin well-known: `RecordingStudioOauth::ProtectedResourceRegistry.draw_origin_well_known(self)`. Draw named-API MCP metadata first: `RecordingStudioMcp.draw_named_api_well_known(self)`. Or alias `/.well-known/oauth-protected-resource/recording_studio_mcp` to MCP's metadata controller. ChatGPT and API clients keep using `/recording_studio_oauth/.well-known/oauth-protected-resource`.
@@ -361,4 +361,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.33.2
+0.33.3
