@@ -193,7 +193,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
   test "list does not include a workspace outside the grant" do
     token = issue_delegated_token
     outsider = Workspace.create!(name: "Secret #{SecureRandom.hex(4)}")
-    RecordingStudio.root_recording_for(outsider)
+    RecordingStudio.create_root_recording!(outsider, actor: @user)
 
     post "/recording_studio_mcp",
          params: rpc("tools/call", name: "list", arguments: { type: "Workspace" }).to_json,

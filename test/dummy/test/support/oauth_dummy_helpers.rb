@@ -14,7 +14,8 @@ module OauthDummyHelpers
 
   def create_admin_root_recording(name: "Admin")
     admin_root = AdminRoot.find_or_create_by!(name: name)
-    [admin_root, RecordingStudio.root_recording_for(admin_root)]
+    actor = Current.actor || create_user(email: "root-writer-#{SecureRandom.hex(4)}@example.com")
+    [admin_root, RecordingStudio.create_root_recording!(admin_root, actor: actor)]
   end
 
   def grant_or_bootstrap_access!(recording:, actor:, role:)
@@ -57,7 +58,7 @@ module OauthDummyHelpers
   def create_access_recording_for(user:, workspace_name: "Workspace #{SecureRandom.hex(4)}", role: :admin)
     Current.actor = user
     workspace = Workspace.create!(name: workspace_name)
-    root_recording = RecordingStudio.root_recording_for(workspace)
+    root_recording = RecordingStudio.create_root_recording!(workspace, actor: user)
     access_recording = if role.to_s == "admin"
                          grant_or_bootstrap_access!(
                            recording: root_recording,

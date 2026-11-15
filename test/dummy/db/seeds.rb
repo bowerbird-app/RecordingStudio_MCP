@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
 find_or_record_child = lambda do |recordable, root_recording, parent_recording, actor|
-  RecordingStudio::Recording.find_by(
+  RecordingStudio::Recording.kept.find_by(
     root_recording: root_recording,
     parent_recording: parent_recording,
-    recordable: recordable,
-    trashed_at: nil
+    recordable: recordable
   ) || RecordingStudio.record!(
     action: "created",
     recordable: recordable,
@@ -99,9 +98,9 @@ previous_actor = Current.actor
 Current.actor = user
 
 begin
-  studio_root = RecordingStudio.root_recording_for(studio)
-  docs_root = RecordingStudio.root_recording_for(docs)
-  admin_recording = RecordingStudio.root_recording_for(admin_root)
+  studio_root = RecordingStudio.create_root_recording!(studio, actor: user)
+  docs_root = RecordingStudio.create_root_recording!(docs, actor: user)
+  admin_recording = RecordingStudio.create_root_recording!(admin_root, actor: user)
   folder_recording = find_or_record_child.call(folder, studio_root, studio_root, user)
   find_or_record_child.call(page, studio_root, folder_recording, user)
 

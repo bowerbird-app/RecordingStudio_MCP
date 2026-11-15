@@ -43,7 +43,7 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
     assert_includes text, "Watch me"
 
     outsider = Workspace.create!(name: "Secret #{SecureRandom.hex(4)}")
-    secret_root = RecordingStudio.root_recording_for(outsider)
+    secret_root = RecordingStudio.create_root_recording!(outsider, actor: @user)
     post "/recording_studio_mcp",
          params: rpc("resources/read", uri: "recording://#{secret_root.id}").to_json,
          headers: json_headers.merge("Authorization" => "Bearer #{token}")

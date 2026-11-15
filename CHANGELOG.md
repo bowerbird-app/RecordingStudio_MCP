@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-15
+
+### Changed
+- Runtime requires `recording_studio` `>= 7.0, < 8.0`, `recording_studio_oauth` `>= 0.22.0, < 1.0`, `recording_studio_api` `>= 0.24.0, < 1.0`, `recording_studio_logs` `>= 0.8.0, < 1.0`, `recording_studio_metrics` `>= 0.9.0, < 1.0`, and `recording_studio_admin` `>= 2.16.0, < 3.0`.
+- Development and dummy Gemfiles pin Recording Studio `v7.0.0`, Oauth `v0.22.0`, API `v0.24.0`, Logs `v0.8.0`, Metrics `v0.9.0`, Admin `v2.16.0`, Accessible `v0.44.0`, Root Switchable `v0.16.0` (dummy), Site Settings `v0.6.0`, Attachable `v0.28.0`, Moveable `v5.0.0`, Trashable `v0.17.0`, Cache `v0.6.3`, Flatpack `v0.1.376`, and Icons `v0.2.1`. Dummy lockfile uses Puma `8.1.0` and `msgpack` `>= 1.8.7`.
+- The dummy copies Recording Studio's `recording_studio_events.root_recording_id` migration and API's request-log arrival columns. Seeds and tests that create a root call `create_root_recording!`. Lookups stay on `root_recording_for`. The kept admin root is `RecordingStudioAccessible.admin_root_resolver`. Admin `access_recording_resolver` returns that root.
+
+### Upgrade notes
+- Bump to `0.34.0`. Previous version is `0.33.3`. No MCP migration.
+- Hosts need Recording Studio 7.0 or newer, below 8. `root_recording_for` only finds a root. Create one with `create_root_recording!(recordable, actor:)`. Run the events `root_recording_id` migration. Replace Trashable `kept_sql` with `Recording.kept`. Admin 2.16 uses `access_recording_resolver`. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.33.3] - 2026-11-15
 
 ### Changed
@@ -940,7 +951,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.3...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.0...HEAD
+[0.34.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.3...v0.34.0
 [0.33.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.2...v0.33.3
 [0.33.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.1...v0.33.2
 [0.33.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.0...v0.33.1
