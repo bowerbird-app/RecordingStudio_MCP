@@ -111,7 +111,7 @@ class RootSwitchDropdownTest < ActionDispatch::IntegrationTest
     )
     Current.actor = owner
     workspace = Workspace.create!(name: name)
-    root_recording = RecordingStudio.root_recording_for(workspace)
+    root_recording = RecordingStudio.create_root_recording!(workspace, actor: owner)
     bootstrap = RecordingStudioAccessible.bootstrap_owner_access!(
       recording: root_recording,
       actor: owner

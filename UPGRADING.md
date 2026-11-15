@@ -1,5 +1,30 @@
 # Upgrading Recording Studio MCP
 
+## 0.34.0
+
+Previous version is `0.33.3`. No MCP migration.
+
+Runtime Recording Studio is `>= 7.0, < 8.0`. Oauth is `>= 0.22.0, < 1.0`.
+API is `>= 0.24.0, < 1.0`. Logs are `>= 0.8.0, < 1.0`. Metrics are
+`>= 0.9.0, < 1.0`. Admin is `>= 2.16.0, < 3.0`.
+
+Development and dummy Gemfiles pin Recording Studio `v7.0.0`.
+
+`RecordingStudio.root_recording_for` only finds a root. Seeds and other
+setup that used to create a root by looking it up call
+`create_root_recording!(recordable, actor:)`. The dummy `authorize_write`
+allows a write when an actor is present.
+
+Copy Recording Studio's events `root_recording_id` migration and run it.
+Events store the recording's root.
+
+Trashable `kept_sql` is gone. Filter with `Recording.kept`. Admin 2.16
+dropped `site_admin_recording_resolver`. Point `access_recording_resolver`
+at `RecordingStudioAccessible.admin_root`. Set
+`admin_root_resolver` to the kept admin root. Site screens allow
+`:site` only when that root is the access recording and the actor
+is an admin on it.
+
 ## 0.33.3
 
 Previous version is `0.33.2`. No MCP migration.
