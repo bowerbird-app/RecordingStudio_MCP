@@ -1,5 +1,12 @@
 # Upgrading Recording Studio MCP
 
+## 0.33.3
+
+Previous version is `0.33.2`. No MCP migration.
+
+Runtime Recording Studio is `>= 6.0, < 8.0`. The lower bound is unchanged.
+Development and dummy Gemfiles stay on tag `v6.7.0`.
+
 ## 0.33.2
 
 Previous version is `0.33.1`. No MCP migration.
