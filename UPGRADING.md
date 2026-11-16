@@ -1,5 +1,24 @@
 # Upgrading Recording Studio MCP
 
+## 0.34.1
+
+Previous version is `0.34.0`. No MCP migration. Auth, token, and access
+behavior are unchanged.
+
+Runtime API is `>= 0.24.0, < 2.0`. Oauth stays `>= 0.22.0, < 1.0`.
+Recording Studio stays `>= 7.0, < 8.0`.
+
+Development and dummy Gemfiles pin Recording Studio `v7.1.0`, API
+`v1.1.0`, Oauth `v0.24.0`, and Attachable `v0.31.0`.
+
+Oauth `0.24` requires API `>= 1.0` and Recording Studio `>= 7.1`.
+Attachable `0.31` requires API `>= 1.1, < 2.0`. A host that stays on
+API `0.24` can keep Oauth `0.22` and Attachable `0.28`.
+
+On API `0.26` and later, `register_endpoint` raises when the path
+captures `:id` or `:recording_id` unless the endpoint passes
+`recordable_type:` or `scope_id: false`.
+
 ## 0.34.0
 
 Previous version is `0.33.3`. No MCP migration.
