@@ -27,13 +27,13 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     @foreign = record_child(Page.create!(title: "Foreign"), parent: foreign_root, root: foreign_root, actor: outsider)
     @called = false
     @seen = nil
-    enable_page_actions(:guard_probe, :guard_read)
+    enable_page_actions(:guard_probe, :guard_read, :guard_edit, :guard_trashed)
   end
 
   teardown do
-    clear_page_handlers(:show, :update, :guard_probe, :guard_read)
+    clear_page_handlers(:show, :update, :create, :guard_probe, :guard_read, :guard_edit, :guard_trashed)
     clear_endpoints(:guard_page, :guard_page_edit, :guard_open)
-    clear_actions(:guard_probe, :guard_read)
+    clear_actions(:guard_probe, :guard_read, :guard_edit, :guard_trashed)
     restore_page_registration!
     Current.actor = nil if defined?(Current)
   end
@@ -84,6 +84,74 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     probed = call_tool(edit, "capability_action", **capability_arguments(@page.id))
     assert_equal @page.id, probed["id"]
     assert_equal @page.id, @seen.id
+  end
+
+  test "a low role does not run a capability input contract" do
+    calls = [0]
+    register_probe_action(
+      :guard_edit,
+      http_verb: :post,
+      required_role: :edit,
+      input_contract: counting_contract(calls)
+    )
+    register_page_handler(:guard_edit) { |context| seen_payload(context) }
+    view = view_token
+    edit = edit_token
+    invalid = { type: "Page", id: @page.id, action: "guard_edit", params: {} }
+
+    assert_tool_miss(view, "capability_action", invalid)
+    assert_equal 0, calls[0]
+
+    assert_tool_text(edit, "capability_action", invalid, "Invalid input for action guard_edit")
+    assert_equal 1, calls[0]
+
+    probed = call_tool(edit, "capability_action", type: "Page", id: @page.id, action: "guard_edit", params: { note: "ok" })
+    assert_equal @page.id, probed["id"]
+    assert_equal @page.id, @seen.id
+    assert_equal 2, calls[0]
+  end
+
+  test "include_trashed lets an edit role call a trashed recording" do
+    register_probe_action(:guard_trashed, http_verb: :get, required_role: :edit, include_trashed: true)
+    register_page_handler(:guard_trashed, include_trashed: true) { |context| seen_payload(context) }
+
+    probed = call_tool(
+      edit_token,
+      "capability_action",
+      type: "Page",
+      id: @trashed.id,
+      action: "guard_trashed"
+    )
+    assert_equal @trashed.id, probed["id"]
+    assert_equal @trashed.id, @seen.id
+  end
+
+  test "custom create leaves parent_recording nil so the handler scopes parent_id" do
+    register_page_handler(:create) do |context|
+      @called = true
+      @seen = context
+      {
+        json: {
+          id: context.recording&.id,
+          parent_id: context.parent_id,
+          parent_recording_id: context.parent_recording&.id
+        },
+        status: :ok
+      }
+    end
+    edit = edit_token
+
+    nested = call_tool(edit, "create", type: "Page", parent_id: @folder.id, title: "Nested")
+    assert_nil nested["id"]
+    assert_equal @folder.id, nested["parent_id"]
+    assert_nil nested["parent_recording_id"]
+    assert_nil @seen.recording
+    assert_nil @seen.parent_recording
+
+    outside = call_tool(edit, "create", type: "Page", parent_id: @foreign.id, title: "Outside")
+    assert_equal @foreign.id, outside["parent_id"]
+    assert_nil outside["parent_recording_id"]
+    assert_nil @seen.parent_recording
   end
 
   test "scoped endpoints scope the recording and hide guard messages" do
@@ -166,8 +234,14 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     { json: { id: context.recording&.id, parent_id: parent&.id }, status: :ok }
   end
 
-  def register_page_handler(action, owns_scoping: false, &block)
-    RecordingStudioApi.register_resource_handler("Page", action, owns_scoping: owns_scoping, handler: block)
+  def register_page_handler(action, owns_scoping: false, include_trashed: false, &block)
+    RecordingStudioApi.register_resource_handler(
+      "Page",
+      action,
+      owns_scoping: owns_scoping,
+      include_trashed: include_trashed,
+      handler: block
+    )
   end
 
   def grant_role!(actor, role)
@@ -191,15 +265,29 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     issue_delegated_token(access_recording: @edit_access, role: "edit")
   end
 
-  def register_probe_action(name, http_verb:, required_role:, owns_scoping: false)
+  def register_probe_action(name, http_verb:, required_role:, owns_scoping: false, include_trashed: false, input_contract: nil)
     RecordingStudioApi.register_capability_action(
       name,
       capability: :guard_scope,
       http_verb: http_verb,
       required_role: required_role,
       owns_scoping: owns_scoping,
+      include_trashed: include_trashed,
+      input_contract: input_contract,
       handler: ->(_context) { { json: { builtin: true } } }
     )
+  end
+
+  def counting_contract(calls)
+    contract = RecordingStudioApi::ActionInputContract.new(
+      fields: { note: { type: :string, required: true } }
+    )
+    original = contract.method(:call)
+    contract.define_singleton_method(:call) do |raw_params|
+      calls[0] += 1
+      original.call(raw_params)
+    end
+    contract
   end
 
   def register_guard_endpoint(name, verb:, path:)
@@ -265,6 +353,19 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     assert_response :success, response.body
     result = JSON.parse(response.body).fetch("result")
     assert_equal true, result["isError"], response.body
+    refute @called
+  end
+
+  def assert_tool_text(token, name, arguments, message)
+    @called = false
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: name, arguments: arguments).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    result = JSON.parse(response.body).fetch("result")
+    assert_equal true, result["isError"], response.body
+    assert_equal message, result.dig("content", 0, "text")
     refute @called
   end
 

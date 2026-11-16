@@ -19,6 +19,15 @@ MCP does not forward the guard's message.
 call the handler with `recording` nil. Flat MCP calls leave
 `parent_recording` nil. There are no nested MCP tools.
 
+A capability action input contract runs only after the guard allows the
+call. Invalid params from a role that is too low still return the same
+not-found sentence. The contract does not run.
+
+Custom create is not a member lookup. The handler receives `recording`
+and `parent_recording` as nil. `parent_id` is the client argument. The
+handler scopes that parent. A handler with `include_trashed` still
+receives a trashed recording when the role is allowed.
+
 Built-in list, show, update, delete, and built-in capability actions
 still use the accessible-recordings lookup.
 

@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.35.0] - 2026-11-16
 
 ### Security
-- Custom resource handlers, custom capability actions, and registered endpoints run `RecordingStudioApi::HandlerGuard` before the handler. An id outside the grant, the wrong type, a trashed record, a blank id, and a role that is too low all return `Resource was not found in this API scope`. The handler is not called. The guard's own message is not forwarded.
+- Custom resource handlers, custom capability actions, and registered endpoints run `RecordingStudioApi::HandlerGuard` before the handler. An id outside the grant, the wrong type, a trashed record, a blank id, and a role that is too low all return `Resource was not found in this API scope`. The handler is not called. The guard's own message is not forwarded. A capability input contract runs only after that guard allows the call, so invalid params cannot reveal that the recording exists. Custom create still passes `parent_recording` nil; the handler scopes `parent_id`. `include_trashed` still returns a trashed recording when the role is allowed.
 
 ### Changed
 - Runtime requires `recording_studio_api` `>= 1.2.0, < 2.0`.
