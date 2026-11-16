@@ -227,6 +227,7 @@ class ToolSurfaceTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { ok: true } }
       )
       dotted = RecordingStudioMcp::ToolSurface.for(api: "public")

@@ -26,6 +26,7 @@ class McpUiTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -58,6 +59,7 @@ class McpUiTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor",
         openapi: { "x-mcp-file-params": ["cover_file"] }
@@ -78,6 +80,7 @@ class McpUiTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -98,6 +101,7 @@ class McpUiTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -120,6 +124,7 @@ class McpUiTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -164,6 +169,7 @@ class McpUiTest < Minitest::Test
         "presskits.edit",
         http_verb: :patch,
         path: "presskits/:id",
+        scope_id: false,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
