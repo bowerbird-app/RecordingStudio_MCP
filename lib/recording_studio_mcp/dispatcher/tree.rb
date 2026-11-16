@@ -37,8 +37,10 @@ module RecordingStudioMcp
     end
 
     def call_resource_handler(handler, recordable_type, operation_name, args)
-      context = resource_context(recordable_type, args, recording: nil, operation_name: operation_name)
-      render_handler_result(handler.call(context))
+      guarded = scoped_resource(recordable_type, operation_name, args["id"])
+      return scope_miss_result unless guarded
+
+      render_handler_result(handler.call(guarded_resource_context(recordable_type, args, guarded, operation_name)))
     end
 
     def call_builtin_resource(recordable_type, operation_name, args)
@@ -72,7 +74,10 @@ module RecordingStudioMcp
     end
 
     def call_capability_handler(handler, args, action, recordable_type)
-      render_handler_result(handler.call(action_context(nil, args, action, recordable_type: recordable_type)))
+      guarded, context = scoped_capability(recordable_type, action, args)
+      return scope_miss_result unless guarded
+
+      render_handler_result(handler.call(context))
     end
 
     def run_capability_action(recordable_type, args, action)

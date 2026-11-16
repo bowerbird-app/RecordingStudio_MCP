@@ -18,6 +18,7 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
       role: :admin
     )
     @outside_id = "support-outside-#{SecureRandom.hex(4)}"
+    @handler_calls = []
     register_operations_support_surface!
   end
 
@@ -26,7 +27,7 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
     Current.actor = nil if defined?(Current)
   end
 
-  test "ops mcp lists support types and handler tools reach records outside the admin tree" do
+  test "ops mcp lists support types and member handlers stay inside the admin tree" do
     token = issue_ops_token
     headers = json_headers.merge("Authorization" => "Bearer #{token}")
 
@@ -45,24 +46,32 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
     assert_equal ["SupportPage"], delete.dig("inputSchema", "properties", "type", "enum")
     assert_equal true, delete.dig("annotations", "destructiveHint")
 
-    tool_arguments = {
+    {
       "list" => { type: "SupportPage", q: "help" },
-      "show" => { type: "SupportPage", id: @outside_id },
-      "create" => { type: "SupportPage", title: "Hi" },
-      "update" => { type: "SupportPage", id: @outside_id, title: "Hi" },
-      "delete" => { type: "SupportPage", id: @outside_id }
-    }
-    tool_arguments.each do |tool, arguments|
+      "create" => { type: "SupportPage", title: "Hi" }
+    }.each do |tool, arguments|
       post named_mcp_path("operations"),
            params: rpc("tools/call", name: tool, arguments: arguments).to_json,
            headers: headers
 
       assert_response :success, response.body
       payload = JSON.parse(response.body)
-      refute payload.dig("result", "isError"), "#{tool}: #{payload}"
-      body = tool_payload(payload)
-      assert_equal tool, body["handled"]
-      assert_equal @outside_id, body["id"] if %w[show update delete].include?(tool)
+      refute payload.dig("result", "isError"), "#{tool}: #{response.body}"
+      assert_equal tool, tool_payload(payload)["handled"]
+    end
+
+    @handler_calls.clear
+    {
+      "show" => { type: "SupportPage", id: @outside_id },
+      "update" => { type: "SupportPage", id: @outside_id, title: "Hi" },
+      "delete" => { type: "SupportPage", id: @outside_id }
+    }.each do |tool, arguments|
+      post named_mcp_path("operations"),
+           params: rpc("tools/call", name: tool, arguments: arguments).to_json,
+           headers: headers
+
+      assert_response :success, response.body
+      assert_scope_miss JSON.parse(response.body)
     end
 
     post named_mcp_path("operations"),
@@ -74,9 +83,8 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
          headers: headers
 
     assert_response :success, response.body
-    moved = tool_payload(JSON.parse(response.body))
-    assert_equal "move", moved["handled"]
-    assert_equal @outside_id, moved["id"]
+    assert_scope_miss JSON.parse(response.body)
+    assert_empty @handler_calls
 
     post named_mcp_path("operations"),
          params: rpc("tools/call", name: "show", arguments: { type: "Folder", id: @outside_id }).to_json,
@@ -140,10 +148,12 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
 
     %i[index show create update destroy].each do |action|
       RecordingStudioApi.register_resource_handler("SupportPage", action, api: :operations, handler: lambda { |context|
+        @handler_calls << action
         { json: { handled: action == :index ? "list" : tool_name_for(action), id: context.id }, status: :ok }
       })
     end
     RecordingStudioApi.register_resource_handler("SupportPage", :move, api: :operations, handler: lambda { |context|
+      @handler_calls << :move
       { json: { handled: "move", id: context.id, parent_id: context.params[:parent_id] }, status: :accepted }
     })
   end
@@ -166,6 +176,14 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
     return unless store.respond_to?(:delete)
 
     store.keys.select { |type_name, _action| type_name == type }.each { |key| store.delete(key) }
+  end
+
+  def assert_scope_miss(payload)
+    result = payload.fetch("result")
+    assert_equal true, result["isError"]
+    assert_equal "Resource was not found in this API scope", result.dig("content", 0, "text")
+    refute_includes result.dig("content", 0, "text"), "does not match"
+    refute_includes result.dig("content", 0, "text"), "authorized"
   end
 
   def tool_name_for(action)

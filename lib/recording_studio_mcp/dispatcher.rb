@@ -75,6 +75,7 @@ module RecordingStudioMcp
   end
 end
 
+require "recording_studio_mcp/dispatcher/handler_scope"
 require "recording_studio_mcp/dispatcher/tree"
 require "recording_studio_mcp/dispatcher/endpoint"
 require "recording_studio_mcp/dispatcher/contexts"
