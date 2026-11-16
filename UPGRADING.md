@@ -1,5 +1,36 @@
 # Upgrading Recording Studio MCP
 
+## 0.35.0
+
+Previous version is `0.34.1`.
+
+Runtime API is `>= 1.2.0, < 2.0`. Development and dummy Gemfiles pin
+API `v1.2.0`. Other addon pins are unchanged.
+
+Custom `show`, `update`, and `delete` handlers, custom capability
+actions, and registered endpoints that capture `:id` or `:recording_id`
+are scoped by `RecordingStudioApi::HandlerGuard` before the handler
+runs. A blank id, a foreign root, the wrong recordable type, a trashed
+record, and a role that is too low all return one tool error:
+`Resource was not found in this API scope`. The handler does not run.
+MCP does not forward the guard's message.
+
+`owns_scoping` on a read, and an endpoint with `scope_id: false`, still
+call the handler with `recording` nil. Flat MCP calls leave
+`parent_recording` nil. There are no nested MCP tools.
+
+A capability action input contract runs only after the guard allows the
+call. Invalid params from a role that is too low still return the same
+not-found sentence. The contract does not run.
+
+Custom create is not a member lookup. The handler receives `recording`
+and `parent_recording` as nil. `parent_id` is the client argument. The
+handler scopes that parent. A handler with `include_trashed` still
+receives a trashed recording when the role is allowed.
+
+Built-in list, show, update, delete, and built-in capability actions
+still use the accessible-recordings lookup.
+
 ## 0.34.1
 
 Previous version is `0.34.0`. No MCP migration. Auth, token, and access

@@ -5,20 +5,34 @@ module RecordingStudioMcp
     private
 
     def dispatch_endpoint(endpoint, args)
-      context = endpoint_context(endpoint, args)
+      guarded = handler_scope do
+        RecordingStudioApi::HandlerGuard.endpoint!(
+          access_grant: access_grant,
+          endpoint: endpoint,
+          id: endpoint.recording_id_from(endpoint_captures(endpoint, args))
+        )
+      end
+      return scope_miss_result unless guarded
+
+      context = endpoint_context(endpoint, args, recording: guarded.recording)
       success_result(serialize_endpoint_result(endpoint, endpoint.handler.call(context)))
     end
 
-    def endpoint_context(endpoint, args)
+    def endpoint_context(endpoint, args, recording: nil)
       RecordingStudioApi::RegisteredEndpointContext.new(
         api_client: access_grant.api_client,
         credential: access_grant.credential,
         access_recording: access_grant.access_recording,
         access_grant: access_grant,
         root_recording: access_grant.root_recording,
+        recording: recording,
         params: endpoint_params(endpoint, args),
         progress_reporter: progress_reporter
       )
+    end
+
+    def endpoint_captures(endpoint, args)
+      endpoint_path_keys(endpoint).to_h { |key| [key.to_sym, args[key]] }
     end
 
     def endpoint_params(endpoint, args)

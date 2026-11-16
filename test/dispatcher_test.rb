@@ -6,9 +6,20 @@ require "test_helper"
 class DispatcherTest < Minitest::Test
   FakeGrant = Struct.new(
     :api_client, :credential, :access_recording, :root_recording, :accessible_recordings, :actor,
-    :authorized_by,
+    :authorized_by, :deny_authorization,
     keyword_init: true
-  )
+  ) do
+    def accessible_recordings(**)
+      relation = self[:accessible_recordings]
+      relation.respond_to?(:find_by) ? relation : FakeRelation.new(nil)
+    end
+
+    def authorize!(**)
+      return unless deny_authorization
+
+      raise RecordingStudioApi::AuthorizationError, "API access grant is not authorized for this capability"
+    end
+  end
   FakeClient = Struct.new(:api_key)
   FakeRegistration = Struct.new(:enabled) do
     def supports_operation?(_name)
@@ -20,7 +31,20 @@ class DispatcherTest < Minitest::Test
     end
   end
   FakeOperation = Struct.new(:handler)
-  FakeAction = Struct.new(:name, :handler, :input_contract, :serializer, keyword_init: true)
+  SCOPE_MISS = "Resource was not found in this API scope"
+  FakeAction = Struct.new(
+    :name, :handler, :input_contract, :serializer,
+    :owns_scoping, :http_verb, :include_trashed, :trashed_semantics, :required_role,
+    keyword_init: true
+  ) do
+    def owns_scoping?
+      owns_scoping == true
+    end
+
+    def http_verb
+      self[:http_verb] || :post
+    end
+  end
   FakeHandler = Struct.new(:payload) do
     def call(_context)
       payload
@@ -393,33 +417,37 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_registered_handler_show_skips_scoped_lookup
-    captured = nil
+  def test_registered_handler_show_rejects_an_id_outside_scope
+    called = false
     @grant.accessible_recordings = FakeRelation.new(nil)
-    handler = lambda { |context|
-      captured = context
-      { json: { title: "Support", id: context.id }, status: :ok }
+    handler = lambda { |_context|
+      called = true
+      { json: { title: "Support" }, status: :ok }
     }
 
-    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
-      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-        RecordingStudioApi.stub(:resource_handler, ->(_type, action, **) { action == :show ? handler : nil }) do
-          RecordingStudioApi.stub(:resource_name_for, "support_pages") do
-            RecordingStudioApi.stub(:default_api_version, "v1") do
-              result = dispatch("show", { type: "Page", id: "support-1" })
+    result = dispatch_custom_show(handler, { type: "Page", id: "support-1" })
 
-              refute result[:isError]
-              assert_equal "Support", result.dig(:structuredContent, "title")
-              assert_nil captured.recording
-              assert_nil captured.parent_recording
-              assert_equal "support-1", captured.id
-              assert_equal @grant, captured.access_grant
-              assert_nil captured.actor
-            end
-          end
-        end
-      end
-    end
+    assert_scope_miss result
+    refute called
+  end
+
+  def test_registered_handler_show_passes_the_scoped_recording
+    captured = nil
+    recording = FakeRecording.new("support-1", "Page")
+    @grant.accessible_recordings = FakeRelation.new(recording)
+    handler = lambda { |context|
+      captured = context
+      { json: { title: "Support", id: context.recording.id }, status: :ok }
+    }
+
+    result = dispatch_custom_show(handler, { type: "Page", id: "support-1" })
+
+    refute result[:isError]
+    assert_equal "Support", result.dig(:structuredContent, "title")
+    assert_same recording, captured.recording
+    assert_nil captured.parent_recording
+    assert_equal "support-1", captured.id
+    assert_equal @grant, captured.access_grant
   end
 
   def test_list_passes_parent_id_to_the_api_context
@@ -471,10 +499,7 @@ class DispatcherTest < Minitest::Test
             RecordingStudioApi.stub(:resource_action, ->(*) { raise "builtin should not run" }) do
               {
                 "list" => { type: "Page", q: "help" },
-                "show" => { type: "Page", id: "support-1" },
-                "create" => { type: "Page", title: "Hi", parent_id: "section-1" },
-                "update" => { type: "Page", id: "support-1", title: "Hi" },
-                "delete" => { type: "Page", id: "support-1" }
+                "create" => { type: "Page", title: "Hi", parent_id: "section-1" }
               }.each do |tool, args|
                 RecordingStudioApi.stub(:resource_handler, ->(*) { resource_handler }) do
                   result = dispatch(tool, args)
@@ -482,10 +507,27 @@ class DispatcherTest < Minitest::Test
                   refute result[:isError], tool
                   assert_equal true, result.dig(:structuredContent, "handled")
                   assert_nil captured[:resource].recording
+                  assert_nil captured[:resource].parent_recording
+                end
+              end
+
+              %w[show update delete].each do |tool|
+                called = false
+                missing = lambda { |_context|
+                  called = true
+                  { json: { handled: true }, status: :ok }
+                }
+                RecordingStudioApi.stub(:resource_handler, ->(*) { missing }) do
+                  result = dispatch(tool, { type: "Page", id: "support-1", title: "Hi" })
+
+                  assert_scope_miss result
+                  refute called, tool
                 end
               end
             end
 
+            recording = FakeRecording.new("support-1", "Page")
+            @grant.accessible_recordings = FakeRelation.new(recording)
             RecordingStudioApi.stub(:capability_action, action) do
               RecordingStudioApi.stub(:capability_action_enabled_for?, true) do
                 move_handler = ->(_type, name, **) { name == :move ? capability_handler : nil }
@@ -497,7 +539,7 @@ class DispatcherTest < Minitest::Test
 
                   refute result[:isError]
                   assert_equal true, result.dig(:structuredContent, "moved")
-                  assert_nil captured[:action].recording
+                  assert_same recording, captured[:action].recording
                   assert_equal "support-1", captured[:action].id
                   assert_equal "Page", captured[:action].recordable_type
                   assert_equal "section-1", captured[:action].params[:parent_id]
@@ -511,6 +553,7 @@ class DispatcherTest < Minitest::Test
   end
 
   def test_handler_non_success_status_is_tool_error
+    @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("missing", "Page"))
     handler = ->(_context) { { json: { error: { message: "Support page missing" } }, status: :not_found } }
 
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
@@ -955,6 +998,7 @@ class DispatcherTest < Minitest::Test
   def test_show_only_rejects_list
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show])
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
       RecordingStudioApi.register_resource_handler("Page", :show, handler: ->(_) { { json: { id: "1" } } })
       listed = dispatch("list", { type: "Page" })
       shown = dispatch("show", { type: "Page", id: "1" })
@@ -1027,7 +1071,206 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_custom_handlers_hide_guard_messages_and_skip_the_handler
+    recording = FakeRecording.new("page-1", "Page")
+    folder = FakeRecording.new("folder-1", "Folder")
+    called = false
+    handler = lambda { |_context|
+      called = true
+      { json: { ok: true }, status: :ok }
+    }
+    action = FakeAction.new(name: :move, handler: FakeHandler.new({ json: { builtin: true } }), required_role: :edit)
+
+    cases = [
+      ["show", { type: "Page", id: "missing" }, FakeRelation.new(nil)],
+      ["show", { type: "Page", id: "" }, FakeRelation.new(recording)],
+      ["show", { type: "Page" }, FakeRelation.new(recording)],
+      ["show", { type: "Page", id: "folder-1" }, FakeRelation.new(folder)],
+      ["update", { type: "Page", id: "page-1", title: "Hi" }, FakeRelation.new(recording)]
+    ]
+
+    cases.each do |tool, args, relation|
+      called = false
+      @grant.accessible_recordings = relation
+      @grant.deny_authorization = tool == "update"
+      result = dispatch_custom_show(handler, args, tool: tool)
+
+      assert_scope_miss result
+      refute called, tool
+    end
+
+    called = false
+    @grant.deny_authorization = true
+    @grant.accessible_recordings = FakeRelation.new(recording)
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:capability_action, action) do
+          RecordingStudioApi.stub(:capability_action_enabled_for?, true) do
+            RecordingStudioApi.stub(:resource_handler, ->(_type, name, **) { name == :move ? handler : nil }) do
+              RecordingStudioApi.stub(:resource_name_for, "pages") do
+                RecordingStudioApi.stub(:default_api_version, "v1") do
+                  result = dispatch(
+                    "capability_action",
+                    { type: "Page", id: "page-1", action: "move" }
+                  )
+
+                  assert_scope_miss result
+                  refute called
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_owns_scoping_reads_keep_recording_nil
+    captured = nil
+    @grant.accessible_recordings = FakeRelation.new(nil)
+    handler = lambda { |context|
+      captured = context
+      { json: { open: true }, status: :ok }
+    }
+    registration = RecordingStudioApi::ResourceHandlerRegistration.new(
+      handler: handler,
+      include_trashed: false,
+      owns_scoping: true,
+      trashed_semantics: nil
+    )
+    action = FakeAction.new(
+      name: :inspect,
+      handler: FakeHandler.new({ json: { builtin: true } }),
+      http_verb: :get,
+      required_role: :view,
+      owns_scoping: true
+    )
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler_registration, ->(*) { registration }) do
+          RecordingStudioApi.stub(:resource_handler, ->(_type, name, **) { name == :show ? handler : nil }) do
+            RecordingStudioApi.stub(:resource_name_for, "pages") do
+              RecordingStudioApi.stub(:default_api_version, "v1") do
+                result = dispatch("show", { type: "Page", id: "outside" })
+
+                refute result[:isError]
+                assert_equal true, result.dig(:structuredContent, "open")
+                assert_nil captured.recording
+                assert_nil captured.parent_recording
+              end
+            end
+          end
+        end
+      end
+    end
+
+    captured = nil
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:capability_action, action) do
+          RecordingStudioApi.stub(:capability_action_enabled_for?, true) do
+            RecordingStudioApi.stub(:resource_handler, ->(_type, name, **) { name == :inspect ? handler : nil }) do
+              RecordingStudioApi.stub(:resource_name_for, "pages") do
+                RecordingStudioApi.stub(:default_api_version, "v1") do
+                  result = dispatch(
+                    "capability_action",
+                    { type: "Page", id: "outside", action: "inspect" }
+                  )
+
+                  refute result[:isError]
+                  assert_nil captured.recording
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_scoped_endpoint_hides_misses_and_unscoped_paths_stay_nil
+    called = false
+    recording = FakeRecording.new("page-1", "Page")
+    handler = lambda { |context|
+      called = true
+      { seen: context.recording&.id }
+    }
+
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        :guard_page,
+        http_verb: :post,
+        path: "guard-page/:id",
+        recordable_type: "Page",
+        handler: handler
+      )
+      RecordingStudioApi.register_endpoint(
+        :guard_open,
+        http_verb: :post,
+        path: "guard-open/:id",
+        scope_id: false,
+        handler: handler
+      )
+
+      @grant.accessible_recordings = FakeRelation.new(nil)
+      missing = dispatch("guard_page", { id: "page-1" })
+      blank = dispatch("guard_page", { id: "" })
+      omitted = dispatch("guard_page", {})
+
+      assert_scope_miss missing
+      assert_scope_miss blank
+      assert_scope_miss omitted
+      refute called
+
+      @grant.accessible_recordings = FakeRelation.new(recording)
+      @grant.deny_authorization = true
+      denied = dispatch("guard_page", { id: "page-1" })
+      assert_scope_miss denied
+      refute called
+
+      @grant.deny_authorization = false
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("page-1", "Folder"))
+      wrong_type = dispatch("guard_page", { id: "page-1" })
+      assert_scope_miss wrong_type
+      refute called
+
+      @grant.accessible_recordings = FakeRelation.new(recording)
+      found = dispatch("guard_page", { id: "page-1" })
+      refute found[:isError]
+      assert_equal "page-1", found.dig(:structuredContent, "seen")
+
+      called = false
+      @grant.accessible_recordings = FakeRelation.new(nil)
+      open = dispatch("guard_open", { id: "outside" })
+      refute open[:isError]
+      assert_nil open.dig(:structuredContent, "seen")
+      assert called
+    end
+  end
+
   private
+
+  def assert_scope_miss(result)
+    assert result[:isError]
+    assert_equal SCOPE_MISS, result.dig(:content, 0, :text)
+    refute_includes result.dig(:content, 0, :text), "does not match"
+    refute_includes result.dig(:content, 0, :text), "authorized"
+  end
+
+  def dispatch_custom_show(handler, args, tool: "show")
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_handler, ->(*) { handler }) do
+          RecordingStudioApi.stub(:resource_name_for, "pages") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              dispatch(tool, args)
+            end
+          end
+        end
+      end
+    end
+  end
 
   def invalid_record(messages)
     errors = Object.new

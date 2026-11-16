@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-11-16
+
+### Security
+- Custom resource handlers, custom capability actions, and registered endpoints run `RecordingStudioApi::HandlerGuard` before the handler. An id outside the grant, the wrong type, a trashed record, a blank id, and a role that is too low all return `Resource was not found in this API scope`. The handler is not called. The guard's own message is not forwarded. A capability input contract runs only after that guard allows the call, so invalid params cannot reveal that the recording exists. Custom create still passes `parent_recording` nil; the handler scopes `parent_id`. `include_trashed` still returns a trashed recording when the role is allowed.
+
+### Changed
+- Runtime requires `recording_studio_api` `>= 1.2.0, < 2.0`.
+- Development and dummy Gemfiles pin API `v1.2.0`. Other addon pins are unchanged.
+
+### Upgrade notes
+- Bump to `0.35.0`. Previous version is `0.34.1`. Hosts need API 1.2.0 or newer, below 2.
+- Custom `show`, `update`, and `delete` handlers, custom capability actions, and id-scoped endpoints no longer receive `recording: nil` for an id the grant cannot use. `owns_scoping` on a read and `scope_id: false` still pass `recording: nil`. Built-in tree tools and built-in capability actions are unchanged. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.34.1] - 2026-11-16
 
 ### Changed
@@ -961,7 +974,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.35.0...HEAD
+[0.35.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.1...v0.35.0
 [0.34.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.0...v0.34.1
 [0.34.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.3...v0.34.0
 [0.33.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.33.2...v0.33.3

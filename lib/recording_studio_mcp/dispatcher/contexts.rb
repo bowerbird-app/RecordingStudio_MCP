@@ -4,25 +4,25 @@ module RecordingStudioMcp
   class Dispatcher
     private
 
-    def resource_context(recordable_type, args, recording: nil, operation_name: nil)
-      fields = resource_context_fields(recordable_type, args, recording, operation_name)
+    def resource_context(recordable_type, args, recording: nil, parent_recording: nil, operation_name: nil)
+      fields = resource_context_fields(recordable_type, args, recording, parent_recording, operation_name)
       RecordingStudioApi::ResourceOperationContext.new(**fields)
     end
 
-    def resource_context_fields(recordable_type, args, recording, operation_name)
+    def resource_context_fields(recordable_type, args, recording, parent_recording, operation_name)
       grant_fields
-        .merge(resource_identity_fields(recordable_type, args, recording))
+        .merge(resource_identity_fields(recordable_type, args, recording, parent_recording))
         .merge(resource_request_fields(recordable_type, args, operation_name))
     end
 
-    def resource_identity_fields(recordable_type, args, recording)
+    def resource_identity_fields(recordable_type, args, recording, parent_recording)
       {
         recording: recording,
         recordable_type: recordable_type,
         resource_name: RecordingStudioApi.resource_name_for(recordable_type),
         id: args["id"],
         parent_id: args["parent_id"],
-        parent_recording: nil,
+        parent_recording: parent_recording,
         relationship_id: nil
       }
     end
