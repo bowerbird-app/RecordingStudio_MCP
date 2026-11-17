@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.2] - 2026-11-17
+
+### Changed
+- Runtime requires `recording_studio_api` `>= 1.6.0, < 2.0`. Development and dummy Gemfiles pin API `v1.6.0`. API 1.6 needs Recording Studio `>= 7.6.0` and Accessible `>= 0.46.0`, so those Gemfiles pin Recording Studio `v7.6.0` and Accessible `v0.47.0`. The dummy copies API's api client `owner_type` and `owner_id` columns.
+- MCP reads `registration.public_name`. A blank `public_name:` is the class name without its namespace, because API stores that string. A full class name is still rejected. Callers send the public name. MCP matches that name itself and does not call `recordable_type_for_public_name`.
+
+### Removed
+- MCP no longer shows full class names, or logs a warning, when two types share a public name. API 1.6 raises `ConfigurationError` at boot when one named API has that clash.
+
+### Upgrade notes
+- Bump to `0.36.2`. Previous version is `0.36.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts need API `>= 1.6.0, < 2.0`. Install Recording Studio `>= 7.6.0, < 8.0` and Accessible `>= 0.46.0, < 2.0` with it.
+
 ## [0.36.1] - 2026-11-17
 
 ### Fixed
@@ -999,7 +1012,9 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.2...HEAD
+[0.36.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.1...v0.36.2
+[0.36.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.0...v0.36.1
 [0.36.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.1...v0.35.0
 [0.34.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.34.0...v0.34.1
