@@ -84,7 +84,8 @@ module RecordingStudioMcp
     def run_capability_action(recordable_type, args, action)
       recording = load_recording(recordable_type, args["id"])
       authorize_capability!(recording, action)
-      payload = serialize_capability_result(action, action.handler.call(action_context(recording, args, action)))
+      called = action.handler.call(action_context(recording, args, action))
+      payload = serialize_capability_result(action, called, args)
       success_result(payload)
     end
 

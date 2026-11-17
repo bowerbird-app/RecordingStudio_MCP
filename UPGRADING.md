@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.5
+
+Previous version is `0.36.4`. No MCP migration.
+
+A capability action that returns a recording is serialized with that call's access grant, scoped recordings, and arguments. Fields that depend on the grant are in the write result. `show` already used this grant.
+
+The `create` tool still requires `type` at the top level. It also lists each creatable type's required fields in an `allOf` branch. The `if` matches `type`. The `then` lists that type's required fields. The field list is the same one `describe` returns. Optional writable fields stay allowed. Tool name stays `create`.
+
+`describe` and the docs page use a per-type action summary and description when `openapi_for` sets them. Otherwise they use the shared action copy. Tool names and `tools/list` are unchanged.
+
 ## 0.36.4
 
 Previous version is `0.36.3`. No MCP migration.

@@ -164,7 +164,11 @@ class CatalogTest < Minitest::Test
       register_ping_capability
       register_tree_type("Workspace", capability_actions: %i[ping])
       ping = RecordingStudioApi.capability_action(:ping, api: :public)
-      grant = Struct.new(:name, :input_contract, :openapi).new(:grant_access, nil, nil)
+      grant = Struct.new(:name, :input_contract, :openapi) do
+        def openapi_for(**)
+          {}
+        end
+      end.new(:grant_access, nil, nil)
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       RecordingStudioApi.stub(:capability_actions_for, [ping, grant]) do

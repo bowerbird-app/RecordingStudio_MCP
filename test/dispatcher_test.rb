@@ -101,6 +101,10 @@ class DispatcherTest < Minitest::Test
       type_schema
     end
 
+    def type_names_for(_operation)
+      []
+    end
+
     def destroy_type_names
       []
     end
@@ -800,7 +804,7 @@ class DispatcherTest < Minitest::Test
     with_isolated_api_configuration do
       recordable = Object.new
       recording = Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
-                         .new("note-1", "GrantFieldNote", recordable, nil, nil)
+                        .new("note-1", "GrantFieldNote", recordable, nil, nil)
       RecordingStudioApi.register_recordable_type_api(
         "GrantFieldNote",
         serializer: lambda { |_recordable, context: nil|

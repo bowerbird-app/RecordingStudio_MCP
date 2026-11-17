@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.5] - 2026-11-17
+
+### Fixed
+- A capability action that returns a recording serializes it with that call's access grant. Fields that depend on the grant are in the write result.
+- The `create` input schema lists each creatable type's required fields. `type` stays the only top-level required argument. Each type's required fields are an `allOf` branch whose `if` matches `type` and whose `then` lists those fields.
+- `describe` and the docs page use a per-type action summary and description when `openapi_for` sets them. Otherwise they use the shared action copy.
+
+### Upgrade notes
+- Bump to `0.36.5`. Previous version is `0.36.4`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Tool names and `tools/list` are unchanged.
+
 ## [0.36.4] - 2026-11-17
 
 ### Fixed
@@ -1034,7 +1045,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...HEAD
+[0.36.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...v0.36.5
 [0.36.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.3...v0.36.4
 [0.36.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.2...v0.36.3
 [0.36.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.1...v0.36.2
