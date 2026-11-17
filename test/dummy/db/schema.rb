@@ -509,6 +509,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_000024) do
     t.index ["recordable_type", "recordable_id"], name: "index_recording_studio_recordings_on_recordable"
     t.index ["recordable_type", "recordable_id"], name: "index_rs_unique_root_recording_per_recordable", unique: true, where: "(parent_recording_id IS NULL)"
     t.index ["root_recording_id", "parent_recording_id"], name: "index_rs_recordings_on_root_and_parent"
+    t.index ["root_recording_id", "recordable_type", "created_at", "id"], name: "index_rs_recordings_on_root_type_created_at_id", order: { created_at: :desc, id: :desc }
     t.index ["root_recording_id", "recordable_type", "recordable_id"], name: "index_rs_recordings_on_root_and_recordable"
     t.index ["root_recording_id"], name: "idx_rs_attachable_root_active", where: "(((recordable_type)::text = 'RecordingStudioAttachable::Attachment'::text) AND (trashed_at IS NULL))"
     t.index ["root_recording_id"], name: "index_rs_recordings_on_root_recording"
