@@ -84,12 +84,18 @@ module RecordingStudioMcp
             runs_on_line(full_name, shown),
             Schemas.registered_type_description(full_name, api_key),
             "Type: `#{shown}`",
-            action_summary(action["name"], api_key),
-            ActionDocs.raw_copy(RecordingStudioApi.capability_action(action["name"], api: api_key))["description"],
+            *action_copy_lines(action, api_key, full_name),
             tool_line(shown, action["name"])
           ].compact.join("\n\n")
         end
         private_class_method :page_description
+
+        def action_copy_lines(action, api_key, type_name)
+          registered = RecordingStudioApi.capability_action(action["name"], api: api_key)
+          copy = ActionDocs.copy_for(registered, type_name)
+          [copy["summary"], copy["description"]]
+        end
+        private_class_method :action_copy_lines
 
         def runs_on_line(full_name, shown)
           label = singular_type_label(full_name)
@@ -103,11 +109,6 @@ module RecordingStudioMcp
           RecordingStudio.recordable_type_label(type_name).to_s.singularize
         end
         private_class_method :singular_type_label
-
-        def action_summary(action_name, api_key)
-          ActionDocs.raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["summary"]
-        end
-        private_class_method :action_summary
       end
     end
   end

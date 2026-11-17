@@ -136,7 +136,7 @@ module RecordingStudioMcp
     end
 
     def create_tool(catalog)
-      ToolDocs.decorate(
+      built = ToolDocs.decorate(
         tool(
           name: "create",
           title: "Create a record",
@@ -163,6 +163,35 @@ module RecordingStudioMcp
         ),
         output_schema: ToolDocs.record_output_schema(catalog)
       )
+      requirements = create_type_requirements(catalog)
+      built[:inputSchema][:allOf] = requirements if requirements.any?
+      built
+    end
+
+    def create_type_requirements(catalog)
+      catalog.type_names_for(:create).filter_map do |type_name|
+        registration = RecordingStudioApi.recordable_registration_for(type_name, api: catalog.api)
+        fields = FieldSchema.for(type_name, registration).select { |field| field["required"] }
+        next if fields.empty?
+
+        {
+          if: {
+            properties: { type: { const: catalog.displayed_type_name(type_name) } },
+            required: ["type"]
+          },
+          then: {
+            required: fields.map { |field| field["name"] },
+            properties: fields.to_h { |field| [field["name"].to_sym, create_field_property(field)] }
+          }
+        }
+      end
+    end
+
+    def create_field_property(field)
+      property = { type: field.fetch("type") }
+      property[:description] = field["description"] if field["description"].present?
+      property[:enum] = field["allowed_values"] if field["allowed_values"]
+      property
     end
 
     def update_tool(catalog)
@@ -300,6 +329,7 @@ module RecordingStudioMcp
 
     private_class_method :tool, :endpoint_tool_options, :endpoint_title,
                          :endpoint_description, :list_description, :list_properties,
+                         :create_type_requirements, :create_field_property,
                          :attach_meta, :attach_ui_meta
   end
 end

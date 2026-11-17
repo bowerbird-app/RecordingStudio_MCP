@@ -232,6 +232,54 @@ class ToolsTest < Minitest::Test
     end
   end
 
+  def test_create_schema_lists_required_fields_for_each_type
+    with_isolated_api_configuration do
+      register_tree_type(
+        "Page",
+        openapi: {
+          details_schema: {
+            properties: {
+              title: { type: "string", description: "Page title." }
+            },
+            required: ["title"]
+          }
+        }
+      )
+      RecordingStudioApi.register_recordable_type_api(
+        "Article",
+        serializer: ->(*) { { body: "Body" } },
+        output_keys: %i[body],
+        writable_attributes: %i[body],
+        operations: %i[index show create],
+        openapi: {
+          details_schema: {
+            properties: {
+              body: { type: "string", description: "Article body.", enum: %w[short long] }
+            },
+            required: ["body"]
+          }
+        }
+      )
+
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
+      schema = tool.fetch(:inputSchema)
+      clauses = schema.fetch(:allOf).index_by { |clause| clause.dig(:if, :properties, :type, :const) }
+
+      assert_equal "create", tool[:name]
+      assert_equal ["type"], schema[:required]
+      assert_equal true, schema[:additionalProperties]
+      assert_equal %w[Article Page], schema.dig(:properties, :type, :enum)
+      assert schema[:properties].key?(:parent_id)
+      assert schema[:properties].key?(:idempotency_key)
+      refute schema[:properties].key?(:title)
+      assert_equal ["title"], clauses.fetch("Page").dig(:then, :required)
+      assert_equal "string", clauses.fetch("Page").dig(:then, :properties, :title, :type)
+      assert_equal "Page title.", clauses.fetch("Page").dig(:then, :properties, :title, :description)
+      assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
+      assert_equal %w[short long], clauses.fetch("Article").dig(:then, :properties, :body, :enum)
+    end
+  end
+
   def test_create_has_no_attributes_envelope
     with_isolated_api_configuration do
       register_tree_type("Page")

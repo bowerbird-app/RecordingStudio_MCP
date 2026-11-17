@@ -24,13 +24,38 @@ module RecordingStudioMcp
       access_grant.accessible_recordings
     end
 
-    def serialize_capability_result(action, result)
+    def serialize_capability_result(action, result, args = {})
       return result.fetch(:json) if result.is_a?(Hash) && result.key?(:json)
 
       serializer = action.serializer || RecordingStudioApi::Serializers::ResourceRecordingSerializer
-      return serializer.call(result, version: api_version, api: api_key) if default_recording_serializer?(serializer)
+      return recording_serializer_call(serializer, result, args) if default_recording_serializer?(serializer)
 
       serializer.call(result)
+    end
+
+    def recording_serializer_call(serializer, result, args)
+      serializer.call(
+        result,
+        version: api_version,
+        api: api_key,
+        context: recording_context_for(result, args)
+      )
+    end
+
+    def recording_context_for(result, args)
+      RecordingStudioApi::RelationshipContext.for(
+        recordings: recording_result?(result) ? [result] : [],
+        include_values: args["include"],
+        scoped_recordings: access_grant.accessible_recordings,
+        api_key: api_key,
+        api_version: api_version,
+        access_grant: access_grant,
+        params: args
+      )
+    end
+
+    def recording_result?(result)
+      result.respond_to?(:recordable_type) && result.respond_to?(:recordable)
     end
 
     def default_recording_serializer?(serializer)

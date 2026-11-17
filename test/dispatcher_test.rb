@@ -101,6 +101,10 @@ class DispatcherTest < Minitest::Test
       type_schema
     end
 
+    def type_names_for(_operation)
+      []
+    end
+
     def destroy_type_names
       []
     end
@@ -793,6 +797,37 @@ class DispatcherTest < Minitest::Test
           end
         end
       end
+    end
+  end
+
+  def test_capability_action_result_includes_fields_that_need_the_grant
+    with_isolated_api_configuration do
+      recordable = Object.new
+      recording = Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
+                        .new("note-1", "GrantFieldNote", recordable, nil, nil)
+      RecordingStudioApi.register_recordable_type_api(
+        "GrantFieldNote",
+        serializer: lambda { |_recordable, context: nil|
+          { headline: context&.access_grant ? "visible" : nil }
+        },
+        output_keys: %i[headline],
+        operations: %i[index show],
+        capability_actions: %i[stamp]
+      )
+      RecordingStudioApi.register_capability_action(
+        :stamp,
+        capability: :accessible,
+        handler: ->(_context) { recording }
+      )
+      @grant.accessible_recordings = FakeRelation.new(recording)
+
+      result = dispatch(
+        "capability_action",
+        { type: "GrantFieldNote", id: "note-1", action: "stamp" }
+      )
+
+      refute result[:isError], result.dig(:content, 0, :text)
+      assert_equal "visible", result.dig(:structuredContent, "headline")
     end
   end
 

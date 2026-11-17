@@ -78,7 +78,7 @@ module RecordingStudioMcp
         details = { "name" => action.name.to_s }
         contract = action.input_contract&.as_json
         details["params"] = contract.deep_stringify_keys if contract.present?
-        fields = details.merge(Documentation::Openapi::ActionDocs.raw_copy(action))
+        fields = details.merge(Documentation::Openapi::ActionDocs.copy_for(action, recordable_type))
         fields["title"] = Documentation::Openapi::ActionDocs.title(action.name, api, recordable_type)
         fields
       end

@@ -7,7 +7,16 @@ module RecordingStudioMcp
         module_function
 
         def raw_copy(action)
-          openapi = action&.openapi
+          copy_from(action&.openapi)
+        end
+
+        def copy_for(action, type_name)
+          return {} if action.nil?
+
+          copy_from(action.openapi).merge(copy_from(typed_openapi(action, type_name)))
+        end
+
+        def copy_from(openapi)
           return {} unless openapi.is_a?(Hash)
 
           %w[title summary description].each_with_object({}) do |key, fields|
@@ -15,6 +24,7 @@ module RecordingStudioMcp
             fields[key] = value if value
           end
         end
+        private_class_method :copy_from
 
         def title(action_name, api_key, type_name)
           documented = documented_title(action_name, api_key, type_name)
