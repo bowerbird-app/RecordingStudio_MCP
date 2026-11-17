@@ -92,7 +92,8 @@ module RecordingStudioMcp
 
       allowed_sentence = allowed.any? ? allowed.join(", ") : "(none)"
       raise RecordingStudioApi::InvalidActionInputError,
-            "Unknown fields #{unknown.sort.join(', ')}. Writable fields for #{recordable_type}: #{allowed_sentence}"
+            "Unknown fields #{unknown.sort.join(', ')}. " \
+            "Writable fields for #{catalog.displayed_type_name(recordable_type)}: #{allowed_sentence}"
     end
 
     def create_idempotency_key(args, operation_name)

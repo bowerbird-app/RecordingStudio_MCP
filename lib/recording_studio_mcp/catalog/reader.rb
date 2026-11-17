@@ -27,11 +27,13 @@ module RecordingStudioMcp
       def unknown_action_message(action_name, recordable_type)
         allowed = enabled_capability_action_names(recordable_type)
         suffix = allowed.any? ? allowed.join(", ") : "(none)"
-        "Unknown action #{action_name}. Allowed actions for #{recordable_type}: #{suffix}"
+        shown = displayed_type_name(recordable_type)
+        "Unknown action #{action_name}. Allowed actions for #{shown}: #{suffix}"
       end
 
       def allowed_types_sentence
-        suffix = type_names.any? ? type_names.join(", ") : "(none)"
+        names = displayed_names_for(type_names)
+        suffix = names.any? ? names.join(", ") : "(none)"
         "Allowed types: #{suffix}"
       end
 
@@ -51,11 +53,7 @@ module RecordingStudioMcp
         from_resource = resource_type_name(name)
         return from_resource if from_resource.present? && registered_types.include?(from_resource)
 
-        resolve_short_label!(name)
-      end
-
-      def resolve_short_label!(name)
-        matches = types_for_short_label(name)
+        matches = type_name_matches(name)
         return matches.first if matches.one?
         raise RecordingStudioApi::InvalidActionInputError, ambiguous_type_message(name, matches) if matches.many?
 
@@ -91,10 +89,6 @@ module RecordingStudioMcp
           RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api)
       end
 
-      def types_for_short_label(name)
-        registered_types.select { |type| type.demodulize == name }
-      end
-
       def parent_rules(recordable_type)
         rules = {}
         assign_root_rule(rules, recordable_type)
@@ -112,7 +106,7 @@ module RecordingStudioMcp
         return unless defined?(RecordingStudio) && RecordingStudio.respond_to?(:allowed_parent_types_for)
 
         parents = Array(RecordingStudio.allowed_parent_types_for(recordable_type))
-        rules["allowed_parent_types"] = parents.map(&:to_s).sort
+        rules["allowed_parent_types"] = parents.map { |parent| displayed_type_name(parent) }.sort
       end
     end
   end

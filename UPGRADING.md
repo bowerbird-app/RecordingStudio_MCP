@@ -1,5 +1,33 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.0
+
+Previous version is `0.35.0`. No MCP migration. The API requirement stays
+`>= 1.2.0, < 2.0`.
+
+MCP shows recordable types by a short public name. `tools/list` type
+enums, `describe`, docs tool names, docs tags, errors that list
+allowed types, and resource reads use that name.
+`RecordingStudioPresskits::PressKit` shows as `PressKit`. A docs action
+is `PressKit--set_embargo`. Call `capability_action` with
+`type: PressKit` and `action: set_embargo`. A resource read returns
+`type: PressKit`.
+
+The full class name still resolves. A resource name still resolves.
+Callers that send `type: RecordingStudioPresskits::PressKit` keep
+working. Public and operations APIs each keep their own map.
+
+API is adding an optional `public_name:` argument to
+`register_recordable_type_api`. That release is not out yet, so MCP
+does not bump the API pin. When a registration responds to
+`public_name` and the value is present, that value is the public name.
+Otherwise MCP uses the demodulized class name.
+
+If two registered types on the same named API share a public name, MCP
+does not pick one. Those types show their full class names. MCP logs a
+warning that the gem should set `public_name`. An input that matches
+more than one type still returns the existing ambiguous-type error.
+
 ## 0.35.0
 
 Previous version is `0.34.1`.

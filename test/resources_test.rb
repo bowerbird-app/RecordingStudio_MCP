@@ -45,6 +45,27 @@ class ResourcesTest < Minitest::Test
     assert_equal "Hello", payload["title"]
   end
 
+  def test_read_and_list_show_the_public_type_name
+    recording = FakeRecording.new(7, "RecordingStudioPresskits::PressKit", nil, nil, 1)
+    grant = FakeGrant.new(FakeScope.new([recording]))
+    grant.define_singleton_method(:api_client) { nil }
+    catalog = Object.new
+    catalog.define_singleton_method(:displayed_type_name) do |type|
+      type.to_s == "RecordingStudioPresskits::PressKit" ? "PressKit" : type.to_s
+    end
+
+    RecordingStudioMcp::Catalog.stub(:for, catalog) do
+      read = RecordingStudioMcp::Resources.read(access_grant: grant, uri: "recording://7")
+      payload = JSON.parse(read.payload[:contents].first[:text])
+
+      assert_equal "PressKit", payload["type"]
+      assert_equal "PressKit", payload["name"]
+
+      listed = RecordingStudioMcp::Resources.list(access_grant: grant)
+      assert_equal "PressKit", listed.payload[:resources].first[:name]
+    end
+  end
+
   def test_read_hides_recordings_outside_the_grant
     grant = FakeGrant.new(FakeScope.new([]))
     answer = RecordingStudioMcp::Resources.read(access_grant: grant, uri: "recording://99")

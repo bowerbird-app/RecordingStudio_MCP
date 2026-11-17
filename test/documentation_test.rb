@@ -308,26 +308,26 @@ class DocumentationTest < Minitest::Test
       spec = openapi_with_credit_label!
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
-      ping_tool = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Credit--ping" }
+      ping_tool = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Credit--ping" }
       ping_description = ping_tool.fetch("description")
-      runs_at = ping_description.index("Runs on a Credit (RecordingStudioPresskits::Credit).")
+      runs_at = ping_description.index("Runs on a Credit (Credit).")
       type_description_at = ping_description.index("Credits on a press kit.")
-      type_line_at = ping_description.index("Type: `RecordingStudioPresskits::Credit`")
+      type_line_at = ping_description.index("Type: `Credit`")
 
       refute_includes spec.dig("components", "schemas").keys, "RecordingStudioPresskits::Credit"
       refute_includes spec.dig("components", "schemas").keys, "Folder"
       assert_equal "Credit - Ping", ping_tool["title"]
       assert_equal ["Press Kit"], ping_tool["tags"]
       assert_includes ping_tool["description"],
-                      "Runs on a Credit (RecordingStudioPresskits::Credit)."
+                      "Runs on a Credit (Credit)."
       assert_includes ping_tool["description"], "Credits on a press kit."
       assert_operator type_description_at, :>, runs_at
       assert_operator type_line_at, :>, type_description_at
-      assert_includes ping_tool["description"], "Type: `RecordingStudioPresskits::Credit`"
+      assert_includes ping_tool["description"], "Type: `Credit`"
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
       assert_includes ping_tool["description"],
-                      "Tool: capability_action with type `RecordingStudioPresskits::Credit` and action `ping`"
+                      "Tool: capability_action with type `Credit` and action `ping`"
       assert_equal "Credits on a press kit.", press_kit["description"]
       assert_includes tag_names, "Press Kit"
       refute_includes tag_names, "Press kits"
@@ -441,10 +441,10 @@ class DocumentationTest < Minitest::Test
         "Credits section - Reorder Credits",
         "credit line - Remove Credit"
       ], titles
-      refute_includes protocol_names, "RecordingStudioPresskits::CreditsSection--add_credit"
-      add = tools.fetch("RecordingStudioPresskits::CreditsSection--add_credit")
-      reorder = tools.fetch("RecordingStudioPresskits::CreditsSection--reorder_credits")
-      remove = tools.fetch("RecordingStudioPresskits::CreditLine--remove_credit")
+      refute_includes protocol_names, "CreditsSection--add_credit"
+      add = tools.fetch("CreditsSection--add_credit")
+      reorder = tools.fetch("CreditsSection--reorder_credits")
+      remove = tools.fetch("CreditLine--remove_credit")
       assert add["x-mcp-docs-only"]
       assert reorder["x-mcp-docs-only"]
       assert remove["x-mcp-docs-only"]
@@ -460,19 +460,19 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Press Kit"], add["tags"]
       assert_equal ["Press Kit"], reorder["tags"]
       assert_equal ["Press Kit"], remove["tags"]
-      assert_includes add["description"], "Runs on a Credits section (RecordingStudioPresskits::CreditsSection)."
-      assert_includes add["description"], "Type: `RecordingStudioPresskits::CreditsSection`"
+      assert_includes add["description"], "Runs on a Credits section (CreditsSection)."
+      assert_includes add["description"], "Type: `CreditsSection`"
       refute_includes add["description"], "Allowed operations:"
       refute_includes add["description"], "Writable fields:"
       assert_includes add["description"], "Add a workspace credit to this section"
       assert_includes add["description"],
-                      "Tool: capability_action with type `RecordingStudioPresskits::CreditsSection` " \
+                      "Tool: capability_action with type `CreditsSection` " \
                       "and action `add_credit`"
       refute_includes add["description"], "credit_id"
       refute_includes add["description"], "reject_unknown"
       assert_includes reorder["description"], "Reorder credits in this section"
-      assert_includes remove["description"], "Runs on a credit line (RecordingStudioPresskits::CreditLine)."
-      assert_includes remove["description"], "Type: `RecordingStudioPresskits::CreditLine`"
+      assert_includes remove["description"], "Runs on a credit line (CreditLine)."
+      assert_includes remove["description"], "Type: `CreditLine`"
       refute_includes remove["description"], "Allowed operations:"
       refute_includes remove["description"], "Writable fields:"
       assert_equal ["TypeName"], schemas.keys
@@ -561,7 +561,7 @@ class DocumentationTest < Minitest::Test
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-      add = tools.fetch("RecordingStudioPresskits::Files--add_file")
+      add = tools.fetch("Files--add_file")
 
       assert_equal ["Press Kit"], add["tags"]
       refute_includes spec.dig("components", "schemas").keys, "RecordingStudioPresskits::Files"
@@ -588,9 +588,9 @@ class DocumentationTest < Minitest::Test
       )
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
 
-      assert_equal "Press Kit - Create Upload", tools.fetch("RecordingStudioPresskits::PressKit--create_upload")["title"]
-      assert_equal "Podcast - Create Upload", tools.fetch("RecordingStudioPresskits::Podcast--create_upload")["title"]
-      assert_equal "Quote - Create Upload", tools.fetch("RecordingStudioPresskits::Quote--create_upload")["title"]
+      assert_equal "Press Kit - Create Upload", tools.fetch("PressKit--create_upload")["title"]
+      assert_equal "Podcast - Create Upload", tools.fetch("Podcast--create_upload")["title"]
+      assert_equal "Quote - Create Upload", tools.fetch("Quote--create_upload")["title"]
     end
   end
 
@@ -610,7 +610,7 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = openapi_with_labels!("RecordingStudioPresskits::Podcast" => "Podcast")
-      add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Podcast--add" }
+      add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Podcast--add" }
       described = RecordingStudioMcp::Catalog.new(api: :public).describe("RecordingStudioPresskits::Podcast")
 
       assert_equal "Podcast - Add", add["title"]
@@ -634,7 +634,7 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = openapi_with_labels!("RecordingStudioPresskits::Files" => "Files")
-      upload = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Files--create_upload" }
+      upload = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Files--create_upload" }
 
       assert_equal "File - Upload", upload["title"]
     end
@@ -656,7 +656,7 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
-      remove = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::ListSection--remove_item" }
+      remove = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ListSection--remove_item" }
 
       assert_equal "List section - Remove List Item", remove["title"]
     end
@@ -687,15 +687,15 @@ class DocumentationTest < Minitest::Test
         [action.fetch("name"), action.fetch("title")]
       end
 
-      assert_equal "File - Create Upload", tools.fetch("RecordingStudioPresskits::Files--create_upload")["title"]
-      assert_equal "File - Attach", tools.fetch("RecordingStudioPresskits::Files--attach")["title"]
-      assert_equal "Image - Create Upload", tools.fetch("RecordingStudioPresskits::Images--create_upload")["title"]
-      assert_equal "Image - Attach", tools.fetch("RecordingStudioPresskits::Images--attach")["title"]
-      assert_equal "Podcast - Create Upload", tools.fetch("RecordingStudioPresskits::Podcast--create_upload")["title"]
-      assert_equal "Podcast - Attach", tools.fetch("RecordingStudioPresskits::Podcast--attach")["title"]
-      assert_equal tools.fetch("RecordingStudioPresskits::Files--create_upload")["title"],
+      assert_equal "File - Create Upload", tools.fetch("Files--create_upload")["title"]
+      assert_equal "File - Attach", tools.fetch("Files--attach")["title"]
+      assert_equal "Image - Create Upload", tools.fetch("Images--create_upload")["title"]
+      assert_equal "Image - Attach", tools.fetch("Images--attach")["title"]
+      assert_equal "Podcast - Create Upload", tools.fetch("Podcast--create_upload")["title"]
+      assert_equal "Podcast - Attach", tools.fetch("Podcast--attach")["title"]
+      assert_equal tools.fetch("Files--create_upload")["title"],
                    describe_titles.fetch("create_upload")
-      assert_equal tools.fetch("RecordingStudioPresskits::Files--attach")["title"],
+      assert_equal tools.fetch("Files--attach")["title"],
                    describe_titles.fetch("attach")
     end
   end
@@ -716,7 +716,7 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = openapi_with_labels!("RecordingStudioPresskits::Files" => "Files")
-      attach = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "RecordingStudioPresskits::Files--attach" }
+      attach = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Files--attach" }
       page = attach.fetch("description")
       summary_at = page.index("Attach a file")
       description_at = page.index("Signed blob from create_upload, or a list of attachments.")

@@ -45,7 +45,7 @@ module RecordingStudioMcp
       recording = find_accessible(access_grant, recording_id)
       return NotFound.new(uri: uri) if recording.nil?
 
-      Read.new(payload: complete({ contents: [content_for(recording)] }, protocol_version))
+      Read.new(payload: complete({ contents: [content_for(recording, access_grant)] }, protocol_version))
     end
 
     def templates(cursor: nil, protocol_version: nil)
@@ -96,7 +96,8 @@ module RecordingStudioMcp
     end
 
     def recording_resources(access_grant)
-      recordings_for(access_grant).map { |recording| RecordingCard.new(recording).list_entry }
+      catalog = catalog_for(access_grant)
+      recordings_for(access_grant).map { |recording| RecordingCard.new(recording, catalog: catalog).list_entry }
     end
 
     def recordings_for(access_grant)
@@ -113,8 +114,14 @@ module RecordingStudioMcp
       access_grant.accessible_recordings
     end
 
-    def content_for(recording)
-      RecordingCard.new(recording).content
+    def content_for(recording, access_grant)
+      RecordingCard.new(recording, catalog: catalog_for(access_grant)).content
+    end
+
+    def catalog_for(access_grant)
+      return unless access_grant.respond_to?(:api_client)
+
+      Catalog.for(access_grant)
     end
 
     def recording_template
@@ -122,6 +129,6 @@ module RecordingStudioMcp
     end
 
     private_class_method :complete, :listed_resources, :skill_resources, :recording_resources,
-                         :recordings_for, :content_for, :recording_template, :ui_uri?
+                         :recordings_for, :content_for, :catalog_for, :recording_template, :ui_uri?
   end
 end
