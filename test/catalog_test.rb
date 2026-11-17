@@ -311,16 +311,6 @@ class CatalogTest < Minitest::Test
     end
   end
 
-  def test_resolve_type_prefers_an_exact_registered_name
-    with_isolated_api_configuration do
-      register_tree_type("Page")
-      register_tree_type("Nested::Page")
-      catalog = RecordingStudioMcp::Catalog.new(api: :public)
-
-      assert_equal "Page", catalog.resolve_type!("Page")
-    end
-  end
-
   def test_describe_includes_relationships_fields_and_allowed_children
     with_isolated_api_configuration do
       RecordingStudioApi.register_recordable_type_api(
@@ -543,19 +533,28 @@ class CatalogTest < Minitest::Test
     end
   end
 
-  def test_blank_public_name_falls_back_to_the_demodulized_class_name
+  def test_blank_public_name_is_the_class_name_without_its_namespace
     with_isolated_api_configuration do
-      register_tree_type("RecordingStudioPresskits::PressKit")
-      with_public_name("RecordingStudioPresskits::PressKit", :public, "  ") do
-        catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      RecordingStudioApi.register_recordable_type_api(
+        "RecordingStudioPresskits::PressKit",
+        api: :public,
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[index show],
+        public_name: " "
+      )
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
-        assert_includes catalog.type_schema.fetch(:enum), "PressKit"
-        assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("PressKit")
-        rejected = assert_raises(RecordingStudioApi::NotFoundError) do
-          catalog.resolve_type!("RecordingStudioPresskits::PressKit")
-        end
-        assert_includes rejected.message, "Allowed types: PressKit"
+      assert_equal "PressKit", RecordingStudioApi.recordable_registration_for(
+        "RecordingStudioPresskits::PressKit", api: :public
+      ).public_name
+      assert_includes catalog.type_schema.fetch(:enum), "PressKit"
+      assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("PressKit")
+      rejected = assert_raises(RecordingStudioApi::NotFoundError) do
+        catalog.resolve_type!("RecordingStudioPresskits::PressKit")
       end
+      assert_includes rejected.message, "Allowed types: PressKit"
     end
   end
 
@@ -572,40 +571,5 @@ class CatalogTest < Minitest::Test
       wrapper
     }
     RecordingStudioApi.stub(:recordable_registration_for, wrapped, &)
-  end
-
-  def test_clashing_public_names_show_full_class_names_and_warn
-    with_isolated_api_configuration do
-      register_tree_type("Alpha::EmbargoKit")
-      register_tree_type("Beta::EmbargoKit")
-      register_tree_type("Folder")
-      warnings = []
-      logger = Object.new
-      logger.define_singleton_method(:warn) { |message| warnings << message }
-      catalog = RecordingStudioMcp::Catalog.new(api: :public)
-
-      Rails.stub(:logger, logger) do
-        enum = catalog.type_schema.fetch(:enum)
-
-        assert_includes enum, "Alpha::EmbargoKit"
-        assert_includes enum, "Beta::EmbargoKit"
-        assert_includes enum, "Folder"
-        refute_includes enum, "EmbargoKit"
-      end
-
-      warning = warnings.join("\n")
-      assert_includes warning, "Alpha::EmbargoKit"
-      assert_includes warning, "Beta::EmbargoKit"
-      assert_includes warning, "public_name"
-      assert_includes warning, "API public"
-
-      error = assert_raises(RecordingStudioApi::InvalidActionInputError) { catalog.resolve_type!("EmbargoKit") }
-      assert_includes error.message, "matches more than one registered type"
-      assert_includes error.message, "Alpha::EmbargoKit"
-      assert_includes error.message, "Beta::EmbargoKit"
-      assert_equal "Alpha::EmbargoKit", catalog.resolve_type!("Alpha::EmbargoKit")
-      assert_equal "Alpha::EmbargoKit", catalog.describe("Alpha::EmbargoKit").fetch("type")
-      assert_equal "Folder", catalog.describe("Folder").fetch("type")
-    end
   end
 end

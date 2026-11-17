@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_36_1
-    assert_equal "0.36.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_36_2
+    assert_equal "0.36.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -18,7 +18,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemspec, 'spec.add_dependency "recording_studio", ">= 7.0", "< 8.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.16.0", "< 3.0"'
     refute_includes gemspec, '"recording_studio_admin", ">= 2.0", "< 2.6"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.2.0", "< 2.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.6.0", "< 2.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.8.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.9.0", "< 1.0"'
     refute_includes gemspec, "recording_studio_mcp_ui"
@@ -86,10 +86,10 @@ class RecordingStudioMcpTest < Minitest::Test
     gemfile = File.read(File.expand_path("dummy/Gemfile", __dir__))
     root_gemfile = File.read(File.expand_path("../Gemfile", __dir__))
 
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v7.3.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.45.1"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v7.6.0"'
+    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.47.0"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.18.0"'
-    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v1.2.1"'
+    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v1.6.0"'
     assert_includes gemfile, api_pin
     assert_includes root_gemfile, api_pin
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
@@ -136,7 +136,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.36.1\n"
+    assert_includes readme, "## Version\n\n0.36.2\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."

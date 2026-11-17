@@ -1,5 +1,26 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.2
+
+Previous version is `0.36.1`. No MCP migration.
+
+MCP now requires `recording_studio_api` `>= 1.6.0, < 2.0`. Development
+and dummy Gemfiles pin API `v1.6.0`, Recording Studio `v7.6.0`, and
+Accessible `v0.47.0`. API 1.6 needs Recording Studio `>= 7.6.0, < 8.0`
+and Accessible `>= 0.46.0, < 2.0`. Run API's api client owner migration.
+It adds `owner_type` and `owner_id`.
+
+MCP reads `registration.public_name` and accepts only that string.
+Set `public_name:` on `register_recordable_type_api`. A blank value is
+the class name without its namespace. `RecordingStudioPresskits::PressKit`
+still shows as `PressKit`.
+
+A full class name is still rejected. Send the public name.
+
+API raises `ConfigurationError` at boot when two types on one named API
+share a public name. MCP does not rewrite those types to full class
+names, and it does not log a warning.
+
 ## 0.36.1
 
 Previous version is `0.36.0`. No MCP migration.
