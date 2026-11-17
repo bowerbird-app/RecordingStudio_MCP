@@ -143,7 +143,73 @@ class EndpointSchemaTest < Minitest::Test
     schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
 
     assert_equal %w[id], schema[:required]
-    assert_equal({ type: "string", description: "Path parameter id." }, schema.dig(:properties, :id))
+    assert_equal({ type: "string", description: "The user id." }, schema.dig(:properties, :id))
     refute schema[:properties].key?(:email)
+  end
+
+  def test_undescribed_path_id_uses_the_registered_resource
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :show,
+      http_verb: :get,
+      path: "conversations/:id",
+      recordable_type: "Conversation",
+      handler: ->(_context) {}
+    )
+
+    schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+
+    assert_equal "The conversation id.", schema.dig(:properties, :id, :description)
+  end
+
+  def test_undescribed_path_id_uses_the_endpoint_name_when_there_is_no_resource
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :conversations_show,
+      http_verb: :get,
+      path: "conversations/:id",
+      scope_id: false,
+      handler: ->(_context) {}
+    )
+
+    schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+
+    assert_equal "The conversation id.", schema.dig(:properties, :id, :description)
+  end
+
+  def test_undescribed_path_parameter_without_a_resource_uses_a_clear_sentence
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :show,
+      http_verb: :get,
+      path: ":id",
+      scope_id: false,
+      handler: ->(_context) {}
+    )
+
+    schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+
+    assert_equal "The id in the request path.", schema.dig(:properties, :id, :description)
+  end
+
+  def test_path_description_lookup_failure_still_builds_the_schema
+    endpoint = RecordingStudioApi::RegisteredEndpoint.new(
+      name: :show,
+      http_verb: :get,
+      path: ":id",
+      recordable_type: "Conversation",
+      scope_id: false,
+      handler: ->(_context) {}
+    )
+    warnings = StringIO.new
+    previous = Rails.logger
+    Rails.logger = Logger.new(warnings)
+
+    schema = RecordingStudioApi.stub(:resource_name_for, ->(*) { raise "missing conversation" }) do
+      RecordingStudioMcp::EndpointSchema.build(endpoint)
+    end
+
+    assert_equal "The id in the request path.", schema.dig(:properties, :id, :description)
+    assert_includes warnings.string, "show"
+    assert_includes warnings.string, "id"
+  ensure
+    Rails.logger = previous if previous
   end
 end

@@ -185,6 +185,22 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_describe_lists_created_at_and_registered_sortable_fields
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_recordable_type_api(
+        "Page",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        operations: %i[index],
+        sortable_attributes: %i[title]
+      )
+
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Page")
+
+      assert_equal %w[created_at title], described.fetch("sortable_fields")
+    end
+  end
+
   def test_describe_does_not_list_metrics
     with_isolated_api_configuration do
       with_recordable_metric_registry do
@@ -192,7 +208,8 @@ class CatalogTest < Minitest::Test
         described = RecordingStudioMcp::Catalog.new(api: :public).describe("Folder")
 
         expected = %w[
-          type operations writable_fields capability_actions output_keys fields relationships allowed_children
+          type operations writable_fields sortable_fields capability_actions output_keys fields relationships
+          allowed_children
         ]
         assert_equal expected, described.keys - ["parent"]
         refute described.key?("metrics")

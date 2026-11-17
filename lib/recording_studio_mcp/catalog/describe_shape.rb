@@ -19,6 +19,7 @@ module RecordingStudioMcp
           ),
           "operations" => Array(registration&.operations).map(&:to_s),
           "writable_fields" => FieldSchema.for(recordable_type, registration),
+          "sortable_fields" => sortable_fields(recordable_type),
           "capability_actions" => enabled_capability_actions(recordable_type)
         }
       end
@@ -39,6 +40,10 @@ module RecordingStudioMcp
 
         result = hook.call(payload, type: type, registration: registration, access_grant: access_grant)
         result.is_a?(Hash) ? result.deep_stringify_keys : payload
+      end
+
+      def sortable_fields(recordable_type)
+        Array(RecordingStudioApi.sortable_attributes_for(recordable_type, api: api)).map(&:to_s)
       end
 
       def field_names(registration)

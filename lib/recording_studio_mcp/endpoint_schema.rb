@@ -1,6 +1,68 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
+  module EndpointPathDescription
+    PATH_NAME_VERBS = %w[show update create destroy index delete get list].freeze
+
+    module_function
+
+    def fallback(endpoint, name)
+      subject = path_subject(endpoint, name)
+      words = parameter_words(name)
+      return "The #{subject} #{words}." if subject.present?
+
+      "The #{words} in the request path."
+    end
+
+    def path_subject(endpoint, name)
+      from_type = safe_subject(endpoint, name) { subject_from_recordable_type(endpoint) }
+      return from_type if from_type.present?
+
+      safe_subject(endpoint, name) { subject_from_name(endpoint) }
+    end
+
+    def safe_subject(endpoint, name)
+      yield
+    rescue StandardError => e
+      warn_parameter(endpoint, name, e)
+      nil
+    end
+
+    def subject_from_recordable_type(endpoint)
+      type_name = endpoint.recordable_type.to_s
+      return if type_name.blank?
+
+      singular_phrase(RecordingStudioApi.resource_name_for(type_name).to_s.tr("_", " "))
+    end
+
+    def subject_from_name(endpoint)
+      words = endpoint.name.to_s.split("_").compact_blank
+      words.pop if words.length > 1 && PATH_NAME_VERBS.include?(words.last)
+      return if words.empty? || words.any? { |word| PATH_NAME_VERBS.include?(word) }
+
+      singular_phrase(words.join(" "))
+    end
+
+    def singular_phrase(value)
+      value.to_s.singularize.squish.presence
+    end
+
+    def parameter_words(name)
+      name.to_s.tr("_", " ")
+    end
+
+    def warn_parameter(endpoint, name, error)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.warn(
+        "[RecordingStudioMcp] endpoint #{endpoint.name} parameter #{name} " \
+        "has no description (#{error.class}: #{error.message})"
+      )
+    end
+    private_class_method :path_subject, :safe_subject, :subject_from_recordable_type,
+                         :subject_from_name, :singular_phrase, :parameter_words, :warn_parameter
+  end
+
   class EndpointSchema
     CONTRACT_TYPE_MAP = {
       string: "string",
@@ -57,7 +119,7 @@ module RecordingStudioMcp
 
     def path_description(name)
       param = endpoint.openapi_path_parameters.find { |entry| entry[:name].to_s == name }
-      param&.[](:description).presence || "Path parameter #{name}."
+      param&.[](:description).presence || EndpointPathDescription.fallback(endpoint, name)
     end
 
     # OpenAPI query parameters become tool arguments with the same names, so

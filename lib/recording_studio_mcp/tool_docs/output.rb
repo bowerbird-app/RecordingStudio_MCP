@@ -31,6 +31,7 @@ module RecordingStudioMcp
         description: { type: "string" },
         operations: { type: "array", items: { type: "string" } },
         writable_fields: { type: "array", items: ACTION },
+        sortable_fields: { type: "array", items: { type: "string" } },
         capability_actions: { type: "array", items: CAPABILITY_ACTION },
         output_keys: { type: "array", items: { type: "string" } },
         fields: { type: "array", items: { type: "string" } },

@@ -107,6 +107,20 @@ class ToolsTest < Minitest::Test
     end
   end
 
+  def test_list_sort_describes_sortable_fields_and_the_default
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "list" }
+      sort = tool.dig(:inputSchema, :properties, :sort)
+
+      assert_equal "string", sort.fetch(:type)
+      assert_includes sort.fetch(:description), "sortable field from describe"
+      assert_includes sort.fetch(:description), "created_at"
+      assert_includes sort.fetch(:description), "default"
+      assert_includes sort.fetch(:description), "order sets the direction"
+    end
+  end
+
   def test_list_advertises_parent_id_when_a_type_filters_by_it
     with_isolated_mcp_configuration do
       with_isolated_api_configuration do
