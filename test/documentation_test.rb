@@ -857,6 +857,54 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_describe_and_docs_prefer_per_type_action_copy
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Podcast",
+        operations: %i[index show],
+        capability_actions: %i[add],
+        openapi: { tags: ["Shows"] }
+      )
+      register_tree_type(
+        "Quote",
+        operations: %i[index show],
+        capability_actions: %i[add],
+        openapi: { tags: ["Shows"] }
+      )
+      RecordingStudioApi.register_capability_action(
+        :add,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: { summary: "Shared summary", description: "Shared description." },
+        openapi_for: lambda { |type:, action:|
+          next {} unless type.to_s == "Quote" && action.present?
+
+          { summary: "Quote summary", description: "Quote description." }
+        }
+      )
+
+      spec = openapi_with_labels!("Podcast" => "Podcast", "Quote" => "Quote")
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      quote = catalog.describe("Quote").fetch("capability_actions").first
+      podcast = catalog.describe("Podcast").fetch("capability_actions").first
+      quote_page = tools.fetch("Quote--add").fetch("description")
+      podcast_page = tools.fetch("Podcast--add").fetch("description")
+
+      assert_equal "Quote summary", quote.fetch("summary")
+      assert_equal "Quote description.", quote.fetch("description")
+      assert_equal "Shared summary", podcast.fetch("summary")
+      assert_equal "Shared description.", podcast.fetch("description")
+      assert_includes quote_page, "Quote summary"
+      assert_includes quote_page, "Quote description."
+      refute_includes quote_page, "Shared summary"
+      refute_includes quote_page, "Shared description."
+      assert_includes podcast_page, "Shared summary"
+      assert_includes podcast_page, "Shared description."
+    end
+  end
+
   def test_openapi_uses_each_types_documented_action_title
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
