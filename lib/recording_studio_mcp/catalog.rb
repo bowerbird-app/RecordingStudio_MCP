@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
+require_relative "catalog/public_names"
 require_relative "catalog/visibility"
 require_relative "catalog/describe_shape"
 require_relative "catalog/reader"
 
 module RecordingStudioMcp
   class Catalog
+    include PublicNames
     include Visibility
     include DescribeShape
     include Reader
@@ -15,7 +17,9 @@ module RecordingStudioMcp
     end
 
     def self.api_from(access_grant)
-      access_grant&.api_client&.api_key.presence || "public"
+      return "public" unless access_grant.respond_to?(:api_client)
+
+      access_grant.api_client&.api_key.presence || "public"
     end
 
     def initialize(api:, access_grant: nil)
@@ -36,16 +40,20 @@ module RecordingStudioMcp
     def type_schema
       {
         type: "string",
-        enum: type_names,
+        enum: displayed_names_for(type_names),
         description: "Type registered on this named API. Call describe for writable fields and actions."
       }
     end
 
     def type_schema_for(operation)
       type_schema.merge(
-        enum: type_names_for(operation),
+        enum: displayed_names_for(type_names_for(operation)),
         description: "Type on this named API that allows #{operation}. Call describe for operations."
       )
+    end
+
+    def displayed_names_for(types)
+      types.map { |type| displayed_type_name(type) }.sort
     end
 
     def registered_endpoints

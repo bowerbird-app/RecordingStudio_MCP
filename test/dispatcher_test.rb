@@ -67,6 +67,10 @@ class DispatcherTest < Minitest::Test
       %w[title]
     end
 
+    def displayed_type_name(type)
+      type.to_s
+    end
+
     def unknown_action_message(action, type)
       "Unknown action #{action}. Allowed actions for #{type}: ping"
     end

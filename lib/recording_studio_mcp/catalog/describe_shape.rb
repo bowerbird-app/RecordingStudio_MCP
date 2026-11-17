@@ -13,7 +13,7 @@ module RecordingStudioMcp
 
       def describe_core(recordable_type, registration)
         {
-          "type" => recordable_type,
+          "type" => displayed_type_name(recordable_type),
           "description" => Documentation::Openapi::Schemas.registered_type_description(
             recordable_type, api
           ),
@@ -65,7 +65,7 @@ module RecordingStudioMcp
         {
           "name" => name.to_s,
           "source" => rel.source.to_s,
-          "child_type" => rel.child_type,
+          "child_type" => displayed_type_name(rel.child_type),
           "many" => rel.many
         }.merge(relationship_options(rel)).compact
       end
@@ -85,7 +85,8 @@ module RecordingStudioMcp
       end
 
       def allowed_children(recordable_type, registration)
-        (relationship_child_types(registration) + child_types_from_parent_rules(recordable_type)).uniq.sort
+        children = relationship_child_types(registration) + child_types_from_parent_rules(recordable_type)
+        children.map { |type| displayed_type_name(type) }.uniq.sort
       end
 
       def relationship_child_types(registration)

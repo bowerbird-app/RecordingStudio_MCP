@@ -29,7 +29,8 @@ module RecordingStudioMcp
       registration = RecordingStudioApi.recordable_registration_for(recordable_type, api: api_key)
       return unless registration && !registration.supports_operation?(operation_name)
 
-      raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{recordable_type}"
+      shown = catalog.displayed_type_name(recordable_type)
+      raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{shown}"
     end
 
     def resource_handler(recordable_type, operation_name)

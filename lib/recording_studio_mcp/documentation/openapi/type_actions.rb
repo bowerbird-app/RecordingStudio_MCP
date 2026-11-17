@@ -17,7 +17,7 @@ module RecordingStudioMcp
         end
 
         def page_type_names(page)
-          Array(page.types).map { |entry| Internals.stringify(entry)["type"].to_s }
+          Array(page.types).map { |entry| Internals.stringify(entry)["recordable_type"].to_s }
         end
         private_class_method :page_type_names
 
@@ -30,13 +30,14 @@ module RecordingStudioMcp
         private_class_method :tools_for
 
         def action_tool(entry, action, api_key, group_tags, type_names)
-          type_name = entry["type"].to_s
+          shown = entry["type"].to_s
+          full_name = entry["recordable_type"].to_s
           action_name = action["name"].to_s
           tagged_tool(
-            name: "#{type_name}--#{action_name}",
-            title: ActionDocs.title(action_name, api_key, type_name),
+            name: "#{shown}--#{action_name}",
+            title: ActionDocs.title(action_name, api_key, full_name),
             description: page_description(entry, action, api_key),
-            tags: ToolDocs.action_tags(type_name, api: api_key, group_tags: group_tags, type_names: type_names),
+            tags: ToolDocs.action_tags(full_name, api: api_key, group_tags: group_tags, type_names: type_names),
             input_schema: action_input_schema(action)
           )
         end
@@ -66,20 +67,22 @@ module RecordingStudioMcp
         private_class_method :tagged_tool
 
         def page_description(entry, action, api_key)
+          shown = entry["type"].to_s
+          full_name = entry["recordable_type"].to_s
           [
-            runs_on_line(entry["type"]),
-            Schemas.registered_type_description(entry["type"], api_key),
-            "Type: `#{entry['type']}`",
+            runs_on_line(full_name, shown),
+            Schemas.registered_type_description(full_name, api_key),
+            "Type: `#{shown}`",
             action_summary(action["name"], api_key),
             ActionDocs.raw_copy(RecordingStudioApi.capability_action(action["name"], api: api_key))["description"],
-            tool_line(entry["type"], action["name"])
+            tool_line(shown, action["name"])
           ].compact.join("\n\n")
         end
         private_class_method :page_description
 
-        def runs_on_line(type_name)
-          label = RecordingStudio.recordable_type_label(type_name)
-          "Runs on a #{label} (#{type_name})."
+        def runs_on_line(full_name, shown)
+          label = RecordingStudio.recordable_type_label(full_name)
+          "Runs on a #{label} (#{shown})."
         end
         private_class_method :runs_on_line
 

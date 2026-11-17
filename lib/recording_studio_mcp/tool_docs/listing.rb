@@ -47,7 +47,7 @@ module RecordingStudioMcp
 
     def type_sidebar_tags(page, group_tags: nil)
       Array(page.types).flat_map do |entry|
-        type_name = (entry["type"] || entry[:type]).to_s
+        type_name = entry_recordable_type(entry)
         next [] if type_name.blank?
 
         type_tags(type_name, api: page.api_key, group_tags: group_tags)
@@ -63,7 +63,7 @@ module RecordingStudioMcp
     private_class_method :type_tag_descriptions
 
     def assign_type_tag_description(acc, entry, page, group_tags)
-      type_name = (entry["type"] || entry[:type]).to_s
+      type_name = entry_recordable_type(entry)
       return if type_name.blank?
 
       description = Documentation::Openapi::Schemas.registered_type_description(type_name, page.api_key)
@@ -74,6 +74,11 @@ module RecordingStudioMcp
       end
     end
     private_class_method :assign_type_tag_description
+
+    def entry_recordable_type(entry)
+      (entry["recordable_type"] || entry[:recordable_type]).to_s
+    end
+    private_class_method :entry_recordable_type
 
     def remember_tag_description(acc, tag, description)
       if !acc.key?(tag)

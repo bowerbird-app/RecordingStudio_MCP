@@ -25,7 +25,7 @@ module RecordingStudioMcp
     end
 
     def type_tags(type_name, api:, group_tags: nil)
-      registration = RecordingStudioApi.recordable_registration_for(type_name, api: api)
+      registration = type_registration(type_name, api)
       tags = registered_openapi_tags(registration)
       return tags if tags.any?
 
@@ -105,17 +105,24 @@ module RecordingStudioMcp
     private_class_method :registered_openapi_tags
 
     def namespaced_action_tags(type_name, api:, group_tags:, type_names:)
-      prefix = type_name.to_s.deconstantize
+      full_name = type_name.to_s
+      prefix = full_name.deconstantize
       return [] if prefix.blank?
 
       Array(type_names).flat_map do |other|
-        next [] if other.to_s == type_name.to_s
-        next [] unless other.to_s.start_with?("#{prefix}::")
+        other_full = other.to_s
+        next [] if other_full == full_name
+        next [] unless other_full.start_with?("#{prefix}::")
 
-        type_tags(other, api: api, group_tags: group_tags)
+        type_tags(other_full, api: api, group_tags: group_tags)
       end.uniq
     end
     private_class_method :namespaced_action_tags
+
+    def type_registration(type_name, api)
+      RecordingStudioApi.recordable_registration_for(type_name, api: api)
+    end
+    private_class_method :type_registration
 
     def humanize_part(part)
       return "OAuth" if part.casecmp("oauth").zero?

@@ -2,8 +2,9 @@
 
 module RecordingStudioMcp
   class RecordingCard
-    def initialize(recording)
+    def initialize(recording, catalog:)
       @recording = recording
+      @catalog = catalog
     end
 
     def list_entry
@@ -19,13 +20,13 @@ module RecordingStudioMcp
     end
 
     def name
-      title.presence || @recording.recordable_type.to_s
+      title.presence || shown_type
     end
 
     def payload
       {
         id: @recording.id,
-        type: @recording.recordable_type,
+        type: shown_type,
         name: name,
         parent_id: @recording.parent_recording_id,
         root_id: @recording.root_recording_id,
@@ -41,6 +42,10 @@ module RecordingStudioMcp
     end
 
     private
+
+    def shown_type
+      @catalog.displayed_type_name(@recording.recordable_type)
+    end
 
     def studio_name(recordable)
       return unless defined?(RecordingStudio) && RecordingStudio.respond_to?(:recordable_name)

@@ -61,18 +61,19 @@ module RecordingStudioMcp
     end
 
     def describe_types(catalog)
-      Array(catalog.type_names).filter_map { |type_name| describe_type(catalog, type_name) }
+      Array(catalog.type_names).filter_map { |type_name| page_type(catalog, type_name) }
     end
 
-    def describe_type(catalog, type_name)
-      catalog.describe(type_name)
+    def page_type(catalog, type_name)
+      catalog.describe_registered(type_name).merge("recordable_type" => type_name.to_s)
     rescue RecordingStudioApi::InvalidActionInputError, RecordingStudioApi::NotFoundError
-      empty_type_describe(type_name)
+      empty_type_describe(catalog, type_name)
     end
 
-    def empty_type_describe(type_name)
+    def empty_type_describe(catalog, type_name)
       {
-        "type" => type_name.to_s,
+        "type" => catalog.displayed_type_name(type_name),
+        "recordable_type" => type_name.to_s,
         "operations" => [],
         "writable_fields" => [],
         "capability_actions" => []
@@ -87,7 +88,7 @@ module RecordingStudioMcp
       }
     end
 
-    private_class_method :build_page, :title_for, :describe_types, :describe_type,
+    private_class_method :build_page, :title_for, :describe_types, :page_type,
                          :empty_type_describe, :empty_type_schema, :resource_template
   end
 end
