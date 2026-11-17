@@ -18,10 +18,9 @@ module RecordingStudioMcp
 
         def title(action_name, api_key, type_name)
           documented = raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["title"]
-          return documented if documented.to_s.include?(" - ")
+          return documented if documented.present?
 
-          action_title = documented.presence || action_name.to_s.humanize.titleize
-          "#{RecordingStudio.recordable_type_label(type_name).to_s.singularize} - #{action_title}"
+          "#{RecordingStudio.recordable_type_label(type_name).to_s.singularize} - #{action_name.to_s.humanize.titleize}"
         end
 
         def schema(definition)
