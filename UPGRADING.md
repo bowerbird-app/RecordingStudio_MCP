@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.37.0
+
+Previous version is `0.36.5`. No MCP migration.
+
+`resources/list` pages the grant's recordings by `id`, ascending. The default page size is 100. Set `config.resources_page_size` to a positive integer to change it. When more recordings remain, the result includes `nextCursor`. The last page omits it. Clients must follow `nextCursor` until it is absent. Sending the cursor back as `cursor` reads the next page.
+
+The cursor is opaque. A malformed cursor is JSON-RPC `-32602`. The error message is `Invalid params` and does not include the cursor. Each page loads that grant's accessible recordings again and keeps rows after the cursor id. A cursor cannot reveal a recording the grant cannot access. Recordables are loaded for the recordings on that page.
+
+Skill resources and MCP UI widgets are on the first page. Later pages are recordings only. `resources/read` and `resources/templates/list` are unchanged. `resources/templates/list` still rejects a cursor.
+
 ## 0.36.5
 
 Previous version is `0.36.4`. No MCP migration.

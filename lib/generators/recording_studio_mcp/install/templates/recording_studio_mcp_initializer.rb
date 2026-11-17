@@ -16,6 +16,8 @@ RecordingStudioMcp.configure do |config|
   # Optional. Index types whose list tool advertises parent_id. Intersected with
   # types that allow index. Hosts that run Presskits or Support set this.
   # config.list_parent_id_types = %w[Page]
+  # resources/list page size. Recordings are ordered by id. Default is 100.
+  # config.resources_page_size = 100
   # ChatGPT MCP Events (webhook delivery). Off by default. Generate migrations, migrate, then enable.
   # config.events_enabled = true
   # config.event_subscription_ttl = 24.hours

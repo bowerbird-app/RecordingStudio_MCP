@@ -36,6 +36,8 @@ class ConfigurationTest < Minitest::Test
     assert_nil @configuration.to_h[:catalog_metric_resources]
     assert_nil @configuration.list_parent_id_types
     assert_nil @configuration.to_h[:list_parent_id_types]
+    assert_equal 100, @configuration.resources_page_size
+    assert_equal 100, @configuration.to_h[:resources_page_size]
     assert_includes @configuration.to_h.keys, :events_enabled
     refute_includes @configuration.to_h.keys, :skill_catalog
     refute_includes @configuration.to_h.keys, :event_catalog
@@ -90,6 +92,20 @@ class ConfigurationTest < Minitest::Test
     assert_equal ["widgets"], @configuration.to_h[:catalog_metric_resources]
     assert_equal ["Page"], @configuration.list_parent_id_types
     assert_equal ["Page"], @configuration.to_h[:list_parent_id_types]
+  end
+
+  def test_resources_page_size_must_be_a_positive_integer
+    @configuration.resources_page_size = 25
+    assert_equal 25, @configuration.resources_page_size
+
+    @configuration.resources_page_size = "40"
+    assert_equal 40, @configuration.resources_page_size
+    assert_equal 40, @configuration.to_h[:resources_page_size]
+
+    [0, -3, "0", "40.5", "many", nil, 2.5].each do |value|
+      assert_raises(ArgumentError) { @configuration.resources_page_size = value }
+    end
+    assert_equal 40, @configuration.resources_page_size
   end
 
   def test_merge_ignores_unknown_keys

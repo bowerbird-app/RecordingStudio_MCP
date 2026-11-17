@@ -47,7 +47,7 @@ end
 
 Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migrate` so `recording_studio_mcp_event_subscriptions` exists. Configure Active Record encryption keys before setting `config.events_enabled = true`; callback secrets are encrypted.
 
-Accessible recordings are MCP resources at `recording://{id}`. `resources/list`, `resources/read`, and `resources/templates/list` use the same AccessGrant as tools. Skill files stay on `skill://…` URIs. Subscribe uses the same access check. The update notification carries the URI only.
+Accessible recordings are MCP resources at `recording://{id}`. `resources/list`, `resources/read`, and `resources/templates/list` use the same AccessGrant as tools. `resources/list` returns recordings in `id` order, 100 per page. `config.resources_page_size` changes the page size. A page with more recordings includes `nextCursor`. The last page leaves it out. The cursor is opaque. Send it back as `cursor` to read the next page. A malformed cursor is JSON-RPC `-32602`, and the error does not include the cursor. Each page loads that grant's accessible recordings again and keeps rows after the cursor id, so a cursor cannot reveal a recording outside the grant. Recordables are loaded for the recordings on that page. Skill files (`skill://…`) and MCP UI widgets (`ui://…`) are included on the first page. Later pages are recordings only. `resources/read` and `resources/templates/list` are unchanged. `resources/templates/list` still rejects a cursor. Subscribe uses the same access check. The update notification carries the URI only.
 
 A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is delivered **after commit**, onto that connection's queue. The listening stream's own writer drains the queue. A slow or dead subscriber is dropped (bounded queue + write timeout). The save request does not write sockets.
 
@@ -71,7 +71,7 @@ The `create` input schema keeps `type`, `parent_id`, and `idempotency_key`. `typ
 
 Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens, OpenAPI query parameters, and `input_contract` fields become `inputSchema` arguments. An endpoint that omits those, such as a Users write route with only a summary, advertises no body fields. The handler can still accept them. Put writable fields on `input_contract` in the gem that registers the endpoint. There is no `describe` hop and no empty tree tool list.
 
-When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri` as `ui://…?v=<digest>` of the packaged HTML. `resources/list` and `resources/read` serve that same URI. `resources/read` also accepts the bare `ui://` path. A grant sees a widget only when `actions_for_ui` allows it on that named API. Widget buttons call the real API tool name. MCP UI is optional. Without it, tools and resources stay the same.
+When RecordingStudio MCP UI is loaded, an endpoint with `ui:` that resolves to a registered widget advertises `_meta.ui.resourceUri` as `ui://…?v=<digest>` of the packaged HTML. The first `resources/list` page and `resources/read` serve that same URI. Later `resources/list` pages do not repeat it. `resources/read` also accepts the bare `ui://` path. A grant sees a widget only when `actions_for_ui` allows it on that named API. Widget buttons call the real API tool name. MCP UI is optional. Without it, tools and resources stay the same.
 
 ### File inputs
 
@@ -367,4 +367,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.36.5
+0.37.0

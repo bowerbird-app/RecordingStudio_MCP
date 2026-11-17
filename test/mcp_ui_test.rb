@@ -160,6 +160,41 @@ class McpUiTest < Minitest::Test
     end
   end
 
+  def test_ui_resources_are_on_the_first_page_only
+    previous_page_size = RecordingStudioMcp.configuration.resources_page_size
+    RecordingStudioMcp.configuration.resources_page_size = 1
+
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_endpoint(
+        "presskits.edit",
+        http_verb: :patch,
+        path: "presskits/:id",
+        scope_id: false,
+        handler: ->(_context) { { id: "1" } },
+        ui: "presskits.editor"
+      )
+      McpUiSupport::FakeUi.register("presskits.editor")
+      ids = %w[00000000-0000-4000-8000-000000000001 00000000-0000-4000-8000-000000000002]
+      recordings = ids.map do |id|
+        Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
+              .new(id, "Page", Struct.new(:title).new(id), nil, ids.first)
+      end
+      grant = FakeGrant.new(api_client: FakeClient.new("public"), accessible_recordings: recordings)
+
+      first = RecordingStudioMcp::Resources.list(access_grant: grant)
+      second = RecordingStudioMcp::Resources.list(access_grant: grant, cursor: first.payload[:nextCursor])
+
+      assert(first.payload[:resources].any? { |entry| entry[:uri].start_with?("ui://") })
+      assert_equal "recording://#{ids.first}", first.payload[:resources].first[:uri]
+      refute(second.payload[:resources].any? { |entry| entry[:uri].start_with?("ui://") })
+      second_uris = second.payload[:resources].map { |entry| entry[:uri] }
+      assert_equal ["recording://#{ids.last}"], second_uris
+      refute second.payload.key?(:nextCursor)
+    end
+  ensure
+    RecordingStudioMcp.configuration.resources_page_size = previous_page_size
+  end
+
   def test_without_mcp_ui_tools_and_resources_stay_unchanged
     McpUiSupport.remove_fake_mcp_ui
     refute RecordingStudioMcp::McpUi.loaded?
