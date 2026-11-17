@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `list` `sort` says it accepts a sortable field from `describe`. `created_at` is always allowed and is the default. `order` sets the direction. `describe` returns `sortable_fields` (`created_at` plus the type's registered sortable attributes).
 - An endpoint path parameter with no description uses the registered resource or the endpoint name, for example `The conversation id.` A lookup error is logged with the endpoint and parameter. The docs page still renders.
-- Capability action docs use a singular label and `a` or `an`, such as `Runs on an Image` and `Runs on an Identity`.
+- Capability action docs name the singular type with no article, such as `Runs on User records.` The public name is in parentheses only when it differs, such as `Runs on Image records (Images).`
 
 ### Upgrade notes
 - Bump to `0.36.1`. Previous version is `0.36.0`. No MCP migration. `describe` gains `sortable_fields`.

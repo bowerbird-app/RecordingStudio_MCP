@@ -107,7 +107,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute tools.fetch("list").key?("x-mcp-docs-only")
     assert ping_tool.dig("inputSchema", "properties", "style")
     refute ping_tool["inputSchema"].key?("fields")
-    assert_includes ping_tool["description"], "Runs on a Workspace (Workspace)."
+    assert_includes ping_tool["description"], "Runs on Workspace records."
     assert_includes ping_tool["description"], "Type: `Workspace`"
     refute_includes ping_tool["description"], "Allowed operations:"
     refute_includes ping_tool["description"], "Writable fields:"

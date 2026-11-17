@@ -8,7 +8,7 @@ Previous version is `0.36.0`. No MCP migration.
 
 A path parameter with no OpenAPI description uses the endpoint's registered resource or its name, for example `The conversation id.` A lookup error is logged with the endpoint and parameter. The docs page still renders.
 
-Capability action docs use a singular label and `a` or `an`, such as `Runs on an Image (Image)`.
+Capability action docs name the singular type with no article, such as `Runs on User records.` The public name is in parentheses only when it differs from that label, such as `Runs on Image records (Images).`
 
 ## 0.36.0
 

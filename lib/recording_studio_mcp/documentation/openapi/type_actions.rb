@@ -82,7 +82,9 @@ module RecordingStudioMcp
 
         def runs_on_line(full_name, shown)
           label = singular_type_label(full_name)
-          "Runs on #{article_for(label)} #{label} (#{shown})."
+          line = "Runs on #{label} records"
+          line = "#{line} (#{shown})" if shown.present? && shown != label
+          "#{line}."
         end
         private_class_method :runs_on_line
 
@@ -90,11 +92,6 @@ module RecordingStudioMcp
           RecordingStudio.recordable_type_label(type_name).to_s.singularize
         end
         private_class_method :singular_type_label
-
-        def article_for(label)
-          label.match?(/\A[aeiou]/i) ? "an" : "a"
-        end
-        private_class_method :article_for
 
         def action_summary(action_name, api_key)
           ActionDocs.raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["summary"]

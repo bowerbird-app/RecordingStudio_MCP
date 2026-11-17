@@ -199,7 +199,7 @@ class DocumentationTest < Minitest::Test
       assert_equal "quiet", ping_tool.dig("inputSchema", "example", "style")
       refute ping_tool["inputSchema"].key?("fields")
       refute ping_tool["inputSchema"].key?("reject_unknown")
-      assert_includes ping_tool["description"], "Runs on a Folder (Folder)."
+      assert_includes ping_tool["description"], "Runs on Folder records."
       assert_includes ping_tool["description"], "Type: `Folder`"
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
@@ -310,7 +310,7 @@ class DocumentationTest < Minitest::Test
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
       ping_tool = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Credit--ping" }
       ping_description = ping_tool.fetch("description")
-      runs_at = ping_description.index("Runs on a Credit (Credit).")
+      runs_at = ping_description.index("Runs on Credit records.")
       type_description_at = ping_description.index("Credits on a press kit.")
       type_line_at = ping_description.index("Type: `Credit`")
 
@@ -319,7 +319,7 @@ class DocumentationTest < Minitest::Test
       assert_equal "Credit - Ping", ping_tool["title"]
       assert_equal ["Press Kit"], ping_tool["tags"]
       assert_includes ping_tool["description"],
-                      "Runs on a Credit (Credit)."
+                      "Runs on Credit records."
       assert_includes ping_tool["description"], "Credits on a press kit."
       assert_operator type_description_at, :>, runs_at
       assert_operator type_line_at, :>, type_description_at
@@ -460,7 +460,7 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Press Kit"], add["tags"]
       assert_equal ["Press Kit"], reorder["tags"]
       assert_equal ["Press Kit"], remove["tags"]
-      assert_includes add["description"], "Runs on a Credits section (CreditsSection)."
+      assert_includes add["description"], "Runs on Credits section records (CreditsSection)."
       assert_includes add["description"], "Type: `CreditsSection`"
       refute_includes add["description"], "Allowed operations:"
       refute_includes add["description"], "Writable fields:"
@@ -471,7 +471,7 @@ class DocumentationTest < Minitest::Test
       refute_includes add["description"], "credit_id"
       refute_includes add["description"], "reject_unknown"
       assert_includes reorder["description"], "Reorder credits in this section"
-      assert_includes remove["description"], "Runs on a credit line (CreditLine)."
+      assert_includes remove["description"], "Runs on credit line records (CreditLine)."
       assert_includes remove["description"], "Type: `CreditLine`"
       refute_includes remove["description"], "Allowed operations:"
       refute_includes remove["description"], "Writable fields:"
@@ -523,10 +523,10 @@ class DocumentationTest < Minitest::Test
       assert_equal({ "type" => "object" }, add["inputSchema"])
       assert_equal "Gallery - Publish", publish["title"]
       assert_equal ["Galleries"], publish["tags"]
-      assert_includes publish["description"], "Runs on a Gallery (Gallery)."
+      assert_includes publish["description"], "Runs on Gallery records."
       assert_equal "Gallery section - Add Slide", add["title"]
       assert_equal ["Galleries"], add["tags"]
-      assert_includes add["description"], "Runs on a Gallery section (GallerySection)."
+      assert_includes add["description"], "Runs on Gallery section records (GallerySection)."
       assert_includes add["description"], "Type: `GallerySection`"
       refute_includes add["description"], "Allowed operations:"
       refute_includes add["description"], "Writable fields:"
@@ -535,7 +535,7 @@ class DocumentationTest < Minitest::Test
                       "Tool: capability_action with type `GallerySection` and action `add_slide`"
       assert_equal "Gallery slide - Remove Slide", remove["title"]
       assert_equal ["Galleries"], remove["tags"]
-      assert_includes remove["description"], "Runs on a Gallery slide (GallerySlide)."
+      assert_includes remove["description"], "Runs on Gallery slide records (GallerySlide)."
       refute_includes protocol_names, "GallerySection--add_slide"
       assert_equal ["TypeName"], schemas.keys
       refute_includes schemas.keys, "Gallery"
@@ -618,10 +618,10 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_action_docs_use_a_singular_label_and_the_right_article
+  def test_action_docs_name_the_singular_label_without_repeating_it
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
-      %w[Files Images Identity].each do |name|
+      %w[Files Images Identity User].each do |name|
         register_tree_type(
           name,
           operations: %i[index show],
@@ -634,13 +634,17 @@ class DocumentationTest < Minitest::Test
       spec = openapi_with_labels!(
         "Files" => "Files",
         "Images" => "Images",
-        "Identity" => "Identity"
+        "Identity" => "Identity",
+        "User" => "User"
       )
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
 
-      assert_includes tools.fetch("Files--ping")["description"], "Runs on a File (Files)."
-      assert_includes tools.fetch("Images--ping")["description"], "Runs on an Image (Images)."
-      assert_includes tools.fetch("Identity--ping")["description"], "Runs on an Identity (Identity)."
+      assert_includes tools.fetch("Files--ping")["description"], "Runs on File records (Files)."
+      assert_includes tools.fetch("Images--ping")["description"], "Runs on Image records (Images)."
+      assert_includes tools.fetch("Identity--ping")["description"], "Runs on Identity records."
+      refute_includes tools.fetch("Identity--ping")["description"], "(Identity)"
+      assert_includes tools.fetch("User--ping")["description"], "Runs on User records."
+      refute_includes tools.fetch("User--ping")["description"], "(User)"
     end
   end
 
