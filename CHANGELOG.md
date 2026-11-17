@@ -9,15 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.36.0] - 2026-11-17
 
+### Breaking
+- MCP no longer accepts a full class name as `type`. `RecordingStudioPresskits::PressKit` returns the unknown-type error. That error lists the allowed public names. Callers must send `PressKit`.
+- A resource name is not a second alias. It resolves only when it is the public name. `press_kits` does not select `PressKit`.
+
 ### Changed
-- MCP shows recordable types by a short public name. Type enums, `describe`, docs tool names, docs tags, allowed-type errors, and resource reads use that name. `RecordingStudioPresskits::PressKit` shows as `PressKit`, so a docs action is `PressKit--set_embargo`. `capability_action` accepts `type: PressKit`.
-- The full class name still resolves. Callers that send `RecordingStudioPresskits::PressKit` keep working. A resource name still resolves. Public and operations APIs keep separate maps.
+- MCP shows recordable types by a short public name. Type enums, `describe`, docs tool names, docs tags, allowed-type errors, and resource reads use that name. `RecordingStudioPresskits::PressKit` shows as `PressKit`, so a docs action is `PressKit--set_embargo`. `capability_action` accepts `type: PressKit`. Public and operations APIs keep separate maps.
 - When a registration responds to `public_name` and the value is present, that value is the public name. Otherwise MCP uses the demodulized class name. The API pin is unchanged. `public_name:` on `register_recordable_type_api` is not released yet.
-- Two types on the same named API that share a public name show their full class names. MCP logs that the gem should set `public_name`. An input that matches more than one type still returns the ambiguous-type error.
+- Two types on the same named API that share a public name show and accept their full class names. MCP logs that the gem should set `public_name`. The shared short name still returns the ambiguous-type error.
 
 ### Upgrade notes
 - Bump to `0.36.0`. Previous version is `0.35.0`. No migration. See [UPGRADING.md](UPGRADING.md).
-- Clients that read tool names or type enums should expect the short name. Clients that send the full class name still work.
+- Callers must switch `type` to the public name. Full class names are rejected.
 
 ## [0.35.0] - 2026-11-16
 

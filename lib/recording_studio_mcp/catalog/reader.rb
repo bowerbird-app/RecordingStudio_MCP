@@ -48,16 +48,21 @@ module RecordingStudioMcp
       private
 
       def resolve_registered_type(name)
-        return name if registered_types.include?(name)
-
-        from_resource = resource_type_name(name)
-        return from_resource if from_resource.present? && registered_types.include?(from_resource)
-
-        matches = type_name_matches(name)
-        return matches.first if matches.one?
-        raise RecordingStudioApi::InvalidActionInputError, ambiguous_type_message(name, matches) if matches.many?
+        match = accepted_type(name, types_shown_as(name)) || accepted_type(name, type_name_matches(name))
+        return match if match
 
         raise RecordingStudioApi::NotFoundError, unknown_type_message(name)
+      end
+
+      def types_shown_as(name)
+        registered_types.select { |type| displayed_type_name(type) == name }
+      end
+
+      def accepted_type(name, matches)
+        return matches.first if matches.one?
+        return if matches.empty?
+
+        raise RecordingStudioApi::InvalidActionInputError, ambiguous_type_message(name, matches)
       end
 
       def enabled_capability_actions(recordable_type)
@@ -82,11 +87,6 @@ module RecordingStudioMcp
         end
         auto = Array(RecordingStudioApi.capability_actions_for(recordable_type, version: version, api: api))
         (listed + auto).uniq { |action| action.name.to_s }
-      end
-
-      def resource_type_name(name)
-        RecordingStudioApi.recordable_type_for_resource(name, api: api) ||
-          RecordingStudioApi.recordable_type_for_resource(name.pluralize, api: api)
       end
 
       def parent_rules(recordable_type)

@@ -48,9 +48,7 @@ module RecordingStudioMcp
       end
 
       def type_name_matches(name)
-        registered_types.select do |type|
-          candidate_public_name(type) == name || type.demodulize == name
-        end.uniq
+        registered_types.select { |type| candidate_public_name(type) == name }.uniq
       end
 
       def warn_public_name_clash(name, types)

@@ -611,7 +611,7 @@ class DocumentationTest < Minitest::Test
 
       spec = openapi_with_labels!("RecordingStudioPresskits::Podcast" => "Podcast")
       add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Podcast--add" }
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("RecordingStudioPresskits::Podcast")
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Podcast")
 
       assert_equal "Podcast - Add", add["title"]
       assert_equal "Podcast - Add", described.fetch("capability_actions").first.fetch("title")
@@ -682,7 +682,7 @@ class DocumentationTest < Minitest::Test
         "RecordingStudioPresskits::Podcast" => "Podcast"
       )
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("RecordingStudioPresskits::Files")
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Files")
       describe_titles = described.fetch("capability_actions").to_h do |action|
         [action.fetch("name"), action.fetch("title")]
       end

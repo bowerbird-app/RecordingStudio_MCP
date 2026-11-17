@@ -189,7 +189,7 @@ class CatalogTest < Minitest::Test
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         register_folder_and_page_metrics
-        described = RecordingStudioMcp::Catalog.new(api: :public).describe(RecordableMetricToolHelpers::FOLDER)
+        described = RecordingStudioMcp::Catalog.new(api: :public).describe("Folder")
 
         expected = %w[
           type operations writable_fields capability_actions output_keys fields relationships allowed_children
@@ -212,11 +212,16 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("PressKit")
-      assert_equal "RecordingStudioPresskits::PressKit",
-                   catalog.resolve_type!("RecordingStudioPresskits::PressKit")
-      assert_equal "PressKit", catalog.describe("RecordingStudioPresskits::PressKit").fetch("type")
+      assert_equal "PressKit", catalog.describe("PressKit").fetch("type")
       assert_includes catalog.type_schema.fetch(:enum), "PressKit"
       refute_includes catalog.type_schema.fetch(:enum), "RecordingStudioPresskits::PressKit"
+
+      rejected = assert_raises(RecordingStudioApi::NotFoundError) do
+        catalog.resolve_type!("RecordingStudioPresskits::PressKit")
+      end
+      assert_includes rejected.message, "Unknown type RecordingStudioPresskits::PressKit"
+      assert_includes rejected.message, "Allowed types: PressKit"
+      refute_includes rejected.message.split("Allowed types:").last, "RecordingStudioPresskits::PressKit"
 
       error = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("MissingKit") }
       assert_includes error.message, "Allowed types: PressKit"
@@ -224,13 +229,23 @@ class CatalogTest < Minitest::Test
     end
   end
 
-  def test_resolve_type_accepts_resource_name_on_a_named_api
+  def test_resolve_type_accepts_a_resource_name_only_when_it_is_the_public_name
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:operations)
       register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
       catalog = RecordingStudioMcp::Catalog.new(api: :operations)
 
-      assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("press_kits")
+      error = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("press_kits") }
+      assert_includes error.message, "Unknown type press_kits"
+      assert_includes error.message, "Allowed types: PressKit"
+
+      with_public_name("RecordingStudioPresskits::PressKit", :operations, "press_kits") do
+        named = RecordingStudioMcp::Catalog.new(api: :operations)
+
+        assert_equal "RecordingStudioPresskits::PressKit", named.resolve_type!("press_kits")
+        rejected = assert_raises(RecordingStudioApi::NotFoundError) { named.resolve_type!("PressKit") }
+        assert_includes rejected.message, "Allowed types: press_kits"
+      end
     end
   end
 
@@ -481,7 +496,7 @@ class CatalogTest < Minitest::Test
     end
   end
 
-  def test_registration_public_name_is_advertised_and_still_accepts_the_class_name
+  def test_registration_public_name_is_the_only_accepted_type_input
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:operations)
       register_tree_type("RecordingStudioPresskits::PressKit")
@@ -497,9 +512,14 @@ class CatalogTest < Minitest::Test
         refute_includes catalog.type_schema.fetch(:enum), "RecordingStudioPresskits::PressKit"
         assert_equal "Kit", catalog.describe("Kit").fetch("type")
         assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("Kit")
-        assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("PressKit")
-        assert_equal "RecordingStudioPresskits::PressKit",
-                     catalog.resolve_type!("RecordingStudioPresskits::PressKit")
+        demodulized = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("PressKit") }
+        assert_includes demodulized.message, "Unknown type PressKit"
+        assert_includes demodulized.message, "Allowed types: Folder, Kit"
+        rejected = assert_raises(RecordingStudioApi::NotFoundError) do
+          catalog.resolve_type!("RecordingStudioPresskits::PressKit")
+        end
+        assert_includes rejected.message, "Unknown type RecordingStudioPresskits::PressKit"
+        assert_includes rejected.message, "Allowed types: Folder, Kit"
         assert_includes operations.type_schema.fetch(:enum), "PressKit"
         refute_includes operations.type_schema.fetch(:enum), "Kit"
       end
@@ -514,6 +534,10 @@ class CatalogTest < Minitest::Test
 
         assert_includes catalog.type_schema.fetch(:enum), "PressKit"
         assert_equal "RecordingStudioPresskits::PressKit", catalog.resolve_type!("PressKit")
+        rejected = assert_raises(RecordingStudioApi::NotFoundError) do
+          catalog.resolve_type!("RecordingStudioPresskits::PressKit")
+        end
+        assert_includes rejected.message, "Allowed types: PressKit"
       end
     end
   end

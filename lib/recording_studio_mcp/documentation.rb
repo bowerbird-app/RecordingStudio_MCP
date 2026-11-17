@@ -61,7 +61,9 @@ module RecordingStudioMcp
     end
 
     def describe_types(catalog)
-      Array(catalog.type_names).filter_map { |type_name| describe_type(catalog, type_name) }
+      Array(catalog.type_names).filter_map do |type_name|
+        describe_type(catalog, catalog.displayed_type_name(type_name))
+      end
     end
 
     def describe_type(catalog, type_name)
