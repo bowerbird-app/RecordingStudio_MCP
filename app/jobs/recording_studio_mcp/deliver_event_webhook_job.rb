@@ -8,6 +8,8 @@ module RecordingStudioMcp
 
     def perform(subscription_id:, body:, event_id:)
       subscription = EventSubscription.find_by(id: subscription_id)
+      return unless WebhookDispatch.delivery_allowed?(subscription: subscription, body: body)
+
       WebhookDelivery.call(subscription: subscription, body: body, event_id: event_id)
     end
   end

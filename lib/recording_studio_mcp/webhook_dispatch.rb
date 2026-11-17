@@ -38,7 +38,6 @@ module RecordingStudioMcp
 
     def enqueue_subscription(subscription, webhook, recording)
       return unless subscription.matches_recording?(recording)
-      return unless still_accessible?(subscription, recording)
 
       event_id = "evt_#{SecureRandom.hex(16)}"
       body = serialized_body(webhook: webhook, recording: recording, event_id: event_id)
@@ -79,12 +78,53 @@ module RecordingStudioMcp
     end
     private_class_method :serialized_body
 
+    def delivery_allowed?(subscription:, body:)
+      return false if subscription.nil? || !subscription.active?
+
+      recording = recording_from_body(body)
+      return false if recording.nil?
+      return false unless still_accessible?(subscription, recording)
+
+      true
+    end
+
     def still_accessible?(subscription, recording)
       grant = access_grant_for(subscription)
       return false if grant.nil?
+      return false unless Resources.accessible?(grant, Resources.uri_for(recording))
+      return false unless live_grant?(grant)
 
-      Resources.accessible?(grant, Resources.uri_for(recording))
+      true
     end
+
+    def live_grant?(grant)
+      access_recording = grant.access_recording
+      return false if access_recording.nil?
+      return access_recording.kept? if access_recording.respond_to?(:kept?)
+      return false if access_recording.respond_to?(:trashed_at) && access_recording.trashed_at.present?
+
+      true
+    end
+    private_class_method :live_grant?
+
+    def recording_from_body(body)
+      id = recording_id_from(body)
+      return if id.blank?
+
+      RECORDING_REF.new(id)
+    end
+    private_class_method :recording_from_body
+
+    def recording_id_from(body)
+      payload = JSON.parse(body)
+      payload.dig("data", "recording_id").presence
+    rescue JSON::ParserError, TypeError
+      nil
+    end
+    private_class_method :recording_id_from
+
+    RECORDING_REF = Struct.new(:id)
+    private_constant :RECORDING_REF
 
     def access_grant_for(subscription)
       client = principal_for(subscription)

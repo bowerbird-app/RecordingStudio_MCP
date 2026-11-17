@@ -30,7 +30,8 @@ module RecordingStudioMcp
       return if loaded.nil?
 
       uri = Resources.uri_for(loaded)
-      Connections.each { |connection| enqueue_if_watching(connection, uri, loaded) }
+      access = DispatchAccess.new
+      Connections.each { |connection| enqueue_if_watching(connection, uri, loaded, access) }
     end
 
     def recording_for_delivery(event_name, recording_id, recording)
@@ -44,9 +45,9 @@ module RecordingStudioMcp
     end
     private_class_method :recording_for_delivery
 
-    def enqueue_if_watching(connection, uri, recording)
+    def enqueue_if_watching(connection, uri, recording, access)
       return unless connection.subscribed?(uri)
-      return unless still_accessible?(connection, uri, recording)
+      return unless access.allowed?(connection.access_grant, recording, uri: uri)
 
       connection.try_enqueue_updated(uri)
     rescue StandardError
@@ -68,15 +69,5 @@ module RecordingStudioMcp
       RecordingStudio::Recording.find_by(id: recording_id)
     end
     private_class_method :find_recording
-
-    def still_accessible?(connection, uri, recording)
-      return Resources.accessible?(connection.access_grant, uri) if recording.nil?
-
-      scope = Resources.accessible_scope(connection.access_grant)
-      return false if scope.nil?
-
-      scope.exists?(id: recording.id)
-    end
-    private_class_method :still_accessible?
   end
 end

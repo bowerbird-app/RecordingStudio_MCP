@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.6] - 2026-11-17
+
+### Changed
+- A saved recording checks live SSE listeners once per access grant. Listeners on the same grant share that Accessible scope check for the dispatch. The next save checks again.
+- Webhook access is checked in `DeliverEventWebhookJob`, not on the save request. The request enqueues the job. The job loads the subscription and the grant again, runs the Accessible scope, and only then posts. A missing subscription, a revoked grant, or a trashed grant is not delivered.
+
+### Upgrade notes
+- Bump to `0.36.6`. Previous version is `0.36.5`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Jobs already on the queue are checked again at delivery. A grant revoked or trashed after enqueue is not posted.
+
 ## [0.37.0] - 2026-11-17
 
 ### Changed
@@ -1057,7 +1067,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.6...HEAD
+[0.36.6]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...v0.36.6
 [0.37.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...v0.37.0
 [0.36.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...v0.36.5
 [0.36.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.3...v0.36.4

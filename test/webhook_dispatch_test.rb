@@ -32,14 +32,12 @@ class WebhookDispatchTest < Minitest::Test
 
       RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
         RecordingStudioMcp::WebhookDispatch.stub(:subscriptions_for, [subscription]) do
-          RecordingStudioMcp::WebhookDispatch.stub(:still_accessible?, true) do
-            RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
-              RecordingStudioMcp::WebhookDispatch.enqueue(
-                event_name: "recording updated",
-                recording_id: "rec-1",
-                recording: recording
-              )
-            end
+          RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
+            RecordingStudioMcp::WebhookDispatch.enqueue(
+              event_name: "recording updated",
+              recording_id: "rec-1",
+              recording: recording
+            )
           end
         end
       end
@@ -62,14 +60,12 @@ class WebhookDispatchTest < Minitest::Test
 
       RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
         RecordingStudioMcp::WebhookDispatch.stub(:subscriptions_for, [subscription]) do
-          RecordingStudioMcp::WebhookDispatch.stub(:still_accessible?, true) do
-            RecordingStudioMcp::WebhookDispatch.stub(:serialized_body, "x" * ((256 * 1024) + 1)) do
-              RecordingStudioMcp::WebhookDispatch.enqueue(
-                event_name: "recording updated",
-                recording_id: "rec-1",
-                recording: recording
-              )
-            end
+          RecordingStudioMcp::WebhookDispatch.stub(:serialized_body, "x" * ((256 * 1024) + 1)) do
+            RecordingStudioMcp::WebhookDispatch.enqueue(
+              event_name: "recording updated",
+              recording_id: "rec-1",
+              recording: recording
+            )
           end
         end
       end
@@ -78,17 +74,21 @@ class WebhookDispatchTest < Minitest::Test
     end
   end
 
-  def test_skips_inaccessible_subscriptions
+  def test_enqueues_before_checking_access
     with_isolated_mcp_configuration do
       RecordingStudioMcp.configuration.events_enabled = true
       RecordingStudioMcp.register_event("recording updated")
       recording = FakeRecording.new("rec-1", "Page")
       subscription = FakeSubscription.new(id: "sub_1")
       jobs = []
+      checks = 0
 
       RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
         RecordingStudioMcp::WebhookDispatch.stub(:subscriptions_for, [subscription]) do
-          RecordingStudioMcp::WebhookDispatch.stub(:still_accessible?, false) do
+          RecordingStudioMcp::WebhookDispatch.stub(:still_accessible?, lambda { |*|
+            checks += 1
+            false
+          }) do
             RecordingStudioMcp::WebhookDispatch.stub(:queue_delivery, ->(**args) { jobs << args }) do
               RecordingStudioMcp::WebhookDispatch.enqueue(
                 event_name: "recording updated",
@@ -100,8 +100,52 @@ class WebhookDispatchTest < Minitest::Test
         end
       end
 
-      assert_empty jobs
+      assert_equal 1, jobs.size
+      assert_equal 0, checks
     end
+  end
+
+  def test_delivery_is_refused_when_access_is_gone
+    subscription = FakeSubscription.new(id: "sub_1")
+    subscription.define_singleton_method(:active?) { true }
+    body = JSON.generate("data" => { "recording_id" => "rec-1" })
+
+    RecordingStudioMcp::WebhookDispatch.stub(:still_accessible?, false) do
+      refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: subscription, body: body)
+    end
+  end
+
+  def test_delivery_is_refused_without_an_active_subscription
+    body = JSON.generate("data" => { "recording_id" => "rec-1" })
+    inactive = FakeSubscription.new(id: "sub_1")
+    inactive.define_singleton_method(:active?) { false }
+
+    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: nil, body: body)
+    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: inactive, body: body)
+  end
+
+  def test_trashed_grant_is_refused_after_the_scope_check
+    access_recording = Object.new
+    access_recording.define_singleton_method(:root_recording) { :root }
+    access_recording.define_singleton_method(:kept?) { false }
+    subscription = Struct.new(:owner_principal_id, :access_recording_id).new("oauth-1", "acc-1")
+    recording = FakeRecording.new("rec-1", "Page")
+    scope_checked = false
+
+    RecordingStudioMcp::WebhookDispatch.stub(:principal_for, Object.new) do
+      RecordingStudioMcp::WebhookDispatch.stub(:access_recording_for, access_recording) do
+        RecordingStudioMcp::Resources.stub(:uri_for, "recording://rec-1") do
+          RecordingStudioMcp::Resources.stub(:accessible?, lambda { |_grant, _uri|
+            scope_checked = true
+            true
+          }) do
+            refute RecordingStudioMcp::WebhookDispatch.still_accessible?(subscription, recording)
+          end
+        end
+      end
+    end
+
+    assert scope_checked
   end
 
   def test_still_accessible_is_false_without_a_grant

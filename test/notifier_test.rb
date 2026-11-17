@@ -163,6 +163,60 @@ class NotifierTest < Minitest::Test
     end
   end
 
+  def test_listeners_on_the_same_grant_check_access_once
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      calls = 0
+      connections = Array.new(3) do
+        open_counted_listener(client_id: "client-1", access_id: "access-1", allowed: [7], calls: -> { calls += 1 })
+      end
+      open_counted_listener(client_id: "client-1", access_id: "access-2", allowed: [7], calls: -> { calls += 1 })
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+
+      assert_equal 2, calls
+      connections.each do |connection|
+        assert_equal "recording://7", connection.shift_pending(timeout: 0).dig(:params, :uri)
+      end
+    end
+  end
+
+  def test_a_later_save_checks_access_again
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      calls = 0
+      connection = open_counted_listener(
+        client_id: "client-1",
+        access_id: "access-1",
+        allowed: [7],
+        calls: -> { calls += 1 }
+      )
+
+      event = FakeEvent.new(FakeRecording.new(7, "Page", true))
+      RecordingStudioMcp::Notifier.recording_saved(event)
+      connection.shift_pending(timeout: 0)
+      RecordingStudioMcp::Notifier.recording_saved(event)
+
+      assert_equal 2, calls
+      assert_equal "recording://7", connection.shift_pending(timeout: 0).dig(:params, :uri)
+    end
+  end
+
+  def test_access_removed_before_delivery_does_not_notify
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      allowed = [7]
+      removed = open_counted_listener(client_id: "client-1", access_id: "removed", allowed: allowed, calls: -> {})
+      kept = open_counted_listener(client_id: "client-2", access_id: "kept", allowed: [7], calls: -> {})
+      allowed.clear
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+
+      assert_nil removed.shift_pending(timeout: 0)
+      assert_equal "recording://7", kept.shift_pending(timeout: 0).dig(:params, :uri)
+    end
+  end
+
   def test_lost_access_does_not_notify
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
@@ -174,5 +228,24 @@ class NotifierTest < Minitest::Test
 
       assert_nil connection.shift_pending(timeout: 0)
     end
+  end
+
+  private
+
+  def open_counted_listener(client_id:, access_id:, allowed:, calls:)
+    client = Struct.new(:id).new(client_id)
+    access_recording = Struct.new(:id).new(access_id)
+    root = Struct.new(:id).new("root-1")
+    grant = Struct.new(:api_client, :access_recording, :root_recording).new(client, access_recording, root)
+    grant.define_singleton_method(:accessible_recordings) do
+      calls.call
+      ids = allowed
+      scope = Object.new
+      scope.define_singleton_method(:exists?) { |id:| ids.include?(id) }
+      scope
+    end
+    connection = RecordingStudioMcp::Connections.open(protocol_version: "2025-06-18", access_grant: grant)
+    connection.subscribe("recording://7")
+    connection
   end
 end

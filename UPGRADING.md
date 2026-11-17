@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.6
+
+Previous version is `0.36.5`. No MCP migration.
+
+A saved recording checks live SSE listeners once per access grant. Listeners on that grant share one Accessible scope check for that dispatch. The next save checks again. The check is the same scope a resource read uses.
+
+Webhook subscriptions are enqueued on the save. `DeliverEventWebhookJob` loads the subscription and the grant again, runs that scope, and only then posts. A missing subscription, a revoked grant, or a trashed grant is not delivered. Jobs already on the queue from `0.36.5` are checked the same way when they run.
+
 ## 0.37.0
 
 Previous version is `0.36.5`. No MCP migration.
