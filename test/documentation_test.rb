@@ -65,7 +65,7 @@ class DocumentationTest < Minitest::Test
       boom = lambda do |*|
         raise RecordingStudioApi::NotFoundError, "Unknown type Folder"
       end
-      catalog.stub(:describe, boom) do
+      catalog.stub(:describe_registered, boom) do
         RecordingStudioMcp::Catalog.stub(:new, catalog) do
           page = RecordingStudioMcp::Documentation.page(api: :public)
           folder = page.types.find { |entry| entry["type"] == "Folder" }

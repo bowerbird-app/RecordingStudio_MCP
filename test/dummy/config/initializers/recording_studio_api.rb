@@ -56,25 +56,6 @@ module Dummy
   end
 end
 
-RecordingStudioApi.register_recordable_type_api(
-  "RecordingStudioPresskits::PressKit",
-  serializer: ->(*) { { title: "Press kit" } },
-  output_keys: %i[title],
-  writable_attributes: %i[title],
-  operations: %i[index show],
-  capability_actions: %i[set_embargo],
-  openapi: { tags: [ "Press Kit" ], description: "A press kit." }
-)
-
-RecordingStudioApi.register_capability_action(
-  :set_embargo,
-  capability: :press_kit,
-  version: "1.0.0",
-  http_verb: :post,
-  required_role: :edit,
-  handler: ->(_context) { { json: { ok: true } } }
-)
-
 RecordingStudioApi.register_capability_action(
   :ping,
   capability: :accessible,

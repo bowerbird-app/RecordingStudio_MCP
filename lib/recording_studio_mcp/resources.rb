@@ -119,8 +119,6 @@ module RecordingStudioMcp
     end
 
     def catalog_for(access_grant)
-      return unless access_grant.respond_to?(:api_client)
-
       Catalog.for(access_grant)
     end
 

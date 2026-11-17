@@ -2,7 +2,7 @@
 
 module RecordingStudioMcp
   class RecordingCard
-    def initialize(recording, catalog: nil)
+    def initialize(recording, catalog:)
       @recording = recording
       @catalog = catalog
     end
@@ -44,10 +44,7 @@ module RecordingStudioMcp
     private
 
     def shown_type
-      type_name = @recording.recordable_type
-      return type_name.to_s if @catalog.nil?
-
-      @catalog.displayed_type_name(type_name)
+      @catalog.displayed_type_name(@recording.recordable_type)
     end
 
     def studio_name(recordable)

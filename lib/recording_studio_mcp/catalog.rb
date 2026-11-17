@@ -12,24 +12,14 @@ module RecordingStudioMcp
     include DescribeShape
     include Reader
 
-    def self.public_name_clash_warned?(api, name)
-      public_name_clashes.include?([api.to_s, name.to_s])
-    end
-
-    def self.remember_public_name_clash(api, name)
-      public_name_clashes << [api.to_s, name.to_s]
-    end
-
-    def self.public_name_clashes
-      @public_name_clashes ||= []
-    end
-
     def self.for(access_grant)
       new(api: api_from(access_grant), access_grant: access_grant)
     end
 
     def self.api_from(access_grant)
-      access_grant&.api_client&.api_key.presence || "public"
+      return "public" unless access_grant.respond_to?(:api_client)
+
+      access_grant.api_client&.api_key.presence || "public"
     end
 
     def initialize(api:, access_grant: nil)

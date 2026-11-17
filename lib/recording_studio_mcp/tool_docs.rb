@@ -105,13 +105,12 @@ module RecordingStudioMcp
     private_class_method :registered_openapi_tags
 
     def namespaced_action_tags(type_name, api:, group_tags:, type_names:)
-      catalog = Catalog.new(api: api)
-      full_name = catalog.lookup_type(type_name) || type_name.to_s
+      full_name = type_name.to_s
       prefix = full_name.deconstantize
       return [] if prefix.blank?
 
       Array(type_names).flat_map do |other|
-        other_full = catalog.lookup_type(other) || other.to_s
+        other_full = other.to_s
         next [] if other_full == full_name
         next [] unless other_full.start_with?("#{prefix}::")
 
@@ -121,8 +120,7 @@ module RecordingStudioMcp
     private_class_method :namespaced_action_tags
 
     def type_registration(type_name, api)
-      full_name = Catalog.new(api: api).lookup_type(type_name) || type_name
-      RecordingStudioApi.recordable_registration_for(full_name, api: api)
+      RecordingStudioApi.recordable_registration_for(type_name, api: api)
     end
     private_class_method :type_registration
 

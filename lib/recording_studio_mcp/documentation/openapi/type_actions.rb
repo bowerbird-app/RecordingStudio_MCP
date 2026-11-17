@@ -17,7 +17,7 @@ module RecordingStudioMcp
         end
 
         def page_type_names(page)
-          Array(page.types).map { |entry| Internals.stringify(entry)["type"].to_s }
+          Array(page.types).map { |entry| Internals.stringify(entry)["recordable_type"].to_s }
         end
         private_class_method :page_type_names
 
@@ -31,13 +31,13 @@ module RecordingStudioMcp
 
         def action_tool(entry, action, api_key, group_tags, type_names)
           shown = entry["type"].to_s
+          full_name = entry["recordable_type"].to_s
           action_name = action["name"].to_s
-          full_name = Catalog.new(api: api_key).lookup_type(shown) || shown
           tagged_tool(
             name: "#{shown}--#{action_name}",
             title: ActionDocs.title(action_name, api_key, full_name),
             description: page_description(entry, action, api_key),
-            tags: ToolDocs.action_tags(shown, api: api_key, group_tags: group_tags, type_names: type_names),
+            tags: ToolDocs.action_tags(full_name, api: api_key, group_tags: group_tags, type_names: type_names),
             input_schema: action_input_schema(action)
           )
         end
@@ -68,7 +68,7 @@ module RecordingStudioMcp
 
         def page_description(entry, action, api_key)
           shown = entry["type"].to_s
-          full_name = Catalog.new(api: api_key).lookup_type(shown) || shown
+          full_name = entry["recordable_type"].to_s
           [
             runs_on_line(full_name, shown),
             Schemas.registered_type_description(full_name, api_key),

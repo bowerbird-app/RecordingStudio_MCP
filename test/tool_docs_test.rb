@@ -49,9 +49,6 @@ class ToolDocsTest < Minitest::Test
       assert_equal ["Press Kit"], docs.action_tags(
         "RecordingStudioPresskits::Files", api: :public, type_names: names
       )
-      assert_equal ["Press Kit"], docs.action_tags(
-        "Files", api: :public, type_names: %w[PressKit Files Folder]
-      )
       assert_equal [], docs.type_tags("RecordingStudioPresskits::Files", api: :public)
       assert_equal [], docs.action_tags("Folder", api: :public, type_names: names)
     end

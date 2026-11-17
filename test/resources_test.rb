@@ -48,7 +48,6 @@ class ResourcesTest < Minitest::Test
   def test_read_and_list_show_the_public_type_name
     recording = FakeRecording.new(7, "RecordingStudioPresskits::PressKit", nil, nil, 1)
     grant = FakeGrant.new(FakeScope.new([recording]))
-    grant.define_singleton_method(:api_client) { nil }
     catalog = Object.new
     catalog.define_singleton_method(:displayed_type_name) do |type|
       type.to_s == "RecordingStudioPresskits::PressKit" ? "PressKit" : type.to_s

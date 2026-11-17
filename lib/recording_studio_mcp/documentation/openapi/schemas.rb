@@ -11,8 +11,7 @@ module RecordingStudioMcp
         end
 
         def registered_type_description(type_name, api_key)
-          full_name = Catalog.new(api: api_key).lookup_type(type_name) || type_name
-          openapi = RecordingStudioApi.recordable_registration_for(full_name, api: api_key)&.openapi
+          openapi = RecordingStudioApi.recordable_registration_for(type_name, api: api_key)&.openapi
           return unless openapi.is_a?(Hash)
 
           openapi[:description].presence || openapi.dig(:tag, :description).presence

@@ -55,15 +55,18 @@ class ListenStreamTest < Minitest::Test
     recordable = Object.new
     recording = Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
                       .new(3, "Page", recordable, nil, 1)
+    catalog = Object.new
+    catalog.define_singleton_method(:displayed_type_name, &:to_s)
     RecordingStudio.stub(:recordable_name, ->(*) { raise "nope" }) do
-      card = RecordingStudioMcp::RecordingCard.new(recording)
+      card = RecordingStudioMcp::RecordingCard.new(recording, catalog: catalog)
       assert_equal "Page", card.name
     end
 
     titled = Struct.new(:title).new("Fallback")
     named = RecordingStudioMcp::RecordingCard.new(
       Struct.new(:id, :recordable_type, :recordable, :parent_recording_id, :root_recording_id)
-        .new(4, "Page", titled, nil, 1)
+        .new(4, "Page", titled, nil, 1),
+      catalog: catalog
     )
     RecordingStudio.stub(:recordable_name, ->(*) {}) do
       assert_equal "Fallback", named.title

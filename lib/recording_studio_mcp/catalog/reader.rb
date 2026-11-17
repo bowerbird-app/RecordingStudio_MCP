@@ -4,7 +4,10 @@ module RecordingStudioMcp
   class Catalog
     module Reader
       def describe(type_name)
-        recordable_type = resolve_type!(type_name)
+        describe_registered(resolve_type!(type_name))
+      end
+
+      def describe_registered(recordable_type)
         registration = registration_for(recordable_type)
         payload = default_describe_payload(recordable_type, registration)
         apply_describe_payload(payload, type: recordable_type, registration: registration)

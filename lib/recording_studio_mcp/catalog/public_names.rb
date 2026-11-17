@@ -7,12 +7,6 @@ module RecordingStudioMcp
         displayed_type_names.fetch(type.to_s, type.to_s)
       end
 
-      def lookup_type(name)
-        resolve_registered_type(name.to_s)
-      rescue RecordingStudioApi::InvalidActionInputError, RecordingStudioApi::NotFoundError
-        nil
-      end
-
       def displayed_type_names
         @displayed_type_names ||= build_displayed_type_names.freeze
       end
@@ -52,10 +46,8 @@ module RecordingStudioMcp
       end
 
       def warn_public_name_clash(name, types)
-        return if Catalog.public_name_clash_warned?(api, name)
         return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
 
-        Catalog.remember_public_name_clash(api, name)
         listed = types.map(&:to_s).sort.join(", ")
         Rails.logger.warn(
           "[RecordingStudioMcp] #{listed} share public name #{name} on API #{api}. " \
