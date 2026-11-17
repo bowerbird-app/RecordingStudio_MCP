@@ -618,6 +618,32 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_action_docs_use_a_singular_label_and_the_right_article
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      %w[Files Images Identity].each do |name|
+        register_tree_type(
+          name,
+          operations: %i[index show],
+          capability_actions: %i[ping],
+          openapi: { tags: ["Media"] }
+        )
+      end
+      register_named_capability(:ping, summary: "Ping this record")
+
+      spec = openapi_with_labels!(
+        "Files" => "Files",
+        "Images" => "Images",
+        "Identity" => "Identity"
+      )
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+
+      assert_includes tools.fetch("Files--ping")["description"], "Runs on a File (Files)."
+      assert_includes tools.fetch("Images--ping")["description"], "Runs on an Image (Images)."
+      assert_includes tools.fetch("Identity--ping")["description"], "Runs on an Identity (Identity)."
+    end
+  end
+
   def test_openapi_prefixes_a_type_neutral_upload_title
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

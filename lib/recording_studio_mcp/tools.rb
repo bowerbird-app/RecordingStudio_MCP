@@ -93,7 +93,11 @@ module RecordingStudioMcp
         type: catalog.type_schema_for(:index),
         q: { type: "string", description: "Search query across writable and sortable fields." },
         limit: { type: "integer", description: "Page size." },
-        sort: { type: "string" },
+        sort: {
+          type: "string",
+          description: "Sort by a sortable field from describe. created_at is always allowed and is the default. " \
+                       "order sets the direction."
+        },
         order: { type: "string", description: "asc or desc." },
         filter: { type: "object", description: "Attribute filters allowed by the named API." },
         pagination_token: {
@@ -243,7 +247,7 @@ module RecordingStudioMcp
 
     DESCRIBE_DESCRIPTION = "Describe one type on this named API. " \
                            "Returns operations, typed writable fields with requirements and allowed values, " \
-                           "output keys, extra fields, relationships and allowed children, " \
+                           "sortable fields, output keys, extra fields, relationships and allowed children, " \
                            "enabled capability actions with input contracts, and parent rules. " \
                            "Each type's describe output lists its allowed operations."
 

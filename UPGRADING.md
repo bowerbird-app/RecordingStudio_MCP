@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.1
+
+Previous version is `0.36.0`. No MCP migration.
+
+`describe` now includes `sortable_fields`. `list` `sort` accepts one of those fields. `created_at` is always allowed and is the default. `order` is `asc` or `desc`.
+
+A path parameter with no OpenAPI description uses the endpoint's registered resource or its name, for example `The conversation id.` A lookup error is logged with the endpoint and parameter. The docs page still renders.
+
+Capability action docs use a singular label and `a` or `an`, such as `Runs on an Image (Image)`.
+
 ## 0.36.0
 
 Previous version is `0.35.0`. No MCP migration. The API requirement stays
