@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "action_titles"
+
 module RecordingStudioMcp
   module Documentation
     module Openapi
@@ -17,10 +19,11 @@ module RecordingStudioMcp
         end
 
         def title(action_name, api_key, type_name)
-          documented = raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["title"]
+          action = RecordingStudioApi.capability_action(action_name, api: api_key)
+          documented = documented_title(action, type_name, api_key)
           return documented if documented.present?
 
-          "#{RecordingStudio.recordable_type_label(type_name).to_s.singularize} - #{action_name.to_s.humanize.titleize}"
+          "#{type_label(type_name)} - #{action_name.to_s.humanize.titleize}"
         end
 
         def schema(definition)

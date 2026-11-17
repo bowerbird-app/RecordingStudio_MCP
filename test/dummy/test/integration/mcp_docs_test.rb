@@ -90,7 +90,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_includes schemas.keys, "Workspace"
     refute_includes schemas.keys, "Folder"
     refute_includes schemas.keys, "Page"
-    assert_equal "recording://{id}", spec.dig("x-mcp", "resourceTemplates", 0, "uriTemplate")
+    refute spec.dig("x-mcp").key?("resources")
+    refute spec.dig("x-mcp").key?("resourceTemplates")
     description = spec.dig("info", "description")
     refute_empty description
     assert_includes description, "## Authentication"
@@ -99,7 +100,11 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_equal description, spec.dig("x-mcp", "instructions")
     tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
     assert_equal ["Core"], tools.fetch("list")["tags"]
-    assert_equal ["Endpoints"], tools.fetch("ping")["tags"]
+    assert_equal ["Core"], tools.fetch("ping")["tags"]
+    assert_equal ["Workspace"], tools.fetch("Workspace--ping")["tags"]
+    %w[grant_access list_access revoke_access update_access].each do |action|
+      assert_equal ["Workspace"], tools.fetch("Workspace--#{action}")["tags"]
+    end
     assert tools.fetch("list").key?("outputSchema")
     ping_tool = tools.fetch("Workspace--ping")
     assert_equal "Workspace - Ping", ping_tool["title"]
@@ -114,9 +119,13 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
     refute_includes ping_tool["description"], "style"
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
-    assert_includes tag_names, "Core"
-    assert_includes tag_names, "Endpoints"
+    assert_equal "Core", tag_names.first
+    assert_includes tag_names, "Workspace"
+    refute_includes tag_names, "Endpoints"
+    refute_includes tag_names, "Tools"
+    refute_includes tag_names, "Resources"
     refute_includes tag_names, "Types"
+    assert_equal "Other tools", tag_names.last if tag_names.include?("Other tools")
     assert_equal tag_names.uniq, tag_names
     refute spec.key?("x-tagGroups")
   end
@@ -144,7 +153,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes description, "## Endpoint tools"
     assert_includes description, "## Authentication"
     ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ops_ping" }
-    assert_equal ["Endpoints"], ping["tags"]
+    assert_equal ["Other tools"], ping["tags"]
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_equal tag_names.uniq, tag_names
     refute spec.key?("x-tagGroups")

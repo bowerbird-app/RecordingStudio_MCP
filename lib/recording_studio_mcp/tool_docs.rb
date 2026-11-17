@@ -2,11 +2,15 @@
 
 require_relative "tool_docs/output"
 require_relative "tool_docs/endpoint"
+require_relative "tool_docs/groups"
 require_relative "tool_docs/listing"
 
 module RecordingStudioMcp
   module ToolDocs
     CORE_TAG = "Core"
+    OTHER_TOOLS_TAG = "Other tools"
+    IGNORED_TAGS = %w[Endpoints Tools].freeze
+    PROTOCOL_CORE_NAMES = %w[ping].freeze
     ACRONYMS = %w[AI API CSRF CSS HTML HTTP HTTPS ID JSON MCP SSE UI URL].freeze
 
     module_function
@@ -19,11 +23,6 @@ module RecordingStudioMcp
       [humanize_metric_group(metric_group(name))]
     end
 
-    def endpoint_tags(endpoint)
-      Array(endpoint.openapi_tags).map(&:to_s).reject(&:blank?).presence ||
-        [RecordingStudioApi::RegisteredEndpoint::DEFAULT_OPENAPI_TAG]
-    end
-
     def type_tags(type_name, api:, group_tags: nil)
       registration = type_registration(type_name, api)
       tags = registered_openapi_tags(registration)
@@ -33,13 +32,6 @@ module RecordingStudioMcp
       return [] if group.blank?
 
       Array((group_tags || endpoint_group_tags(api: api))[group.to_s])
-    end
-
-    def action_tags(type_name, api:, group_tags: nil, type_names: [])
-      tags = type_tags(type_name, api: api, group_tags: group_tags)
-      return tags if tags.any?
-
-      namespaced_action_tags(type_name, api: api, group_tags: group_tags, type_names: type_names)
     end
 
     def endpoint_group_tags(api:)

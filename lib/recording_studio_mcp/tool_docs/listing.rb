@@ -14,11 +14,11 @@ module RecordingStudioMcp
       page.with(overview: Documentation::Overview.markdown(surface))
     end
 
-    def tags_for_entry(entry)
+    def tags_for_entry(entry, api: nil)
       case entry.family
       when :tree then tree_tags
       when :metric then metric_tags(entry.metric.name)
-      when :endpoint then endpoint_tags(entry.endpoint)
+      when :endpoint then endpoint_tags(entry.endpoint, api: api)
       else []
       end
     end
@@ -33,7 +33,7 @@ module RecordingStudioMcp
     end
 
     def attach_sidebar!(spec, page, group_tags: nil)
-      names = tool_sidebar_tags(spec) + type_sidebar_tags(page, group_tags: group_tags)
+      names = sidebar_tag_order(tool_sidebar_tags(spec) + type_sidebar_tags(page, group_tags: group_tags))
       tags = openapi_tags(names, descriptions: type_tag_descriptions(page, group_tags: group_tags))
       spec["tags"] = tags if tags.any?
       spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
@@ -91,7 +91,7 @@ module RecordingStudioMcp
 
     def tags_for_openapi(tool, surface)
       found = entry_for_tool(tool, surface)
-      return tags_for_entry(found) if found
+      return tags_for_entry(found, api: surface&.catalog&.api) if found
 
       Array(tool["tags"]).map(&:to_s).reject(&:blank?)
     end
