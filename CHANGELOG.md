@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.4] - 2026-11-17
+
+### Fixed
+- The docs sidebar lists Core first, then every other tag in alphabetical order. `Other tools` is last. `Press Kit` stays before `Press Kit List Section`.
+- The Recording resource is not in the docs sidebar. `resources/list` and `resources/read` are unchanged.
+- Untagged tools use their recordable type's group. A type with no tags uses its public name, so Workspace access actions sit under Workspace. A host `ping` endpoint sits under Core. A tool with no owner sits under `Other tools`.
+- A capability action title is the per-type OpenAPI title, then the action's own title, then `<singular type> - <humanized action>`.
+- A capability action may set `tag_suffix` on its OpenAPI, once for every type or per type. The sidebar tag is `<type group> <suffix>` (`Video` and `Trash` become `Video Trash`). `tag_suffix` is not copied onto the operation.
+
+### Upgrade notes
+- Bump to `0.36.4`. Previous version is `0.36.3`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Docs tags named `Endpoints`, `Tools`, or `Resources` are no longer fallback groups. Tool names and `tools/list` are unchanged.
+
 ## [0.36.3] - 2026-11-17
 
 ### Fixed
@@ -1021,7 +1034,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.3...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...HEAD
+[0.36.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.3...v0.36.4
 [0.36.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.2...v0.36.3
 [0.36.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.1...v0.36.2
 [0.36.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.0...v0.36.1

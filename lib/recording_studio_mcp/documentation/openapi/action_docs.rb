@@ -17,11 +17,40 @@ module RecordingStudioMcp
         end
 
         def title(action_name, api_key, type_name)
-          documented = raw_copy(RecordingStudioApi.capability_action(action_name, api: api_key))["title"]
+          documented = documented_title(action_name, api_key, type_name)
           return documented if documented.present?
 
-          "#{RecordingStudio.recordable_type_label(type_name).to_s.singularize} - #{action_name.to_s.humanize.titleize}"
+          label = RecordingStudio.recordable_type_label(type_name).to_s.singularize
+          "#{label} - #{action_name.to_s.humanize.titleize}"
         end
+
+        def tag_suffix(action_name, api_key, type_name)
+          action = RecordingStudioApi.capability_action(action_name, api: api_key)
+          return if action.nil?
+
+          openapi_value(typed_openapi(action, type_name), "tag_suffix")
+        end
+
+        def documented_title(action_name, api_key, type_name)
+          action = RecordingStudioApi.capability_action(action_name, api: api_key)
+          return if action.nil?
+
+          per_type = openapi_value(typed_openapi(action, type_name), "title")
+          per_type.presence || raw_copy(action)["title"]
+        end
+        private_class_method :documented_title
+
+        def typed_openapi(action, type_name)
+          action.openapi_for(type: type_name, action: action.name)
+        end
+        private_class_method :typed_openapi
+
+        def openapi_value(openapi, key)
+          return unless openapi.is_a?(Hash)
+
+          openapi[key.to_sym].presence || openapi[key].presence
+        end
+        private_class_method :openapi_value
 
         def schema(definition)
           built = EndpointSchema.build(contract_endpoint(definition))

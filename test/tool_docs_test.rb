@@ -50,7 +50,7 @@ class ToolDocsTest < Minitest::Test
         "RecordingStudioPresskits::Files", api: :public, type_names: names
       )
       assert_equal [], docs.type_tags("RecordingStudioPresskits::Files", api: :public)
-      assert_equal [], docs.action_tags("Folder", api: :public, type_names: names)
+      assert_equal ["Folder"], docs.action_tags("Folder", api: :public, type_names: names)
     end
   end
 

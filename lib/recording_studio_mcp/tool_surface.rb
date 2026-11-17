@@ -113,7 +113,7 @@ module RecordingStudioMcp
       @by_name.each_value.flat_map do |entry|
         next [] unless entry.family == family
 
-        ToolDocs.tags_for_entry(entry)
+        ToolDocs.tags_for_entry(entry, api: catalog.api)
       end.uniq
     end
 

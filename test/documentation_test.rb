@@ -116,8 +116,8 @@ class DocumentationTest < Minitest::Test
       assert_equal ["TypeName"], schemas.keys
       refute_includes schemas.keys, "Folder"
       refute_includes schemas.keys, "Page"
-      assert_equal "recording://{id}", mcp.dig("resources", 0, "uri")
-      assert_equal "recording://{id}", mcp.dig("resourceTemplates", 0, "uriTemplate")
+      refute mcp.key?("resources")
+      refute mcp.key?("resourceTemplates")
       refute Openapi.respond_to?(:servers)
       refute Openapi.respond_to?(:stringify)
     end
@@ -207,7 +207,7 @@ class DocumentationTest < Minitest::Test
       assert_includes ping_tool["description"], "Tool: capability_action with type `Folder` and action `ping`"
       refute_includes ping_tool["description"], "style"
       refute_includes ping_tool["description"], "reject_unknown"
-      refute ping_tool.key?("tags")
+      assert_equal ["Folder"], ping_tool["tags"]
       assert_includes description, "## Authentication"
       assert_includes description, "## Records and parents"
       assert_includes description, "## Listing and pagination"
@@ -240,7 +240,7 @@ class DocumentationTest < Minitest::Test
       refute_includes description, "## Records and parents"
       refute_includes description, "## Listing and pagination"
       refute_includes description, "Call describe before create"
-      assert_equal ["Endpoints"], ping["tags"]
+      assert_equal ["Other tools"], ping["tags"]
       refute ping.key?("outputSchema")
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
       assert_equal tag_names.uniq, tag_names
@@ -775,6 +775,170 @@ class DocumentationTest < Minitest::Test
       assert_equal [{ "name" => "Host", "tags" => %w[Core] }], spec["x-tagGroups"]
       assert_equal %w[Core], tag_names
     end
+  end
+
+  def test_openapi_sidebar_orders_groups_and_drops_fallback_buckets
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "RecordingStudioPresskits::ListSection",
+        operations: %i[index show],
+        capability_actions: %i[ping],
+        openapi: { tags: ["Press Kit List Section"] }
+      )
+      register_tree_type(
+        "RecordingStudioPresskits::PressKit",
+        operations: %i[index show],
+        openapi: { tags: ["Press Kit"] }
+      )
+      register_tree_type(
+        "Workspace",
+        operations: %i[index show],
+        capability_actions: %i[grant_access]
+      )
+      register_named_capability(:ping, summary: "Ping")
+      register_named_capability(:grant_access, summary: "Grant access")
+      RecordingStudioApi.register_endpoint(
+        :zebra,
+        http_verb: :get,
+        path: "zebra",
+        openapi: { summary: "Zebra", tags: ["Zebra"] },
+        handler: ->(_context) { { ok: true } }
+      )
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        openapi: { summary: "Ping" },
+        handler: ->(_context) { { ok: true } }
+      )
+      RecordingStudioApi.register_endpoint(
+        :loose_end,
+        http_verb: :get,
+        path: "loose_end",
+        openapi: { summary: "Loose" },
+        handler: ->(_context) { { ok: true } }
+      )
+      RecordingStudioApi.register_endpoint(
+        :workspace_ping,
+        http_verb: :get,
+        path: "workspaces/:id/ping",
+        recordable_type: "Workspace",
+        openapi: { summary: "Workspace ping" },
+        handler: ->(_context) { { ok: true } }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
+      press_kit = tag_names.index("Press Kit")
+      press_kit_list = tag_names.index("Press Kit List Section")
+
+      assert_equal ["Core"], tools.fetch("list")["tags"]
+      assert_equal ["Core"], tools.fetch("ping")["tags"]
+      assert_equal ["Press Kit List Section"], tools.fetch("ListSection--ping")["tags"]
+      assert_equal ["Workspace"], tools.fetch("Workspace--grant_access")["tags"]
+      assert_equal ["Workspace"], tools.fetch("workspace_ping")["tags"]
+      assert_equal ["Other tools"], tools.fetch("loose_end")["tags"]
+      assert_equal ["Zebra"], tools.fetch("zebra")["tags"]
+      assert_operator press_kit, :<, press_kit_list
+      assert_equal [], tag_names[(press_kit + 1)...press_kit_list]
+      assert_equal "Core", tag_names.first
+      assert_equal "Other tools", tag_names.last
+      assert_equal ordered_sidebar_names(tag_names), tag_names
+      %w[Endpoints Tools Resources].each { |name| refute_includes tag_names, name }
+      refute spec["x-mcp"].key?("resources")
+      refute spec["x-mcp"].key?("resourceTemplates")
+      refute spec.key?("x-tagGroups")
+      refute_includes protocol_names, "Workspace--grant_access"
+      assert_includes protocol_names, "list"
+      assert_includes protocol_names, "ping"
+    end
+  end
+
+  def test_openapi_uses_each_types_documented_action_title
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Podcast",
+        operations: %i[index show],
+        capability_actions: %i[add],
+        openapi: { tags: ["Shows"] }
+      )
+      register_tree_type(
+        "Quote",
+        operations: %i[index show],
+        capability_actions: %i[add],
+        openapi: { tags: ["Shows"] }
+      )
+      RecordingStudioApi.register_capability_action(
+        :add,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: { summary: "Add a record", title: "Add podcast" },
+        openapi_for: lambda { |type:, action:|
+          titles = { "Podcast" => "Add podcast", "Quote" => "Add a quote" }
+          title = titles[type.to_s]
+          action.present? && title ? { title: title } : {}
+        }
+      )
+
+      spec = openapi_with_labels!("Podcast" => "Podcast", "Quote" => "Quote")
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Quote")
+
+      assert_equal "Add podcast", tools.fetch("Podcast--add")["title"]
+      assert_equal "Add a quote", tools.fetch("Quote--add")["title"]
+      assert_equal "Add a quote", described.fetch("capability_actions").first.fetch("title")
+    end
+  end
+
+  def test_openapi_suffixes_a_capability_action_sidebar_group
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type(
+        "Video",
+        operations: %i[index show],
+        capability_actions: %i[shelve ping],
+        openapi: { tags: ["Video"] }
+      )
+      register_tree_type(
+        "Clip",
+        operations: %i[index show],
+        capability_actions: %i[shelve],
+        openapi: { tags: ["Clip"] }
+      )
+      register_ping_capability
+      RecordingStudioApi.register_capability_action(
+        :shelve,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: { summary: "Shelve a record", tag_suffix: "Trash" },
+        openapi_for: lambda { |type:, action:|
+          type.to_s == "Clip" && action.present? ? { tag_suffix: "Archive" } : {}
+        }
+      )
+
+      spec = openapi_with_labels!("Video" => "Video", "Clip" => "Clip")
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      video = tag_names.index("Video")
+      video_trash = tag_names.index("Video Trash")
+
+      assert_equal ["Video Trash"], tools.fetch("Video--shelve")["tags"]
+      assert_equal ["Clip Archive"], tools.fetch("Clip--shelve")["tags"]
+      assert_equal ["Video"], tools.fetch("Video--ping")["tags"]
+      refute_includes tools.fetch("Video--shelve").keys, "tag_suffix"
+      refute_includes spec.to_json, "tag_suffix"
+      assert_operator video, :<, video_trash
+      assert_equal [], tag_names[(video + 1)...video_trash]
+    end
+  end
+
+  def ordered_sidebar_names(names)
+    rest = names - ["Core", "Other tools"]
+    ["Core", *rest.sort, "Other tools"]
   end
 
   def openapi_with_credit_label!

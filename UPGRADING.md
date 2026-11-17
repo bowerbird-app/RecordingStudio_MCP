@@ -1,5 +1,19 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.4
+
+Previous version is `0.36.3`. No MCP migration.
+
+The public docs sidebar lists Core first. Every other tag follows in alphabetical order. `Other tools` is last. `Press Kit` stays before tags such as `Press Kit List Section`.
+
+The Recording resource is not in that sidebar. `resources/list` and `resources/read` still work.
+
+Untagged tools take their recordable type's group. A type with no OpenAPI tags uses its public name. Workspace access actions (`grant_access`, `list_access`, `revoke_access`, `update_access`) sit under Workspace when that type is registered. A host `ping` endpoint sits under Core. A tool with no owner sits under `Other tools`. `Endpoints` and `Tools` are not fallback groups.
+
+A capability action title uses the per-type OpenAPI title (`openapi_for`), then the action's own title, then `<singular type> - <humanized action>`.
+
+A gem may set `tag_suffix` on the action OpenAPI. Set it once on the shared action, or per type in the `openapi_for` overlay. The sidebar tag is that type's group, a space, and the suffix (`Video` and `Trash` become `Video Trash`). Alphabetical order keeps `Video` before `Video Trash`. `tag_suffix` is not copied onto the operation. Tool names and `tools/list` are unchanged.
+
 ## 0.36.3
 
 Previous version is `0.36.2`. No MCP migration.

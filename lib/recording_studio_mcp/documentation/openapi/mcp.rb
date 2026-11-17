@@ -4,8 +4,6 @@ module RecordingStudioMcp
   module Documentation
     module Openapi
       module Mcp
-        RESOURCE_DESCRIPTION = "One Accessible recording as JSON. The id is the recording id."
-
         module_function
 
         def section(page, group_tags: nil)
@@ -15,9 +13,7 @@ module RecordingStudioMcp
             "instructions" => page.instructions.to_s,
             "servers" => Internals.servers(page.api_key),
             "capabilities" => capabilities,
-            "tools" => documented_tools(page, surface, group_tags),
-            "resources" => [resource(page.resource_template)],
-            "resourceTemplates" => [resource_template(page.resource_template)]
+            "tools" => documented_tools(page, surface, group_tags)
           }
         end
 
@@ -47,27 +43,7 @@ module RecordingStudioMcp
           entry.merge(ToolDocs.openapi_extras(entry, tool, surface))
         end
 
-        def resource(template)
-          template = Internals.stringify(template)
-          {
-            "name" => template["name"],
-            "description" => RESOURCE_DESCRIPTION,
-            "uri" => template["uriTemplate"] || template["uri"],
-            "mimeType" => template["mimeType"]
-          }.compact
-        end
-
-        def resource_template(template)
-          template = Internals.stringify(template)
-          {
-            "name" => template["name"],
-            "description" => RESOURCE_DESCRIPTION,
-            "uriTemplate" => template["uriTemplate"],
-            "mimeType" => template["mimeType"]
-          }.compact
-        end
-
-        private_class_method :documented_tools, :capabilities, :tool_entry, :resource, :resource_template
+        private_class_method :documented_tools, :capabilities, :tool_entry
       end
     end
   end
