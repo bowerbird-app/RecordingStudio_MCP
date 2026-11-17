@@ -107,7 +107,7 @@ class CatalogTest < Minitest::Test
       ping = described.fetch("capability_actions").first
 
       assert_equal "ping", ping.fetch("name")
-      assert_equal "Workspace - Ping Workspace", ping.fetch("title")
+      assert_equal "Ping Workspace", ping.fetch("title")
       assert_equal "Ping this workspace", ping.fetch("summary")
       assert_equal "A longer note about ping.", ping.fetch("description")
     end

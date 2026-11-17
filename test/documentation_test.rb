@@ -648,7 +648,7 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_openapi_prefixes_a_type_neutral_upload_title
+  def test_openapi_uses_a_documented_title_without_a_separator_verbatim
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       register_tree_type(
@@ -666,29 +666,31 @@ class DocumentationTest < Minitest::Test
       spec = openapi_with_labels!("RecordingStudioPresskits::Files" => "Files")
       upload = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Files--create_upload" }
 
-      assert_equal "File - Upload", upload["title"]
+      assert_equal "Upload", upload["title"]
     end
   end
 
-  def test_openapi_prefixes_a_short_openapi_title_with_the_singular_type
+  def test_openapi_uses_an_action_first_title_verbatim
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       register_tree_type(
-        "RecordingStudioPresskits::ListSection",
+        "RecordingStudioPresskits::Podcast",
         operations: %i[index show],
-        capability_actions: %i[remove_item],
+        capability_actions: %i[add],
         openapi: { tags: ["Press Kit"] }
       )
       register_named_capability(
-        :remove_item,
-        summary: "Remove a row from this list",
-        title: "Remove List Item"
+        :add,
+        summary: "Add this podcast",
+        title: "Add podcast"
       )
 
-      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
-      remove = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ListSection--remove_item" }
+      spec = openapi_with_labels!("RecordingStudioPresskits::Podcast" => "Podcast")
+      add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Podcast--add" }
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Podcast")
 
-      assert_equal "List section - Remove List Item", remove["title"]
+      assert_equal "Add podcast", add["title"]
+      assert_equal "Add podcast", described.fetch("capability_actions").first.fetch("title")
     end
   end
 
