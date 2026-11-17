@@ -1,5 +1,20 @@
 # Upgrading Recording Studio MCP
 
+## 0.36.3
+
+Previous version is `0.36.2`. No MCP migration.
+
+Capability action titles in MCP docs and `describe` use the gem OpenAPI
+title as written. `Add podcast` stays `Add podcast`. `Upload` stays
+`Upload`.
+
+Gems that relied on MCP prefixing the type onto a short title now get
+that title verbatim. Include the type in the OpenAPI title, or leave
+the title blank for the fallback `<singular type> - <humanized action>`.
+
+A title that already contains ` - ` is unchanged. Tool names,
+`tools/list`, tags, and grouping are unchanged.
+
 ## 0.36.2
 
 Previous version is `0.36.1`. No MCP migration.
