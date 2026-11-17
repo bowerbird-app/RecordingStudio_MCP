@@ -11,8 +11,9 @@ module RecordingStudioMcp
         (protocol_core?(endpoint) ? [CORE_TAG] : [OTHER_TOOLS_TAG])
     end
 
-    def action_tags(type_name, api:, group_tags: nil, type_names: [])
-      owner_tags(type_name, api: api, group_tags: group_tags, type_names: type_names)
+    def action_tags(type_name, api:, group_tags: nil, type_names: [], tag_suffix: nil)
+      tags = owner_tags(type_name, api: api, group_tags: group_tags, type_names: type_names)
+      suffix_tags(tags, tag_suffix)
     end
 
     def sidebar_tag_order(names)
@@ -69,6 +70,14 @@ module RecordingStudioMcp
       PROTOCOL_CORE_NAMES.include?(endpoint.name.to_s)
     end
     private_class_method :protocol_core?
+
+    def suffix_tags(tags, suffix)
+      text = suffix.to_s.strip
+      return tags if text.empty?
+
+      tags.map { |tag| "#{tag} #{text}" }
+    end
+    private_class_method :suffix_tags
 
     def owner_tags(type_name, api:, group_tags: nil, type_names: [])
       tags = type_tags(type_name, api: api, group_tags: group_tags)

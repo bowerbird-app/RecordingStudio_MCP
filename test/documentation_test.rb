@@ -894,28 +894,45 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_openapi_keeps_a_foreign_action_title_off_another_type
+  def test_openapi_suffixes_a_capability_action_sidebar_group
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
       register_tree_type(
-        "Podcast",
+        "Video",
         operations: %i[index show],
-        capability_actions: %i[add],
-        openapi: { tags: ["Shows"] }
+        capability_actions: %i[shelve ping],
+        openapi: { tags: ["Video"] }
       )
       register_tree_type(
-        "Quote",
+        "Clip",
         operations: %i[index show],
-        capability_actions: %i[add],
-        openapi: { tags: ["Shows"] }
+        capability_actions: %i[shelve],
+        openapi: { tags: ["Clip"] }
       )
-      register_named_capability(:add, summary: "Add a record", title: "Add podcast")
+      register_ping_capability
+      RecordingStudioApi.register_capability_action(
+        :shelve,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: { summary: "Shelve a record", tag_suffix: "Trash" },
+        openapi_for: lambda { |type:, action:|
+          type.to_s == "Clip" && action.present? ? { tag_suffix: "Archive" } : {}
+        }
+      )
 
-      spec = openapi_with_labels!("Podcast" => "Podcast", "Quote" => "Quote")
+      spec = openapi_with_labels!("Video" => "Video", "Clip" => "Clip")
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      video = tag_names.index("Video")
+      video_trash = tag_names.index("Video Trash")
 
-      assert_equal "Add podcast", tools.fetch("Podcast--add")["title"]
-      assert_equal "Quote - Add", tools.fetch("Quote--add")["title"]
+      assert_equal ["Video Trash"], tools.fetch("Video--shelve")["tags"]
+      assert_equal ["Clip Archive"], tools.fetch("Clip--shelve")["tags"]
+      assert_equal ["Video"], tools.fetch("Video--ping")["tags"]
+      refute_includes tools.fetch("Video--shelve").keys, "tag_suffix"
+      refute_includes spec.to_json, "tag_suffix"
+      assert_operator video, :<, video_trash
+      assert_equal [], tag_names[(video + 1)...video_trash]
     end
   end
 

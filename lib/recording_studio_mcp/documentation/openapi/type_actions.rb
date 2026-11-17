@@ -37,11 +37,22 @@ module RecordingStudioMcp
             name: "#{shown}--#{action_name}",
             title: ActionDocs.title(action_name, api_key, full_name),
             description: page_description(entry, action, api_key),
-            tags: ToolDocs.action_tags(full_name, api: api_key, group_tags: group_tags, type_names: type_names),
+            tags: action_tag_names(full_name, action_name, api_key, group_tags, type_names),
             input_schema: action_input_schema(action)
           )
         end
         private_class_method :action_tool
+
+        def action_tag_names(full_name, action_name, api_key, group_tags, type_names)
+          ToolDocs.action_tags(
+            full_name,
+            api: api_key,
+            group_tags: group_tags,
+            type_names: type_names,
+            tag_suffix: ActionDocs.tag_suffix(action_name, api_key, full_name)
+          )
+        end
+        private_class_method :action_tag_names
 
         def action_input_schema(action)
           params = action["params"]

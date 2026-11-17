@@ -1,6 +1,6 @@
 # MCP docs
 
-Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds an OpenAPI 3.1 document from the host catalog on each request and renders it with vendored Redoc. `{mount}/fullscreen` is the same viewer without the host layout. There is no committed tool snapshot. Each tool tag is a top-level sidebar section. Core is first, then the other tags in alphabetical order, then `Other tools`. The Recording resource is not in the sidebar. Types list their actions. A type with no tags uses its public name. The overview is Markdown for people, not the agent instruction dump.
+Hosts mount **live** docs with `recording_studio_mcp_docs_for`. That page builds an OpenAPI 3.1 document from the host catalog on each request and renders it with vendored Redoc. `{mount}/fullscreen` is the same viewer without the host layout. There is no committed tool snapshot. Each tool tag is a top-level sidebar section. Core is first, then the other tags in alphabetical order, then `Other tools`. A gem may set `tag_suffix` on a capability action's OpenAPI, once or per type. The sidebar tag is the type group plus that suffix (`Video Trash` follows `Video`). `tag_suffix` is not copied onto the operation. The Recording resource is not in the sidebar. Types list their actions. A type with no tags uses its public name. The overview is Markdown for people, not the agent instruction dump.
 
 JSON HTTP APIs stay on Scalar.
 
