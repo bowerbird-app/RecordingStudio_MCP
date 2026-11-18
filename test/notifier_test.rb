@@ -202,6 +202,65 @@ class NotifierTest < Minitest::Test
     end
   end
 
+  def test_a_below_view_role_does_not_reuse_an_allow
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      calls = 0
+      view = open_counted_listener(
+        client_id: "client-1",
+        access_id: "access-1",
+        allowed: [7],
+        role: "view",
+        calls: -> { calls += 1 }
+      )
+      blocked = open_counted_listener(
+        client_id: "client-1",
+        access_id: "access-1",
+        allowed: [],
+        role: "none",
+        calls: -> { calls += 1 }
+      )
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+
+      assert_equal 2, calls
+      assert_equal "recording://7", view.shift_pending(timeout: 0).dig(:params, :uri)
+      assert_nil blocked.shift_pending(timeout: 0)
+    end
+  end
+
+  def test_a_revoked_or_trashed_grant_does_not_reuse_an_allow
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      calls = 0
+      live = open_counted_listener(
+        client_id: "client-1",
+        access_id: "access-1",
+        allowed: [7],
+        calls: -> { calls += 1 }
+      )
+      trashed = open_counted_listener(
+        client_id: "client-1",
+        access_id: "access-1",
+        allowed: [],
+        calls: -> { calls += 1 }
+      ) { |_grant, access| access.trashed_at = Time.now }
+      revoked = open_counted_listener(
+        client_id: "client-1",
+        access_id: "access-1",
+        allowed: [],
+        calls: -> { calls += 1 }
+      ) { |_grant, access| access.define_singleton_method(:destroyed?) { true } }
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+
+      assert_equal 3, calls
+      assert_equal "recording://7", live.shift_pending(timeout: 0).dig(:params, :uri)
+      assert_nil trashed.shift_pending(timeout: 0)
+      assert_nil revoked.shift_pending(timeout: 0)
+    end
+  end
+
   def test_access_removed_before_delivery_does_not_notify
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
@@ -232,11 +291,14 @@ class NotifierTest < Minitest::Test
 
   private
 
-  def open_counted_listener(client_id:, access_id:, allowed:, calls:)
+  def open_counted_listener(client_id:, access_id:, allowed:, calls:, role: "view")
     client = Struct.new(:id).new(client_id)
-    access_recording = Struct.new(:id).new(access_id)
+    access_recording = Struct.new(:id, :trashed_at).new(access_id, nil)
     root = Struct.new(:id).new("root-1")
-    grant = Struct.new(:api_client, :access_recording, :root_recording).new(client, access_recording, root)
+    grant = Struct.new(:api_client, :access_recording, :root_recording, :role).new(
+      client, access_recording, root, role
+    )
+    yield grant, access_recording if block_given?
     grant.define_singleton_method(:accessible_recordings) do
       calls.call
       ids = allowed

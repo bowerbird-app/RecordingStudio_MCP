@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.36.6] - 2026-11-17
 
 ### Changed
-- A saved recording checks live SSE listeners once per access grant. Listeners on the same grant share that Accessible scope check for the dispatch. The next save checks again.
-- Webhook access is checked in `DeliverEventWebhookJob`, not on the save request. The request enqueues the job. The job loads the subscription and the grant again, runs the Accessible scope, and only then posts. A missing subscription, a revoked grant, or a trashed grant is not delivered.
+- A saved recording checks live SSE listeners once per access grant. The shared check includes that grant's role and whether the grant is revoked or trashed. A listener with a different role is checked on its own. The next save checks again.
+- Webhook access is checked in `DeliverEventWebhookJob`, not on the save request. The request enqueues the subscription id, the recording id, and the event id. The job loads the subscription and the grant again, runs the Accessible scope, builds the JSON body, and only then posts. A missing subscription, a revoked grant, or a trashed grant is not delivered. A retried job posts again with the same webhook-id and checks access again.
 
 ### Upgrade notes
 - Bump to `0.36.6`. Previous version is `0.36.5`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
-- Jobs already on the queue are checked again at delivery. A grant revoked or trashed after enqueue is not posted.
+- Drain the `recording_studio_mcp_events` queue before upgrading. Jobs queued by `0.36.5` pass a `body` and are not performed.
 
 ## [0.37.0] - 2026-11-17
 

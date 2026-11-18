@@ -22,7 +22,7 @@ module RecordingStudioMcp
       return unless registration.matches_recording?(loaded)
 
       subscriptions_for(webhook.name).each do |subscription|
-        enqueue_subscription(subscription, webhook, loaded)
+        enqueue_subscription(subscription, loaded)
       end
     end
 
@@ -36,41 +36,44 @@ module RecordingStudioMcp
       EventSubscription.active.where(event_name: event_name)
     end
 
-    def enqueue_subscription(subscription, webhook, recording)
+    def enqueue_subscription(subscription, recording)
       return unless subscription.matches_recording?(recording)
-
-      event_id = "evt_#{SecureRandom.hex(16)}"
-      body = serialized_body(webhook: webhook, recording: recording, event_id: event_id)
-      if body.bytesize > MAX_BODY_BYTES
-        subscription.record_failure!(message: "payload exceeds 256 KiB")
-        return
-      end
 
       queue_delivery(
         subscription_id: subscription.id,
-        body: body,
-        event_id: event_id
+        recording_id: recording.id,
+        event_id: "evt_#{SecureRandom.hex(16)}"
       )
     end
     private_class_method :enqueue_subscription
 
-    def queue_delivery(subscription_id:, body:, event_id:)
+    def queue_delivery(subscription_id:, recording_id:, event_id:)
       DeliverEventWebhookJob.perform_later(
         subscription_id: subscription_id,
-        body: body,
+        recording_id: recording_id,
         event_id: event_id
       )
     end
 
-    def serialized_body(webhook:, recording:, event_id:)
+    def body_for(subscription:, recording_id:, event_id:)
+      return if subscription.nil? || recording_id.blank? || event_id.blank?
+
+      body = serialized_body(name: subscription.event_name, recording_id: recording_id, event_id: event_id)
+      return body if body.bytesize <= MAX_BODY_BYTES
+
+      subscription.record_failure!(message: "payload exceeds 256 KiB")
+      nil
+    end
+
+    def serialized_body(name:, recording_id:, event_id:)
       JSON.generate(
         {
           "eventId" => event_id,
-          "name" => webhook.name,
+          "name" => name,
           "timestamp" => Time.now.utc.iso8601,
           "data" => {
-            "recording_id" => recording.id.to_s,
-            "uri" => Resources.uri_for(recording)
+            "recording_id" => recording_id.to_s,
+            "uri" => Resources.uri_for(RECORDING_REF.new(recording_id))
           },
           "cursor" => nil
         }
@@ -78,12 +81,10 @@ module RecordingStudioMcp
     end
     private_class_method :serialized_body
 
-    def delivery_allowed?(subscription:, body:)
+    def delivery_allowed?(subscription:, recording_id:)
       return false if subscription.nil? || !subscription.active?
-
-      recording = recording_from_body(body)
-      return false if recording.nil?
-      return false unless still_accessible?(subscription, recording)
+      return false if recording_id.blank?
+      return false unless still_accessible?(subscription, RECORDING_REF.new(recording_id))
 
       true
     end
@@ -106,22 +107,6 @@ module RecordingStudioMcp
       true
     end
     private_class_method :live_grant?
-
-    def recording_from_body(body)
-      id = recording_id_from(body)
-      return if id.blank?
-
-      RECORDING_REF.new(id)
-    end
-    private_class_method :recording_from_body
-
-    def recording_id_from(body)
-      payload = JSON.parse(body)
-      payload.dig("data", "recording_id").presence
-    rescue JSON::ParserError, TypeError
-      nil
-    end
-    private_class_method :recording_id_from
 
     RECORDING_REF = Struct.new(:id)
     private_constant :RECORDING_REF

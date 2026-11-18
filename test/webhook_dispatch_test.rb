@@ -44,34 +44,44 @@ class WebhookDispatchTest < Minitest::Test
 
       assert_equal 1, jobs.size
       assert_equal "sub_1", jobs.first[:subscription_id]
+      assert_equal "rec-1", jobs.first[:recording_id]
       refute_nil jobs.first[:event_id]
-      payload = JSON.parse(jobs.first[:body])
-      assert_equal "recording.updated", payload["name"]
-      assert_equal "rec-1", payload.dig("data", "recording_id")
+      refute jobs.first.key?(:body)
     end
   end
 
+  def test_body_is_built_from_ids_after_access_is_allowed
+    subscription = FakeSubscription.new(id: "sub_1")
+    subscription.define_singleton_method(:event_name) { "recording.updated" }
+
+    payload = JSON.parse(
+      RecordingStudioMcp::WebhookDispatch.body_for(
+        subscription: subscription,
+        recording_id: "rec-1",
+        event_id: "evt_1"
+      )
+    )
+
+    assert_equal "evt_1", payload["eventId"]
+    assert_equal "recording.updated", payload["name"]
+    assert_equal "rec-1", payload.dig("data", "recording_id")
+    assert_equal "recording://rec-1", payload.dig("data", "uri")
+  end
+
   def test_records_failure_when_payload_exceeds_256_kib
-    with_isolated_mcp_configuration do
-      RecordingStudioMcp.configuration.events_enabled = true
-      RecordingStudioMcp.register_event("recording updated")
-      recording = FakeRecording.new("rec-1", "Page")
-      subscription = FakeSubscription.new(id: "sub_1")
+    subscription = FakeSubscription.new(id: "sub_1")
+    subscription.define_singleton_method(:event_name) { "recording.updated" }
 
-      RecordingStudioMcp::WebhookDispatch.stub(:ready?, true) do
-        RecordingStudioMcp::WebhookDispatch.stub(:subscriptions_for, [subscription]) do
-          RecordingStudioMcp::WebhookDispatch.stub(:serialized_body, "x" * ((256 * 1024) + 1)) do
-            RecordingStudioMcp::WebhookDispatch.enqueue(
-              event_name: "recording updated",
-              recording_id: "rec-1",
-              recording: recording
-            )
-          end
-        end
-      end
-
-      assert_equal "payload exceeds 256 KiB", subscription.failure_message
+    body = RecordingStudioMcp::WebhookDispatch.stub(:serialized_body, "x" * ((256 * 1024) + 1)) do
+      RecordingStudioMcp::WebhookDispatch.body_for(
+        subscription: subscription,
+        recording_id: "rec-1",
+        event_id: "evt_1"
+      )
     end
+
+    assert_nil body
+    assert_equal "payload exceeds 256 KiB", subscription.failure_message
   end
 
   def test_enqueues_before_checking_access
@@ -108,20 +118,20 @@ class WebhookDispatchTest < Minitest::Test
   def test_delivery_is_refused_when_access_is_gone
     subscription = FakeSubscription.new(id: "sub_1")
     subscription.define_singleton_method(:active?) { true }
-    body = JSON.generate("data" => { "recording_id" => "rec-1" })
-
     RecordingStudioMcp::WebhookDispatch.stub(:still_accessible?, false) do
-      refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: subscription, body: body)
+      refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: subscription, recording_id: "rec-1")
     end
   end
 
   def test_delivery_is_refused_without_an_active_subscription
-    body = JSON.generate("data" => { "recording_id" => "rec-1" })
     inactive = FakeSubscription.new(id: "sub_1")
     inactive.define_singleton_method(:active?) { false }
+    active = FakeSubscription.new(id: "sub_2")
+    active.define_singleton_method(:active?) { true }
 
-    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: nil, body: body)
-    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: inactive, body: body)
+    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: nil, recording_id: "rec-1")
+    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: inactive, recording_id: "rec-1")
+    refute RecordingStudioMcp::WebhookDispatch.delivery_allowed?(subscription: active, recording_id: "")
   end
 
   def test_trashed_grant_is_refused_after_the_scope_check
