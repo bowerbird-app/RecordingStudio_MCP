@@ -256,7 +256,9 @@ class DispatcherTest < Minitest::Test
           type: "RecordingStudioPresskits::PressKit",
           recordable_type: "RecordingStudioPresskits::PressKit",
           section: { id: "2", type: "RecordingStudioPresskits::PressCenter" },
-          field: { type: "object", recordable_type: "Nope::Missing" }
+          field: { type: "object", recordable_type: "Nope::Missing", label: "Keep::This" },
+          attachment: { type: "RecordingStudioAttachable::Attachment" },
+          location: { recordable_type: "RecordingStudio::Location::Location" }
         }
       ]
     }
@@ -1415,8 +1417,11 @@ class DispatcherTest < Minitest::Test
     assert_equal "PressKit", row["type"]
     assert_equal "PressKit", row["recordable_type"]
     assert_equal "PressCenter", row.dig("section", "type")
-    assert_equal "Nope::Missing", row.dig("field", "recordable_type")
+    assert_equal "Missing", row.dig("field", "recordable_type")
     assert_equal "object", row.dig("field", "type")
+    assert_equal "Keep::This", row.dig("field", "label")
+    assert_equal "Attachment", row.dig("attachment", "type")
+    assert_equal "Location", row.dig("location", "recordable_type")
     assert_equal row, JSON.parse(result.dig(:content, 0, :text)).dig("records", 0)
   end
 

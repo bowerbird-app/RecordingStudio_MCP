@@ -3,6 +3,46 @@
 require "test_helper"
 require "devise/test/integration_helpers"
 
+class MemoryIdempotencyRedis
+  def initialize
+    @entries = {}
+  end
+
+  attr_reader :entries
+
+  def get(key)
+    @entries[key]
+  end
+
+  def set(key, value, nx: false, ex: nil)
+    return false if nx && @entries.key?(key)
+
+    @entries[key] = value
+    true
+  end
+end
+
+class RepeatingPageCreate
+  def self.call(context)
+    parent = context.scoped_recordings.find_by(id: context.parent_id)
+    title = write_title(context)
+    actor = context.actor || context.api_client
+    recording = RecordingStudio.record!(
+      action: "created",
+      recordable: Page.create!(title: title),
+      root_recording: parent.root_recording || parent,
+      parent_recording: parent,
+      actor: actor
+    ).recording
+    { json: { "id" => recording.id.to_s, "title" => title }, status: :created }
+  end
+
+  def self.write_title(context)
+    params = context.request_params
+    params["title"] || params[:title]
+  end
+end
+
 class ParentFilteredPageIndex < RecordingStudioApi::Services::ResourceOperations::Index
   def filtered_recordings
     relation = super
@@ -647,6 +687,52 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes error.fetch("message"), "2026-07-28"
   end
 
+  test "repeat create with the same idempotency key returns one record" do
+    token = issue_delegated_token(role: "edit")
+
+    with_memory_idempotency_store do |memory|
+      repeat_create(token, memory, argument: "page-argument-1")
+      repeat_create(token, memory, header: "page-header-1")
+    end
+  end
+
+  test "repeat create through a custom create handler returns one record" do
+    token = issue_delegated_token(role: "edit")
+    RecordingStudioApi.register_resource_handler("Page", :create, handler: RepeatingPageCreate)
+
+    with_memory_idempotency_store do |memory|
+      repeat_create(token, memory, argument: "handler-argument-1")
+      repeat_create(token, memory, header: "handler-header-1")
+    end
+  ensure
+    clear_page_create_handler
+  end
+
+  test "short type names resolve registered types and reject unregistered ones" do
+    token = issue_delegated_token(role: "edit")
+    created = call_tool(token, "create", type: "Page", parent_id: @root_recording.id, title: "Named page")
+    shown = call_tool(token, "show", type: "Page", id: created.fetch("id"))
+    listed = call_tool(token, "list", type: "Page")
+    described = call_tool(token, "describe", type: "Page")
+
+    assert_includes [created["type"], created["recordable_type"]], "Page"
+    assert_equal created.fetch("id"), shown.fetch("id")
+    assert listed.fetch("records").any?
+    assert_equal "Page", described.fetch("type")
+
+    ["Attachment", "Location", "RecordingStudioAttachable::Attachment", "RecordingStudio::Location::Location"].each do |type_name|
+      %w[list show create describe].each do |tool|
+        arguments = { type: type_name, id: created.fetch("id"), parent_id: @root_recording.id, title: "Nope" }
+        body = post_tool(token, tool, arguments)
+        message = body.dig("result", "content", 0, "text").to_s
+
+        assert_equal true, body.dig("result", "isError"), message
+        assert_includes message, "Unknown type #{type_name}"
+        assert_includes message, "Allowed types:"
+      end
+    end
+  end
+
   test "cursor shaped discovery matches www authenticate resource metadata" do
     post "/recording_studio_mcp",
          params: { jsonrpc: "2.0", id: 1, method: "initialize" }.to_json,
@@ -702,9 +788,53 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
   end
 
   def clear_page_index_handler
+    delete_page_handler("index")
+  end
+
+  def clear_page_create_handler
+    delete_page_handler("create")
+  end
+
+  def delete_page_handler(action)
     registry = RecordingStudioApi.configuration.fetch_api(:public).resource_handler_registry
     store = registry.instance_variable_get(:@handlers)
-    store.delete(["Page", "index"]) if store.respond_to?(:delete)
+    store.delete(["Page", action]) if store.respond_to?(:delete)
+  end
+
+  def with_memory_idempotency_store
+    memory = MemoryIdempotencyRedis.new
+    singleton = RecordingStudioApi::IdempotencyStore.singleton_class
+    original = RecordingStudioApi::IdempotencyStore.method(:redis)
+    singleton.define_method(:redis) { memory }
+    yield memory
+  ensure
+    singleton.define_method(:redis, original) if original
+  end
+
+  def repeat_create(token, memory, argument: nil, header: nil)
+    title = "Idem #{argument || header}"
+    arguments = { type: "Page", parent_id: @root_recording.id, title: title }
+    arguments[:idempotency_key] = argument if argument
+    headers = header ? { "Idempotency-Key" => header } : {}
+    before = RecordingStudio::Recording.where(recordable_type: "Page").count
+    stored = memory.entries.size
+
+    first = tool_payload(post_tool(token, "create", arguments, headers: headers))
+    second = tool_payload(post_tool(token, "create", arguments, headers: headers))
+
+    assert_equal first.fetch("id"), second.fetch("id")
+    assert_equal title, second.fetch("title")
+    assert_equal before + 1, RecordingStudio::Recording.where(recordable_type: "Page").count
+    assert_equal stored + 1, memory.entries.size
+  end
+
+  def post_tool(token, name, arguments, headers: {})
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: name, arguments: arguments).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}", **headers)
+
+    assert_response :success, response.body
+    JSON.parse(response.body)
   end
 
   def call_tool(token, name, **arguments)
