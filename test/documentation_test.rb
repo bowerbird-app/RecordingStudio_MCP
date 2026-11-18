@@ -369,7 +369,7 @@ class DocumentationTest < Minitest::Test
 
         press_intro = spec.fetch("tags").find { |tag| tag["name"] == "PressKit" }.fetch("description")
         note_intro = spec.fetch("tags").find { |tag| tag["name"] == "Note" }.fetch("description")
-        message_intro = spec.fetch("tags").find { |tag| tag["name"] == "Message" }.fetch("description")
+        tag_names = spec.fetch("tags").map { |tag| tag["name"] }
 
         assert tools.fetch("PressKit--ping")["x-mcp-docs-only"]
         refute_includes names, "PressKit--list"
@@ -393,7 +393,8 @@ class DocumentationTest < Minitest::Test
         refute_includes note_intro, "Tool: create"
         refute_includes note_intro, "Tool: update"
         refute_includes note_intro, "Tool: delete"
-        assert_equal ["Tool: show with type `Message` and id"], tool_lines(message_intro)
+        refute_includes tag_names, "Message"
+        refute_includes sidebar_routes(spec), "#/message"
       end
     end
   end
@@ -506,24 +507,41 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_type_without_actions_still_gets_an_intro_for_allowed_core_tools
+  def test_actionless_types_have_no_sidebar_page_and_support_group_resolves
     with_isolated_api_configuration do
-      register_tree_type(
-        "SupportPage",
+      register_actionless_type(
+        "RecordingStudioSupport::SupportPage",
         operations: %i[index show],
-        openapi: { tags: ["Support"] }
+        openapi: { tags: ["Support Page"], tag: { group: "Support" } }
       )
+      register_actionless_type(
+        "RecordingStudioSupport::SupportTicket",
+        operations: %i[index show create],
+        openapi: { tags: ["Support Ticket"], tag: { group: "Support Ticket" } }
+      )
+      register_actionless_type("RecordingStudioVideo::Video", operations: %i[index show create update destroy])
+      %w[Message MessageGroup MessageMount].each do |name|
+        register_actionless_type(name, operations: %i[show])
+      end
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
-      names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
-      intro = spec.fetch("tags").find { |tag| tag["name"] == "Support" }.fetch("description")
+      routes = sidebar_routes(spec)
+      names = spec.fetch("tags").map { |tag| tag["name"] }
+      support = spec.fetch("tags").find { |tag| tag["name"] == "Support" }
 
-      assert_includes spec.fetch("tags").map { |tag| tag["name"] }, "Support"
+      assert_includes routes, "#/support"
       assert_equal [
         "Tool: list with type `SupportPage`",
         "Tool: show with type `SupportPage` and id"
-      ], tool_lines(intro)
-      refute(names.any? { |name| name.start_with?("SupportPage--") })
+      ], tool_lines(support.fetch("description"))
+      refute_includes support.fetch("description"), "SupportTicket"
+      refute_includes support.fetch("description"), "Tool: create"
+      ["Video", "Support Ticket", "Message", "MessageGroup", "MessageMount", "Support Page"].each do |name|
+        refute_includes names, name
+      end
+      %w[#/video #/support-ticket #/support-page #/message #/messagegroup #/messagemount].each do |route|
+        refute_includes routes, route
+      end
     end
   end
 
@@ -536,7 +554,7 @@ class DocumentationTest < Minitest::Test
         writable_attributes: %i[title],
         operations: %i[index show],
         auto_capability_actions: false,
-        openapi: { tags: ["Support"], description: "Nothing to call." }
+        openapi: { tags: ["Empty Shelf"], tag: { group: "Support" }, description: "Nothing to call." }
       )
       lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
       spec = lines.stub(:lines_for, []) do
@@ -545,6 +563,7 @@ class DocumentationTest < Minitest::Test
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
 
       refute_includes tag_names, "Support"
+      refute_includes tag_names, "Empty Shelf"
       refute_includes spec.to_json, "Nothing to call."
     end
   end
@@ -561,14 +580,17 @@ class DocumentationTest < Minitest::Test
   def test_openapi_describes_a_shared_tag_when_type_descriptions_match
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
+      register_ping_capability
       register_tree_type(
         "RecordingStudioPresskits::Credit",
         operations: %i[index show],
+        capability_actions: %i[ping],
         openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
       )
       register_tree_type(
         "RecordingStudioPresskits::KitSection",
         operations: %i[index show],
+        capability_actions: %i[ping],
         openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
       )
 
@@ -587,14 +609,17 @@ class DocumentationTest < Minitest::Test
   def test_openapi_leaves_a_shared_tag_undescribed_when_type_descriptions_differ
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
+      register_ping_capability
       register_tree_type(
         "RecordingStudioPresskits::Credit",
         operations: %i[index show],
+        capability_actions: %i[ping],
         openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
       )
       register_tree_type(
         "RecordingStudioPresskits::KitSection",
         operations: %i[index show],
+        capability_actions: %i[ping],
         openapi: { tags: ["Press Kit"], description: "Sections in a press kit." }
       )
 
@@ -1017,6 +1042,7 @@ class DocumentationTest < Minitest::Test
       register_tree_type(
         "RecordingStudioPresskits::PressKit",
         operations: %i[index show],
+        capability_actions: %i[ping],
         openapi: { tags: ["Press Kit"] }
       )
       register_tree_type(
@@ -1216,6 +1242,27 @@ class DocumentationTest < Minitest::Test
 
   def tool_lines(text)
     text.to_s.scan(/^Tool: .+$/)
+  end
+
+  def register_actionless_type(name, operations:, openapi: nil)
+    attrs = {
+      serializer: ->(*) { { title: "Title" } },
+      output_keys: %i[title],
+      writable_attributes: %i[title],
+      operations: operations,
+      capability_actions: [],
+      auto_capability_actions: false
+    }
+    attrs[:openapi] = openapi if openapi
+    RecordingStudioApi.register_recordable_type_api(name, **attrs)
+  end
+
+  def sidebar_routes(spec)
+    spec.fetch("tags").map { |tag| "#/#{sidebar_slug(tag.fetch('name'))}" }
+  end
+
+  def sidebar_slug(name)
+    name.to_s.downcase.gsub(/\s+/, "-").gsub("&", "-and-").gsub(/-+/, "-").sub(/\A-+/, "").sub(/-+\z/, "")
   end
 
   def ordered_sidebar_names(names)

@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.39.3
+
+Previous version is `0.39.2`. No MCP migration.
+
+A type with no capability actions has no sidebar entry and no page of its own. Video, Support Ticket, Message, MessageGroup, and MessageMount are not listed. `#/support` opens the Support group page and lists SupportPage's allowed core `Tool:` lines (`list` and `show` on public).
+
+Hosts that linked to one of those type pages should use the shared group page when the type has one.
+
 ## 0.39.2
 
 Previous version is `0.39.1`. No MCP migration.
