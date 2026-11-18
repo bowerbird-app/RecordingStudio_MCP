@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The docs Overview is that same text for the page's API. The page has no grant. A callable `instructions_suffix` receives `nil` there and is shown under Guides.
 - The named-route line is only for a surface with no tree tools. It calls those tools named route tools: one tool per named route, and path parameters are arguments.
 - The docs sidebar no longer has a Core group. Tags are alphabetical, and `Other tools` stays last. `list`, `show`, `create`, `update`, `delete`, `capability_action`, and `describe` are not sidebar entries. A host `ping` endpoint with no tag sits under `Other tools`. The no-JS fallback uses that same order and shows the Overview.
+- Each general operation a type allows gets a docs page, in the same shape as a capability action page. The page ends with a `Tool:` line that names that tool, the public type name, and the arguments from the tool schema. `list` names `parent_id` only when the surface advertises it, and names the parent when the type allows exactly one. These pages are reference pages, not protocol tools.
 
 ### Upgrade notes
 - Bump to `0.38.0`. Previous version is `0.37.4`. No MCP migration. See [UPGRADING.md](UPGRADING.md).

@@ -10,7 +10,7 @@ The line that begins `If you only see named route tools` is present only when th
 
 `tools.listChanged` is still false. The instructions say the tool list is not refreshed on its own.
 
-The docs sidebar has no Core group. Remaining tags are alphabetical. `Other tools` is last. The general tools are explained in the Overview and are left out of the sidebar. Per-type pages still show how to call a general tool with that type or action. They are reference pages, not extra tools. A host `ping` endpoint with no tag is under `Other tools`. The no-JS list follows the same tag order and includes the Overview.
+The docs sidebar has no Core group. Remaining tags are alphabetical. `Other tools` is last. The general tools are explained in the Overview and are left out of the sidebar. Per-type pages still show how to call a general tool with that type or action. They are reference pages, not extra tools. Each operation the type allows (`list`, `show`, `create`, `update`, `delete`) has its own page and ends with a `Tool:` line. `list` includes `parent_id` only when that surface advertises it. A host `ping` endpoint with no tag is under `Other tools`. The no-JS list follows the same tag order and includes the Overview.
 
 Hosts that parsed the old instruction sentences, or that linked people to the Core group, should check those clients and pages.
 

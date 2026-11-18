@@ -337,6 +337,77 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_type_operation_pages_end_with_tool_lines_for_allowed_operations
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        RecordingStudioMcp.configuration.list_parent_id_types = %w[RecordingStudioPresskits::PressKit]
+        register_tree_type(
+          "RecordingStudioPresskits::PressKit",
+          operations: %i[index show create update destroy]
+        )
+        register_tree_type("Note", operations: %i[index show])
+
+        spec = press_kit_parent_spec
+        tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+        listed = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
+        press_list = tools.fetch("PressKit--list")
+        note_list = tools.fetch("Note--list")
+
+        assert press_list["x-mcp-docs-only"]
+        refute_includes listed, "PressKit--list"
+        assert press_list["description"].end_with?(
+          "Tool: list with type `PressKit` and parent_id (the press center id)"
+        )
+        assert_equal "PressKit", press_list.dig("inputSchema", "properties", "type", "const")
+        assert press_list.dig("inputSchema", "properties").key?("parent_id")
+        assert tools.fetch("PressKit--show")["description"].end_with?("Tool: show with type `PressKit` and id")
+        assert tools.fetch("PressKit--create")["description"].end_with?(
+          "Tool: create with type `PressKit`, parent_id, writable fields at the top level, " \
+          "and optional idempotency_key"
+        )
+        assert tools.fetch("PressKit--update")["description"].end_with?(
+          "Tool: update with type `PressKit`, id, and writable fields"
+        )
+        assert tools.fetch("PressKit--delete")["description"].end_with?("Tool: delete with type `PressKit` and id")
+        refute_includes press_list["description"], "RecordingStudioPresskits::PressKit"
+        assert note_list["description"].end_with?("Tool: list with type `Note` and parent_id")
+        refute_includes note_list["description"], "(the "
+        assert tools.key?("Note--show")
+        refute tools.key?("Note--create")
+        refute tools.key?("Note--update")
+        refute tools.key?("Note--delete")
+      end
+    end
+  end
+
+  def test_list_tool_line_omits_parent_id_when_the_surface_does_not_advertise_it
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Page", operations: %i[index show create])
+
+        tools = RecordingStudioMcp::Documentation.openapi(api: :public).dig("x-mcp", "tools")
+        pages = tools.index_by { |tool| tool["name"] }
+
+        assert pages.fetch("Page--list")["description"].end_with?("Tool: list with type `Page`")
+        refute_includes pages.fetch("Page--list")["description"], "parent_id"
+        refute pages.fetch("Page--list").dig("inputSchema", "properties").key?("parent_id")
+        assert pages.fetch("Page--create")["description"].end_with?(
+          "Tool: create with type `Page`, parent_id, writable fields at the top level, and optional idempotency_key"
+        )
+        refute_includes tools.map { |tool| tool["name"] }, "Page--delete"
+      end
+    end
+  end
+
+  def press_kit_parent_spec
+    parent_for = lambda do |type|
+      type.to_s.end_with?("PressKit") ? ["PressCenter"] : []
+    end
+    RecordingStudio.stub(:allowed_parent_types_for, parent_for) do
+      RecordingStudioMcp::Documentation.openapi(api: :public)
+    end
+  end
+
   def test_openapi_describes_a_shared_tag_when_type_descriptions_match
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
@@ -435,11 +506,11 @@ class DocumentationTest < Minitest::Test
       schemas = spec.dig("components", "schemas")
       protocol_names = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
 
-      assert_equal [
+      [
         "Credits section - Add Credit",
         "Credits section - Reorder Credits",
         "credit line - Remove Credit"
-      ], titles
+      ].each { |title| assert_includes titles, title }
       refute_includes protocol_names, "CreditsSection--add_credit"
       add = tools.fetch("CreditsSection--add_credit")
       reorder = tools.fetch("CreditsSection--reorder_credits")

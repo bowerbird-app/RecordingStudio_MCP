@@ -131,6 +131,16 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_includes ping_tool["description"], "Writable fields:"
     assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
     refute_includes ping_tool["description"], "style"
+    assert tools.fetch("Workspace--list")["description"].end_with?("Tool: list with type `Workspace`")
+    refute_includes tools.fetch("Workspace--list")["description"], "parent_id"
+    assert tools.fetch("Workspace--show")["description"].end_with?("Tool: show with type `Workspace` and id")
+    assert tools.fetch("Workspace--create")["description"].end_with?(
+      "Tool: create with type `Workspace`, parent_id, writable fields at the top level, and optional idempotency_key"
+    )
+    assert tools.fetch("Workspace--update")["description"].end_with?(
+      "Tool: update with type `Workspace`, id, and writable fields"
+    )
+    refute tools.key?("Workspace--delete")
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     refute_includes tag_names, "Core"
     assert_includes tag_names, "Workspace"
