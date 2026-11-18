@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgrade notes
 - Bump to `0.37.0`. Previous version is `0.36.5`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
 - Clients that read `resources/list` must follow `nextCursor` until a page omits it. A cursor from this version is not a recording id.
+- On Accessible 0.47, every root `resources/list` page re-runs the stored-root mismatch probe, about 86 ms, and every subtree page runs the full descendant walk. Accessible 0.49 removes both. That update comes with the ecosystem dependency sweep. This release does not change the Accessible pin.
 
 ## [0.36.5] - 2026-11-17
 

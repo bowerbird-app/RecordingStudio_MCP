@@ -10,6 +10,8 @@ The cursor is opaque. A malformed cursor is JSON-RPC `-32602`. The error message
 
 Skill resources and MCP UI widgets are on the first page. Later pages are recordings only. `resources/read` and `resources/templates/list` are unchanged. `resources/templates/list` still rejects a cursor.
 
+On Accessible 0.47, every root page re-runs the stored-root mismatch probe, about 86 ms, and every subtree page runs the full descendant walk. Accessible 0.49 removes both. That update comes with the ecosystem dependency sweep. The Accessible pin stays.
+
 ## 0.36.5
 
 Previous version is `0.36.4`. No MCP migration.
