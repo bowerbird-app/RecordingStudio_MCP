@@ -582,8 +582,9 @@ class CatalogTest < Minitest::Test
     {
       "name" => "ping",
       "title" => "Workspace - Ping",
-      "idempotency_key" => "Optional. The same key returns the first result. " \
-                           "The Idempotency-Key header counts too."
+      "idempotency_key" => "Optional. On an action flagged creates: true, the same key and the same input " \
+                           "return the first result. A different input with that key is refused. " \
+                           "Other actions ignore this key. The Idempotency-Key header counts too."
     }
   end
 

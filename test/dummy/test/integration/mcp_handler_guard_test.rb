@@ -186,6 +186,7 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
       http_verb: :post,
       path: "guard-open/:id",
       scope_id: false,
+      required_role: :view,
       handler: lambda { |context|
         @called = true
         @seen = context.recording

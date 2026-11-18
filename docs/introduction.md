@@ -6,7 +6,7 @@ Hosts mount live docs with `recording_studio_mcp_docs_for`. That page reads the 
 
 - `list`, `show`, and `describe` for reading
 - `create` and `update` for writing
-- `capability_action` for named API capability actions. An optional `idempotency_key`, or the `Idempotency-Key` header, returns the first result for that action, type, and record.
+- `capability_action` for named API capability actions. An optional `idempotency_key`, or the `Idempotency-Key` header, replays an action flagged `creates: true` when the input matches. Other actions ignore the key.
 - `Recording` at `recording://{id}`. `resources/list` returns these in id order, 100 at a time. Follow `nextCursor` until a page leaves it out. Skill and UI resources are on the first page.
 
 `delete` is also a built-in tool. It only appears when a type on that named API enables destroy. A host that enables destroy advertises it.

@@ -42,11 +42,7 @@ module RecordingStudioMcp
       return scope_miss_result unless guarded
 
       context = guarded_resource_context(recordable_type, args, guarded, operation_name)
-      replay = replayed_create(context, operation_name)
-      return success_result(replay.fetch("json")) if replay
-
-      result = handler.call(context)
-      store_create(context, operation_name, result)
+      result = replay_registered_create(context, operation_name) { handler.call(context) }
       render_handler_result(result)
     end
 
@@ -68,6 +64,26 @@ module RecordingStudioMcp
       return call_capability_handler(handler, args, action, recordable_type) if handler
 
       run_capability_action(recordable_type, args, action)
+    end
+
+    def call_capability_handler(handler, args, action, recordable_type)
+      guarded = handler_scope { capability_guard(recordable_type, action, args) }
+      return scope_miss_result unless guarded
+
+      context = capability_context(guarded.recording, args, action, recordable_type)
+      result = replay_creating_action(action, recordable_type, context) { handler.call(context) }
+      render_handler_result(result)
+    end
+
+    def run_capability_action(recordable_type, args, action)
+      recording = load_recording(recordable_type, args["id"])
+      authorize_capability!(recording, action)
+      context = action_context(recording, args, action)
+      result = replay_creating_action(action, recordable_type, context) do
+        called = action.handler.call(context)
+        { json: serialize_capability_result(action, called, args), status: :ok }
+      end
+      success_result(result.fetch(:json))
     end
 
     def enabled_capability_action!(recordable_type, action_name)

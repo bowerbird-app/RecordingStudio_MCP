@@ -5,7 +5,15 @@ require_relative "mcp_ui_support"
 
 class McpUiTest < Minitest::Test
   FakeGrant = Struct.new(:api_client, :credential, :access_recording, :root_recording, :accessible_recordings,
-                         keyword_init: true)
+                         keyword_init: true) do
+    def authorize!(**)
+      nil
+    end
+
+    def scope_recording
+      access_recording
+    end
+  end
   FakeClient = Struct.new(:api_key)
 
   def setup
@@ -27,6 +35,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -60,6 +69,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor",
         openapi: { "x-mcp-file-params": ["cover_file"] }
@@ -81,6 +91,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -102,6 +113,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -125,6 +137,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -170,6 +183,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
@@ -205,6 +219,7 @@ class McpUiTest < Minitest::Test
         http_verb: :patch,
         path: "presskits/:id",
         scope_id: false,
+        required_role: :view,
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )

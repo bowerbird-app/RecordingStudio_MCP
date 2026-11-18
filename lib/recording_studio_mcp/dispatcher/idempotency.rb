@@ -4,61 +4,48 @@ module RecordingStudioMcp
   class Dispatcher
     private
 
-    def replayed_create(context, operation_name)
-      return unless operation_name == :create
+    def replay_registered_create(context, operation_name, &block)
+      return block.call unless operation_name == :create
 
-      stored = idempotent_create(context)
-      stored if stored.present?
+      replay_with(context, key: context.idempotency_key, &block)
     end
 
-    def store_create(context, operation_name, result)
-      return unless store_create?(context, operation_name, result)
+    def replay_creating_action(action, recordable_type, context, &block)
+      return block.call unless creating_action?(action, recordable_type)
 
-      status = result.fetch(:status, :ok)
-      RecordingStudioApi::IdempotencyStore.write(
-        api: context.api_key,
-        client_id: idempotency_client_id(context),
+      replay_with(
+        context,
         key: context.idempotency_key,
-        payload: result.fetch(:json),
-        status: status.to_s
+        action: action.name,
+        recording_id: context.recording&.id || context.id,
+        input: context.params,
+        &block
       )
     end
 
-    def store_create?(context, operation_name, result)
-      operation_name == :create && result.is_a?(Hash) && context.idempotency_key.present? &&
-        successful_status?(result.fetch(:status, :ok))
+    def creating_action?(action, recordable_type)
+      return true if action.creates?
+
+      resource_handler_registration(recordable_type, action.name)&.creates?
     end
 
-    def idempotent_create(context)
-      key = context.idempotency_key
-      return if key.blank?
+    def replay_with(context, key:, **scope, &block)
+      return block.call if key.blank?
 
-      RecordingStudioApi::IdempotencyStore.fetch(
+      RecordingStudioApi::Idempotency.replay(
         api: context.api_key,
-        client_id: idempotency_client_id(context),
-        key: key
+        client_id: replay_client_id(context),
+        key: key,
+        **scope,
+        &block
       )
     end
 
-    def idempotency_client_id(context)
-      client = context.api_client
-      return client.id if client
-
-      actor_idempotency_client_id(context.actor)
-    end
-
-    def actor_idempotency_client_id(actor)
-      return if actor.blank?
-
-      type_name = actor.class.respond_to?(:polymorphic_name) ? actor.class.polymorphic_name : actor.class.name
-      identifier = actor.id if actor.respond_to?(:id)
-      return if type_name.blank? || identifier.blank?
-
-      "actor:#{type_name}:#{identifier}"
-    end
-
-    def successful_status?(status)
-      SUCCESS_STATUS_RANGE.cover?(Rack::Utils.status_code(status))
+    def replay_client_id(context)
+      RecordingStudioApi::Idempotency.client_id(
+        api_client: context.api_client,
+        actor: context.actor
+      )
     end
   end
 end

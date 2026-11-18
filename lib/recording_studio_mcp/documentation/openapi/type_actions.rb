@@ -14,7 +14,7 @@ module RecordingStudioMcp
 
         def tool_line(type_name, action_name)
           "Tool: capability_action with type `#{type_name}` and action `#{action_name}`. " \
-            "Pass idempotency_key to return the first result."
+            "Pass idempotency_key to replay an action flagged creates: true when the input matches."
         end
 
         def page_type_names(page)
