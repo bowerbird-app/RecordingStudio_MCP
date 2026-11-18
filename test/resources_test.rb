@@ -58,10 +58,10 @@ class ResourcesTest < Minitest::Test
       payload = JSON.parse(read.payload[:contents].first[:text])
 
       assert_equal "PressKit", payload["type"]
-      assert_equal "PressKit", payload["name"]
+      assert_equal "PressKit 7", payload["name"]
 
       listed = RecordingStudioMcp::Resources.list(access_grant: grant)
-      assert_equal "PressKit", listed.payload[:resources].first[:name]
+      assert_equal "PressKit 7", listed.payload[:resources].first[:name]
     end
   end
 

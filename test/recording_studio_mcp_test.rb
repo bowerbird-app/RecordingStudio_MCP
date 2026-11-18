@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_37_1
-    assert_equal "0.37.1", ::RecordingStudioMcp::VERSION
+    assert_equal "0.37.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -136,7 +136,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.37.1\n"
+    assert_includes readme, "## Version\n\n0.37.2\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."

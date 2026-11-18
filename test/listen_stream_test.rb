@@ -59,7 +59,7 @@ class ListenStreamTest < Minitest::Test
     catalog.define_singleton_method(:displayed_type_name, &:to_s)
     RecordingStudio.stub(:recordable_name, ->(*) { raise "nope" }) do
       card = RecordingStudioMcp::RecordingCard.new(recording, catalog: catalog)
-      assert_equal "Page", card.name
+      assert_equal "Page 3", card.name
     end
 
     titled = Struct.new(:title).new("Fallback")

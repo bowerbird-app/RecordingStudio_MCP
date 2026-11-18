@@ -100,7 +100,7 @@ module RecordingStudioMcp
     end
 
     def success_result(payload)
-      json = stringify_payload(payload)
+      json = PresentedTypes.apply(stringify_payload(payload), catalog)
       {
         content: [{ type: "text", text: JSON.generate(json) }],
         structuredContent: json,

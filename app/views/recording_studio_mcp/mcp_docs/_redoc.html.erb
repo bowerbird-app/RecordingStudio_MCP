@@ -1,5 +1,21 @@
 <% spec_url = local_assigns.fetch(:spec_path, mcp_docs_spec_path) %>
 <% redoc_url = local_assigns.fetch(:redoc_path, mcp_docs_redoc_path) %>
+<noscript>
+  <h2>Tools on this API</h2>
+  <p><a href="<%= spec_url %>">openapi.json</a></p>
+  <% mcp_docs_tool_groups.each do |tag, tools| %>
+    <h3><%= tag %></h3>
+    <ul>
+      <% tools.each do |tool| %>
+        <li>
+          <% title = tool["title"].presence %>
+          <%= title if title && title != tool["name"] %>
+          <code><%= tool["name"] %></code>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</noscript>
 <redoc id="mcp-docs-redoc" disable-telemetry="true"></redoc>
 <script type="module">
   import { init } from <%= raw redoc_url.to_json %>;

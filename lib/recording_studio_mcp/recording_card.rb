@@ -20,7 +20,7 @@ module RecordingStudioMcp
     end
 
     def name
-      title.presence || shown_type
+      title.presence || "#{shown_type} #{@recording.id}"
     end
 
     def payload
@@ -38,13 +38,29 @@ module RecordingStudioMcp
       recordable = @recording.recordable
       return if recordable.nil?
 
-      studio_name(recordable).presence || field(recordable, :name).presence || field(recordable, :title)
+      label = studio_name(recordable)
+      label = nil if generated_fallback?(recordable, label)
+      label.presence || field(recordable, :name).presence || field(recordable, :title)
     end
 
     private
 
     def shown_type
       @catalog.displayed_type_name(@recording.recordable_type)
+    end
+
+    def generated_fallback?(recordable, label)
+      return false if label.blank?
+
+      class_name = fallback_class_name(recordable)
+      return true if label == class_name
+
+      identifier = recordable.id if recordable.respond_to?(:id)
+      identifier.present? && label == "#{class_name} ##{identifier}"
+    end
+
+    def fallback_class_name(recordable)
+      recordable.class.name.to_s.squish.presence || recordable.class.to_s
     end
 
     def studio_name(recordable)

@@ -17,5 +17,11 @@ module RecordingStudioMcp
     def docs_root_path
       docs_mount_path.delete_suffix("/fullscreen")
     end
+
+    def mcp_docs_tool_groups
+      return [] unless @page
+
+      Documentation::ToolIndex.groups(@page)
+    end
   end
 end

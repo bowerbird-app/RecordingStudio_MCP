@@ -130,6 +130,17 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  class PublicTypeCatalog < FakeCatalog
+    NAMES = {
+      "RecordingStudioPresskits::PressKit" => "PressKit",
+      "RecordingStudioPresskits::PressCenter" => "PressCenter"
+    }.freeze
+
+    def displayed_type_name(type)
+      NAMES.fetch(type.to_s, type.to_s)
+    end
+  end
+
   class DestroyCatalog < FakeCatalog
     def registered_operations
       %i[index show create update destroy]
@@ -229,6 +240,80 @@ class DispatcherTest < Minitest::Test
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
               payload = JSON.parse(result.dig(:content, 0, :text))
               assert_equal "Studio", payload.dig("records", 0, "name")
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_tool_results_use_public_type_names
+    catalog = PublicTypeCatalog.new("public")
+    listed = {
+      records: [
+        {
+          id: "4",
+          type: "RecordingStudioPresskits::PressKit",
+          recordable_type: "RecordingStudioPresskits::PressKit",
+          section: { id: "2", type: "RecordingStudioPresskits::PressCenter" },
+          field: { type: "object", recordable_type: "Nope::Missing" }
+        }
+      ]
+    }
+    operation = FakeOperation.new(FakeHandler.new({ json: listed }))
+
+    RecordingStudioMcp::Catalog.stub(:for, catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :index ? operation : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "press_kits") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { type: "PressKit" })
+
+              assert_public_type_names result
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_capability_action_results_use_public_type_names
+    catalog = PublicTypeCatalog.new("public")
+    recording = FakeRecording.new("kit-1", "PressKit")
+    @grant.accessible_recordings = FakeRelation.new(recording)
+    action = FakeAction.new(name: :trashable_list_trash_bin, handler: nil, input_contract: nil, serializer: nil)
+    handler = lambda { |_context|
+      {
+        json: {
+          records: [
+            {
+              id: "9",
+              type: "RecordingStudioPresskits::PressKit",
+              recordable_type: "RecordingStudioPresskits::PressKit"
+            }
+          ]
+        },
+        status: :ok
+      }
+    }
+
+    RecordingStudioMcp::Catalog.stub(:for, catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:default_api_version, "v1") do
+          RecordingStudioApi.stub(:capability_action, action) do
+            RecordingStudioApi.stub(:capability_action_enabled_for?, true) do
+              RecordingStudioApi.stub(:resource_handler, ->(*) { handler }) do
+                result = dispatch(
+                  "capability_action",
+                  { type: "PressKit", id: "kit-1", action: "trashable_list_trash_bin" }
+                )
+
+                refute result[:isError]
+                row = result.dig(:structuredContent, "records", 0)
+                assert_equal "PressKit", row["type"]
+                assert_equal "PressKit", row["recordable_type"]
+                assert_equal "PressKit", JSON.parse(result.dig(:content, 0, :text)).dig("records", 0, "type")
+              end
             end
           end
         end
@@ -1322,6 +1407,17 @@ class DispatcherTest < Minitest::Test
       klass
     end
     record
+  end
+
+  def assert_public_type_names(result)
+    refute result[:isError]
+    row = result.dig(:structuredContent, "records", 0)
+    assert_equal "PressKit", row["type"]
+    assert_equal "PressKit", row["recordable_type"]
+    assert_equal "PressCenter", row.dig("section", "type")
+    assert_equal "Nope::Missing", row.dig("field", "recordable_type")
+    assert_equal "object", row.dig("field", "type")
+    assert_equal row, JSON.parse(result.dig(:content, 0, :text)).dig("records", 0)
   end
 
   def dispatch(tool_name, arguments)

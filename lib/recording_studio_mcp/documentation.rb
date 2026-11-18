@@ -92,3 +92,5 @@ module RecordingStudioMcp
                          :empty_type_describe, :empty_type_schema, :resource_template
   end
 end
+
+require_relative "documentation/tool_index"
