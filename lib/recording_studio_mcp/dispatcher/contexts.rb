@@ -73,7 +73,7 @@ module RecordingStudioMcp
       return {} unless %i[create update].include?(operation_name)
 
       reject_attributes_wrapper!(args)
-      payload = stringify_keys(args).except(*WRITE_RESERVED_KEYS)
+      payload = stringify_keys(args).except(*WRITE_RESERVED_KEYS, *FINGERPRINT_EXCLUDED_KEYS)
       reject_unknown_fields!(recordable_type, payload)
       payload["parent_id"] = args["parent_id"] if args.key?("parent_id")
       payload
@@ -110,7 +110,7 @@ module RecordingStudioMcp
     end
 
     def capability_input_params(args, action)
-      raw = stringify_keys(args["params"]).except("idempotency_key")
+      raw = stringify_keys(args["params"]).except(*FINGERPRINT_EXCLUDED_KEYS)
       raw = {} if raw.blank?
       normalized = raw.respond_to?(:deep_symbolize_keys) ? raw.deep_symbolize_keys : raw
       return normalized if action.input_contract.nil?

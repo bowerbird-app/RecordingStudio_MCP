@@ -19,10 +19,8 @@ module RecordingStudioMcp
 
         def documented_tools(page, surface, group_tags)
           protocol = page.tools.map { |tool| tool_entry(tool, surface) }
-          actions = TypeActions.tools(page, group_tags: group_tags)
-          taken = actions.map { |tool| tool["name"] }
-          operations = TypeOperations.tools(page, group_tags: group_tags).reject { |tool| taken.include?(tool["name"]) }
-          (protocol + actions + operations).map { |tool| tool_entry(tool, surface) }
+          actions = TypeActions.tools(page, group_tags: group_tags).map { |tool| tool_entry(tool, surface) }
+          protocol + actions
         end
 
         def capabilities

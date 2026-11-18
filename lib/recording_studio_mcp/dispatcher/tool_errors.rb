@@ -7,7 +7,8 @@ module RecordingStudioMcp
       RecordingStudioApi::NotFoundError,
       RecordingStudioApi::UnsupportedActionError,
       RecordingStudioApi::InvalidActionInputError,
-      RecordingStudioApi::InvalidPaginationTokenError
+      RecordingStudioApi::InvalidPaginationTokenError,
+      RecordingStudioApi::IdempotencyKeyMismatchError
     ].freeze
     DOMAIN_TOOL_ERRORS = [
       ActiveRecord::RecordInvalid,
@@ -20,14 +21,20 @@ module RecordingStudioMcp
     private
 
     def tool_error_for(error)
-      if API_TOOL_ERRORS.any? { |klass| error.is_a?(klass) }
-        return error_result(error.message, details: copied_details(error))
-      end
+      return api_error_result(error) if API_TOOL_ERRORS.any? { |klass| error.is_a?(klass) }
       return error_result(record_invalid_tool_message(error)) if error.is_a?(ActiveRecord::RecordInvalid)
       return error_result(error.message) if error.is_a?(RecordingStudio::ActorRequired)
       return error_result(error.message) if error.is_a?(RecordingStudio::InvalidParent)
 
       error_result("Not authorized")
+    end
+
+    def api_error_result(error)
+      if error.is_a?(RecordingStudioApi::IdempotencyKeyMismatchError)
+        return error_result(error.message, code: error.code)
+      end
+
+      error_result(error.message, details: copied_details(error))
     end
 
     def record_invalid_tool_message(error)

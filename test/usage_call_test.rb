@@ -18,7 +18,11 @@ class UsageCallTest < Minitest::Test
         "method" => "tools/call",
         "params" => {
           "name" => "list",
-          "arguments" => { "title" => "Secret title", "idempotency_key" => "replay-key" }
+          "arguments" => {
+            "title" => "Secret title",
+            "idempotency_key" => "replay-key",
+            "fingerprint" => "abc123fingerprintdigest"
+          }
         }
       },
       response_body: { "result" => { "isError" => false } },
@@ -43,6 +47,8 @@ class UsageCallTest < Minitest::Test
     logged = @recorded.first.values.map(&:to_s).join
     refute_includes logged, "Secret title"
     refute_includes logged, "replay-key"
+    refute_includes logged, "abc123fingerprintdigest"
+    refute_includes logged, "fingerprint"
   end
 
   def test_skill_uri_is_stored_as_the_skill_name

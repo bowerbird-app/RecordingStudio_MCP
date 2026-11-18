@@ -6,6 +6,29 @@ module RecordingStudioMcp
       module TypeOperationLines
         module_function
 
+        def context_for(page)
+          {
+            catalog: Catalog.new(api: page.api_key),
+            schemas: Tools.definitions(api: page.api_key).each_with_object({}) do |tool, schemas|
+              schemas[tool[:name]] = Internals.stringify(tool[:inputSchema] || {})
+            end
+          }
+        end
+
+        def lines_for(entry, shown, full_name, context)
+          Tools::TREE_OPERATION_TOOLS.filter_map do |operation, tool_name|
+            next unless context[:catalog].type_names_for(operation).include?(full_name)
+
+            tool_line(tool_name, shown, context[:schemas].fetch(tool_name, {}), entry)
+          end
+        end
+
+        def capability_line(type_name, action_name)
+          "Tool: capability_action with type `#{type_name}` and action `#{action_name}`. " \
+            "Pass idempotency_key to replay an action flagged creates: true when the input matches. " \
+            "A different input for that key is an error."
+        end
+
         def tool_line(tool_name, type_name, schema, entry)
           "Tool: #{tool_name} with #{joined(argument_parts(tool_name, type_name, schema, entry))}"
         end

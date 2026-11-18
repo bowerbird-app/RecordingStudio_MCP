@@ -8,7 +8,7 @@ module RecordingStudioMcp
       listed_tags(endpoint).presence ||
         endpoint_group_names(endpoint, api).presence ||
         endpoint_owner_tags(endpoint, api).presence ||
-        [OTHER_TOOLS_TAG]
+        (protocol_overview?(endpoint) ? [OVERVIEW_TAG] : [OTHER_TOOLS_TAG])
     end
 
     def action_tags(type_name, api:, group_tags: nil, type_names: [], tag_suffix: nil)
@@ -17,9 +17,11 @@ module RecordingStudioMcp
     end
 
     def sidebar_tag_order(names)
-      unique = Array(names).map(&:to_s).reject(&:blank?).uniq
+      unique = Array(names).map { |name| normalize_tag(name) }.reject(&:blank?).uniq
+      overview = unique.delete(OVERVIEW_TAG)
       other = unique.delete(OTHER_TOOLS_TAG)
       ordered = unique.sort
+      ordered.unshift(OVERVIEW_TAG) if overview
       ordered.push(OTHER_TOOLS_TAG) if other
       ordered
     end
@@ -28,7 +30,7 @@ module RecordingStudioMcp
       raw = explicit_tag_list(source)
       return [] if raw.nil?
 
-      Array(raw).map(&:to_s).reject { |name| ignored_tag?(name) }.uniq
+      Array(raw).map { |name| normalize_tag(name) }.reject { |name| ignored_tag?(name) }.uniq
     end
     private_class_method :listed_tags
 
@@ -63,6 +65,11 @@ module RecordingStudioMcp
       owner_tags(type_name, api: api)
     end
     private_class_method :endpoint_owner_tags
+
+    def protocol_overview?(endpoint)
+      PROTOCOL_OVERVIEW_NAMES.include?(endpoint.name.to_s)
+    end
+    private_class_method :protocol_overview?
 
     def suffix_tags(tags, suffix)
       text = suffix.to_s.strip

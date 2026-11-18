@@ -12,6 +12,7 @@ module RecordingStudioMcp
       "delete" => :destroy
     }.freeze
     WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
+    FINGERPRINT_EXCLUDED_KEYS = %w[idempotency_key authorized_by_type authorized_by_id].freeze
     SUCCESS_STATUS_RANGE = (200..299)
 
     def self.call(tool_name:, arguments:, access_grant:, idempotency_key: nil, request_context: nil)

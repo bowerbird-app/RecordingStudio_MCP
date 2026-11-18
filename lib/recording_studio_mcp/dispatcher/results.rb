@@ -114,12 +114,15 @@ module RecordingStudioMcp
       payload
     end
 
-    def error_result(message, details: nil)
+    def error_result(message, details: nil, code: nil)
       result = {
         content: [{ type: "text", text: message.to_s }],
         isError: true
       }
-      result[:structuredContent] = { "details" => stringify_payload(details) } if details.present?
+      structured = {}
+      structured["code"] = code.to_s if code.present?
+      structured["details"] = stringify_payload(details) if details.present?
+      result[:structuredContent] = structured if structured.any?
       result
     end
   end
