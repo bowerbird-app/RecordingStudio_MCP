@@ -80,21 +80,6 @@ module RecordingStudioMcp
       raise RecordingStudioApi::UnsupportedActionError, catalog.unknown_action_message(action_name, recordable_type)
     end
 
-    def call_capability_handler(handler, args, action, recordable_type)
-      guarded, context = scoped_capability(recordable_type, action, args)
-      return scope_miss_result unless guarded
-
-      render_handler_result(handler.call(context))
-    end
-
-    def run_capability_action(recordable_type, args, action)
-      recording = load_recording(recordable_type, args["id"])
-      authorize_capability!(recording, action)
-      called = action.handler.call(action_context(recording, args, action))
-      payload = serialize_capability_result(action, called, args)
-      success_result(payload)
-    end
-
     def authorize_capability!(recording, action)
       required_role = RecordingStudioApi.configuration.capability_action_role_for(
         action: action,

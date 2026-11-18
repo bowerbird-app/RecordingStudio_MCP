@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.37.4
+
+Previous version is `0.37.3`. No MCP migration.
+
+`capability_action` accepts an optional top-level `idempotency_key`. The `Idempotency-Key` header counts too. A key inside `params` is removed before the action input contract. That key still counts when the top-level argument and the header are absent. The same key on the same action, type, and record returns the first result and does not run the action again. The same key on a different action, type, or record is an error. A read action ignores the key. The API idempotency store keeps the result for that named API and client, so a public token and an operations token do not share it. Create replay is unchanged.
+
+`describe` includes `nesting`. Nested items such as attachments and locations are managed through the parent type's actions (for example `add_image`), not as their own types. They stay out of the type enum.
+
 ## 0.37.3
 
 Previous version is `0.37.2`. No MCP migration.

@@ -3,10 +3,14 @@
 module RecordingStudioMcp
   class Catalog
     module DescribeShape
+      NESTED_ITEMS = "Nested items such as attachments and locations are managed through the parent " \
+                     "type's actions (for example add_image), not as their own types."
+
       private
 
       def default_describe_payload(recordable_type, registration)
         describe_core(recordable_type, registration)
+          .merge("nesting" => NESTED_ITEMS)
           .merge(describe_registry(recordable_type, registration))
           .compact
       end

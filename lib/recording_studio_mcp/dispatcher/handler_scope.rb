@@ -29,17 +29,6 @@ module RecordingStudioMcp
       end
     end
 
-    # Authorize first. The capability block runs before authorize!, so building
-    # the context there would run the input contract for a role that is too low.
-    def scoped_capability(recordable_type, action, args)
-      guarded = handler_scope do
-        capability_guard(recordable_type, action, args)
-      end
-      return [nil, nil] unless guarded
-
-      [guarded, capability_context(guarded.recording, args, action, recordable_type)]
-    end
-
     def guarded_resource_context(recordable_type, args, guarded, operation_name)
       resource_context(
         recordable_type,

@@ -103,7 +103,8 @@ module RecordingStudioMcp
     end
 
     def capability_input_params(args, action)
-      raw = stringify_keys(args["params"]).presence || {}
+      raw = stringify_keys(args["params"]).except("idempotency_key")
+      raw = {} if raw.blank?
       normalized = raw.respond_to?(:deep_symbolize_keys) ? raw.deep_symbolize_keys : raw
       return normalized if action.input_contract.nil?
 

@@ -16,7 +16,10 @@ class UsageCallTest < Minitest::Test
     payload = record(
       request_payload: {
         "method" => "tools/call",
-        "params" => { "name" => "list", "arguments" => { "title" => "Secret title" } }
+        "params" => {
+          "name" => "list",
+          "arguments" => { "title" => "Secret title", "idempotency_key" => "replay-key" }
+        }
       },
       response_body: { "result" => { "isError" => false } },
       status: 200,
@@ -37,7 +40,9 @@ class UsageCallTest < Minitest::Test
       },
       payload
     )
-    refute_includes @recorded.first.values.map(&:to_s).join, "Secret title"
+    logged = @recorded.first.values.map(&:to_s).join
+    refute_includes logged, "Secret title"
+    refute_includes logged, "replay-key"
   end
 
   def test_skill_uri_is_stored_as_the_skill_name

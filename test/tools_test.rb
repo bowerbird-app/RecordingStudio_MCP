@@ -196,6 +196,11 @@ class ToolsTest < Minitest::Test
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
       assert_includes action[:description], "destructively change data"
+      assert_equal(
+        "Optional. The same key returns the first result. The Idempotency-Key header counts too.",
+        action.dig(:inputSchema, :properties, :idempotency_key, :description)
+      )
+      refute_includes action.dig(:inputSchema, :required), "idempotency_key"
     end
   end
 
