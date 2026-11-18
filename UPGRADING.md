@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.39.2
+
+Previous version is `0.39.1`. No MCP migration.
+
+A capability action page shows one `Tool:` line, for that action. The idempotency sentence is included only when the action or its resource handler is flagged `creates: true`. Other actions leave it off.
+
+Each type's allowed `list`, `show`, `create`, `update`, and `delete` lines are on that type's group intro, once. Only operations that type allows on the named API are listed. A type with those operations and no capability action still has the group. A tag with no tools and no core lines is left out of the sidebar.
+
+Hosts that read those core lines from an action page should read the group intro instead.
+
 ## 0.39.1
 
 Previous version is `0.39.0`. No MCP migration.

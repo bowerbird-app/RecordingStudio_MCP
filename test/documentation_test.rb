@@ -210,9 +210,10 @@ class DocumentationTest < Minitest::Test
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
       refute_includes ping_tool["description"], "A folder record in this workspace."
-      assert_includes ping_tool["description"], "Tool: capability_action with type `Folder` and action `ping`"
-      assert_includes ping_tool["description"],
-                      "Pass idempotency_key to replay an action flagged creates: true when the input matches."
+      assert_equal ["Tool: capability_action with type `Folder` and action `ping`."],
+                   tool_lines(ping_tool["description"])
+      refute_includes ping_tool["description"], "idempotency_key"
+      refute_includes ping_tool["description"], "Tool: list"
       refute_includes ping_tool["description"], "style"
       refute_includes ping_tool["description"], "reject_unknown"
       assert_equal ["Folder"], ping_tool["tags"]
@@ -331,9 +332,13 @@ class DocumentationTest < Minitest::Test
       assert_includes ping_tool["description"], "Type: `Credit`"
       refute_includes ping_tool["description"], "Allowed operations:"
       refute_includes ping_tool["description"], "Writable fields:"
-      assert_includes ping_tool["description"],
-                      "Tool: capability_action with type `Credit` and action `ping`"
-      assert_equal "Credits on a press kit.", press_kit["description"]
+      assert_equal ["Tool: capability_action with type `Credit` and action `ping`."],
+                   tool_lines(ping_tool["description"])
+      refute_includes ping_tool["description"], "Tool: list"
+      assert_includes press_kit["description"], "Credits on a press kit."
+      assert_includes press_kit["description"], "Tool: list with type `Credit`"
+      assert_includes press_kit["description"], "Tool: show with type `Credit` and id"
+      refute_includes press_kit["description"], "Tool: create"
       assert_includes tag_names, "Press Kit"
       refute_includes tag_names, "Press kits"
       refute_includes tag_names, "Types"
@@ -362,23 +367,33 @@ class DocumentationTest < Minitest::Test
         press = tools.fetch("PressKit--ping")["description"]
         note = tools.fetch("Note--ping")["description"]
 
+        press_intro = spec.fetch("tags").find { |tag| tag["name"] == "PressKit" }.fetch("description")
+        note_intro = spec.fetch("tags").find { |tag| tag["name"] == "Note" }.fetch("description")
+        message_intro = spec.fetch("tags").find { |tag| tag["name"] == "Message" }.fetch("description")
+
         assert tools.fetch("PressKit--ping")["x-mcp-docs-only"]
         refute_includes names, "PressKit--list"
         refute_includes names, "Note--list"
         refute_includes names, "Message--show"
-        assert press.end_with?("Tool: delete with type `PressKit` and id")
-        assert_includes press, "Tool: list with type `PressKit` and parent_id (the press center id)"
-        assert_includes press, "Tool: show with type `PressKit` and id"
+        assert_equal ["Tool: capability_action with type `PressKit` and action `ping`."], tool_lines(press)
+        assert_equal ["Tool: capability_action with type `Note` and action `ping`."], tool_lines(note)
+        refute_includes press, "Tool: list"
+        refute_includes press, "Tool: delete"
+        assert_includes press_intro, "Tool: list with type `PressKit` and parent_id (the press center id)"
+        assert_includes press_intro, "Tool: show with type `PressKit` and id"
         create_line = "Tool: create with type `PressKit`, parent_id, writable fields at the top level, " \
                       "and optional idempotency_key"
-        assert_includes press, create_line
-        assert_includes press, "Tool: update with type `PressKit`, id, and writable fields"
-        refute_includes press, "RecordingStudioPresskits::PressKit"
-        assert_includes note, "Tool: list with type `Note` and parent_id"
-        refute_includes note, "(the "
-        refute_includes note, "Tool: create"
-        refute_includes note, "Tool: update"
-        refute_includes note, "Tool: delete"
+        assert_includes press_intro, create_line
+        assert_includes press_intro, "Tool: update with type `PressKit`, id, and writable fields"
+        assert press_intro.end_with?("Tool: delete with type `PressKit` and id")
+        refute_includes press_intro, "RecordingStudioPresskits::PressKit"
+        refute_includes press_intro, "Tool: capability_action"
+        assert_includes note_intro, "Tool: list with type `Note` and parent_id"
+        refute_includes note_intro, "(the "
+        refute_includes note_intro, "Tool: create"
+        refute_includes note_intro, "Tool: update"
+        refute_includes note_intro, "Tool: delete"
+        assert_equal ["Tool: show with type `Message` and id"], tool_lines(message_intro)
       end
     end
   end
@@ -389,18 +404,21 @@ class DocumentationTest < Minitest::Test
         register_ping_capability
         register_tree_type("Page", operations: %i[index show create], capability_actions: %i[ping])
 
-        tools = RecordingStudioMcp::Documentation.openapi(api: :public).dig("x-mcp", "tools")
-        pages = tools.index_by { |tool| tool["name"] }
-        page = pages.fetch("Page--ping")["description"]
+        spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+        tools = spec.dig("x-mcp", "tools")
+        page = tools.index_by { |tool| tool["name"] }.fetch("Page--ping")["description"]
+        intro = spec.fetch("tags").find { |tag| tag["name"] == "Page" }.fetch("description")
 
-        assert_includes page, "Tool: list with type `Page`\n"
-        refute_includes page, "Tool: list with type `Page` and parent_id"
+        assert_equal ["Tool: capability_action with type `Page` and action `ping`."], tool_lines(page)
+        refute_includes page, "Tool: list"
+        assert_includes intro, "Tool: list with type `Page`\n"
+        refute_includes intro, "Tool: list with type `Page` and parent_id"
         create_line = "Tool: create with type `Page`, parent_id, writable fields at the top level, " \
                       "and optional idempotency_key"
-        assert_includes page, create_line
+        assert_includes intro, create_line
         refute_includes tools.map { |tool| tool["name"] }, "Page--list"
         refute_includes tools.map { |tool| tool["name"] }, "Page--delete"
-        refute_includes page, "Tool: delete"
+        refute_includes intro, "Tool: delete"
       end
     end
   end
@@ -410,19 +428,124 @@ class DocumentationTest < Minitest::Test
       register_named_capability(:search, summary: "Search support articles")
       register_tree_type("Support", operations: %i[index show], capability_actions: %i[search])
 
-      tools = RecordingStudioMcp::Documentation.openapi(api: :public).dig("x-mcp", "tools")
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools")
       names = tools.map { |tool| tool["name"] }
       page = tools.find { |tool| tool["name"] == "Support--search" }.fetch("description")
+      intro = spec.fetch("tags").find { |tag| tag["name"] == "Support" }.fetch("description")
 
-      assert_includes page, "Tool: list with type `Support`"
-      assert_includes page, "Tool: show with type `Support` and id"
-      assert_includes page, "Tool: capability_action with type `Support` and action `search`"
-      refute_includes page, "Tool: create"
-      refute_includes page, "Tool: update"
-      refute_includes page, "Tool: delete"
+      assert_equal ["Tool: capability_action with type `Support` and action `search`."], tool_lines(page)
+      refute_includes page, "Tool: list"
+      assert_includes intro, "Tool: list with type `Support`"
+      assert_includes intro, "Tool: show with type `Support` and id"
+      refute_includes intro, "Tool: capability_action"
+      refute_includes intro, "Tool: create"
+      refute_includes intro, "Tool: update"
+      refute_includes intro, "Tool: delete"
       %w[Support--list Support--show Support--create Support--update Support--delete].each do |name|
         refute_includes names, name
       end
+    end
+  end
+
+  def test_action_page_names_only_its_own_tool_line
+    with_isolated_api_configuration do
+      register_tree_type(
+        "Identity",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[identity_remove_image ping]
+      )
+      register_ping_capability
+      RecordingStudioApi.register_capability_action(
+        :identity_remove_image,
+        capability: :accessible,
+        creates: true,
+        handler: ->(_context) { { json: { ok: true } } },
+        openapi: { summary: "Remove the image" }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+      remove = tools.fetch("Identity--identity_remove_image").fetch("description")
+      ping = tools.fetch("Identity--ping").fetch("description")
+      intro = spec.fetch("tags").find { |tag| tag["name"] == "Identity" }.fetch("description")
+
+      assert_equal 1, tool_lines(remove).size
+      assert_includes remove, "Tool: capability_action with type `Identity` and action `identity_remove_image`."
+      assert_includes remove,
+                      "Pass idempotency_key to replay an action flagged creates: true when the input matches."
+      assert_includes remove, "A different input for that key is an error."
+      %w[list show create update delete].each { |name| refute_includes remove, "Tool: #{name}" }
+      assert_equal ["Tool: capability_action with type `Identity` and action `ping`."], tool_lines(ping)
+      refute_includes ping, "idempotency_key"
+      assert_equal 1, intro.scan("Tool: list with type `Identity`").size
+      assert_includes intro, "Tool: delete with type `Identity` and id"
+      refute_includes intro, "Tool: capability_action"
+    end
+  end
+
+  def test_action_page_includes_idempotency_when_the_resource_handler_creates
+    with_isolated_api_configuration do
+      register_tree_type("Folder", operations: %i[index show], capability_actions: %i[add_file peek])
+      register_named_capability(:add_file, summary: "Add a file")
+      register_named_capability(:peek, summary: "Peek at the folder")
+      RecordingStudioApi.register_resource_handler(
+        "Folder", :add_file, handler: ->(_context) { { json: { ok: true } } }, creates: true
+      )
+
+      tools = RecordingStudioMcp::Documentation.openapi(api: :public).dig("x-mcp", "tools")
+      indexed = tools.index_by { |tool| tool["name"] }
+      add = indexed.fetch("Folder--add_file").fetch("description")
+      peek = indexed.fetch("Folder--peek").fetch("description")
+
+      assert_equal 1, tool_lines(add).size
+      assert_includes add, "Tool: capability_action with type `Folder` and action `add_file`."
+      assert_includes add, "Pass idempotency_key to replay an action flagged creates: true when the input matches."
+      assert_equal ["Tool: capability_action with type `Folder` and action `peek`."], tool_lines(peek)
+      refute_includes peek, "idempotency_key"
+    end
+  end
+
+  def test_type_without_actions_still_gets_an_intro_for_allowed_core_tools
+    with_isolated_api_configuration do
+      register_tree_type(
+        "SupportPage",
+        operations: %i[index show],
+        openapi: { tags: ["Support"] }
+      )
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
+      intro = spec.fetch("tags").find { |tag| tag["name"] == "Support" }.fetch("description")
+
+      assert_includes spec.fetch("tags").map { |tag| tag["name"] }, "Support"
+      assert_equal [
+        "Tool: list with type `SupportPage`",
+        "Tool: show with type `SupportPage` and id"
+      ], tool_lines(intro)
+      refute(names.any? { |name| name.start_with?("SupportPage--") })
+    end
+  end
+
+  def test_sidebar_omits_a_tag_with_no_tools_and_no_core_lines
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_recordable_type_api(
+        "EmptyShelf",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[index show],
+        auto_capability_actions: false,
+        openapi: { tags: ["Support"], description: "Nothing to call." }
+      )
+      lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
+      spec = lines.stub(:lines_for, []) do
+        RecordingStudioMcp::Documentation.openapi(api: :public)
+      end
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+
+      refute_includes tag_names, "Support"
+      refute_includes spec.to_json, "Nothing to call."
     end
   end
 
@@ -452,7 +575,12 @@ class DocumentationTest < Minitest::Test
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
 
-      assert_equal "Credits on a press kit.", press_kit["description"]
+      assert_includes press_kit["description"], "Credits on a press kit."
+      assert_equal 1, press_kit["description"].scan("Credits on a press kit.").size
+      assert_includes press_kit["description"], "Tool: list with type `Credit`"
+      assert_includes press_kit["description"], "Tool: show with type `Credit` and id"
+      assert_includes press_kit["description"], "Tool: list with type `KitSection`"
+      assert_includes press_kit["description"], "Tool: show with type `KitSection` and id"
     end
   end
 
@@ -474,7 +602,10 @@ class DocumentationTest < Minitest::Test
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
 
       assert_equal "Press Kit", press_kit["name"]
-      refute press_kit.key?("description")
+      refute_includes press_kit["description"], "Credits on a press kit."
+      refute_includes press_kit["description"], "Sections in a press kit."
+      assert_includes press_kit["description"], "Tool: list with type `Credit`"
+      assert_includes press_kit["description"], "Tool: list with type `KitSection`"
     end
   end
 
@@ -1081,6 +1212,10 @@ class DocumentationTest < Minitest::Test
       assert_operator video, :<, video_trash
       assert_equal [], tag_names[(video + 1)...video_trash]
     end
+  end
+
+  def tool_lines(text)
+    text.to_s.scan(/^Tool: .+$/)
   end
 
   def ordered_sidebar_names(names)

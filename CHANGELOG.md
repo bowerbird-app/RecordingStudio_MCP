@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.2] - 2026-11-18
+
+### Fixed
+- A capability action page shows one `Tool:` line, for that action. The idempotency sentence is included only when the action or its resource handler is flagged `creates: true`. Other actions leave it off.
+- A type's allowed `list`, `show`, `create`, `update`, and `delete` lines appear once on that type's group intro. Only operations that type allows on the named API are listed. A type with those operations and no capability action still has the group.
+- A sidebar group is left out when the tag has no tools and no core lines.
+
+### Upgrade notes
+- Bump to `0.39.2`. Previous version is `0.39.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts that read core `Tool:` lines from an action page should read that type's group intro instead.
+
 ## [0.39.1] - 2026-11-18
 
 ### Fixed
@@ -1140,7 +1151,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.2...HEAD
+[0.39.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...v0.39.2
 [0.39.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.0...v0.39.1
 [0.39.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.38.0...v0.39.0
 [0.38.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.4...v0.38.0

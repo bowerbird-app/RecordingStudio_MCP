@@ -133,16 +133,24 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes ping_tool["description"], "Type: `Workspace`"
     refute_includes ping_tool["description"], "Allowed operations:"
     refute_includes ping_tool["description"], "Writable fields:"
-    assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
+    assert_equal ["Tool: capability_action with type `Workspace` and action `ping`."],
+                 tool_lines(ping_tool["description"])
     refute_includes ping_tool["description"], "style"
-    workspace = tools.fetch("Workspace--ping")["description"]
-    assert_includes workspace, "Tool: list with type `Workspace`\n"
-    refute_includes workspace, "Tool: list with type `Workspace` and parent_id"
-    assert_includes workspace, "Tool: show with type `Workspace` and id"
-    assert_includes workspace, "Tool: create with type `Workspace`, parent_id, writable fields at the top level, " \
-                                "and optional idempotency_key"
-    assert_includes workspace, "Tool: update with type `Workspace`, id, and writable fields"
-    refute_includes workspace, "Tool: delete"
+    refute_includes ping_tool["description"], "idempotency_key"
+    refute_includes ping_tool["description"], "Tool: list"
+    intro = spec.fetch("tags").find { |tag| tag["name"] == "Workspace" }.fetch("description")
+    assert_equal 1, intro.scan("Tool: list with type `Workspace`").size
+    assert_includes intro, "Tool: list with type `Workspace`\n"
+    refute_includes intro, "Tool: list with type `Workspace` and parent_id"
+    assert_includes intro, "Tool: show with type `Workspace` and id"
+    assert_includes intro, "Tool: create with type `Workspace`, parent_id, writable fields at the top level, " \
+                            "and optional idempotency_key"
+    assert_includes intro, "Tool: update with type `Workspace`, id, and writable fields"
+    refute_includes intro, "Tool: delete"
+    refute_includes intro, "Tool: capability_action"
+    folder = spec.fetch("tags").find { |tag| tag["name"] == "Folder" }
+    assert_includes folder.fetch("description"), "Tool: list with type `Folder`"
+    refute tools.key?("Folder--list")
     refute tools.key?("Workspace--list")
     refute tools.key?("Workspace--delete")
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
@@ -267,6 +275,10 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     Current.actor = user
     sign_in user
     user
+  end
+
+  def tool_lines(text)
+    text.to_s.scan(/^Tool: .+$/)
   end
 
   def assert_docs_tool_fallback(body, spec_path)
