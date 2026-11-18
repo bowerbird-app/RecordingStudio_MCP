@@ -369,4 +369,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.36.6
+0.37.1

@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.36.6] - 2026-11-17
+## [0.37.1] - 2026-11-18
 
 ### Changed
 - A saved recording checks live SSE listeners once per access grant. The shared check includes that grant's role and whether the grant is revoked or trashed. A listener with a different role is checked on its own. The next save checks again.
 - Webhook access is checked in `DeliverEventWebhookJob`, not on the save request. The request enqueues the subscription id, the recording id, and the event id. The job loads the subscription and the grant again, runs the Accessible scope, builds the JSON body, and only then posts. A missing subscription, a revoked grant, or a trashed grant is not delivered. A retried job posts again with the same webhook-id and checks access again.
 
 ### Upgrade notes
-- Bump to `0.36.6`. Previous version is `0.36.5`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
-- Drain the `recording_studio_mcp_events` queue before upgrading. Jobs queued by `0.36.5` pass a `body` and are not performed.
+- Bump to `0.37.1`. Previous version is `0.37.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Drain the `recording_studio_mcp_events` queue before upgrading. Jobs queued by `0.37.0` pass a `body` and are not performed.
 
 ## [0.37.0] - 2026-11-17
 
@@ -1067,8 +1067,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.6...HEAD
-[0.36.6]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...v0.36.6
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.1...HEAD
+[0.37.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...v0.37.1
 [0.37.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...v0.37.0
 [0.36.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...v0.36.5
 [0.36.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.3...v0.36.4
