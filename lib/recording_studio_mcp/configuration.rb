@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "recording_studio_mcp/resources_page_size"
+
 module RecordingStudioMcp
   class Configuration
     DEFAULT_PROTOCOL_VERSION = "2025-06-18"
@@ -7,6 +9,7 @@ module RecordingStudioMcp
     LEGACY_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18 2025-11-25].freeze
     MODERN_PROTOCOL_VERSION = "2026-07-28"
     DEFAULT_MCP_MOUNT_PATH = "/recording_studio_mcp"
+    DEFAULT_RESOURCES_PAGE_SIZE = 100
     DOC_FIELDS = {
       documentation_enabled: :enabled,
       documentation_access: :access,
@@ -52,6 +55,14 @@ module RecordingStudioMcp
 
     def list_parent_id_types=(types)
       @list_parent_id_types = types.nil? ? nil : Array(types).map(&:to_s).uniq.freeze
+    end
+
+    def resources_page_size
+      @resources_page_size || DEFAULT_RESOURCES_PAGE_SIZE
+    end
+
+    def resources_page_size=(value)
+      @resources_page_size = ResourcesPageSize.parse(value)
     end
 
     def to_h
@@ -104,7 +115,8 @@ module RecordingStudioMcp
         event_subscriptions_per_principal: event_subscriptions_per_principal,
         event_callback_host_allowed: event_callback_host_allowed,
         catalog_metric_resources: catalog_metric_resources,
-        list_parent_id_types: list_parent_id_types
+        list_parent_id_types: list_parent_id_types,
+        resources_page_size: resources_page_size
       }
     end
   end

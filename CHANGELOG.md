@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-17
+
+### Changed
+- `resources/list` pages accessible recordings by `id`, ascending. The page size is 100. Set `config.resources_page_size` to change it. A page with more recordings includes `nextCursor`. The last page leaves it out.
+- The cursor is opaque. A malformed cursor is JSON-RPC `-32602`, and the error does not include the cursor. Each page applies the grant's accessible scope again, so a cursor cannot reveal a recording outside the grant. Recordables are loaded for that page.
+- Skill resources and MCP UI widgets stay on `resources/list`, on the first page. `resources/read` and `resources/templates/list` are unchanged.
+
+### Upgrade notes
+- Bump to `0.37.0`. Previous version is `0.36.5`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Clients that read `resources/list` must follow `nextCursor` until a page omits it. A cursor from this version is not a recording id.
+- On Accessible 0.47, every root `resources/list` page re-runs the stored-root mismatch probe, about 86 ms, and every subtree page runs the full descendant walk. Accessible 0.49 removes both. That update comes with the ecosystem dependency sweep. This release does not change the Accessible pin.
+
 ## [0.36.5] - 2026-11-17
 
 ### Fixed
@@ -1045,7 +1057,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...HEAD
+[0.37.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...v0.37.0
 [0.36.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...v0.36.5
 [0.36.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.3...v0.36.4
 [0.36.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.2...v0.36.3
