@@ -27,7 +27,7 @@ module RecordingStudioMcp
       scope.exists?(id: recording.id)
     end
 
-    # Primed grants share a parent anchor and role. Unprimed grants do not.
+    # Primed grants share the whole prime snapshot. Unprimed grants do not.
     # A trashed or revoked snapshot is refused above and is not stored.
     def cache_key(grant, recording)
       [grant_identity(grant) || grant, recording&.id]
@@ -60,7 +60,7 @@ module RecordingStudioMcp
 
     def anchor_parts(grant)
       snapshot = prime_snapshot(grant)
-      return [snapshot[:parent_id], snapshot[:role]] if snapshot
+      return snapshot if snapshot
 
       live_anchor(grant)
     end

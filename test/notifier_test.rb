@@ -324,6 +324,24 @@ class NotifierTest < Minitest::Test
     end
   end
 
+  def test_a_reassigned_actor_does_not_reuse_an_allow
+    with_isolated_mcp_configuration do
+      RecordingStudioMcp.register_event("recording updated")
+      access = grant_access_recording(actor: Struct.new(:id).new("user-1"))
+      calls = 0
+      counter = -> { calls += 1 }
+      first = open_grant_listener(access: access, allowed: [7], calls: counter)
+      access.recordable.actor = Struct.new(:id).new("user-2")
+      second = open_grant_listener(access: access, allowed: [], calls: counter)
+
+      RecordingStudioMcp::Notifier.recording_saved(FakeEvent.new(FakeRecording.new(7, "Page", true)))
+
+      assert_equal 2, calls
+      assert_equal "recording://7", first.shift_pending(timeout: 0).dig(:params, :uri)
+      assert_nil second.shift_pending(timeout: 0)
+    end
+  end
+
   def test_access_removed_before_delivery_does_not_notify
     with_isolated_mcp_configuration do
       RecordingStudioMcp.register_event("recording updated")
@@ -354,8 +372,8 @@ class NotifierTest < Minitest::Test
 
   private
 
-  def grant_access_recording(parent_id: nil)
-    recordable = Struct.new(:role).new("view")
+  def grant_access_recording(parent_id: nil, actor: nil)
+    recordable = Struct.new(:role, :actor).new("view", actor)
     Struct.new(:id, :trashed_at, :parent_recording_id, :recordable).new("access-1", nil, parent_id, recordable)
   end
 

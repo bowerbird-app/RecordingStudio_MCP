@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module RecordingStudioMcp
-  # Remembers the anchor, role, and trash state from the moment a grant
+  # Remembers the anchor, owner, role, and trash state from the moment a grant
   # first builds its scope. Later changes to that recording object do not
   # rewrite the snapshot.
   module GrantPrimeSnapshot
@@ -33,9 +33,34 @@ module RecordingStudioMcp
       @recording_studio_mcp_prime_snapshot = {
         parent_id: prime_parent_id,
         role: role,
+        owner_id: prime_owner_id,
         revoked: prime_revoked?,
         trashed: prime_trashed?
-      }
+      }.freeze
+    end
+
+    def prime_owner_id
+      id_of(client_owner) || id_of(actor_owner) || id_of(actor)
+    end
+
+    def client_owner
+      client = api_client if respond_to?(:api_client)
+      return unless client.respond_to?(:owner)
+
+      client.owner
+    end
+
+    def actor_owner
+      person = actor if respond_to?(:actor)
+      return unless person.respond_to?(:owner)
+
+      person.owner
+    end
+
+    def id_of(record)
+      return unless record.respond_to?(:id)
+
+      record.id.presence
     end
 
     def prime_parent_id
