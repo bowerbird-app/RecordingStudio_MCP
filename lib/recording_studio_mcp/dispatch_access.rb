@@ -8,6 +8,8 @@ module RecordingStudioMcp
     end
 
     def allowed?(grant, recording, uri:)
+      return false if denied_snapshot?(grant)
+
       key = cache_key(grant, recording)
       return @answers[key] if @answers.key?(key)
 
@@ -25,11 +27,15 @@ module RecordingStudioMcp
       scope.exists?(id: recording.id)
     end
 
-    # Two grants share an answer only when their client, access recording,
-    # anchor, role, and revoked or trashed state all match. A missing piece
-    # stays on the grant object, so an unknown grant never reuses another.
+    # Primed grants share a parent anchor and role. Unprimed grants do not.
+    # A trashed or revoked snapshot is refused above and is not stored.
     def cache_key(grant, recording)
       [grant_identity(grant) || grant, recording&.id]
+    end
+
+    def denied_snapshot?(grant)
+      snapshot = prime_snapshot(grant)
+      snapshot && (snapshot[:revoked] || snapshot[:trashed])
     end
 
     def grant_identity(grant)
@@ -40,15 +46,55 @@ module RecordingStudioMcp
     end
 
     def identity_parts(grant)
+      return if unprimed_access_grant?(grant)
+
       client_id = record_id(grant, :api_client)
       access_id = record_id(grant, :access_recording)
       return unless client_id && access_id
 
+      anchor = anchor_parts(grant)
+      return if anchor.nil?
+
+      [client_id, access_id, record_id(grant, :root_recording), *anchor]
+    end
+
+    def anchor_parts(grant)
+      snapshot = prime_snapshot(grant)
+      return [snapshot[:parent_id], snapshot[:role]] if snapshot
+
+      live_anchor(grant)
+    end
+
+    def live_anchor(grant)
       role = read_role(grant)
       state = read_state(grant)
       return if role.nil? || state.nil?
 
-      [client_id, access_id, record_id(grant, :root_recording), role[:role], state[:revoked], state[:trashed]]
+      [parent_anchor_id(access_recording_for(grant)), role[:role], state[:revoked], state[:trashed]]
+    end
+
+    def unprimed_access_grant?(grant)
+      access_grant?(grant) && prime_snapshot(grant).nil?
+    end
+
+    def access_grant?(grant)
+      defined?(RecordingStudioApi::AccessGrant) && grant.is_a?(RecordingStudioApi::AccessGrant)
+    end
+
+    def prime_snapshot(grant)
+      return unless grant.respond_to?(:recording_studio_mcp_prime_snapshot)
+
+      grant.recording_studio_mcp_prime_snapshot
+    end
+
+    def parent_anchor_id(access)
+      return if access.nil?
+
+      column = access.parent_recording_id if access.respond_to?(:parent_recording_id)
+      return column.presence if column.present?
+
+      parent = access.parent_recording if access.respond_to?(:parent_recording)
+      parent.id.presence if parent.respond_to?(:id)
     end
 
     def read_role(grant)

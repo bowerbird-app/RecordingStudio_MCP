@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.37.1] - 2026-11-18
 
 ### Changed
-- A saved recording checks live SSE listeners once per access grant. The shared check includes that grant's role and whether the grant is revoked or trashed. A listener with a different role is checked on its own. The next save checks again.
+- A saved recording checks live SSE listeners once per access grant. Grants that have already built a scope share that check when the prime-time parent recording and role match. A grant that has not built its scope is checked on its own. A trashed or revoked snapshot is refused and is not reused. The next save checks again.
 - Webhook access is checked in `DeliverEventWebhookJob`, not on the save request. The request enqueues the subscription id, the recording id, and the event id. The job loads the subscription and the grant again, runs the Accessible scope, builds the JSON body, and only then posts. A missing subscription, a revoked grant, or a trashed grant is not delivered. A retried job posts again with the same webhook-id and checks access again.
 
 ### Upgrade notes

@@ -37,6 +37,7 @@ class McpListenerAccessTest < ActionDispatch::IntegrationTest
   test "listeners on one grant share one access check and a subtree grant stays separate" do
     root_listeners = open_listeners(@root_client, @root_access, 8)
     subtree_listeners = open_listeners(@subtree_client, @subtree_access, 8)
+    prime_grants(root_listeners + subtree_listeners)
 
     queries = count_queries { deliver(@page) }
 
@@ -97,6 +98,10 @@ class McpListenerAccessTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def prime_grants(connections)
+    connections.each { |connection| connection.access_grant.accessible_recordings }
+  end
 
   def open_listeners(client, access_recording, count)
     uris = [@page, @outside].map { |recording| "recording://#{recording.id}" }
