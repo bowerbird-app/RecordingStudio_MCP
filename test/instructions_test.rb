@@ -5,26 +5,38 @@ require "test_helper"
 class InstructionsTest < Minitest::Test
   include RecordableMetricToolHelpers
 
-  def test_tree_only_includes_describe_guidance
+  def test_tree_only_uses_ordered_short_lines
     with_isolated_api_configuration do
       register_tree_type("Page")
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "both this MCP endpoint and the Recording Studio API"
-      assert_includes text, "Call describe before create"
-      refute_includes text, "capability_action"
+      assert_includes text, "## Sign in"
+      assert_includes text, "Use an OAuth Bearer token. It has the same access as the app."
+      assert_equal 1, text.scan("Call describe").length
+      assert_includes text, "Call describe on a type for allowed children, actions, and values before you create"
+      assert_includes text, "not refreshed on its own"
+      assert_includes text, "ping checks the connection."
+      assert_includes text, "Call list with the workspace type and no parent_id to find workspaces."
+      assert_includes text, "Records nest by parent_id."
+      assert_includes text, "root_id is the workspace, not the parent."
       assert_includes text, "not under attributes"
+      assert_includes text, "idempotency_key on a retried create"
+      assert_includes text, "The key applies to create only."
       assert_includes text, "pagination_token"
-      assert_includes text, "Records nest by parent_id"
-      assert_includes text, "root_id is the workspace, not the parent record"
-      refute_includes text, "Walk down with list using parent_id, then show"
-      assert_includes text, "Call describe to see allowed children and actions"
-      assert_includes text, "call tools/list again"
-      refute_includes text, "Use the endpoint tools"
+      refute_includes text, "List with parent_id, then show."
+      refute_includes text, "If you only see named route tools"
+      refute_includes text, "Oauth"
+      refute_includes text, "recordable"
+      refute_includes text, "generating UI"
+      refute_includes text, "listChanged"
+      assert_operator text.index("## Sign in"), :<, text.index("## Find your tools")
+      assert_operator text.index("## Find your tools"), :<, text.index("## Walk your records")
+      assert_operator text.index("## Walk your records"), :<, text.index("## Make changes")
+      assert_operator text.index("## Make changes"), :<, text.index("## Guides")
     end
   end
 
-  def test_catalog_only_omits_describe_guidance
+  def test_catalog_only_puts_named_route_tools_last
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(
         :ping,
@@ -34,15 +46,34 @@ class InstructionsTest < Minitest::Test
       )
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Use the endpoint tools"
-      assert_includes text, "Path parameters are tool arguments"
-      assert_includes text, "Call tools/list to see the available endpoint tools"
-      assert_includes text, "fetch the detail before generating UI"
-      assert_includes text, "Do not invent recordable types"
-      assert_includes text, "unless tools/list advertises them"
-      assert_includes text, "call tools/list again"
-      refute_includes text, "Call describe before create"
-      refute_includes text, "Records nest by parent_id"
+      assert_includes text, "## If you only see named route tools"
+      assert_includes text, "That is the whole set."
+      assert_includes text, "One tool per named route. Path parameters are arguments."
+      assert_includes text, "not refreshed on its own"
+      assert_includes text, "ping checks the connection."
+      refute_includes text, "Call describe"
+      refute_includes text, "Records nest by parent_id."
+      refute_includes text, "generating UI"
+      refute_includes text, "recordable"
+      assert text.end_with?("One tool per named route. Path parameters are arguments.")
+    end
+  end
+
+  def test_mixed_surface_omits_the_endpoint_only_line
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioApi.register_endpoint(
+        :ping,
+        http_verb: :get,
+        path: "ping",
+        handler: ->(_context) { { ok: true } }
+      )
+      text = RecordingStudioMcp::Instructions.text
+
+      assert_includes text, "Call describe on a type"
+      assert_includes text, "plus named route tools"
+      refute_includes text, "If you only see named route tools"
+      refute_includes text, "generating UI"
     end
   end
 
@@ -53,7 +84,8 @@ class InstructionsTest < Minitest::Test
         RecordingStudioMcp.configuration.list_parent_id_types = %w[Page]
         text = RecordingStudioMcp::Instructions.text
 
-        assert_includes text, "Walk down with list using parent_id, then show"
+        assert_includes text, "List with parent_id, then show."
+        assert_operator text.index("no parent_id"), :<, text.index("List with parent_id, then show.")
       end
     end
   end
@@ -63,55 +95,35 @@ class InstructionsTest < Minitest::Test
       register_tree_type("SupportPage", operations: %i[index show])
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe for a type's allowed operations"
+      assert_includes text, "Call describe on a type for allowed children, actions, and values."
+      refute_includes text, "before you create"
       assert_includes text, "pagination_token"
-      refute_includes text, "before create"
-      refute_includes text, "capability_action"
       refute_includes text, "not under attributes"
+      refute_includes text, "idempotency_key"
+      refute_includes text, "## Make changes"
     end
   end
 
-  def test_full_tree_mentions_create_and_capability_action
+  def test_full_tree_mentions_create_and_capability_action_once
     with_isolated_api_configuration do
       register_ping_capability
-      register_tree_type("Page", capability_actions: %i[ping])
+      register_tree_type("Page", operations: %i[index show create update destroy], capability_actions: %i[ping])
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe before create or capability_action"
+      assert_includes text, "before you create or run an action."
+      assert_equal 1, text.scan("Call describe").length
+      assert_includes text, "list, show, create, update, delete, capability_action, describe, and ping"
     end
   end
 
-  def test_mixed_includes_both_guidance_blocks
-    with_isolated_api_configuration do
-      register_tree_type("Page")
-      RecordingStudioApi.register_endpoint(
-        :ping,
-        http_verb: :get,
-        path: "ping",
-        handler: ->(_context) { { ok: true } }
-      )
-      text = RecordingStudioMcp::Instructions.text
-
-      assert_includes text, "Call describe before create"
-      assert_includes text, "not under attributes"
-      assert_includes text, "Use the endpoint tools"
-      assert_includes text, "Call tools/list to see the available endpoint tools"
-      assert_includes text, "fetch the detail before generating UI"
-      assert_includes text, "Do not invent recordable types"
-    end
-  end
-
-  def test_instructions_suffix_string_appended
+  def test_instructions_suffix_string_sits_under_guides
     with_isolated_mcp_configuration do
       with_isolated_api_configuration do
-        RecordingStudioMcp.configuration.instructions_suffix = "Fetch item detail before you draw a screen."
+        RecordingStudioMcp.configuration.instructions_suffix = "Read the host guide before you write."
         text = RecordingStudioMcp::Instructions.text
 
-        assert_includes text, "call tools/list again"
-        refresh_at = text.index("call tools/list again")
-        suffix_at = text.index("Fetch item detail before you draw a screen.")
-        assert_operator refresh_at, :<, suffix_at
-        assert text.end_with?("Fetch item detail before you draw a screen.")
+        assert_operator text.index("Read the relevant ones."), :<, text.index("Read the host guide before you write.")
+        assert text.end_with?("Read the host guide before you write.")
       end
     end
   end
@@ -123,14 +135,16 @@ class InstructionsTest < Minitest::Test
         received = nil
         RecordingStudioMcp.configuration.instructions_suffix = lambda { |access_grant:|
           received = access_grant
-          "GRANT HINT"
+          access_grant ? "Grant guide" : "Docs guide"
         }
 
-        text = RecordingStudioMcp::Instructions.text(access_grant: grant)
-
+        granted = RecordingStudioMcp::Instructions.text(access_grant: grant)
         assert_same grant, received
-        assert_includes text, "GRANT HINT"
-        assert text.end_with?("GRANT HINT")
+        docs = RecordingStudioMcp::Instructions.text
+        assert_includes granted, "Grant guide"
+        assert granted.end_with?("Grant guide")
+        assert_includes docs, "Docs guide"
+        refute_includes docs, "Grant guide"
       end
     end
   end
@@ -152,9 +166,6 @@ class InstructionsTest < Minitest::Test
   end
 
   def test_metric_tools_add_one_filter_sentence
-    sentence = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
-               "Pass list filters as a filter object of attribute names."
-
     with_isolated_api_configuration do
       register_tree_type("Page")
       without_metrics = RecordingStudioMcp::Instructions.text
@@ -164,20 +175,21 @@ class InstructionsTest < Minitest::Test
         register_folder_and_page_metrics
         text = RecordingStudioMcp::Instructions.text
 
-        assert_includes text, sentence
+        assert_includes text, "## Metrics"
+        assert_includes text, "filter object of attribute names"
         assert_equal 1, text.scan("filter object of attribute names").length
+        assert_operator text.index("## Guides"), :<, text.index("## Metrics")
       end
     end
   end
 
-  def test_tree_hosts_still_get_tree_blurb
+  def test_tree_hosts_still_get_the_walk_and_not_the_endpoint_only_line
     with_isolated_api_configuration do
       register_tree_type("Page")
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe before create"
-      refute_includes text, "capability_action"
-      refute_includes text, "Use the endpoint tools"
+      assert_includes text, "## Walk your records"
+      refute_includes text, "If you only see named route tools"
     end
   end
 end

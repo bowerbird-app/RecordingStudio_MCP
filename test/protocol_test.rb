@@ -30,11 +30,11 @@ class ProtocolTest < Minitest::Test
       assert_equal false, result.body.dig(:result, :capabilities, :tools, :listChanged)
       assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
       assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
-      assert_includes instructions, "Call describe before create"
+      assert_includes instructions, "before you create."
       refute_includes instructions, "capability_action"
       assert_includes instructions, "meta.next_pagination_token"
-      assert_includes instructions, "both this MCP endpoint and the Recording Studio API"
-      refute_includes instructions, "Use the endpoint tools"
+      assert_includes instructions, "Use an OAuth Bearer token."
+      refute_includes instructions, "If you only see named route tools"
     end
   end
 
@@ -57,13 +57,12 @@ class ProtocolTest < Minitest::Test
       )
 
       instructions = result.body.dig(:result, :instructions)
-      assert_includes instructions, "both this MCP endpoint and the Recording Studio API"
-      assert_includes instructions, "Use the endpoint tools"
-      assert_includes instructions, "Path parameters are tool arguments"
-      assert_includes instructions, "Call tools/list to see the available endpoint tools"
-      assert_includes instructions, "fetch the detail before generating UI"
-      assert_includes instructions, "call tools/list again"
-      refute_includes instructions, "Call describe before create"
+      assert_includes instructions, "Use an OAuth Bearer token."
+      assert_includes instructions, "If you only see named route tools"
+      assert_includes instructions, "One tool per named route. Path parameters are arguments."
+      assert_includes instructions, "not refreshed on its own"
+      refute_includes instructions, "Call describe"
+      refute_includes instructions, "generating UI"
     end
   end
 
@@ -101,7 +100,8 @@ class ProtocolTest < Minitest::Test
       instructions = initialized.body.dig(:result, :instructions)
 
       assert_equal %w[list show describe], names
-      assert_includes instructions, "Call describe for a type's allowed operations"
+      assert_includes instructions, "allowed children, actions, and values."
+      refute_includes instructions, "before you create"
       refute_includes instructions, "before create"
       refute_includes instructions, "capability_action"
       refute_includes instructions, "not under attributes"
@@ -345,7 +345,7 @@ class ProtocolTest < Minitest::Test
       assert_equal false, payload.dig(:capabilities, :tools, :listChanged)
       assert_equal({}, payload.dig(:capabilities, :resources))
       assert_equal({}, payload.dig(:capabilities, :extensions, "io.modelcontextprotocol/skills"))
-      assert_includes payload[:instructions], "Call describe before create"
+      assert_includes payload[:instructions], "before you create."
       assert_equal 0, payload[:ttlMs]
       assert_equal "private", payload[:cacheScope]
       assert_equal(
@@ -821,9 +821,9 @@ class ProtocolTest < Minitest::Test
       assert_includes tool_names_for(admin), "create"
       assert_equal %w[describe], tool_names_for(deleted)
       view_instructions = initialize_instructions(view)
-      assert_includes view_instructions, "Call describe for a type's allowed operations"
-      refute_includes view_instructions, "before create"
-      assert_includes initialize_instructions(admin), "Call describe before create"
+      assert_includes view_instructions, "allowed children, actions, and values."
+      refute_includes view_instructions, "before you create"
+      assert_includes initialize_instructions(admin), "before you create."
 
       assert_equal true, call_tool(view, "create").body.dig(:result, :isError)
       assert_includes call_tool(view, "create").body.dig(:result, :content, 0, :text), "Unknown tool"

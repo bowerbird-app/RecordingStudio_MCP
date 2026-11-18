@@ -1,5 +1,19 @@
 # Upgrading Recording Studio MCP
 
+## 0.38.0
+
+Previous version is `0.37.4`. No MCP migration.
+
+Initialize `instructions` are short lines under headings. The docs Overview for an API is that same text. The docs page has no access grant, so `Instructions.text` uses the page's API surface. A callable `instructions_suffix` receives `access_grant: nil` on that page. Return nil from the callable to leave the suffix off. A string suffix is shown under Guides.
+
+The line that begins `If you only see named route tools` is present only when the surface has endpoint tools and no tree tools. On that surface, one tool is one named route, and path parameters are arguments.
+
+`tools.listChanged` is still false. The instructions say the tool list is not refreshed on its own.
+
+The docs sidebar has no Core group. Remaining tags are alphabetical. `Other tools` is last. The general tools are explained in the Overview and are left out of the sidebar. Per-type pages still show how to call a general tool with that type or action. They are reference pages, not extra tools. Each operation the type allows (`list`, `show`, `create`, `update`, `delete`) has its own page and ends with a `Tool:` line. `list` includes `parent_id` only when that surface advertises it. A host `ping` endpoint with no tag is under `Other tools`. The no-JS list follows the same tag order and includes the Overview.
+
+Hosts that parsed the old instruction sentences, or that linked people to the Core group, should check those clients and pages.
+
 ## 0.37.4
 
 Previous version is `0.37.3`. No MCP migration.
