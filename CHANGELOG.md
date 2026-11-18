@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.1] - 2026-11-18
+
+### Fixed
+- Initialize instructions say to send the same `idempotency_key` when retrying a create, or a write action flagged `creates: true`, with the same input. A different input for that key is an error.
+- Docs sidebar: ping and the general tools sit under Overview. There is no Core group and no Tools group. Overview is first. Other tools stays last.
+- A capability action page ends with a `Tool:` line for that action and for each general operation the type allows. There is no separate page per operation. A type with no capability action has no sidebar page. A page only lists operations that type allows on that named API.
+- The docs Overview is the full initialize text, plus one line: a view-only connection gets the same text minus the Make changes part. `x-mcp.instructions` stays the initialize text.
+
+### Changed
+- The 0.39.0 replay entry now passes `RecordingStudioApi::IdempotencyStore.fingerprint` for the method, path, and effective input. The same key with a different input returns a tool error, code `idempotency_key_reused`, message `Idempotency key already used with different parameters`. `idempotency_key` and a stripped `authorized_by` are left out of the fingerprint. A stored result with no fingerprint still replays. The fingerprint is not written to usage logs. A custom create with a different body is that mismatch error.
+- Requires `recording_studio_api` `>= 1.19.0`, `< 2.0`.
+
+### Upgrade notes
+- Bump to `0.39.1`. Previous version is `0.39.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts must upgrade `recording_studio_api` to `1.19.0` or later (`>= 1.19.0, < 2.0`). Development and dummy Gemfiles pin API `v1.19.0`.
+- Hosts that quote the instructions text, or that linked people to a Core group or a per-operation docs page, should check those clients and pages.
+
 ## [0.39.0] - 2026-11-18
 
 ### Changed
@@ -1123,7 +1140,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...HEAD
+[0.39.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.0...v0.39.1
 [0.39.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.38.0...v0.39.0
 [0.38.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.4...v0.38.0
 [0.37.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.3...v0.37.4

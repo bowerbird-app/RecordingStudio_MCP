@@ -16,6 +16,7 @@ module RecordingStudioMcp
 
     def tags_for_entry(entry, api: nil)
       case entry.family
+      when :tree then tree_tags
       when :metric then metric_tags(entry.metric.name)
       when :endpoint then endpoint_tags(entry.endpoint, api: api)
       else []

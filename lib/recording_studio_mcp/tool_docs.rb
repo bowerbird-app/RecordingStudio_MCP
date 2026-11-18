@@ -7,11 +7,17 @@ require_relative "tool_docs/listing"
 
 module RecordingStudioMcp
   module ToolDocs
+    OVERVIEW_TAG = "Overview"
     OTHER_TOOLS_TAG = "Other tools"
     IGNORED_TAGS = %w[Endpoints Tools].freeze
+    PROTOCOL_OVERVIEW_NAMES = %w[ping].freeze
     ACRONYMS = %w[AI API CSRF CSS HTML HTTP HTTPS ID JSON MCP SSE UI URL].freeze
 
     module_function
+
+    def tree_tags
+      [OVERVIEW_TAG]
+    end
 
     def metric_tags(name)
       [humanize_metric_group(metric_group(name))]
@@ -49,8 +55,13 @@ module RecordingStudioMcp
       prefix.to_s.split("_").map { |part| humanize_part(part) }.join(" ")
     end
 
+    def normalize_tag(name)
+      text = name.to_s
+      text == "Core" ? OVERVIEW_TAG : text
+    end
+
     def openapi_tags(names, descriptions: {})
-      Array(names).map(&:to_s).reject(&:blank?).uniq.map do |name|
+      Array(names).map { |name| normalize_tag(name) }.reject(&:blank?).uniq.map do |name|
         tag = { "name" => name }
         tag["description"] = descriptions[name] if descriptions[name].present?
         tag

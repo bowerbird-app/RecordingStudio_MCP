@@ -784,6 +784,30 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "a create with the same key and a different input is an idempotency mismatch" do
+    token = issue_delegated_token(role: "edit")
+
+    with_memory_idempotency_store do
+      arguments = {
+        type: "Page",
+        parent_id: @root_recording.id,
+        title: "First page",
+        idempotency_key: "page-mismatch-1"
+      }
+      first = successful_tool(token, "create", arguments)
+      before = page_count
+      body = post_tool(token, "create", arguments.merge(title: "Second page"))
+      message = body.dig("result", "content", 0, "text").to_s
+
+      assert_equal true, body.dig("result", "isError"), message
+      assert_equal "Idempotency key already used with different parameters", message
+      assert_equal "idempotency_key_reused", body.dig("result", "structuredContent", "code")
+      refute body.dig("result", "structuredContent").key?("fingerprint")
+      assert_equal before, page_count
+      assert_equal first.fetch("id"), successful_tool(token, "create", arguments).fetch("id")
+    end
+  end
+
   test "repeat create through a custom create handler returns one record" do
     token = issue_delegated_token(role: "edit")
     RecordingStudioApi.register_resource_handler("Page", :create, handler: RepeatingPageCreate)
@@ -791,6 +815,55 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     with_memory_idempotency_store do |memory|
       repeat_create(token, memory, argument: "handler-argument-1")
       repeat_create(token, memory, header: "handler-header-1")
+    end
+  ensure
+    clear_page_create_handler
+  end
+
+  test "a custom create with the same key and a different input is an idempotency mismatch" do
+    token = issue_delegated_token(role: "edit")
+    RecordingStudioApi.register_resource_handler("Page", :create, handler: RepeatingPageCreate)
+
+    with_memory_idempotency_store do
+      arguments = {
+        type: "Page",
+        parent_id: @root_recording.id,
+        title: "Handler first",
+        idempotency_key: "handler-mismatch-1"
+      }
+      first = successful_tool(token, "create", arguments)
+      before = page_count
+      body = post_tool(token, "create", arguments.merge(title: "Handler second"))
+      message = body.dig("result", "content", 0, "text").to_s
+
+      assert_equal true, body.dig("result", "isError"), message
+      assert_equal "Idempotency key already used with different parameters", message
+      assert_equal "idempotency_key_reused", body.dig("result", "structuredContent", "code")
+      assert_equal before, page_count
+      assert_equal first.fetch("id"), successful_tool(token, "create", arguments).fetch("id")
+    end
+  ensure
+    clear_page_create_handler
+  end
+
+  test "a custom create stored without a fingerprint still replays" do
+    token = issue_delegated_token(role: "edit")
+    RecordingStudioApi.register_resource_handler("Page", :create, handler: RepeatingPageCreate)
+
+    with_memory_idempotency_store do |memory|
+      arguments = {
+        type: "Page",
+        parent_id: @root_recording.id,
+        title: "Stored plain",
+        idempotency_key: "handler-plain-1"
+      }
+      first = successful_tool(token, "create", arguments)
+      before = page_count
+      strip_stored_fingerprints(memory)
+      second = successful_tool(token, "create", arguments)
+
+      assert_equal first.fetch("id"), second.fetch("id")
+      assert_equal before, page_count
     end
   ensure
     clear_page_create_handler
@@ -847,10 +920,31 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
         message = body.dig("result", "content", 0, "text").to_s
 
         assert_equal true, body.dig("result", "isError"), message
-        assert_includes message, "Idempotency-Key was already used with different input"
+        assert_equal "Idempotency key already used with different parameters", message
+        assert_equal "idempotency_key_reused", body.dig("result", "structuredContent", "code")
+        refute body.dig("result", "structuredContent").key?("fingerprint")
         assert_equal before, page_count
         assert_equal calls, OneShotWorkspaceNote.calls
         assert_equal first.fetch("id"), successful_tool(token, "capability_action", arguments).fetch("id")
+      end
+    end
+  end
+
+  test "a stored capability result without a fingerprint still replays" do
+    token = issue_delegated_token(role: "edit")
+
+    with_note_actions do
+      arguments = note_arguments("note-plain-1", token: "blob-plain")
+      with_memory_idempotency_store do |memory|
+        first = successful_tool(token, "capability_action", arguments)
+        before = page_count
+        calls = OneShotWorkspaceNote.calls
+        strip_stored_fingerprints(memory)
+        second = successful_tool(token, "capability_action", arguments)
+
+        assert_equal first.fetch("id"), second.fetch("id")
+        assert_equal before, page_count
+        assert_equal calls, OneShotWorkspaceNote.calls
       end
     end
   end
@@ -1034,6 +1128,14 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     registry = RecordingStudioApi.configuration.fetch_api(:public).resource_handler_registry
     store = registry.instance_variable_get(:@handlers)
     store.delete(["Page", action]) if store.respond_to?(:delete)
+  end
+
+  def strip_stored_fingerprints(memory)
+    memory.entries.each_key do |key|
+      stored = JSON.parse(memory.entries.fetch(key))
+      stored.delete("fingerprint")
+      memory.entries[key] = JSON.generate(stored)
+    end
   end
 
   def with_memory_idempotency_store

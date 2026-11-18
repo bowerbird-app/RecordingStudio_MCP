@@ -20,7 +20,9 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "Records nest by parent_id."
       assert_includes text, "root_id is the workspace, not the parent."
       assert_includes text, "not under attributes"
-      assert_includes text, "idempotency_key on a retried create"
+      assert_includes text, "idempotency_key when retrying a create, or a write action flagged creates: true,"
+      assert_includes text, "with the same input. A different input for that key is an error."
+      refute_includes text, "The key applies to create only."
       refute_includes text, "capability_action"
       assert_includes text, "pagination_token"
       refute_includes text, "List with parent_id, then show."
@@ -87,6 +89,26 @@ class InstructionsTest < Minitest::Test
         assert_includes text, "List with parent_id, then show."
         assert_operator text.index("no parent_id"), :<, text.index("List with parent_id, then show.")
       end
+    end
+  end
+
+  def test_view_only_grant_omits_make_changes_and_write_tools
+    with_isolated_api_configuration do
+      register_ping_capability(required_role: :view)
+      register_tree_type(
+        "Page",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[ping]
+      )
+      view = RecordingStudioMcp::Instructions.text(access_grant: role_grant(:view))
+      full = RecordingStudioMcp::Instructions.text
+
+      assert_includes full, "## Make changes"
+      assert_includes full, "create, update, delete"
+      refute_includes view, "## Make changes"
+      refute_includes view, "create, update, delete"
+      refute_includes view, "view-only connection"
+      assert_includes view, "list, show, capability_action, describe, and ping"
     end
   end
 

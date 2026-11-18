@@ -1,10 +1,12 @@
-default: &default {}
+# Loaded at boot by recording_studio_api. A missing file raises.
+shared:
+  timeout: 5
 
 development:
-  <<: *default
+  timeout: 5
 
 test:
-  <<: *default
+  timeout: 5
 
 production:
-  <<: *default
+  timeout: 5

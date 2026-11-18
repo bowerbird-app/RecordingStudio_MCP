@@ -110,10 +110,14 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_empty description
     assert_includes description, "## Sign in"
     assert_includes description, "## Walk your records"
-    assert_equal description, spec.dig("x-mcp", "instructions")
+    assert_includes description, "A view-only connection gets the same text minus the Make changes part."
+    assert_equal(
+      "#{spec.dig('x-mcp', 'instructions')}\n\nA view-only connection gets the same text minus the Make changes part.",
+      description
+    )
     tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-    refute tools.fetch("list").key?("tags")
-    assert_equal ["Other tools"], tools.fetch("ping")["tags"]
+    assert_equal ["Overview"], tools.fetch("list")["tags"]
+    assert_equal ["Overview"], tools.fetch("ping")["tags"]
     assert_equal ["Workspace"], tools.fetch("Workspace--ping")["tags"]
     %w[grant_access list_access revoke_access update_access].each do |action|
       assert_equal ["Workspace"], tools.fetch("Workspace--#{action}")["tags"]
@@ -131,18 +135,20 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_includes ping_tool["description"], "Writable fields:"
     assert_includes ping_tool["description"], "Tool: capability_action with type `Workspace` and action `ping`"
     refute_includes ping_tool["description"], "style"
-    assert tools.fetch("Workspace--list")["description"].end_with?("Tool: list with type `Workspace`")
-    refute_includes tools.fetch("Workspace--list")["description"], "parent_id"
-    assert tools.fetch("Workspace--show")["description"].end_with?("Tool: show with type `Workspace` and id")
-    assert tools.fetch("Workspace--create")["description"].end_with?(
-      "Tool: create with type `Workspace`, parent_id, writable fields at the top level, and optional idempotency_key"
-    )
-    assert tools.fetch("Workspace--update")["description"].end_with?(
-      "Tool: update with type `Workspace`, id, and writable fields"
-    )
+    workspace = tools.fetch("Workspace--ping")["description"]
+    assert_includes workspace, "Tool: list with type `Workspace`\n"
+    refute_includes workspace, "Tool: list with type `Workspace` and parent_id"
+    assert_includes workspace, "Tool: show with type `Workspace` and id"
+    assert_includes workspace, "Tool: create with type `Workspace`, parent_id, writable fields at the top level, " \
+                                "and optional idempotency_key"
+    assert_includes workspace, "Tool: update with type `Workspace`, id, and writable fields"
+    refute_includes workspace, "Tool: delete"
+    refute tools.key?("Workspace--list")
     refute tools.key?("Workspace--delete")
     tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    assert_equal "Overview", tag_names.first
     refute_includes tag_names, "Core"
+    refute_includes tag_names, "Tools"
     assert_includes tag_names, "Workspace"
     refute_includes tag_names, "Endpoints"
     refute_includes tag_names, "Tools"
@@ -269,9 +275,11 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes fallback, spec_path
     assert_includes fallback, "## Sign in"
     assert_includes fallback, "ping checks the connection."
+    assert_includes fallback, ">Overview<"
+    assert_includes fallback, ">list<"
     assert_includes fallback, ">Workspace--ping<"
     refute_includes fallback, ">Core<"
-    refute_includes fallback, ">list<"
+    assert_operator fallback.index(">Overview<"), :<, fallback.index(">Workspace<")
   end
 
   def assert_docs_surfaces(status)

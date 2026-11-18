@@ -8,13 +8,15 @@ module RecordingStudioMcp
 
         def tools(page, group_tags: nil)
           type_names = page_type_names(page)
-          listed = Array(page.types).flat_map { |entry| tools_for(entry, page.api_key, group_tags, type_names) }
+          context = TypeOperationLines.context_for(page)
+          listed = Array(page.types).flat_map do |entry|
+            tools_for(entry, page.api_key, group_tags, type_names, context)
+          end
           listed.sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
         end
 
         def tool_line(type_name, action_name)
-          "Tool: capability_action with type `#{type_name}` and action `#{action_name}`. " \
-            "Pass idempotency_key to replay an action flagged creates: true when the input matches."
+          TypeOperationLines.capability_line(type_name, action_name)
         end
 
         def page_type_names(page)
@@ -22,23 +24,27 @@ module RecordingStudioMcp
         end
         private_class_method :page_type_names
 
-        def tools_for(entry, api_key, group_tags, type_names)
+        def tools_for(entry, api_key, group_tags, type_names, context)
           entry = Internals.stringify(entry)
           Array(entry["capability_actions"]).map do |action|
-            action_tool(entry, Internals.stringify(action), api_key, group_tags, type_names)
+            action = Internals.stringify(action)
+            tags = action_tag_names(
+              entry["recordable_type"].to_s, action["name"].to_s, api_key, group_tags, type_names
+            )
+            action_tool(entry, action, api_key, tags, context)
           end
         end
         private_class_method :tools_for
 
-        def action_tool(entry, action, api_key, group_tags, type_names)
+        def action_tool(entry, action, api_key, tags, context)
           shown = entry["type"].to_s
           full_name = entry["recordable_type"].to_s
           action_name = action["name"].to_s
           tagged_tool(
             name: "#{shown}--#{action_name}",
             title: ActionDocs.title(action_name, api_key, full_name),
-            description: page_description(entry, action, api_key),
-            tags: action_tag_names(full_name, action_name, api_key, group_tags, type_names),
+            description: page_description(entry, action, api_key, context),
+            tags: tags,
             input_schema: action_input_schema(action)
           )
         end
@@ -78,7 +84,7 @@ module RecordingStudioMcp
         end
         private_class_method :tagged_tool
 
-        def page_description(entry, action, api_key)
+        def page_description(entry, action, api_key, context)
           shown = entry["type"].to_s
           full_name = entry["recordable_type"].to_s
           [
@@ -86,7 +92,8 @@ module RecordingStudioMcp
             Schemas.registered_type_description(full_name, api_key),
             "Type: `#{shown}`",
             *action_copy_lines(action, api_key, full_name),
-            tool_line(shown, action["name"])
+            tool_line(shown, action["name"]),
+            *TypeOperationLines.lines_for(entry, shown, full_name, context)
           ].compact.join("\n\n")
         end
         private_class_method :page_description

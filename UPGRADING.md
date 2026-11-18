@@ -1,5 +1,17 @@
 # Upgrading Recording Studio MCP
 
+## 0.39.1
+
+Previous version is `0.39.0`. No MCP migration.
+
+Require `recording_studio_api` `>= 1.19.0`, `< 2.0`. The 0.39.0 replay entry is unchanged. Create and a flagged `capability_action` now pass `RecordingStudioApi::IdempotencyStore.fingerprint` for the method, path, and effective input. The same key with a different input returns a tool error, code `idempotency_key_reused`, message `Idempotency key already used with different parameters`. `idempotency_key` and a stripped `authorized_by` are left out of the fingerprint. A stored result with no fingerprint still replays. The fingerprint is not written to usage logs. A custom create with a different body is that mismatch error. Builtin create still uses the API resource operation.
+
+Initialize instructions say to send the same `idempotency_key` when retrying a create, or a write action flagged `creates: true`, with the same input. A different input for that key is an error. Hosts that quote the old "create only" sentence will see the new wording.
+
+The docs sidebar has no Core group and no Tools group. Ping and the general tools sit under Overview. Overview is first. Other tools stays last. A capability action page ends with a `Tool:` line for that action and for each general operation the type allows. There is no separate page per operation. A type with no capability action has no sidebar page. A page only lists operations that type allows on that named API.
+
+The docs Overview is the full initialize text, plus one line: a view-only connection gets the same text minus the Make changes part. `x-mcp.instructions` and a view-only connection stay on the initialize text. A view-only connection does not get the Make changes section.
+
 ## 0.39.0
 
 Previous version is `0.38.0`. No MCP migration.

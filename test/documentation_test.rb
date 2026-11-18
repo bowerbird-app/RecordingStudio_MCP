@@ -18,9 +18,12 @@ class DocumentationTest < Minitest::Test
       assert_equal "public", page.api_key
       assert_equal "Public MCP", page.title
       refute_empty page.instructions
-      assert_equal page.instructions, page.overview
-      assert_equal RecordingStudioMcp::Instructions.text(api: :public), page.overview
+      assert_equal overview_for(page.instructions), page.overview
       assert_includes page.overview, "## Sign in"
+      assert_includes page.overview, "A view-only connection gets the same text minus the Make changes part."
+      assert_includes page.overview, "A different input for that key is an error."
+      refute_includes page.instructions, "view-only connection"
+      refute_includes page.overview, "The key applies to create only."
       names = page.tools.map { |tool| tool[:name] || tool["name"] }
       assert_includes names, "list"
       assert_includes names, "describe"
@@ -107,7 +110,7 @@ class DocumentationTest < Minitest::Test
       assert_equal "3.1.0", spec["openapi"]
       assert_equal "Public MCP", spec.dig("info", "title")
       refute_empty spec.dig("info", "description")
-      assert_equal spec.dig("info", "description"), mcp["instructions"]
+      assert_equal overview_for(mcp["instructions"]), spec.dig("info", "description")
       assert_includes spec.dig("info", "description"), "## Sign in"
       assert_includes mcp["instructions"], "Call describe on a type"
       assert_includes names, "list"
@@ -174,15 +177,17 @@ class DocumentationTest < Minitest::Test
       refute listed.fetch("list_agent_chats").key?(:tags)
       assert listed.fetch("list").key?(:outputSchema)
 
-      refute tools.fetch("list").key?("tags")
-      refute tools.fetch("describe").key?("tags")
+      assert_equal ["Overview"], tools.fetch("list")["tags"]
+      assert_equal ["Overview"], tools.fetch("describe")["tags"]
       assert_equal ["Agent chats"], tools.fetch("list_agent_chats")["tags"]
       assert tools.fetch("list").key?("outputSchema")
       assert_equal "array", tools.dig("list", "outputSchema", "properties", "records", "type")
       assert_equal "object", tools.dig("show", "outputSchema", "type")
       assert_equal ["chats"], tools.dig("list_agent_chats", "outputSchema", "required")
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      assert_equal "Overview", tag_names.first
       refute_includes tag_names, "Core"
+      refute_includes tag_names, "Tools"
       assert_includes tag_names, "Agent chats"
       refute_includes tag_names, "Types"
       assert_equal tag_names.uniq, tag_names
@@ -216,7 +221,7 @@ class DocumentationTest < Minitest::Test
       assert_includes description, "## Guides"
       assert_match(/^## /m, description)
       refute_includes description, "If you only see named route tools"
-      assert_equal description, mcp["instructions"]
+      assert_equal overview_for(mcp["instructions"]), description
     end
   end
 
@@ -338,45 +343,42 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_type_operation_pages_end_with_tool_lines_for_allowed_operations
+  def test_action_pages_end_with_tool_lines_for_allowed_operations
     with_isolated_mcp_configuration do
       with_isolated_api_configuration do
         RecordingStudioMcp.configuration.list_parent_id_types = %w[RecordingStudioPresskits::PressKit]
+        register_ping_capability
         register_tree_type(
           "RecordingStudioPresskits::PressKit",
-          operations: %i[index show create update destroy]
+          operations: %i[index show create update destroy],
+          capability_actions: %i[ping]
         )
-        register_tree_type("Note", operations: %i[index show])
+        register_tree_type("Note", operations: %i[index show], capability_actions: %i[ping])
+        register_tree_type("Message", operations: %i[show])
 
         spec = press_kit_parent_spec
         tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-        listed = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name] }
-        press_list = tools.fetch("PressKit--list")
-        note_list = tools.fetch("Note--list")
+        names = tools.keys
+        press = tools.fetch("PressKit--ping")["description"]
+        note = tools.fetch("Note--ping")["description"]
 
-        assert press_list["x-mcp-docs-only"]
-        refute_includes listed, "PressKit--list"
-        assert press_list["description"].end_with?(
-          "Tool: list with type `PressKit` and parent_id (the press center id)"
-        )
-        assert_equal "PressKit", press_list.dig("inputSchema", "properties", "type", "const")
-        assert press_list.dig("inputSchema", "properties").key?("parent_id")
-        assert tools.fetch("PressKit--show")["description"].end_with?("Tool: show with type `PressKit` and id")
-        assert tools.fetch("PressKit--create")["description"].end_with?(
-          "Tool: create with type `PressKit`, parent_id, writable fields at the top level, " \
-          "and optional idempotency_key"
-        )
-        assert tools.fetch("PressKit--update")["description"].end_with?(
-          "Tool: update with type `PressKit`, id, and writable fields"
-        )
-        assert tools.fetch("PressKit--delete")["description"].end_with?("Tool: delete with type `PressKit` and id")
-        refute_includes press_list["description"], "RecordingStudioPresskits::PressKit"
-        assert note_list["description"].end_with?("Tool: list with type `Note` and parent_id")
-        refute_includes note_list["description"], "(the "
-        assert tools.key?("Note--show")
-        refute tools.key?("Note--create")
-        refute tools.key?("Note--update")
-        refute tools.key?("Note--delete")
+        assert tools.fetch("PressKit--ping")["x-mcp-docs-only"]
+        refute_includes names, "PressKit--list"
+        refute_includes names, "Note--list"
+        refute_includes names, "Message--show"
+        assert press.end_with?("Tool: delete with type `PressKit` and id")
+        assert_includes press, "Tool: list with type `PressKit` and parent_id (the press center id)"
+        assert_includes press, "Tool: show with type `PressKit` and id"
+        create_line = "Tool: create with type `PressKit`, parent_id, writable fields at the top level, " \
+                      "and optional idempotency_key"
+        assert_includes press, create_line
+        assert_includes press, "Tool: update with type `PressKit`, id, and writable fields"
+        refute_includes press, "RecordingStudioPresskits::PressKit"
+        assert_includes note, "Tool: list with type `Note` and parent_id"
+        refute_includes note, "(the "
+        refute_includes note, "Tool: create"
+        refute_includes note, "Tool: update"
+        refute_includes note, "Tool: delete"
       end
     end
   end
@@ -384,18 +386,42 @@ class DocumentationTest < Minitest::Test
   def test_list_tool_line_omits_parent_id_when_the_surface_does_not_advertise_it
     with_isolated_mcp_configuration do
       with_isolated_api_configuration do
-        register_tree_type("Page", operations: %i[index show create])
+        register_ping_capability
+        register_tree_type("Page", operations: %i[index show create], capability_actions: %i[ping])
 
         tools = RecordingStudioMcp::Documentation.openapi(api: :public).dig("x-mcp", "tools")
         pages = tools.index_by { |tool| tool["name"] }
+        page = pages.fetch("Page--ping")["description"]
 
-        assert pages.fetch("Page--list")["description"].end_with?("Tool: list with type `Page`")
-        refute_includes pages.fetch("Page--list")["description"], "parent_id"
-        refute pages.fetch("Page--list").dig("inputSchema", "properties").key?("parent_id")
-        assert pages.fetch("Page--create")["description"].end_with?(
-          "Tool: create with type `Page`, parent_id, writable fields at the top level, and optional idempotency_key"
-        )
+        assert_includes page, "Tool: list with type `Page`\n"
+        refute_includes page, "Tool: list with type `Page` and parent_id"
+        create_line = "Tool: create with type `Page`, parent_id, writable fields at the top level, " \
+                      "and optional idempotency_key"
+        assert_includes page, create_line
+        refute_includes tools.map { |tool| tool["name"] }, "Page--list"
         refute_includes tools.map { |tool| tool["name"] }, "Page--delete"
+        refute_includes page, "Tool: delete"
+      end
+    end
+  end
+
+  def test_docs_pages_omit_operations_the_named_api_does_not_allow
+    with_isolated_api_configuration do
+      register_named_capability(:search, summary: "Search support articles")
+      register_tree_type("Support", operations: %i[index show], capability_actions: %i[search])
+
+      tools = RecordingStudioMcp::Documentation.openapi(api: :public).dig("x-mcp", "tools")
+      names = tools.map { |tool| tool["name"] }
+      page = tools.find { |tool| tool["name"] == "Support--search" }.fetch("description")
+
+      assert_includes page, "Tool: list with type `Support`"
+      assert_includes page, "Tool: show with type `Support` and id"
+      assert_includes page, "Tool: capability_action with type `Support` and action `search`"
+      refute_includes page, "Tool: create"
+      refute_includes page, "Tool: update"
+      refute_includes page, "Tool: delete"
+      %w[Support--list Support--show Support--create Support--update Support--delete].each do |name|
+        refute_includes names, name
       end
     end
   end
@@ -906,8 +932,8 @@ class DocumentationTest < Minitest::Test
       press_kit = tag_names.index("Press Kit")
       press_kit_list = tag_names.index("Press Kit List Section")
 
-      refute tools.fetch("list").key?("tags")
-      assert_equal ["Other tools"], tools.fetch("ping")["tags"]
+      assert_equal ["Overview"], tools.fetch("list")["tags"]
+      assert_equal ["Overview"], tools.fetch("ping")["tags"]
       assert_equal ["Press Kit List Section"], tools.fetch("ListSection--ping")["tags"]
       assert_equal ["Workspace"], tools.fetch("Workspace--grant_access")["tags"]
       assert_equal ["Workspace"], tools.fetch("workspace_ping")["tags"]
@@ -915,7 +941,9 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Zebra"], tools.fetch("zebra")["tags"]
       assert_operator press_kit, :<, press_kit_list
       assert_equal [], tag_names[(press_kit + 1)...press_kit_list]
+      assert_equal "Overview", tag_names.first
       refute_includes tag_names, "Core"
+      refute_includes tag_names, "Tools"
       assert_equal "Other tools", tag_names.last
       assert_equal ordered_sidebar_names(tag_names), tag_names
       %w[Endpoints Tools Resources].each { |name| refute_includes tag_names, name }
@@ -1056,8 +1084,13 @@ class DocumentationTest < Minitest::Test
   end
 
   def ordered_sidebar_names(names)
-    rest = names - ["Other tools"]
-    [*rest.sort, *("Other tools" if names.include?("Other tools"))]
+    rest = names - ["Overview", "Other tools"]
+    head = names.include?("Overview") ? ["Overview"] : []
+    [*head, *rest.sort, *("Other tools" if names.include?("Other tools"))]
+  end
+
+  def overview_for(instructions)
+    "#{instructions}\n\nA view-only connection gets the same text minus the Make changes part."
   end
 
   def openapi_with_credit_label!

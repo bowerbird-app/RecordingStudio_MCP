@@ -21,7 +21,7 @@ class DispatcherTest < Minitest::Test
     end
 
     def scope_recording
-      access_recording
+      access_recording.respond_to?(:parent_recording) ? access_recording.parent_recording : root_recording
     end
   end
   FakeClient = Struct.new(:api_key)
