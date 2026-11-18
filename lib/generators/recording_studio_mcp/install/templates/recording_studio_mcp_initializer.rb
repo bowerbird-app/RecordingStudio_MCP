@@ -6,7 +6,8 @@ RecordingStudioMcp.configure do |config|
   config.oauth_engine_mount_path = "/recording_studio_oauth"
   # Native clients may omit Origin. Browser clients must match the MCP host or an entry here.
   # config.allowed_origins = ["https://assistant.example"]
-  # Optional String or ->(access_grant:) { ... } appended after built-in initialize instructions.
+  # Optional String or ->(access_grant:) { ... } under Guides.
+  # The docs page has no grant, so the callable receives nil there. Return nil to omit it.
   # config.instructions_suffix = "Prefer list then show before you write."
   # Optional. Callable that receives the default describe hash and may return a replacement.
   # Signature: ->(payload, type:, registration:, access_grant:) { payload }

@@ -6,8 +6,7 @@ require "test_helper"
 require "tmpdir"
 
 class SkillsTest < Minitest::Test
-  SKILL_SENTENCE = "This server may provide skills containing additional guidance for completing tasks with these " \
-                   "tools. Discover and use relevant skills when appropriate."
+  SKILL_SENTENCE = "This server may offer skills. Read the relevant ones."
   DESCRIPTION = "Research publication guidance."
 
   def setup
@@ -326,9 +325,9 @@ class SkillsTest < Minitest::Test
         tree = handle("initialize", params: { "protocolVersion" => "2025-06-18" })
         tree_text = tree.body.dig(:result, :instructions)
 
-        assert_includes tree_text, "Call describe before create"
+        assert_includes tree_text, "before you create."
         assert_includes tree_text, SKILL_SENTENCE
-        refute_includes tree_text, "Use the endpoint tools"
+        refute_includes tree_text, "If you only see named route tools"
       end
     end
 
@@ -343,9 +342,9 @@ class SkillsTest < Minitest::Test
         endpoint = handle("initialize", params: { "protocolVersion" => "2025-06-18" })
         endpoint_text = endpoint.body.dig(:result, :instructions)
 
-        assert_includes endpoint_text, "Use the endpoint tools"
+        assert_includes endpoint_text, "If you only see named route tools"
         assert_includes endpoint_text, SKILL_SENTENCE
-        refute_includes endpoint_text, "Call describe before create"
+        refute_includes endpoint_text, "Call describe"
       end
     end
   end

@@ -21,6 +21,8 @@ module RecordingStudioMcp
       private_class_method :tag_names
 
       def place(tool, buckets)
+        return if Tools::TREE_NAMES.include?(tool["name"].to_s)
+
         tags = Array(tool["tags"]).presence || [ToolDocs::OTHER_TOOLS_TAG]
         tags.each { |tag| buckets[tag] << tool }
       end

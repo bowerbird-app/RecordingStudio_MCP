@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-18
+
+### Changed
+- Initialize `instructions` are short lines under plain headings: Sign in, Find your tools, Walk your records, Make changes, and Guides. Live updates, Metrics, and the named-route line are included only when that surface has them.
+- The docs Overview is that same text for the page's API. The page has no grant. A callable `instructions_suffix` receives `nil` there and is shown under Guides.
+- The named-route line is only for a surface with no tree tools. It calls those tools named route tools: one tool per named route, and path parameters are arguments.
+- The docs sidebar no longer has a Core group. Tags are alphabetical, and `Other tools` stays last. `list`, `show`, `create`, `update`, `delete`, `capability_action`, and `describe` are not sidebar entries. A host `ping` endpoint with no tag sits under `Other tools`. The no-JS fallback uses that same order and shows the Overview.
+
+### Upgrade notes
+- Bump to `0.38.0`. Previous version is `0.37.4`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts that match the old instruction wording, or that expect a Core group in the docs sidebar, should check their clients and docs.
+
 ## [0.37.4] - 2026-11-18
 
 ### Fixed
@@ -1098,7 +1110,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.4...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.38.0...HEAD
+[0.38.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.4...v0.38.0
 [0.37.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.3...v0.37.4
 [0.37.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.2...v0.37.3
 [0.37.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.1...v0.37.2

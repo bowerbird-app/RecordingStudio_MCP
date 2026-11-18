@@ -7,17 +7,11 @@ require_relative "tool_docs/listing"
 
 module RecordingStudioMcp
   module ToolDocs
-    CORE_TAG = "Core"
     OTHER_TOOLS_TAG = "Other tools"
     IGNORED_TAGS = %w[Endpoints Tools].freeze
-    PROTOCOL_CORE_NAMES = %w[ping].freeze
     ACRONYMS = %w[AI API CSRF CSS HTML HTTP HTTPS ID JSON MCP SSE UI URL].freeze
 
     module_function
-
-    def tree_tags
-      [CORE_TAG]
-    end
 
     def metric_tags(name)
       [humanize_metric_group(metric_group(name))]

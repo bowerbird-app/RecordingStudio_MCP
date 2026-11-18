@@ -1,6 +1,8 @@
 <% spec_url = local_assigns.fetch(:spec_path, mcp_docs_spec_path) %>
 <% redoc_url = local_assigns.fetch(:redoc_path, mcp_docs_redoc_path) %>
 <noscript>
+  <h2>Overview</h2>
+  <pre><%= @page&.overview %></pre>
   <h2>Tools on this API</h2>
   <p><a href="<%= spec_url %>">openapi.json</a></p>
   <% mcp_docs_tool_groups.each do |tag, tools| %>

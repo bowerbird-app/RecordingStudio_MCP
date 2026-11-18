@@ -18,8 +18,9 @@ class DocumentationTest < Minitest::Test
       assert_equal "public", page.api_key
       assert_equal "Public MCP", page.title
       refute_empty page.instructions
-      assert_includes page.overview, "## Authentication"
-      refute_equal page.overview, page.instructions
+      assert_equal page.instructions, page.overview
+      assert_equal RecordingStudioMcp::Instructions.text(api: :public), page.overview
+      assert_includes page.overview, "## Sign in"
       names = page.tools.map { |tool| tool[:name] || tool["name"] }
       assert_includes names, "list"
       assert_includes names, "describe"
@@ -53,7 +54,7 @@ class DocumentationTest < Minitest::Test
       names = page.tools.map { |tool| tool[:name] || tool["name"] }
       assert_includes names, "ops_ping"
       refute_includes page.types.map { |entry| entry["type"] }, "Folder"
-      refute_includes page.instructions, "Call describe before create"
+      refute_includes page.instructions, "Call describe"
     end
   end
 
@@ -106,9 +107,9 @@ class DocumentationTest < Minitest::Test
       assert_equal "3.1.0", spec["openapi"]
       assert_equal "Public MCP", spec.dig("info", "title")
       refute_empty spec.dig("info", "description")
-      refute_equal spec.dig("info", "description"), mcp["instructions"]
-      assert_includes spec.dig("info", "description"), "## Authentication"
-      assert_includes mcp["instructions"], "Call describe before create"
+      assert_equal spec.dig("info", "description"), mcp["instructions"]
+      assert_includes spec.dig("info", "description"), "## Sign in"
+      assert_includes mcp["instructions"], "Call describe on a type"
       assert_includes names, "list"
       assert_includes names, "describe"
       assert_includes names, "ping"
@@ -173,15 +174,15 @@ class DocumentationTest < Minitest::Test
       refute listed.fetch("list_agent_chats").key?(:tags)
       assert listed.fetch("list").key?(:outputSchema)
 
-      assert_equal ["Core"], tools.fetch("list")["tags"]
-      assert_equal ["Core"], tools.fetch("describe")["tags"]
+      refute tools.fetch("list").key?("tags")
+      refute tools.fetch("describe").key?("tags")
       assert_equal ["Agent chats"], tools.fetch("list_agent_chats")["tags"]
       assert tools.fetch("list").key?("outputSchema")
       assert_equal "array", tools.dig("list", "outputSchema", "properties", "records", "type")
       assert_equal "object", tools.dig("show", "outputSchema", "type")
       assert_equal ["chats"], tools.dig("list_agent_chats", "outputSchema", "required")
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
-      assert_includes tag_names, "Core"
+      refute_includes tag_names, "Core"
       assert_includes tag_names, "Agent chats"
       refute_includes tag_names, "Types"
       assert_equal tag_names.uniq, tag_names
@@ -209,14 +210,12 @@ class DocumentationTest < Minitest::Test
       refute_includes ping_tool["description"], "style"
       refute_includes ping_tool["description"], "reject_unknown"
       assert_equal ["Folder"], ping_tool["tags"]
-      assert_includes description, "## Authentication"
-      assert_includes description, "## Records and parents"
-      assert_includes description, "## Listing and pagination"
-      assert_includes description, "## Endpoint tools"
-      assert_includes description, "## Skills"
+      assert_includes description, "## Sign in"
+      assert_includes description, "## Walk your records"
+      assert_includes description, "## Guides"
       assert_match(/^## /m, description)
-      assert_includes description, "\n- "
-      refute_includes description, mcp["instructions"]
+      refute_includes description, "If you only see named route tools"
+      assert_equal description, mcp["instructions"]
     end
   end
 
@@ -236,11 +235,10 @@ class DocumentationTest < Minitest::Test
       description = spec.dig("info", "description")
       ping = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "ops_ping" }
 
-      assert_includes description, "## Authentication"
-      assert_includes description, "## Endpoint tools"
-      refute_includes description, "## Records and parents"
-      refute_includes description, "## Listing and pagination"
-      refute_includes description, "Call describe before create"
+      assert_includes description, "## Sign in"
+      assert_includes description, "## If you only see named route tools"
+      refute_includes description, "## Walk your records"
+      refute_includes description, "Call describe"
       assert_equal ["Other tools"], ping["tags"]
       refute ping.key?("outputSchema")
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
@@ -771,10 +769,10 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = Openapi.document(grouped)
-      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      tag_names = Array(spec["tags"]).map { |tag| tag["name"] }
 
       assert_equal [{ "name" => "Host", "tags" => %w[Core] }], spec["x-tagGroups"]
-      assert_equal %w[Core], tag_names
+      refute_includes tag_names, "Core"
     end
   end
 
@@ -836,8 +834,8 @@ class DocumentationTest < Minitest::Test
       press_kit = tag_names.index("Press Kit")
       press_kit_list = tag_names.index("Press Kit List Section")
 
-      assert_equal ["Core"], tools.fetch("list")["tags"]
-      assert_equal ["Core"], tools.fetch("ping")["tags"]
+      refute tools.fetch("list").key?("tags")
+      assert_equal ["Other tools"], tools.fetch("ping")["tags"]
       assert_equal ["Press Kit List Section"], tools.fetch("ListSection--ping")["tags"]
       assert_equal ["Workspace"], tools.fetch("Workspace--grant_access")["tags"]
       assert_equal ["Workspace"], tools.fetch("workspace_ping")["tags"]
@@ -845,7 +843,7 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Zebra"], tools.fetch("zebra")["tags"]
       assert_operator press_kit, :<, press_kit_list
       assert_equal [], tag_names[(press_kit + 1)...press_kit_list]
-      assert_equal "Core", tag_names.first
+      refute_includes tag_names, "Core"
       assert_equal "Other tools", tag_names.last
       assert_equal ordered_sidebar_names(tag_names), tag_names
       %w[Endpoints Tools Resources].each { |name| refute_includes tag_names, name }
@@ -986,8 +984,8 @@ class DocumentationTest < Minitest::Test
   end
 
   def ordered_sidebar_names(names)
-    rest = names - ["Core", "Other tools"]
-    ["Core", *rest.sort, "Other tools"]
+    rest = names - ["Other tools"]
+    [*rest.sort, *("Other tools" if names.include?("Other tools"))]
   end
 
   def openapi_with_credit_label!

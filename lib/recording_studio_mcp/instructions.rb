@@ -2,90 +2,109 @@
 
 module RecordingStudioMcp
   module Instructions
-    AUTH_BLURB = <<~TEXT.squish.freeze
-      Connect with the Oauth Bearer token; it intentionally authorizes both this MCP endpoint and the Recording Studio API
-      through the same AccessGrant.
-    TEXT
-
-    METRIC_BLURB = "Recordable metric tools are read-only. Their arguments are that metric's query parameters. " \
-                   "Pass list filters as a filter object of attribute names."
-    CATALOG_METRIC_BLURB = "API metric tools are read-only. A timeseries takes from and to. " \
-                           "start and start_at are the same as from. end and end_at are the same as to. " \
-                           "Pass filters as a filters object."
-
-    ENDPOINT_BLURB = <<~TEXT.squish.freeze
-      Use the endpoint tools. Path parameters are tool arguments. Call tools/list to see
-      the available endpoint tools. An endpoint-only grant has no tree or recordable tools
-      such as list, show, create, update, delete, capability_action, or describe. When an endpoint
-      returns a catalog or list and another returns detail for an item, fetch the detail
-      before generating UI. Do not invent recordable types or assume those tree tools exist
-      unless tools/list advertises them.
-    TEXT
-
-    REFRESH_BLURB = <<~TEXT.squish.freeze
-      Tool changes are not pushed live, so call tools/list again when you need a fresh list.
-    TEXT
-
-    WATCH_BLURB = <<~TEXT.squish.freeze
-      List and read accessible items as resources. Subscribe to a resource URI to be told when that item changes, then read it again.
-    TEXT
-
-    SKILLS_BLURB = "This server may provide skills containing additional guidance for completing tasks with these " \
-                   "tools. Discover and use relevant skills when appropriate."
-    WRITE_FIELDS_BLURB = "Send writable fields at the top level, not under attributes."
-    PAGINATION_BLURB = "For the next list page, pass meta.next_pagination_token as pagination_token."
-    TREE_NEST_BLURB = "Records nest by parent_id. root_id is the workspace, not the parent record. " \
-                      "Call describe to see allowed children and actions."
-    TREE_LIST_PARENT_BLURB = "Walk down with list using parent_id, then show."
+    GENERAL_TOOL_NAMES = %w[list show create update delete capability_action describe].freeze
 
     module_function
 
     def text(access_grant: nil, api: nil, surface: nil)
       surface ||= ToolSurface.for(access_grant: access_grant, api: api)
-      parts = [AUTH_BLURB, *surface_blurbs(surface), REFRESH_BLURB]
-      parts << WATCH_BLURB if RecordingStudioMcp.events_registered?
-      parts << SKILLS_BLURB
-      parts << suffix_part(access_grant: access_grant)
-      parts.compact.join(" ")
+      sections_for(surface, access_grant).compact.join("\n\n")
     end
 
-    def surface_blurbs(surface)
+    def sections_for(surface, access_grant)
       [
-        (tree_blurb(surface) if surface.tree_enabled?),
-        (METRIC_BLURB if surface.recordable_metric_tools?),
-        (CATALOG_METRIC_BLURB if surface.catalog_metric_tools?),
-        (ENDPOINT_BLURB if surface.endpoints_enabled?)
+        sign_in_section,
+        find_tools_section(surface),
+        walk_section(surface),
+        changes_section(surface),
+        guides_section(access_grant),
+        live_section,
+        metrics_section(surface),
+        named_routes_section(surface)
       ]
     end
 
-    def tree_blurb(surface)
-      names = surface.tree_tool_names
-      before = %w[create capability_action].select { |name| names.include?(name) }
-      parts = [TREE_NEST_BLURB]
-      parts << TREE_LIST_PARENT_BLURB if surface.list_parent_id?
-      parts << describe_guidance(names, before)
-      parts << WRITE_FIELDS_BLURB if names.intersect?(%w[create update])
-      parts << PAGINATION_BLURB if names.include?("list")
-      parts.compact.join(" ")
+    def sign_in_section
+      section("Sign in", "Use an OAuth Bearer token. It has the same access as the app.")
     end
 
-    def describe_guidance(names, before)
-      return unless names.include?("describe")
-      return "Call describe for a type's allowed operations." if before.empty?
-
-      "Call describe before #{before.join(' or ')}."
+    def find_tools_section(surface)
+      section("Find your tools", find_tool_lines(surface))
     end
 
-    def suffix_part(access_grant:)
+    def find_tool_lines(surface)
+      [
+        "Call tools/list.",
+        "The list is not refreshed on its own, so call tools/list again if it may have changed.",
+        "ping checks the connection.",
+        describe_line(surface),
+        general_tools_line(surface),
+        per_type_page_line(surface)
+      ]
+    end
+
+    def describe_line(surface)
+      return unless surface.tree_enabled? && surface.tree_tool_names.include?("describe")
+
+      line = "Call describe on a type for allowed children, actions, and values"
+      before = describe_before(surface.tree_tool_names)
+      return "#{line}." if before.nil?
+
+      "#{line} before you #{before}."
+    end
+
+    def describe_before(names)
+      parts = []
+      parts << "create" if names.include?("create")
+      parts << "run an action" if names.include?("capability_action")
+      parts.empty? ? nil : parts.join(" or ")
+    end
+
+    def general_tools_line(surface)
+      return unless surface.tree_enabled?
+
+      names = GENERAL_TOOL_NAMES.select { |name| surface.tree_tool_names.include?(name) }
+      names << "ping"
+      extra = ", plus named route tools" if surface.endpoints_enabled?
+      "Agents get only the general tools #{listed(names)}#{extra}."
+    end
+
+    def listed(names)
+      return names.first.to_s if names.one?
+
+      "#{names[0..-2].join(', ')}, and #{names.last}"
+    end
+
+    def per_type_page_line(surface)
+      return unless surface.tree_enabled?
+
+      "A per-type page shows how to call a general tool with that type or action. " \
+        "It uses the same checks. It is not a separate tool."
+    end
+
+    def suffix_text(access_grant)
       source = RecordingStudioMcp.configuration.instructions_suffix
-      return nil if source.nil?
+      return if source.nil?
 
       raw = source.respond_to?(:call) ? source.call(access_grant: access_grant) : source
-      return nil unless raw.is_a?(String)
+      return unless raw.is_a?(String)
 
       text = raw.strip
       text.empty? ? nil : text
     end
-    private_class_method :suffix_part, :tree_blurb, :describe_guidance, :surface_blurbs
+
+    def section(title, lines)
+      body = Array(lines).flatten.compact
+      return if body.empty?
+
+      "## #{title}\n\n#{body.join("\n\n")}"
+    end
+
+    private_class_method :sections_for, :sign_in_section, :find_tools_section, :find_tool_lines,
+                         :describe_line, :describe_before, :general_tools_line, :listed, :per_type_page_line,
+                         :suffix_text, :section
   end
 end
+
+require_relative "instructions/records"
+require_relative "instructions/extras"
