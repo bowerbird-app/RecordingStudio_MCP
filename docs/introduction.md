@@ -11,7 +11,7 @@ Hosts mount live docs with `recording_studio_mcp_docs_for`. That page reads the 
 
 `delete` is also a built-in tool. It only appears when a type on that named API enables destroy. A host that enables destroy advertises it.
 
-Type arguments, docs tool names, and resource reads use a short public name. `RecordingStudioPresskits::PressKit` shows as `PressKit`, so an action page is `PressKit--set_embargo`. A full class name is rejected. Callers send the public name. That name is `registration.public_name`. A blank `public_name:` is the class name without its namespace. One named API cannot register two types with the same public name.
+Type arguments, docs tool names, and resource reads use a short public name. `RecordingStudioPresskits::PressKit` shows as `PressKit`, so an action page is `PressKit--set_embargo`. A full class name is rejected. Callers send the public name. That name is `registration.public_name`. A blank `public_name:` is the class name without its namespace. One named API cannot register two types with the same public name. Tool results use that public name for `type` and `recordable_type`. An unregistered type string stays as the API sent it. An untitled resource name is the public name, a space, and the recording id. `describe` keeps nested field schema on writable fields.
 
 JSON HTTP APIs stay on Scalar. This gem's docs page is MCP only.
 

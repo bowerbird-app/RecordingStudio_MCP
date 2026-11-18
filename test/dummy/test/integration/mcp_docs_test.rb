@@ -53,6 +53,20 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     CDN_NEEDLES.each { |needle| refute_includes fragment, needle }
   end
 
+  test "docs without javascript list tool names and the openapi document" do
+    sign_in_user
+
+    get public_api_mcp_docs_path
+
+    assert_response :success
+    assert_docs_tool_fallback response.body, "#{public_api_mcp_docs_path}/openapi.json"
+
+    get public_api_mcp_docs_fullscreen_path
+
+    assert_response :success
+    assert_docs_tool_fallback response.body, "#{public_api_mcp_docs_path}/openapi.json"
+  end
+
   test "fullscreen docs render redoc with no host layout and the same gate" do
     sign_in_user
 
@@ -238,6 +252,15 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     Current.actor = user
     sign_in user
     user
+  end
+
+  def assert_docs_tool_fallback(body, spec_path)
+    fallback = body[%r{<noscript>(.*?)</noscript>}m]
+    assert fallback
+    assert_includes fallback, spec_path
+    assert_includes fallback, ">list<"
+    assert_includes fallback, ">Workspace--ping<"
+    assert_operator fallback.index(">Core<"), :<, fallback.index(">Workspace<")
   end
 
   def assert_docs_surfaces(status)

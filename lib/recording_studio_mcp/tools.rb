@@ -10,6 +10,7 @@ module RecordingStudioMcp
       update: "update",
       destroy: "delete"
     }.freeze
+    FIELD_META_KEYS = %w[name required type allowed_values description immutable_on_update].freeze
 
     module_function
 
@@ -170,32 +171,48 @@ module RecordingStudioMcp
 
     def create_type_requirements(catalog)
       catalog.type_names_for(:create).filter_map do |type_name|
-        registration = RecordingStudioApi.recordable_registration_for(type_name, api: catalog.api)
-        fields = FieldSchema.for(type_name, registration).select { |field| field["required"] }
-        next if fields.empty?
+        fields = schema_fields(catalog, type_name)
+        listed = fields.select { |field| field["required"] || nested_field?(field) }
+        next if listed.empty?
 
-        {
-          if: {
-            properties: { type: { const: catalog.displayed_type_name(type_name) } },
-            required: ["type"]
-          },
-          then: {
-            required: fields.map { |field| field["name"] },
-            properties: fields.to_h { |field| [field["name"].to_sym, create_field_property(field)] }
-          }
-        }
+        type_clause(catalog, type_name, listed, required_fields: fields.select { |field| field["required"] })
       end
     end
 
-    def create_field_property(field)
+    def schema_fields(catalog, type_name)
+      registration = RecordingStudioApi.recordable_registration_for(type_name, api: catalog.api)
+      FieldSchema.for(type_name, registration)
+    end
+
+    def type_clause(catalog, type_name, fields, required_fields: [])
+      clause = {
+        if: {
+          properties: { type: { const: catalog.displayed_type_name(type_name) } },
+          required: ["type"]
+        },
+        then: {
+          properties: fields.to_h { |field| [field["name"].to_sym, field_input_property(field)] }
+        }
+      }
+      names = required_fields.map { |field| field["name"] }
+      clause[:then][:required] = names if names.any?
+      clause
+    end
+
+    def field_input_property(field)
       property = { type: field.fetch("type") }
       property[:description] = field["description"] if field["description"].present?
       property[:enum] = field["allowed_values"] if field["allowed_values"]
+      (field.keys - FIELD_META_KEYS).each { |key| property[key.to_sym] = field[key] }
       property
     end
 
+    def nested_field?(field)
+      (field.keys - FIELD_META_KEYS).any?
+    end
+
     def update_tool(catalog)
-      ToolDocs.decorate(
+      built = ToolDocs.decorate(
         tool(
           name: "update",
           title: "Update a record",
@@ -214,6 +231,20 @@ module RecordingStudioMcp
         ),
         output_schema: ToolDocs.record_output_schema(catalog)
       )
+      requirements = update_type_requirements(catalog)
+      built[:inputSchema][:allOf] = requirements if requirements.any?
+      built
+    end
+
+    def update_type_requirements(catalog)
+      catalog.type_names_for(:update).filter_map do |type_name|
+        fields = schema_fields(catalog, type_name).select do |field|
+          nested_field?(field) && !field["immutable_on_update"]
+        end
+        next if fields.empty?
+
+        type_clause(catalog, type_name, fields)
+      end
     end
 
     def delete_tool(catalog)
@@ -275,7 +306,8 @@ module RecordingStudioMcp
     end
 
     DESCRIBE_DESCRIPTION = "Describe one type on this named API. " \
-                           "Returns operations, typed writable fields with requirements and allowed values, " \
+                           "Returns operations, typed writable fields with requirements, allowed values, " \
+                           "and nested field schema, " \
                            "sortable fields, output keys, extra fields, relationships and allowed children, " \
                            "enabled capability actions with input contracts, and parent rules. " \
                            "Each type's describe output lists its allowed operations."
@@ -329,7 +361,8 @@ module RecordingStudioMcp
 
     private_class_method :tool, :endpoint_tool_options, :endpoint_title,
                          :endpoint_description, :list_description, :list_properties,
-                         :create_type_requirements, :create_field_property,
+                         :create_type_requirements, :schema_fields, :type_clause,
+                         :field_input_property, :nested_field?, :update_type_requirements,
                          :attach_meta, :attach_ui_meta
   end
 end

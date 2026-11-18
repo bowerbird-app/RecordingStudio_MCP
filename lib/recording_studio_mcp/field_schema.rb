@@ -38,15 +38,15 @@ module RecordingStudioMcp
     attr_reader :recordable_class, :registration
 
     def field(name)
-      property = openapi_properties[name] || {}
+      property = NestedSchema.copy(openapi_properties[name] || {})
       {
         "name" => name,
         "required" => required?(name),
-        "type" => property_value(property, :type) || column_type(name),
+        "type" => property["type"] || column_type(name),
         "allowed_values" => allowed_values(name, property),
-        "description" => property_value(property, :description).presence,
+        "description" => property["description"].presence,
         "immutable_on_update" => immutable?(name) || nil
-      }.compact
+      }.merge(property.except(*NestedSchema::LIFTED_KEYS)).compact
     end
 
     def openapi_properties

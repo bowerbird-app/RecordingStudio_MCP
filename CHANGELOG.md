@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.2] - 2026-11-18
+
+### Fixed
+- Tool results use the registered public type name for `type` and `recordable_type`, including `records` rows, nested records, and capability action results. An unregistered type string stays as the API sent it. An untitled resource name is the public name, a space, and the recording id.
+- `describe` keeps nested field schema (`properties`, `items`, `additionalProperties`, `required`, `examples`) on writable fields. Create and update input schemas include that schema on the fields they list.
+- The MCP docs page lists tool names and titles inside `<noscript>`, in the same tag order as the sidebar, and links to `{mount}/openapi.json`. The documentation gate is unchanged.
+
+### Upgrade notes
+- Bump to `0.37.2`. Previous version is `0.37.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Clients that read full class names from tool results should read the public name. Untitled resource names change from the generated class label to the public name and the recording id.
+
 ## [0.37.1] - 2026-11-18
 
 ### Changed
@@ -1067,7 +1078,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.2...HEAD
+[0.37.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.1...v0.37.2
 [0.37.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...v0.37.1
 [0.37.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...v0.37.0
 [0.36.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.4...v0.36.5

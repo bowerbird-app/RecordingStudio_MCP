@@ -68,6 +68,50 @@ class FieldSchemaTest < Minitest::Test
     assert_equal "Publishing priority.", field["description"]
   end
 
+  def test_passes_through_nested_object_schema
+    registration = Registration.new(
+      writable_attributes: %i[items],
+      immutable_fields: [],
+      openapi: {
+        details_schema: {
+          properties: {
+            items: {
+              type: "object",
+              description: "Labels for kit sections.",
+              additionalProperties: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  hidden: { type: "boolean" }
+                },
+                required: []
+              },
+              examples: [{ "hero" => { "hidden" => false } }]
+            }
+          }
+        }
+      }
+    )
+
+    field = RecordingStudioMcp::FieldSchema.for("McpFieldSchemaRecord", registration).first
+
+    assert_equal "object", field["type"]
+    assert_equal false, field["required"]
+    assert_equal "Labels for kit sections.", field["description"]
+    assert_equal(
+      {
+        "type" => "object",
+        "properties" => {
+          "label" => { "type" => "string" },
+          "hidden" => { "type" => "boolean" }
+        },
+        "required" => []
+      },
+      field["additionalProperties"]
+    )
+    assert_equal [{ "hero" => { "hidden" => false } }], field["examples"]
+  end
+
   def test_unknown_recordable_class_falls_back_to_string
     registration = Registration.new(writable_attributes: [:nickname], immutable_fields: [], openapi: {})
 

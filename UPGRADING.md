@@ -1,5 +1,17 @@
 # Upgrading Recording Studio MCP
 
+## 0.37.2
+
+Previous version is `0.37.1`. No MCP migration.
+
+Tool results use the registered public type name for `type` and `recordable_type`. That includes list rows, nested records, and capability action results such as a trash bin. An unregistered type string stays as the API sent it. Callers still send the public name. A full class name is still rejected.
+
+An untitled resource name is the public name, a space, and the recording id. A record with a real title keeps that title.
+
+`describe` returns nested field schema on each writable field. Create lists that schema on required fields and on optional fields that declare it. Update lists it on writable fields that declare it. Fields that were only a type, allowed values, and a description stay the same.
+
+The docs page still renders Redoc. Without JavaScript it lists tool names and titles in the sidebar tag order and links to `{mount}/openapi.json`. `documentation_enabled` and `documentation_access` are unchanged.
+
 ## 0.37.1
 
 Previous version is `0.37.0`. No MCP migration.

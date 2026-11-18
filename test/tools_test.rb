@@ -280,6 +280,31 @@ class ToolsTest < Minitest::Test
     end
   end
 
+  def test_create_and_update_keep_nested_field_schema
+    with_isolated_api_configuration do
+      register_menu_section
+      create_clause = type_clause("create", "MenuSection")
+      update_clause = type_clause("update", "MenuSection")
+      items = create_clause.dig(:then, :properties, :items)
+      described = RecordingStudioMcp::Catalog.new(api: :public).describe("MenuSection")
+      field = described.fetch("writable_fields").find { |entry| entry["name"] == "items" }
+
+      assert_equal ["title"], create_clause.dig(:then, :required)
+      assert_nil update_clause.dig(:then, :required)
+      assert_equal "object", items[:type]
+      assert_equal "Labels for kit sections.", items[:description]
+      assert_equal "object", items.dig(:additionalProperties, "type")
+      assert_equal "string", items.dig(:additionalProperties, "properties", "label", "type")
+      assert_equal "boolean", items.dig(:additionalProperties, "properties", "hidden", "type")
+      assert_equal [], items.dig(:additionalProperties, "required")
+      assert_equal [{ "hero" => { "hidden" => false } }], items[:examples]
+      assert_equal items[:additionalProperties], field["additionalProperties"]
+      assert_equal items[:examples], field["examples"]
+      assert_equal false, field["required"]
+      assert_equal items, update_clause.dig(:then, :properties, :items)
+    end
+  end
+
   def test_create_has_no_attributes_envelope
     with_isolated_api_configuration do
       register_tree_type("Page")
@@ -443,5 +468,41 @@ class ToolsTest < Minitest::Test
 
     assert_equal "Create a user", tool[:title]
     assert_equal "Requires Accessible :edit on AdminRoot.", tool[:description]
+  end
+
+  def register_menu_section
+    RecordingStudioApi.register_recordable_type_api(
+      "MenuSection",
+      serializer: ->(*) { { title: "Menu" } },
+      output_keys: %i[title],
+      writable_attributes: %i[title items],
+      operations: %i[index show create update],
+      openapi: {
+        details_schema: {
+          properties: {
+            title: { type: "string" },
+            items: {
+              type: "object",
+              description: "Labels for kit sections.",
+              additionalProperties: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  hidden: { type: "boolean" }
+                },
+                required: []
+              },
+              examples: [{ "hero" => { "hidden" => false } }]
+            }
+          },
+          required: ["title"]
+        }
+      }
+    )
+  end
+
+  def type_clause(tool_name, type_name)
+    tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == tool_name }
+    tool.dig(:inputSchema, :allOf).find { |clause| clause.dig(:if, :properties, :type, :const) == type_name }
   end
 end
