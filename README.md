@@ -49,9 +49,11 @@ Run `bin/rails generate recording_studio_mcp:migrations` and `bin/rails db:migra
 
 Accessible recordings are MCP resources at `recording://{id}`. `resources/list`, `resources/read`, and `resources/templates/list` use the same AccessGrant as tools. `resources/list` returns recordings in `id` order, 100 per page. `config.resources_page_size` changes the page size. A page with more recordings includes `nextCursor`. The last page leaves it out. The cursor is opaque. Send it back as `cursor` to read the next page. A malformed cursor is JSON-RPC `-32602`, and the error does not include the cursor. Each page loads that grant's accessible recordings again and keeps rows after the cursor id, so a cursor cannot reveal a recording outside the grant. Recordables are loaded for the recordings on that page. Skill files (`skill://…`) and MCP UI widgets (`ui://…`) are included on the first page. Later pages are recordings only. `resources/read` and `resources/templates/list` are unchanged. `resources/templates/list` still rejects a cursor. Subscribe uses the same access check. The update notification carries the URI only.
 
-A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is delivered **after commit**, onto that connection's queue. The listening stream's own writer drains the queue. A slow or dead subscriber is dropped (bounded queue + write timeout). The save request does not write sockets.
+A saved change (`record!`, `revise`, `log_event!`) on a subscribed recording is delivered **after commit**. Live SSE connections stay in the web process. Listeners share one Accessible scope check for that dispatch when each grant has already built its scope and the whole prime-time snapshot matches, including the parent recording, role, owner, and whether that snapshot is revoked or trashed. A grant that has not built its scope is checked on its own. A trashed or revoked snapshot is refused and is not reused. The next save checks again. The listening stream's own writer drains the queue. A slow or dead subscriber is dropped (bounded queue + write timeout). The save request does not write sockets.
 
-Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` with the event name and recording id. Each process re-checks access and its local subscribers. Other databases stay in-process: a save on worker B does not reach a subscriber on worker A.
+Webhook subscriptions are enqueued on that save. The job arguments are the subscription id, the recording id, and the event id. The request does not build the JSON body. `DeliverEventWebhookJob` loads the subscription and the grant again, runs the same Accessible scope, and only then builds the body and posts. Delivery is at-least-once. A retried job posts again with the same webhook-id, and the access check runs again on that attempt. A missing subscription, a revoked grant, or a trashed grant is not delivered.
+
+Subscriptions are process-local. On Postgres, MCP fans out `LISTEN`/`NOTIFY` with the event name and recording id. Each process re-checks access for its local subscribers, once per access grant. Other databases stay in-process: a save on worker B does not reach a subscriber on worker A.
 
 `tools/call` does not need `Mcp-Session-Id`. Initialize on `2025-03-26`, `2025-06-18`, and `2025-11-25` returns that header so a GET SSE listen can find the in-memory connection. The store is per process. A worker restart, a second Puma worker, or a proxy that drops the GET stream drops listen state. `2026-07-28` initialize does not open a session. Connector drops during ordinary tool calls are not this store.
 
@@ -367,4 +369,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.37.0
+0.37.1

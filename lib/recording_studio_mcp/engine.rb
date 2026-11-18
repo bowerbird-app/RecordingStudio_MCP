@@ -34,6 +34,10 @@ module RecordingStudioMcp
       end
     end
 
+    initializer "recording_studio_mcp.grant_snapshot" do
+      config.to_prepare { RecordingStudioMcp::GrantPrimeSnapshot.install! }
+    end
+
     initializer "recording_studio_mcp.admin" do
       config.to_prepare do
         RecordingStudioMcp::Admin.register!
