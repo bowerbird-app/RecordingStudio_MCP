@@ -41,7 +41,13 @@ module RecordingStudioMcp
       guarded = scoped_resource(recordable_type, operation_name, args["id"])
       return scope_miss_result unless guarded
 
-      render_handler_result(handler.call(guarded_resource_context(recordable_type, args, guarded, operation_name)))
+      context = guarded_resource_context(recordable_type, args, guarded, operation_name)
+      replay = replayed_create(context, operation_name)
+      return success_result(replay.fetch("json")) if replay
+
+      result = handler.call(context)
+      store_create(context, operation_name, result)
+      render_handler_result(result)
     end
 
     def call_builtin_resource(recordable_type, operation_name, args)

@@ -69,6 +69,8 @@ A built-in capability action that returns a recording is serialized with that ca
 
 Create and update send writable fields at the request root (`title`, not `attributes`). `list` accepts `pagination_token` from `meta.next_pagination_token`. It advertises `parent_id` only when `config.list_parent_id_types` names a type that allows index. Hosts that run Presskits or Support set that list. Hosts may set `describe_payload` to a callable that receives the default `describe` hash and returns a replacement.
 
+A second `create` with the same `idempotency_key`, or the same `Idempotency-Key` header, returns the first record and does not create another one. A custom create handler uses that same API idempotency store. Tool results use the registered public name for `type` and `recordable_type`. An unregistered value that contains `::` shows its last segment, such as `Attachment` or `Location`. Any other unregistered string stays as the API sent it. Callers send the public name. A name that is not registered is an unknown type error.
+
 The `create` input schema keeps `type`, `parent_id`, and `idempotency_key`. `type` is the only top-level required argument. Each creatable type that has required fields adds an `allOf` branch. Its `if` matches `type`. Its `then` lists that type's required fields. That branch lists the required fields from the same field list `describe` uses. Other writable fields stay allowed. A writable field keeps nested schema from its declaration, including `properties`, `items`, `additionalProperties`, `required`, and `examples`. `describe` returns that schema on the field. Create lists it on required fields and on optional fields that declare nested schema. Update lists it on writable fields that declare nested schema.
 
 Catalog-only hosts register `RecordingStudioApi.register_endpoint` routes and no recordable types. They get one MCP tool per endpoint. The tool name is the endpoint name. Path tokens, OpenAPI query parameters, and `input_contract` fields become `inputSchema` arguments. An endpoint that omits those, such as a Users write route with only a summary, advertises no body fields. The handler can still accept them. Put writable fields on `input_contract` in the gem that registers the endpoint. There is no `describe` hop and no empty tree tool list.
@@ -369,4 +371,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.37.2
+0.37.3

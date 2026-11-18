@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.3] - 2026-11-18
+
+### Fixed
+- A second `create` with the same `idempotency_key` argument, or the same `Idempotency-Key` header, returns the first record. A custom create handler uses the API idempotency store too, so the second call does not create another row.
+- An unregistered `type` or `recordable_type` that contains `::` shows its last segment. `RecordingStudioAttachable::Attachment` shows `Attachment`. `RecordingStudio::Location::Location` shows `Location`. Registered public names stay as they are. Any other unregistered string stays as the API sent it.
+
+### Upgrade notes
+- Bump to `0.37.3`. Previous version is `0.37.2`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Clients that read a full class name from an unregistered nested `type` or `recordable_type` now get the last segment. Callers still send the registered public name. A short name that is not registered is an unknown type error.
+
 ## [0.37.2] - 2026-11-18
 
 ### Fixed
@@ -1078,7 +1088,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.3...HEAD
+[0.37.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.2...v0.37.3
 [0.37.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.1...v0.37.2
 [0.37.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...v0.37.1
 [0.37.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.36.5...v0.37.0

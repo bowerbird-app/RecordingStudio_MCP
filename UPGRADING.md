@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.37.3
+
+Previous version is `0.37.2`. No MCP migration.
+
+A second `create` with the same `idempotency_key`, or the same `Idempotency-Key` header, returns the first record. That includes a type whose create is a custom resource handler. The API idempotency store keeps the response for that client. The builtin create path is unchanged.
+
+Tool results still use the registered public name for `type` and `recordable_type`. An unregistered value that contains `::` now shows its last segment. `RecordingStudioAttachable::Attachment` shows `Attachment`. `RecordingStudio::Location::Location` shows `Location`. A string with no `::` stays as the API sent it. `list`, `show`, `create`, and `describe` still resolve a registered public name. A name that is not registered is an unknown type error.
+
 ## 0.37.2
 
 Previous version is `0.37.1`. No MCP migration.
