@@ -44,7 +44,7 @@ module RecordingStudioMcp
       core = core_lines_for(shown, type_name, state)
       return if core.empty?
 
-      tags_for_type(type_name, state).each { |tag| lines[tag] = Array(lines[tag]) + core }
+      tags_for_type(shown, type_name, state).each { |tag| lines[tag] = Array(lines[tag]) + core }
     end
     private_class_method :collect_core_lines
 
@@ -60,7 +60,19 @@ module RecordingStudioMcp
     end
     private_class_method :core_lines_for
 
-    def tags_for_type(type_name, state)
+    def tags_for_type(entry, type_name, state)
+      return action_tags_for(type_name, state) if capability_actions?(entry)
+
+      shared_group_tags(type_name, state[:page].api_key)
+    end
+    private_class_method :tags_for_type
+
+    def capability_actions?(entry)
+      Array(entry["capability_actions"]).any?
+    end
+    private_class_method :capability_actions?
+
+    def action_tags_for(type_name, state)
       action_tags(
         type_name,
         api: state[:page].api_key,
@@ -68,7 +80,33 @@ module RecordingStudioMcp
         type_names: state[:type_names]
       )
     end
-    private_class_method :tags_for_type
+    private_class_method :action_tags_for
+
+    # A type with no capability actions gets no page of its own. Its core lines
+    # go on a shared OpenAPI tag group when that group is a different name.
+    def shared_group_tags(type_name, api_key)
+      openapi = type_registration(type_name, api_key)&.openapi
+      return [] unless openapi.is_a?(Hash)
+
+      group = openapi_group(openapi)
+      return [] if group.blank? || openapi_tag_names(openapi).include?(group)
+
+      [normalize_tag(group)]
+    end
+    private_class_method :shared_group_tags
+
+    def openapi_group(openapi)
+      tag = openapi[:tag] || openapi["tag"]
+      return "" unless tag.is_a?(Hash)
+
+      (tag[:group] || tag["group"]).to_s
+    end
+    private_class_method :openapi_group
+
+    def openapi_tag_names(openapi)
+      Array(openapi[:tags] || openapi["tags"]).map(&:to_s)
+    end
+    private_class_method :openapi_tag_names
 
     def joined_tag_copy(prose, lines)
       (prose.keys | lines.keys).each_with_object({}) do |tag, copy|
