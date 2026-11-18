@@ -81,6 +81,27 @@ class McpResourcePagingTest < ActiveSupport::TestCase
     assert_instance_of RecordingStudioMcp::Resources::NotFound, sibling
   end
 
+  test "a deleted grant returns no recordings for the earlier cursor" do
+    grant = access_grant(@owner_access)
+    first = RecordingStudioMcp::Resources.list(access_grant: grant)
+    cursor = first.payload.fetch(:nextCursor)
+    seen = recording_ids(first.payload)
+    assert seen.any?
+
+    RecordingStudio::Access.where(id: @owner_access.recordable_id).delete_all
+    ActiveRecord::Base.connection.clear_query_cache
+    @owner_access.reload
+
+    later = access_grant(@owner_access)
+    page = RecordingStudioMcp::Resources.list(access_grant: later, cursor: cursor)
+    leaked = recording_ids(page.payload)
+
+    assert_instance_of RecordingStudioMcp::Resources::List, page
+    assert_empty leaked
+    seen.each { |id| refute_includes leaked, id }
+    refute page.payload.key?(:nextCursor)
+  end
+
   test "a malformed cursor is invalid params and the page query stays limited" do
     grant = access_grant(@owner_access)
     answer = RecordingStudioMcp::Resources.list(access_grant: grant, cursor: "' OR 1=1 --")
