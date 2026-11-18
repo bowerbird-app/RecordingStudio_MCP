@@ -23,10 +23,23 @@ module RecordingStudioMcp
           end
         end
 
-        def capability_line(type_name, action_name)
-          "Tool: capability_action with type `#{type_name}` and action `#{action_name}`. " \
-            "Pass idempotency_key to replay an action flagged creates: true when the input matches. " \
+        def capability_line(type_name, action_name, include_idempotency_key:)
+          line = "Tool: capability_action with type `#{type_name}` and action `#{action_name}`."
+          return line unless include_idempotency_key
+
+          "#{line} Pass idempotency_key to replay an action flagged creates: true when the input matches. " \
             "A different input for that key is an error."
+        end
+
+        def replays?(action_name, recordable_type, api_key)
+          action = RecordingStudioApi.capability_action(action_name, api: api_key)
+          return false if action.nil?
+          return true if action.creates?
+
+          registration = RecordingStudioApi.resource_handler_registration(
+            recordable_type, action.name, api: api_key
+          )
+          registration.respond_to?(:creates?) && registration.creates?
         end
 
         def tool_line(tool_name, type_name, schema, entry)

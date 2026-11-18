@@ -4,6 +4,7 @@ require_relative "tool_docs/output"
 require_relative "tool_docs/endpoint"
 require_relative "tool_docs/groups"
 require_relative "tool_docs/listing"
+require_relative "tool_docs/tag_intro"
 
 module RecordingStudioMcp
   module ToolDocs
