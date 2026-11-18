@@ -124,11 +124,11 @@ module OauthDummyHelpers
     }
   end
 
-  def approve_delegated_oauth(oauth_client:, user:, access_recording:, role: "view", redirect_uri: "http://127.0.0.1/callback", pkce: nil)
+  def approve_delegated_oauth(oauth_client:, user:, access_recording:, role: "view", redirect_uri: "http://127.0.0.1/callback", pkce: nil, manager: nil)
     pkce ||= pkce_pair
     result = RecordingStudioOauth::Services::CreateOauthAuthorization.call(
       oauth_client: oauth_client,
-      manager_actor: user,
+      manager_actor: manager || user,
       access_recording: access_recording,
       role: role,
       redirect_uri: redirect_uri,

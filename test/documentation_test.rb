@@ -205,6 +205,7 @@ class DocumentationTest < Minitest::Test
       refute_includes ping_tool["description"], "Writable fields:"
       refute_includes ping_tool["description"], "A folder record in this workspace."
       assert_includes ping_tool["description"], "Tool: capability_action with type `Folder` and action `ping`"
+      assert_includes ping_tool["description"], "Pass idempotency_key to return the first result."
       refute_includes ping_tool["description"], "style"
       refute_includes ping_tool["description"], "reject_unknown"
       assert_equal ["Folder"], ping_tool["tags"]

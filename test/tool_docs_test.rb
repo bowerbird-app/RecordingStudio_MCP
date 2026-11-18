@@ -15,6 +15,8 @@ class ToolDocsTest < Minitest::Test
     assert_equal "string", action.dig(:title, :type)
     assert_equal "string", action.dig(:summary, :type)
     assert_equal "string", action.dig(:description, :type)
+    assert_equal "string", action.dig(:idempotency_key, :type)
+    assert_equal "string", properties.dig(:nesting, :type)
   end
 
   def test_type_tags_use_registered_endpoint_tags_not_the_scalar_group

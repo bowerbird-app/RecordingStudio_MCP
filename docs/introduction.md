@@ -6,12 +6,12 @@ Hosts mount live docs with `recording_studio_mcp_docs_for`. That page reads the 
 
 - `list`, `show`, and `describe` for reading
 - `create` and `update` for writing
-- `capability_action` for named API capability actions
+- `capability_action` for named API capability actions. An optional `idempotency_key`, or the `Idempotency-Key` header, returns the first result for that action, type, and record.
 - `Recording` at `recording://{id}`. `resources/list` returns these in id order, 100 at a time. Follow `nextCursor` until a page leaves it out. Skill and UI resources are on the first page.
 
 `delete` is also a built-in tool. It only appears when a type on that named API enables destroy. A host that enables destroy advertises it.
 
-Type arguments, docs tool names, and resource reads use a short public name. `RecordingStudioPresskits::PressKit` shows as `PressKit`, so an action page is `PressKit--set_embargo`. A full class name is rejected. Callers send the public name. That name is `registration.public_name`. A blank `public_name:` is the class name without its namespace. One named API cannot register two types with the same public name. Tool results use that public name for `type` and `recordable_type`. An unregistered type string stays as the API sent it. An untitled resource name is the public name, a space, and the recording id. `describe` keeps nested field schema on writable fields.
+Type arguments, docs tool names, and resource reads use a short public name. `RecordingStudioPresskits::PressKit` shows as `PressKit`, so an action page is `PressKit--set_embargo`. A full class name is rejected. Callers send the public name. That name is `registration.public_name`. A blank `public_name:` is the class name without its namespace. One named API cannot register two types with the same public name. Tool results use that public name for `type` and `recordable_type`. Nested items such as attachments and locations are managed through the parent type's actions (for example `add_image`), not as their own types. `describe` says that. An unregistered type string stays as the API sent it. An untitled resource name is the public name, a space, and the recording id. `describe` keeps nested field schema on writable fields.
 
 JSON HTTP APIs stay on Scalar. This gem's docs page is MCP only.
 

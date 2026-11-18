@@ -283,6 +283,10 @@ module RecordingStudioMcp
             type: catalog.type_schema,
             id: { type: "string", description: "Recording id." },
             action: { type: "string", description: "Enabled capability action name for this type." },
+            idempotency_key: {
+              type: "string",
+              description: Catalog::Reader::CAPABILITY_IDEMPOTENCY_KEY
+            },
             params: { type: "object", description: "Action input as the named API expects it." }
           }
         ),

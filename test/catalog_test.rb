@@ -78,13 +78,13 @@ class CatalogTest < Minitest::Test
       assert_equal true, catalog.capability_actions?
       ping = catalog.describe("Workspace").fetch("capability_actions")
 
-      assert_equal [{ "name" => "ping", "title" => "Workspace - Ping" }], ping
+      assert_equal [ping_action_entry], ping
       refute ping.first.key?("summary")
       refute ping.first.key?("description")
 
       RecordingStudio.stub(:capability_enabled?, false) do
         assert_equal true, catalog.capability_actions?
-        assert_equal [{ "name" => "ping", "title" => "Workspace - Ping" }],
+        assert_equal [ping_action_entry],
                      catalog.describe("Workspace").fetch("capability_actions")
       end
     end
@@ -125,7 +125,23 @@ class CatalogTest < Minitest::Test
       described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
       ping = described.fetch("capability_actions").first
 
-      assert_equal({ "name" => "ping", "title" => "Workspace - Ping" }, ping)
+      assert_equal(ping_action_entry, ping)
+    end
+  end
+
+  def test_describe_says_nested_items_are_parent_actions
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      described = catalog.describe("Page")
+
+      assert_equal(
+        "Nested items such as attachments and locations are managed through the parent " \
+        "type's actions (for example add_image), not as their own types.",
+        described.fetch("nesting")
+      )
+      refute_includes catalog.type_schema.fetch(:enum), "Attachment"
+      refute_includes catalog.type_schema.fetch(:enum), "Location"
     end
   end
 
@@ -212,8 +228,8 @@ class CatalogTest < Minitest::Test
         described = RecordingStudioMcp::Catalog.new(api: :public).describe("Folder")
 
         expected = %w[
-          type operations writable_fields sortable_fields capability_actions output_keys fields relationships
-          allowed_children
+          type operations writable_fields sortable_fields capability_actions nesting output_keys fields
+          relationships allowed_children
         ]
         assert_equal expected, described.keys - ["parent"]
         refute described.key?("metrics")
@@ -560,6 +576,15 @@ class CatalogTest < Minitest::Test
       end
       assert_includes rejected.message, "Allowed types: PressKit"
     end
+  end
+
+  def ping_action_entry
+    {
+      "name" => "ping",
+      "title" => "Workspace - Ping",
+      "idempotency_key" => "Optional. The same key returns the first result. " \
+                           "The Idempotency-Key header counts too."
+    }
   end
 
   def with_public_name(type_name, api_name, public_name, &)

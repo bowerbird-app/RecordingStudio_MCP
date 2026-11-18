@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.4] - 2026-11-18
+
+### Fixed
+- `capability_action` accepts an optional top-level `idempotency_key`. The `Idempotency-Key` header counts too. A key inside `params` is removed before the action input contract, and it counts when the top-level argument and the header are absent. The same key on the same action, type, and record returns the first result. The same key on a different action, type, or record is an error. A read action ignores the key. The stored result is kept per named API and client.
+- `describe` says nested items such as attachments and locations are managed through the parent type's actions (for example `add_image`), not as their own types.
+
+### Upgrade notes
+- Bump to `0.37.4`. Previous version is `0.37.3`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Send `idempotency_key` on `capability_action`, or send the `Idempotency-Key` header. Do not rely on a second call creating another row.
+
 ## [0.37.3] - 2026-11-18
 
 ### Fixed
@@ -1088,7 +1098,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.3...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.4...HEAD
+[0.37.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.3...v0.37.4
 [0.37.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.2...v0.37.3
 [0.37.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.1...v0.37.2
 [0.37.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.0...v0.37.1

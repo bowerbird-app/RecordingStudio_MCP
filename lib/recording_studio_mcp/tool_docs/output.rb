@@ -22,6 +22,7 @@ module RecordingStudioMcp
           title: { type: "string" },
           summary: { type: "string" },
           description: { type: "string" },
+          idempotency_key: { type: "string" },
           params: ACTION
         },
         additionalProperties: true
@@ -33,6 +34,7 @@ module RecordingStudioMcp
         writable_fields: { type: "array", items: ACTION },
         sortable_fields: { type: "array", items: { type: "string" } },
         capability_actions: { type: "array", items: CAPABILITY_ACTION },
+        nesting: { type: "string" },
         output_keys: { type: "array", items: { type: "string" } },
         fields: { type: "array", items: { type: "string" } },
         relationships: { type: "array", items: ACTION },

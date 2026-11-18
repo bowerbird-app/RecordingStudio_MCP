@@ -43,6 +43,89 @@ class RepeatingPageCreate
   end
 end
 
+class OneShotWorkspaceNote
+  class << self
+    def reset!
+      @tokens = []
+      @calls = 0
+    end
+
+    def calls
+      @calls.to_i
+    end
+
+    def call(context)
+      @calls = calls + 1
+      token = note_param(context, :token)
+      if token.present? && @tokens.include?(token)
+        raise RecordingStudioApi::InvalidActionInputError, "Blob is already attached"
+      end
+
+      @tokens << token if token.present?
+      create_page(context, token.presence || "Note #{calls}")
+    end
+
+    def create_page(context, title)
+      parent = context.recording
+      recording = RecordingStudio.record!(
+        action: "created",
+        recordable: Page.create!(title: title),
+        root_recording: parent.root_recording || parent,
+        parent_recording: parent,
+        actor: note_actor(context)
+      ).recording
+      { json: { "id" => recording.id.to_s, "title" => title } }
+    end
+
+    def note_param(context, name)
+      params = context.params || {}
+      params[name] || params[name.to_s]
+    end
+
+    def note_actor(context)
+      grant = context.access_grant
+      actor = grant.actor if grant.respond_to?(:actor)
+      return actor if actor.present?
+
+      grant.api_client
+    end
+  end
+end
+
+class QuoteNote
+  class << self
+    def reset!
+      @calls = 0
+    end
+
+    def calls
+      @calls.to_i
+    end
+
+    def call(context)
+      @calls = calls + 1
+      OneShotWorkspaceNote.create_page(context, "Quote #{calls}")
+    end
+  end
+end
+
+class PeekNote
+  class << self
+    def reset!
+      @calls = 0
+    end
+
+    def calls
+      @calls.to_i
+    end
+
+    def call(_context)
+      @calls = calls + 1
+      { json: { "calls" => @calls } }
+    end
+  end
+end
+
 class ParentFilteredPageIndex < RecordingStudioApi::Services::ResourceOperations::Index
   def filtered_recordings
     relation = super
@@ -407,6 +490,11 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     title = described.fetch("writable_fields").find { |field| field["name"] == "title" }
 
     refute payload.dig("result", "isError")
+    assert_equal(
+      "Nested items such as attachments and locations are managed through the parent " \
+      "type's actions (for example add_image), not as their own types.",
+      described.fetch("nesting")
+    )
     assert_equal "string", title.fetch("type")
     assert_equal false, title.fetch("required")
     assert_includes described.fetch("operations"), "create"
@@ -733,6 +821,120 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "repeat capability action with the same idempotency key returns one record" do
+    token = issue_delegated_token(role: "edit")
+
+    with_note_actions do
+      with_memory_idempotency_store do
+        repeat_note(token, argument: "note-argument-1")
+        repeat_note(token, header: "note-header-1")
+        repeat_note(token, params_key: "note-params-1")
+      end
+    end
+  end
+
+  test "a capability idempotency key reused on another action is an error" do
+    token = issue_delegated_token(role: "edit")
+
+    with_note_actions do
+      arguments = note_arguments("shared-1", token: "blob-shared")
+      with_memory_idempotency_store do
+        first = successful_tool(token, "capability_action", arguments)
+        before = page_count
+        quote = note_arguments("shared-1", token: "blob-quote", action: "add_quote")
+        body = post_tool(token, "capability_action", quote)
+        message = body.dig("result", "content", 0, "text").to_s
+
+        assert_equal true, body.dig("result", "isError"), message
+        assert_includes message, "already used for add_note"
+        refute_includes message, "shared-1"
+        assert_equal before, page_count
+        assert_equal 0, QuoteNote.calls
+        assert_equal first.fetch("id"), successful_tool(token, "capability_action", arguments).fetch("id")
+      end
+    end
+  end
+
+  test "capability action without an idempotency key runs again" do
+    token = issue_delegated_token(role: "edit")
+
+    with_note_actions do
+      arguments = note_arguments(nil, token: "once").except(:idempotency_key)
+      before = page_count
+      first = successful_tool(token, "capability_action", arguments)
+      body = post_tool(token, "capability_action", arguments)
+      message = body.dig("result", "content", 0, "text").to_s
+
+      assert_equal true, body.dig("result", "isError"), message
+      assert_includes message, "Blob is already attached"
+      assert_equal before + 1, page_count
+      refute_includes message, first.fetch("id")
+    end
+  end
+
+  test "a read capability action ignores an idempotency key" do
+    token = issue_delegated_token(role: "edit")
+    with_note_actions do
+      arguments = note_arguments("peek-1", token: nil, action: "peek_note")
+      with_memory_idempotency_store do |memory|
+        stored = memory.entries.size
+        first = successful_tool(token, "capability_action", arguments)
+        second = successful_tool(token, "capability_action", arguments)
+
+        assert_equal 1, first.fetch("calls")
+        assert_equal 2, second.fetch("calls")
+        assert_equal stored, memory.entries.size
+      end
+    end
+  end
+
+  test "a role that cannot run the action does not receive the stored capability result" do
+    edit = issue_delegated_token(role: "edit")
+    viewer = create_user(email: "viewer-#{SecureRandom.hex(4)}@example.com")
+    Current.actor = @user
+    granted = RecordingStudioAccessible.grant_access(
+      recording: @root_recording,
+      actor: viewer,
+      role: "view",
+      manager_actor: @user
+    )
+    assert granted.success?, granted.error
+    view = issue_delegated_token(role: "view", user: viewer, access_recording: granted.value, manager: @user)
+    assert_equal grant_client_id(edit), grant_client_id(view)
+
+    with_note_actions do
+      arguments = note_arguments("note-role-1", token: "blob-role")
+      with_memory_idempotency_store do
+        first = successful_tool(edit, "capability_action", arguments)
+        before = page_count
+        body = post_tool(view, "capability_action", arguments)
+        message = body.dig("result", "content", 0, "text").to_s
+
+        assert_equal true, body.dig("result", "isError"), message
+        refute_includes message, first.fetch("id")
+        assert_equal before, page_count
+      end
+    end
+  end
+
+  test "a custom capability handler replays the first result" do
+    token = issue_delegated_token(role: "edit")
+    with_note_actions do
+      arguments = note_arguments("handler-1", token: "blob-handler", action: "add_file")
+      RecordingStudioApi.register_resource_handler("Folder", :add_file, handler: OneShotWorkspaceNote)
+      with_memory_idempotency_store do
+        before = page_count
+        calls = OneShotWorkspaceNote.calls
+        first = successful_tool(token, "capability_action", arguments)
+        second = successful_tool(token, "capability_action", arguments)
+
+        assert_equal first.fetch("id"), second.fetch("id")
+        assert_equal before + 1, page_count
+        assert_equal calls + 1, OneShotWorkspaceNote.calls
+      end
+    end
+  end
+
   test "cursor shaped discovery matches www authenticate resource metadata" do
     post "/recording_studio_mcp",
          params: { jsonrpc: "2.0", id: 1, method: "initialize" }.to_json,
@@ -828,6 +1030,112 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_equal stored + 1, memory.entries.size
   end
 
+  def with_note_actions
+    registry = RecordingStudioApi.configuration.fetch_api(:public).recordable_registry
+    registrations = registry.instance_variable_get(:@registrations)
+    previous = registrations["Folder"]
+    @note_folder = record_child(Folder.create!(name: "Notes #{SecureRandom.hex(2)}"), parent: @root_recording)
+    OneShotWorkspaceNote.reset!
+    QuoteNote.reset!
+    PeekNote.reset!
+    register_note_surface
+    yield
+  ensure
+    registrations["Folder"] = previous if registrations && previous
+    clear_note_surface
+    OneShotWorkspaceNote.reset!
+    QuoteNote.reset!
+    PeekNote.reset!
+  end
+
+  def register_note_surface
+    RecordingStudioApi.register_recordable_type_api(
+      "Folder",
+      capability_actions: %i[add_note add_quote add_file peek_note]
+    )
+    register_note_action(:add_note, OneShotWorkspaceNote)
+    register_note_action(:add_quote, QuoteNote)
+    register_note_action(:add_file, OneShotWorkspaceNote)
+    RecordingStudioApi.register_capability_action(
+      :peek_note,
+      capability: :accessible,
+      http_verb: :get,
+      required_role: :view,
+      handler: PeekNote
+    )
+  end
+
+  def register_note_action(name, handler)
+    RecordingStudioApi.register_capability_action(
+      name,
+      capability: :accessible,
+      http_verb: :post,
+      required_role: :edit,
+      input_contract: {
+        fields: {
+          token: { type: :string, required: false }
+        }
+      },
+      handler: handler
+    )
+  end
+
+  def clear_note_surface
+    actions = RecordingStudioApi.configuration.action_registry.instance_variable_get(:@registrations)
+    %w[add_note add_quote add_file peek_note].each { |name| actions&.delete(name) }
+    handlers = RecordingStudioApi.configuration.fetch_api(:public)
+                                  .resource_handler_registry.instance_variable_get(:@handlers)
+    %w[add_note add_quote add_file peek_note].each { |name| handlers&.delete(["Folder", name]) }
+  end
+
+  def note_arguments(key, token:, action: "add_note")
+    arguments = {
+      type: "Folder",
+      id: @note_folder.id,
+      action: action,
+      params: {}
+    }
+    arguments[:idempotency_key] = key if key
+    arguments[:params][:token] = token if token
+    arguments
+  end
+
+  def repeat_note(token, argument: nil, header: nil, params_key: nil)
+    key = argument || header || params_key
+    params = { token: "blob-#{key}" }
+    params[:idempotency_key] = params_key if params_key
+    arguments = note_arguments(argument, token: nil).merge(params: params)
+    arguments[:idempotency_key] = argument if argument
+    headers = header ? { "Idempotency-Key" => header } : {}
+    before = page_count
+    calls = OneShotWorkspaceNote.calls
+    first = successful_tool(token, "capability_action", arguments, headers: headers)
+    second = successful_tool(token, "capability_action", arguments, headers: headers)
+
+    assert_equal first.fetch("id"), second.fetch("id"), key
+    assert_equal before + 1, page_count
+    assert_equal calls + 1, OneShotWorkspaceNote.calls
+  end
+
+  def successful_tool(token, name, arguments, headers: {})
+    body = post_tool(token, name, arguments, headers: headers)
+    assert_equal false, body.dig("result", "isError"), body
+    tool_payload(body)
+  end
+
+  def page_count
+    RecordingStudio::Recording.where(recordable_type: "Page").count
+  end
+
+  def grant_client_id(token)
+    grant = RecordingStudioApi.access_grant_from_authorization_header(
+      authorization_header: "Bearer #{token}",
+      api: "public"
+    )
+    assert grant.success?, grant.error
+    grant.value.api_client.id
+  end
+
   def post_tool(token, name, arguments, headers: {})
     post "/recording_studio_mcp",
          params: rpc("tools/call", name: name, arguments: arguments).to_json,
@@ -868,11 +1176,12 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     issued.value.fetch(:access_token)
   end
 
-  def issue_delegated_token(role: "view")
+  def issue_delegated_token(role: "view", user: @user, access_recording: @access_recording, manager: nil)
     approved = approve_delegated_oauth(
       oauth_client: @oauth_client,
-      user: @user,
-      access_recording: @access_recording,
+      user: user,
+      access_recording: access_recording,
+      manager: manager,
       role: role,
       pkce: @pkce
     )

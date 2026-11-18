@@ -3,6 +3,9 @@
 module RecordingStudioMcp
   class Catalog
     module Reader
+      CAPABILITY_IDEMPOTENCY_KEY = "Optional. The same key returns the first result. " \
+                                   "The Idempotency-Key header counts too."
+
       def describe(type_name)
         describe_registered(resolve_type!(type_name))
       end
@@ -80,6 +83,7 @@ module RecordingStudioMcp
         details["params"] = contract.deep_stringify_keys if contract.present?
         fields = details.merge(Documentation::Openapi::ActionDocs.copy_for(action, recordable_type))
         fields["title"] = Documentation::Openapi::ActionDocs.title(action.name, api, recordable_type)
+        fields["idempotency_key"] = CAPABILITY_IDEMPOTENCY_KEY
         fields
       end
 
