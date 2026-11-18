@@ -45,7 +45,8 @@ module RecordingStudioMcp
         params: capability_input_params(args, action),
         progress_reporter: progress_reporter,
         id: args["id"],
-        recordable_type: recordable_type
+        recordable_type: recordable_type,
+        idempotency_key: capability_idempotency_key(args)
       )
     end
 
@@ -100,6 +101,12 @@ module RecordingStudioMcp
       return unless operation_name == :create
 
       args["idempotency_key"].presence || idempotency_key
+    end
+
+    def capability_idempotency_key(args)
+      body = stringify_keys(args)
+      nested = stringify_keys(body["params"])
+      body["idempotency_key"].presence || idempotency_key.presence || nested["idempotency_key"].presence
     end
 
     def capability_input_params(args, action)

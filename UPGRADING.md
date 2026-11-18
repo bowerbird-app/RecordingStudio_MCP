@@ -1,5 +1,17 @@
 # Upgrading Recording Studio MCP
 
+## 0.39.0
+
+Previous version is `0.38.0`. No MCP migration.
+
+Require `recording_studio_api` `>= 1.18.0`, `< 2.0` and `recording_studio_admin` `>= 2.19.0`, `< 3.0`. The API gem requires Recording Studio `>= 7.7.0`, `< 8.0` and Accessible `>= 0.50.0`, `< 2.0`. It refuses to boot with Admin older than `2.19.0`. Add `config/recording_studio_api.yml` if the host does not have one. A missing file raises while the API engine loads. An empty file with `development`, `test`, and `production` keys is enough when you do not set API options there.
+
+`capability_action` still accepts `idempotency_key` at the top level, the `Idempotency-Key` header, or a key inside `params` when the other two are absent. Replay runs only when the action or its resource handler is flagged `creates: true`. The same key and the same input return the first result and do not create another record. A new key runs the action again. The same key with different input is refused with `Idempotency-Key was already used with different input`. A blank key runs the action. An action that is not flagged ignores the key, including a read action.
+
+A repeated key on a different action or record is a separate replay. It runs. `0.37.4` treated that repeat as an error.
+
+A custom `create` handler uses the same `Idempotency.replay` entry and still returns the first response when the body differs. Builtin create is unchanged.
+
 ## 0.38.0
 
 Previous version is `0.37.4`. No MCP migration.

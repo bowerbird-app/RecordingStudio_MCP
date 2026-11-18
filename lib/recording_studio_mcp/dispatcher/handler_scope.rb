@@ -82,7 +82,8 @@ module RecordingStudioMcp
         handler: nil,
         include_trashed: false,
         owns_scoping: false,
-        trashed_semantics: nil
+        trashed_semantics: nil,
+        creates: false
       )
     end
   end

@@ -21,7 +21,7 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "root_id is the workspace, not the parent."
       assert_includes text, "not under attributes"
       assert_includes text, "idempotency_key on a retried create"
-      assert_includes text, "The key applies to create only."
+      refute_includes text, "capability_action"
       assert_includes text, "pagination_token"
       refute_includes text, "List with parent_id, then show."
       refute_includes text, "If you only see named route tools"

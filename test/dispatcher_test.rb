@@ -19,6 +19,10 @@ class DispatcherTest < Minitest::Test
 
       raise RecordingStudioApi::AuthorizationError, "API access grant is not authorized for this capability"
     end
+
+    def scope_recording
+      access_recording
+    end
   end
   FakeClient = Struct.new(:api_key)
   FakeRegistration = Struct.new(:enabled) do
@@ -34,11 +38,15 @@ class DispatcherTest < Minitest::Test
   SCOPE_MISS = "Resource was not found in this API scope"
   FakeAction = Struct.new(
     :name, :handler, :input_contract, :serializer,
-    :owns_scoping, :http_verb, :include_trashed, :trashed_semantics, :required_role,
+    :owns_scoping, :http_verb, :include_trashed, :trashed_semantics, :required_role, :creates,
     keyword_init: true
   ) do
     def owns_scoping?
       owns_scoping == true
+    end
+
+    def creates?
+      creates == true
     end
 
     def http_verb
@@ -1262,7 +1270,8 @@ class DispatcherTest < Minitest::Test
       handler: handler,
       include_trashed: false,
       owns_scoping: true,
-      trashed_semantics: nil
+      trashed_semantics: nil,
+      creates: false
     )
     action = FakeAction.new(
       name: :inspect,
@@ -1336,6 +1345,7 @@ class DispatcherTest < Minitest::Test
         http_verb: :post,
         path: "guard-open/:id",
         scope_id: false,
+        required_role: :view,
         handler: handler
       )
 

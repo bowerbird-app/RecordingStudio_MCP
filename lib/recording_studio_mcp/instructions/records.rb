@@ -50,7 +50,7 @@ module RecordingStudioMcp
     end
 
     def idempotency_line
-      "Send the same idempotency_key on a retried create to avoid a duplicate. The key applies to create only."
+      "Send the same idempotency_key on a retried create to avoid a duplicate."
     end
 
     def guides_section(access_grant)

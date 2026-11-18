@@ -833,25 +833,56 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "a capability idempotency key reused on another action is an error" do
+  test "the same capability key with different input is refused" do
     token = issue_delegated_token(role: "edit")
 
     with_note_actions do
-      arguments = note_arguments("shared-1", token: "blob-shared")
       with_memory_idempotency_store do
+        arguments = note_arguments("shared-input", token: "blob-a")
         first = successful_tool(token, "capability_action", arguments)
         before = page_count
-        quote = note_arguments("shared-1", token: "blob-quote", action: "add_quote")
-        body = post_tool(token, "capability_action", quote)
+        calls = OneShotWorkspaceNote.calls
+        changed = note_arguments("shared-input", token: "blob-b")
+        body = post_tool(token, "capability_action", changed)
         message = body.dig("result", "content", 0, "text").to_s
 
         assert_equal true, body.dig("result", "isError"), message
-        assert_includes message, "already used for add_note"
-        refute_includes message, "shared-1"
+        assert_includes message, "Idempotency-Key was already used with different input"
         assert_equal before, page_count
-        assert_equal 0, QuoteNote.calls
+        assert_equal calls, OneShotWorkspaceNote.calls
         assert_equal first.fetch("id"), successful_tool(token, "capability_action", arguments).fetch("id")
       end
+    end
+  end
+
+  test "a new capability idempotency key creates another record" do
+    token = issue_delegated_token(role: "edit")
+
+    with_note_actions do
+      with_memory_idempotency_store do
+        before = page_count
+        first = successful_tool(token, "capability_action", note_arguments("key-a", token: "blob-a"))
+        second = successful_tool(token, "capability_action", note_arguments("key-b", token: "blob-b"))
+
+        refute_equal first.fetch("id"), second.fetch("id")
+        assert_equal before + 2, page_count
+      end
+    end
+  end
+
+  test "an unflagged capability action ignores the idempotency key" do
+    token = issue_delegated_token(role: "edit")
+
+    with_note_actions do
+      arguments = note_arguments("quote-1", token: nil, action: "add_quote")
+      before = page_count
+      calls = QuoteNote.calls
+      first = successful_tool(token, "capability_action", arguments)
+      second = successful_tool(token, "capability_action", arguments)
+
+      refute_equal first.fetch("id"), second.fetch("id")
+      assert_equal before + 2, page_count
+      assert_equal calls + 2, QuoteNote.calls
     end
   end
 
@@ -921,7 +952,9 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     token = issue_delegated_token(role: "edit")
     with_note_actions do
       arguments = note_arguments("handler-1", token: "blob-handler", action: "add_file")
-      RecordingStudioApi.register_resource_handler("Folder", :add_file, handler: OneShotWorkspaceNote)
+      RecordingStudioApi.register_resource_handler(
+        "Folder", :add_file, handler: OneShotWorkspaceNote, creates: true
+      )
       with_memory_idempotency_store do
         before = page_count
         calls = OneShotWorkspaceNote.calls
@@ -1053,7 +1086,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
       "Folder",
       capability_actions: %i[add_note add_quote add_file peek_note]
     )
-    register_note_action(:add_note, OneShotWorkspaceNote)
+    register_note_action(:add_note, OneShotWorkspaceNote, creates: true)
     register_note_action(:add_quote, QuoteNote)
     register_note_action(:add_file, OneShotWorkspaceNote)
     RecordingStudioApi.register_capability_action(
@@ -1065,12 +1098,13 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     )
   end
 
-  def register_note_action(name, handler)
+  def register_note_action(name, handler, creates: false)
     RecordingStudioApi.register_capability_action(
       name,
       capability: :accessible,
       http_verb: :post,
       required_role: :edit,
+      creates: creates,
       input_contract: {
         fields: {
           token: { type: :string, required: false }

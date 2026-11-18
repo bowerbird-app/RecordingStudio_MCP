@@ -3,8 +3,9 @@
 module RecordingStudioMcp
   class Catalog
     module Reader
-      CAPABILITY_IDEMPOTENCY_KEY = "Optional. The same key returns the first result. " \
-                                   "The Idempotency-Key header counts too."
+      CAPABILITY_IDEMPOTENCY_KEY = "Optional. On an action flagged creates: true, the same key and the same input " \
+                                   "return the first result. A different input with that key is refused. " \
+                                   "Other actions ignore this key. The Idempotency-Key header counts too."
 
       def describe(type_name)
         describe_registered(resolve_type!(type_name))

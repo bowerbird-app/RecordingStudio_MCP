@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-18
+
+### Changed
+- `capability_action` replays through `RecordingStudioApi::Idempotency.replay` when the action or its resource handler is flagged `creates: true`. The same key and the same input return the first result and create one record. A new key runs the action again. The same key with different input is refused. A blank key runs the action. An action that is not flagged ignores the key.
+- A custom `create` handler replays through that same API entry. The first response is returned when the body differs.
+- Requires `recording_studio_api` `>= 1.18.0`, `< 2.0` and `recording_studio_admin` `>= 2.19.0`, `< 3.0`.
+
+### Upgrade notes
+- Bump to `0.39.0`. Previous version is `0.38.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts need Recording Studio `>= 7.7.0`, Accessible `>= 0.50.0`, and Admin `>= 2.19.0`. `recording_studio_api` 1.18.0 requires those floors and refuses an older Admin. Add `config/recording_studio_api.yml` if it is missing. A missing file raises at boot.
+- A repeated key on a different action or record runs that call. It is not an error. Flag `creates: true` on actions that must replay. The same key with different input on a flagged action is refused.
+
 ## [0.38.0] - 2026-11-18
 
 ### Changed
@@ -1111,7 +1123,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.38.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.0...HEAD
+[0.39.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.38.0...v0.39.0
 [0.38.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.4...v0.38.0
 [0.37.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.3...v0.37.4
 [0.37.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.37.2...v0.37.3

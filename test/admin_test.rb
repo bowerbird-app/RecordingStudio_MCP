@@ -190,9 +190,9 @@ class AdminTest < Minitest::Test
     dependency = spec.runtime_dependencies.find { |runtime| runtime.name == "recording_studio_admin" }
 
     assert_equal "recording_studio_admin", dependency.name
-    assert dependency.requirement.satisfied_by?(Gem::Version.new("2.16.0"))
-    assert dependency.requirement.satisfied_by?(Gem::Version.new("2.16.1"))
-    refute dependency.requirement.satisfied_by?(Gem::Version.new("2.15.0"))
+    assert dependency.requirement.satisfied_by?(Gem::Version.new("2.19.0"))
+    assert dependency.requirement.satisfied_by?(Gem::Version.new("2.19.1"))
+    refute dependency.requirement.satisfied_by?(Gem::Version.new("2.18.0"))
     refute dependency.requirement.satisfied_by?(Gem::Version.new("3.0.0"))
     refute dependency.requirement.satisfied_by?(Gem::Version.new("2.0.2"))
 
