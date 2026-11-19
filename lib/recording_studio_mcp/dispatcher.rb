@@ -73,11 +73,17 @@ module RecordingStudioMcp
       registration = built.registration
       return dispatch_endpoint(surface.endpoint_for(built.name), args) if registration.target.endpoint?
 
-      forced = args.merge(forced_registration_args(registration))
+      dispatch_registered_target(registration, args)
+    end
+
+    def dispatch_registered_target(registration, args)
       if registration.target.operation?
-        dispatch_resource(registration.target.value, forced)
+        dispatch_resource(registration.target.value, args.merge(forced_registration_args(registration)))
       else
-        dispatch_capability_action(forced)
+        dispatch_capability_action(
+          args.merge("action" => registration.target.value.to_s),
+          type_name: registration.type.presence
+        )
       end
     end
 
@@ -101,6 +107,7 @@ require "recording_studio_mcp/dispatcher/tree"
 require "recording_studio_mcp/dispatcher/capability"
 require "recording_studio_mcp/dispatcher/endpoint"
 require "recording_studio_mcp/dispatcher/contexts"
+require "recording_studio_mcp/dispatcher/capability_params"
 require "recording_studio_mcp/dispatcher/idempotency"
 require "recording_studio_mcp/dispatcher/recordings"
 require "recording_studio_mcp/dispatcher/results"

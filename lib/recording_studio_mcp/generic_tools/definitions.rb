@@ -6,7 +6,7 @@ module RecordingStudioMcp
       name: "list",
       operation: :index,
       title: "List records",
-      description: "List records of one type on this server. Call the docs if you do not know the type. " \
+      description: "List records of one type on this server. Call describe if you do not know the type. " \
                    "Send pagination_token from meta.next_pagination_token for the next page.",
       input: {
         "type" => { description: "Type on this server." },
@@ -17,7 +17,7 @@ module RecordingStudioMcp
         "q" => { description: "Search across writable and sortable fields." },
         "limit" => { description: "Page size." },
         "sort" => {
-          description: "Sort by a sortable field from the docs. created_at is always allowed and is the default. " \
+          description: "Sort by a sortable field. created_at is always allowed and is the default. " \
                        "order sets the direction."
         },
         "order" => { description: "asc or desc." },
@@ -44,8 +44,8 @@ module RecordingStudioMcp
       operation: :create,
       title: "Create a record",
       description: "Changes data by creating a record. Send writable fields at the root, for example title, " \
-                   "not nested under attributes. Child types need parent_id. Call the docs for writable fields " \
-                   "and parent rules.",
+                   "not nested under attributes. Child types need parent_id. Call describe for included tools " \
+                   "and relationships.",
       input: {
         "type" => { description: "Type on this server that allows create." },
         "parent_id" => { description: "Parent recording id. Required for types that are not roots." },
@@ -59,7 +59,7 @@ module RecordingStudioMcp
       operation: :update,
       title: "Update a record",
       description: "Changes data by updating a record. Send writable fields at the root, for example title, " \
-                   "not nested under attributes. Call the docs for the type.",
+                   "not nested under attributes. Call describe for the type.",
       input: {
         "type" => { description: "Type on this server that allows update." },
         "id" => { description: "Recording id." }
@@ -71,8 +71,8 @@ module RecordingStudioMcp
       name: "delete",
       operation: :destroy,
       title: "Delete a record",
-      description: "May destructively change data by running the named API destroy operation. Use the docs " \
-                   "to see which types allow destroy.",
+      description: "May destructively change data by running the named API destroy operation. " \
+                   "Call describe to see which types allow destroy.",
       input: {
         "type" => { description: "Type on this server that allows destroy." },
         "id" => { description: "Recording id." }
@@ -85,7 +85,7 @@ module RecordingStudioMcp
       action: :capability_action,
       title: "Run a capability action",
       description: "May destructively change data by running one named API capability action on a record. " \
-                   "Call the docs for the type to see which actions are enabled.",
+                   "Call describe for the type to see which actions are enabled.",
       input: {
         "type" => { description: "Type on this server." },
         "id" => { description: "Recording id." },

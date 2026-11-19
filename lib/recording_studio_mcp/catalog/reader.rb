@@ -57,9 +57,18 @@ module RecordingStudioMcp
         Array(registration_for(recordable_type)&.writable_attributes).map(&:to_s)
       end
 
+      def parent_required?(recordable_type)
+        rules = parent_rules(recordable_type)
+        return false if rules.blank? || rules["root"]
+
+        Array(rules["allowed_parent_types"]).any?
+      end
+
       private
 
       def resolve_registered_type(name)
+        return name if displayed_type_names.key?(name)
+
         match = accepted_type(name, types_shown_as(name)) || accepted_type(name, type_name_matches(name))
         return match if match
 

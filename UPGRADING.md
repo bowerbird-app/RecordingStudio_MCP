@@ -1,5 +1,17 @@
 # Upgrading Recording Studio MCP
 
+## 0.41.1
+
+Previous version is `0.41.0`. No MCP migration.
+
+`describe` and other tools tell callers to call `describe`. There is no docs tool.
+
+`resolve_type!` accepts the registered class name and the public name through the same public-name catalog. `RecordingStudioPresskits::PressKit` and `PressKit` both select that type. Tool results still use the public name.
+
+Named `{type}--{action}` tools include `id` when the action targets an existing recording. A contract field named `type` stays on the schema. Send those fields at the root. `params` still works for generic `capability_action`.
+
+`create` requires `parent_id` when type metadata says the type is not a root and lists allowed parents. The schema's per-type clause lists it, and a missing value is `parent_id is required for {type}`.
+
 ## 0.41.0
 
 Previous version is `0.40.2`. No MCP migration.

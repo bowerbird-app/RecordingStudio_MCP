@@ -88,7 +88,7 @@ module RecordingStudioMcp
                 ""
               end
       "List records of one type on this OauthClient's named API. #{extra}" \
-        "Call the docs if you do not know the type. " \
+        "Call describe if you do not know the type. " \
         "Send pagination_token from meta.next_pagination_token to get the next page. " \
         "Returns records and meta."
     end
@@ -100,7 +100,7 @@ module RecordingStudioMcp
         limit: protocol_field(:integer, "Page size."),
         sort: protocol_field(
           :string,
-          "Sort by a sortable field from the docs. created_at is always allowed and is the default. " \
+          "Sort by a sortable field. created_at is always allowed and is the default. " \
           "order sets the direction.",
           allow_blank: true
         ),
@@ -150,7 +150,7 @@ module RecordingStudioMcp
           title: "Create a record",
           description: "Changes data by creating a record. Send writable fields at the root, " \
                        "for example title, not nested under attributes. " \
-                       "Child types need parent_id. Call the docs for writable fields and parent rules. " \
+                       "Child types need parent_id. Call describe for included tools and relationships. " \
                        "Returns the created record.",
           read_only: false,
           destructive: false,
@@ -190,13 +190,7 @@ module RecordingStudioMcp
       contract = SchemaFromContract.stringify(lookup&.input_contract)
       return if contract.blank?
 
-      properties = SchemaFromContract.properties_for(
-        lookup,
-        recordable_type: type_name,
-        operation: operation,
-        api: catalog.api
-      )
-      required = SchemaFromContract.required_names(contract)
+      properties, required = lookup_clause_fields(catalog, lookup, type_name, operation, contract)
       clause = {
         if: {
           properties: { type: { const: catalog.displayed_type_name(type_name) } },
@@ -208,6 +202,19 @@ module RecordingStudioMcp
       clause
     end
 
+    def lookup_clause_fields(catalog, lookup, type_name, operation, contract)
+      properties = SchemaFromContract.properties_for(
+        lookup,
+        recordable_type: type_name,
+        operation: operation,
+        api: catalog.api
+      )
+      required = SchemaFromContract.required_names(contract)
+      return [properties, required] unless operation == :create && catalog.parent_required?(type_name)
+
+      [properties.merge(parent_id: parent_id_schema), required | ["parent_id"]]
+    end
+
     def update_tool(catalog)
       built = ToolDocs.decorate(
         tool(
@@ -215,7 +222,7 @@ module RecordingStudioMcp
           title: "Update a record",
           description: "Changes data by updating a record. Send writable fields at the root, " \
                        "for example title, not nested under attributes. " \
-                       "Call the docs for the type. Returns the updated record.",
+                       "Call describe for the type. Returns the updated record.",
           read_only: false,
           destructive: false,
           idempotent: false,
@@ -245,7 +252,7 @@ module RecordingStudioMcp
           name: "delete",
           title: "Delete a record",
           description: "May destructively change data by running the named API destroy operation. " \
-                       "Use the docs to see which types allow destroy. Returns the delete result.",
+                       "Call describe to see which types allow destroy. Returns the delete result.",
           read_only: false,
           destructive: true,
           idempotent: false,
@@ -265,7 +272,7 @@ module RecordingStudioMcp
           name: "capability_action",
           title: "Run a capability action",
           description: "May destructively change data by running one named API capability action on a record. " \
-                       "Call the docs for the type to see which actions are enabled. " \
+                       "Call describe for the type to see which actions are enabled. " \
                        "Returns the action result.",
           read_only: false,
           destructive: true,
@@ -293,6 +300,7 @@ module RecordingStudioMcp
 
     def registered_tool_options(built, catalog)
       registration = built.registration
+      properties, required = named_schema_fields(built, catalog, registration)
       {
         name: registration.name,
         title: built.title,
@@ -300,9 +308,17 @@ module RecordingStudioMcp
         read_only: read_only_target?(registration),
         destructive: destructive_target?(registration),
         idempotent: read_only_target?(registration),
-        required: SchemaFromContract.required_names(built.lookup&.input_contract) - forced_keys(registration),
-        properties: drop_forced_keys(lookup_properties(built, catalog, registration), registration)
+        required: required,
+        properties: properties
       }
+    end
+
+    def named_schema_fields(built, catalog, registration)
+      dropped = forced_keys(registration, built.lookup)
+      properties = drop_forced_keys(lookup_properties(built, catalog, registration), dropped)
+      required = SchemaFromContract.required_names(built.lookup&.input_contract) - dropped
+      properties, required = apply_named_action_id(registration, properties, required)
+      apply_named_create_parent_id(catalog, registration, properties, required)
     end
 
     def lookup_properties(built, catalog, registration)
@@ -315,15 +331,38 @@ module RecordingStudioMcp
       )
     end
 
-    def forced_keys(registration)
+    def forced_keys(registration, lookup = nil)
       keys = []
-      keys << "type" if registration.type.present?
       keys << "action" if registration.target.action?
+      keys << "type" if registration.type.present? && !keep_contract_type?(registration, lookup)
       keys
     end
 
-    def drop_forced_keys(properties, registration)
-      properties.except(*forced_keys(registration).map(&:to_sym))
+    def keep_contract_type?(registration, lookup)
+      registration.target.action? && SchemaFromContract.stringify(lookup&.input_contract).key?("type")
+    end
+
+    def drop_forced_keys(properties, dropped)
+      properties.except(*dropped.map(&:to_sym))
+    end
+
+    def apply_named_action_id(registration, properties, required)
+      return [properties, required] unless registration.target.action?
+
+      merged = { id: protocol_field(:string, "Recording id.") }.merge(properties)
+      [merged, (["id"] + required).uniq]
+    end
+
+    def apply_named_create_parent_id(catalog, registration, properties, required)
+      return [properties, required] unless registration.target.operation? && registration.target.value == :create
+      return [properties, required] unless registration.type.present? && catalog.parent_required?(registration.type)
+
+      merged = properties.merge(parent_id: parent_id_schema)
+      [merged, (required | ["parent_id"])]
+    end
+
+    def parent_id_schema
+      protocol_field(:string, "Parent recording id. Required for types that are not roots.")
     end
 
     def protocol_field(type, description, required: false, allow_blank: nil)
@@ -410,8 +449,9 @@ module RecordingStudioMcp
     private_class_method :tool, :endpoint_tool_options, :endpoint_title,
                          :endpoint_description, :list_description, :list_properties,
                          :create_type_requirements, :lookup_clause, :update_type_requirements,
-                         :attach_meta, :attach_ui_meta, :forced_keys, :drop_forced_keys,
-                         :protocol_field, :read_only_target?, :destructive_target?,
+                         :attach_meta, :attach_ui_meta, :forced_keys, :keep_contract_type?,
+                         :drop_forced_keys, :apply_named_action_id, :apply_named_create_parent_id,
+                         :parent_id_schema, :protocol_field, :read_only_target?, :destructive_target?,
                          :registered_tool_options, :lookup_properties, :metric_tool_options
   end
 end

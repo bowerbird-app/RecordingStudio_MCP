@@ -84,7 +84,7 @@ module RecordingStudioMcp
       {
         type: "string",
         enum: [],
-        description: "Type registered on this named API. Call the docs for writable fields and actions."
+        description: "Type registered on this named API. Call describe for included tools and relationships."
       }
     end
 

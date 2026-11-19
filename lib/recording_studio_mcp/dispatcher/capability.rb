@@ -4,14 +4,15 @@ module RecordingStudioMcp
   class Dispatcher
     private
 
-    def dispatch_capability_action(args)
-      recordable_type = catalog.resolve_type!(args["type"])
+    def dispatch_capability_action(args, type_name: nil)
+      named_tool = type_name.present?
+      recordable_type = catalog.resolve_type!(type_name.presence || args["type"])
       action = enabled_capability_action!(recordable_type, args["action"].to_s)
       lookup = capability_lookup(recordable_type, action)
       if custom_capability?(lookup, action)
-        call_capability_handler(lookup.handler, args, action, recordable_type)
+        call_capability_handler(lookup.handler, args, action, recordable_type, named_tool: named_tool)
       else
-        run_capability_action(recordable_type, args, action, handler: lookup&.handler)
+        run_capability_action(recordable_type, args, action, handler: lookup&.handler, named_tool: named_tool)
       end
     end
 
@@ -25,19 +26,19 @@ module RecordingStudioMcp
       lookup.handler && lookup.handler != action.handler
     end
 
-    def call_capability_handler(handler, args, action, recordable_type)
+    def call_capability_handler(handler, args, action, recordable_type, named_tool: false)
       guarded = handler_scope { capability_guard(recordable_type, action, args) }
       return scope_miss_result unless guarded
 
-      context = capability_context(guarded.recording, args, action, recordable_type)
+      context = capability_context(guarded.recording, args, action, recordable_type, named_tool: named_tool)
       result = replay_creating_action(action, recordable_type, context) { handler.call(context) }
       render_handler_result(result)
     end
 
-    def run_capability_action(recordable_type, args, action, handler: nil)
+    def run_capability_action(recordable_type, args, action, handler: nil, named_tool: false)
       recording = load_recording(recordable_type, args["id"])
       authorize_capability!(recording, action)
-      context = action_context(recording, args, action)
+      context = action_context(recording, args, action, named_tool: named_tool)
       result = replay_creating_action(action, recordable_type, context) do
         { json: serialize_capability_result(action, (handler || action.handler).call(context), args), status: :ok }
       end
