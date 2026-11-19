@@ -46,3 +46,17 @@ end
 # end
 # RecordingStudioMcp.register_event("comment added")
 # RecordingStudioMcp.notify("comment added", recording: comment.recording)
+
+# Tools are opt-in. Register copy, then include names on a server. describe is always on.
+# RecordingStudioMcp.register_type(type: "Page", description: "A page under a folder or workspace.")
+# RecordingStudioMcp.register_tool(
+#   name: "ping",
+#   endpoint: :ping,
+#   title: "Ping",
+#   description: "Confirm this named API can reach a registered endpoint.",
+#   input: {},
+#   output: "ok"
+# )
+# RecordingStudioMcp.register_server(:public, api: :public) do
+#   include_tools :list, :show, :create, :update, :ping
+# end

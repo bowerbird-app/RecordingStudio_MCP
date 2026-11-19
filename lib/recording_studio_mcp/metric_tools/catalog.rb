@@ -9,16 +9,21 @@ module RecordingStudioMcp
 
     module_function
 
-    def collect_catalog(catalog, access_grant)
-      tools = catalog_entries(catalog, access_grant).filter_map { |entry| catalog_tool_for(catalog, entry) }
+    def collect_catalog(catalog, access_grant, ignore_allowlist: false)
+      tools = catalog_entries(catalog, access_grant, ignore_allowlist: ignore_allowlist)
+              .filter_map { |entry| catalog_tool_for(catalog, entry) }
       tools.sort_by { |tool| tool.name.to_s }.freeze
     end
 
-    def catalog_entries(catalog, access_grant)
-      raw_entries(catalog, access_grant).select { |entry| resource_allowed?(read_key(entry, :resource)) }
+    def catalog_entries(catalog, access_grant, ignore_allowlist: false)
+      raw_entries(catalog, access_grant).select do |entry|
+        resource_allowed?(read_key(entry, :resource), ignore_allowlist: ignore_allowlist)
+      end
     end
 
-    def resource_allowed?(resource)
+    def resource_allowed?(resource, ignore_allowlist: false)
+      return true if ignore_allowlist
+
       allowlist = RecordingStudioMcp.configuration.catalog_metric_resources
       return true if allowlist.nil?
 

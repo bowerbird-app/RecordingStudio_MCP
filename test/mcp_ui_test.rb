@@ -45,6 +45,7 @@ class McpUiTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
 
       tools = RecordingStudioMcp::Tools.definitions
       ping = tools.find { |tool| tool[:name] == "ping" }
@@ -75,6 +76,7 @@ class McpUiTest < Minitest::Test
         openapi: { "x-mcp-file-params": ["cover_file"] }
       )
       McpUiSupport::FakeUi.register("presskits.editor")
+      include_api_endpoints
 
       edit = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "presskits.edit" }
 
@@ -96,6 +98,7 @@ class McpUiTest < Minitest::Test
         ui: "presskits.editor"
       )
       McpUiSupport::FakeUi.register("presskits.editor")
+      include_api_endpoints(tree: true)
 
       tools = RecordingStudioMcp::Tools.definitions
       list = tools.find { |tool| tool[:name] == "list" }
@@ -143,6 +146,7 @@ class McpUiTest < Minitest::Test
       )
       McpUiSupport::FakeUi.register("presskits.editor")
       McpUiSupport::FakeUi.register("secret.editor")
+      include_api_endpoints
 
       listed = RecordingStudioMcp::Resources.list(access_grant: @grant)
       listed_uri = listed.payload[:resources].map { |entry| entry[:uri] }.find { |uri| uri.start_with?("ui://") }
@@ -175,9 +179,9 @@ class McpUiTest < Minitest::Test
 
   def test_ui_resources_are_on_the_first_page_only
     previous_page_size = RecordingStudioMcp.configuration.resources_page_size
-    RecordingStudioMcp.configuration.resources_page_size = 1
 
     with_isolated_api_configuration do
+      RecordingStudioMcp.configuration.resources_page_size = 1
       RecordingStudioApi.register_endpoint(
         "presskits.edit",
         http_verb: :patch,
@@ -223,6 +227,7 @@ class McpUiTest < Minitest::Test
         handler: ->(_context) { { id: "1" } },
         ui: "presskits.editor"
       )
+      include_api_endpoints
 
       tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "presskits.edit" }
       refute tool.key?(:_meta)
@@ -245,6 +250,7 @@ class McpUiTest < Minitest::Test
         ui: "status.ping"
       )
       McpUiSupport::FakeUi.register("status.ping")
+      include_api_endpoints
 
       answer = RecordingStudioMcp::Protocol.handle(
         {

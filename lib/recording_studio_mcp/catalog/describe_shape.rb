@@ -9,23 +9,22 @@ module RecordingStudioMcp
       private
 
       def default_describe_payload(recordable_type, registration)
-        describe_core(recordable_type, registration)
-          .merge("nesting" => NESTED_ITEMS)
-          .merge(describe_registry(recordable_type, registration))
-          .compact
-      end
-
-      def describe_core(recordable_type, registration)
         {
           "type" => displayed_type_name(recordable_type),
-          "description" => Documentation::Openapi::Schemas.registered_type_description(
-            recordable_type, api
-          ),
+          "description" => type_paragraph(recordable_type),
+          "tools" => describe_tools(recordable_type, registration),
+          "skills" => describe_skills(recordable_type),
+          "relationships" => describe_relationships(registration)
+        }.merge("nesting" => NESTED_ITEMS).compact
+      end
+
+      def documentation_type_fields(recordable_type, registration)
+        {
           "operations" => Array(registration&.operations).map(&:to_s),
-          "writable_fields" => FieldSchema.for(recordable_type, registration),
+          "writable_fields" => writable_fields(recordable_type),
           "sortable_fields" => sortable_fields(recordable_type),
           "capability_actions" => enabled_capability_actions(recordable_type)
-        }
+        }.merge(describe_registry(recordable_type, registration))
       end
 
       def describe_registry(recordable_type, registration)

@@ -35,7 +35,8 @@ class CatalogTest < Minitest::Test
       register_tree_type(
         "SupportPage",
         api: :operations,
-        operations: %i[index show create update destroy]
+        operations: %i[index show create update destroy],
+        allow_sensitive: true
       )
 
       public_catalog = RecordingStudioMcp::Catalog.new(api: :public)
@@ -76,7 +77,7 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal true, catalog.capability_actions?
-      ping = catalog.describe("Workspace").fetch("capability_actions")
+      ping = catalog.documentation_type("Workspace").fetch("capability_actions")
 
       assert_equal [ping_action_entry], ping
       refute ping.first.key?("summary")
@@ -85,7 +86,7 @@ class CatalogTest < Minitest::Test
       RecordingStudio.stub(:capability_enabled?, false) do
         assert_equal true, catalog.capability_actions?
         assert_equal [ping_action_entry],
-                     catalog.describe("Workspace").fetch("capability_actions")
+                     catalog.documentation_type("Workspace").fetch("capability_actions")
       end
     end
   end
@@ -103,7 +104,7 @@ class CatalogTest < Minitest::Test
         }
       )
       register_tree_type("Workspace", capability_actions: %i[ping])
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Workspace")
       ping = described.fetch("capability_actions").first
 
       assert_equal "ping", ping.fetch("name")
@@ -122,7 +123,7 @@ class CatalogTest < Minitest::Test
         openapi: { title: "", summary: "   " }
       )
       register_tree_type("Workspace", capability_actions: %i[ping])
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Workspace")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Workspace")
       ping = described.fetch("capability_actions").first
 
       assert_equal(ping_action_entry, ping)
@@ -188,7 +189,7 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       RecordingStudioApi.stub(:capability_actions_for, [ping, grant]) do
-        names = catalog.describe("Workspace").fetch("capability_actions").map { |entry| entry["name"] }
+        names = catalog.documentation_type("Workspace").fetch("capability_actions").map { |entry| entry["name"] }
 
         assert_equal %w[grant_access ping], names.sort
       end
@@ -201,7 +202,7 @@ class CatalogTest < Minitest::Test
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal false, catalog.capability_actions?
-      assert_equal [], catalog.describe("Workspace").fetch("capability_actions")
+      assert_equal [], catalog.documentation_type("Workspace").fetch("capability_actions")
     end
   end
 
@@ -214,10 +215,12 @@ class CatalogTest < Minitest::Test
         operations: %i[index],
         sortable_attributes: %i[title]
       )
+      RecordingStudioMcp.register_type(type: "Page", description: "")
+      ensure_tree_server(:public)
 
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Page")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Page")
 
-      assert_equal %w[created_at title], described.fetch("sortable_fields")
+      assert_includes described.fetch("sortable_fields"), "title"
     end
   end
 
@@ -225,20 +228,20 @@ class CatalogTest < Minitest::Test
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         register_folder_and_page_metrics
+        include_metric_server
         described = RecordingStudioMcp::Catalog.new(api: :public).describe("Folder")
+        catalog = RecordingStudioMcp::Catalog.new(api: :public)
+        documented = catalog.documentation_type(catalog.resolve_type!("Folder"))
 
-        expected = %w[
-          type operations writable_fields sortable_fields capability_actions nesting output_keys fields
-          relationships allowed_children
-        ]
-        assert_equal expected, described.keys - ["parent"]
+        assert_equal %w[description nesting relationships skills tools type], described.keys.sort
         refute described.key?("metrics")
+        refute described.key?("operations")
         assert_equal "Folder", described.fetch("type")
-        refute_includes described.fetch("operations"), "metrics"
-        assert_equal ["name"], described.fetch("output_keys")
-        assert_equal [], described.fetch("fields")
-        assert_equal [], described.fetch("relationships")
-        assert_equal [], described.fetch("allowed_children")
+        refute_includes documented.fetch("operations"), "metrics"
+        assert_equal ["name"], documented.fetch("output_keys")
+        assert_equal [], documented.fetch("fields")
+        assert_equal [], documented.fetch("relationships")
+        assert_equal [], documented.fetch("allowed_children")
       end
     end
   end
@@ -269,7 +272,7 @@ class CatalogTest < Minitest::Test
   def test_resolve_type_accepts_a_resource_name_only_when_it_is_the_public_name
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:operations)
-      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations, allow_sensitive: true)
       catalog = RecordingStudioMcp::Catalog.new(api: :operations)
 
       error = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("press_kits") }
@@ -320,7 +323,7 @@ class CatalogTest < Minitest::Test
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:operations)
       register_tree_type("Page")
-      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations, allow_sensitive: true)
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       error = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("PressKit") }
@@ -355,22 +358,25 @@ class CatalogTest < Minitest::Test
         }
       )
       register_tree_type("Page")
+      RecordingStudioMcp.register_type(type: "Folder", description: "")
+      ensure_tree_server(:public)
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
       parents = lambda { |type|
         type.to_s == "Page" ? ["Folder"] : []
       }
 
       described = RecordingStudio.stub(:allowed_parent_types_for, parents) { catalog.describe("Folder") }
+      documented = RecordingStudio.stub(:allowed_parent_types_for, parents) { catalog.documentation_type("Folder") }
       relationship = described.fetch("relationships").find { |entry| entry["name"] == "pages" }
 
-      assert_equal ["name"], described.fetch("output_keys")
-      assert_equal ["headline"], described.fetch("fields")
+      assert_equal ["name"], documented.fetch("output_keys")
+      assert_equal ["headline"], documented.fetch("fields")
       assert_equal "children", relationship.fetch("source")
       assert_equal "Page", relationship.fetch("child_type")
       assert_equal true, relationship.fetch("many")
       assert_equal ["title"], relationship.fetch("output_keys")
       assert_equal "Pages in this folder", relationship.fetch("description")
-      assert_includes described.fetch("allowed_children"), "Page"
+      assert_includes documented.fetch("allowed_children"), "Page"
       refute described.key?("metrics")
     end
   end
@@ -403,12 +409,15 @@ class CatalogTest < Minitest::Test
         }
       )
       register_tree_type("Page")
+      RecordingStudioMcp.register_type(type: "Folder", description: "")
+      ensure_tree_server(:public)
       described = RecordingStudioMcp::Catalog.new(api: :public).describe("Folder")
+      documented = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Folder")
       names = described.fetch("relationships").map { |entry| entry["name"] }
 
       assert_equal ["pages"], names
-      assert_equal ["Page"], described.fetch("allowed_children")
-      refute_includes described.fetch("allowed_children"), "Article"
+      assert_equal ["Page"], documented.fetch("allowed_children")
+      refute_includes documented.fetch("allowed_children"), "Article"
     end
   end
 
@@ -422,7 +431,7 @@ class CatalogTest < Minitest::Test
             type: type,
             registration: registration,
             access_grant: access_grant,
-            operations: payload["operations"]
+            tools: payload["tools"]
           }
           payload.merge("hint" => "list sections with parent_id")
         }
@@ -430,7 +439,7 @@ class CatalogTest < Minitest::Test
         described = RecordingStudioMcp::Catalog.new(api: :public, access_grant: grant).describe("Page")
 
         assert_equal "list sections with parent_id", described.fetch("hint")
-        assert described.key?("operations")
+        assert described.key?("tools")
         assert_equal "Page", seen.fetch(:type)
         assert_equal "Page", seen.fetch(:registration).recordable_type
         assert_same grant, seen.fetch(:access_grant)
@@ -464,7 +473,7 @@ class CatalogTest < Minitest::Test
           described = catalog.describe("Page")
 
           assert_equal default, described
-          assert described.key?("operations")
+          assert described.key?("tools")
         end
       end
     end
@@ -528,7 +537,7 @@ class CatalogTest < Minitest::Test
       RecordingStudioApi.configuration.api(:operations)
       register_tree_type("RecordingStudioPresskits::PressKit")
       register_tree_type("Folder")
-      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations, allow_sensitive: true)
       with_public_name("RecordingStudioPresskits::PressKit", :public, "Kit") do
         catalog = RecordingStudioMcp::Catalog.new(api: :public)
         operations = RecordingStudioMcp::Catalog.new(api: :operations)
@@ -564,6 +573,8 @@ class CatalogTest < Minitest::Test
         operations: %i[index show],
         public_name: " "
       )
+      RecordingStudioMcp.register_type(type: "RecordingStudioPresskits::PressKit", description: "")
+      ensure_tree_server(:public)
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       assert_equal "PressKit", RecordingStudioApi.recordable_registration_for(

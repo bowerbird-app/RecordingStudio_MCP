@@ -10,6 +10,16 @@ module RecordingStudioMcp
       stringify(property)
     end
 
+    def copy_nested(field, *keys)
+      keys.each_with_object({}) do |key, copied|
+        value = field.respond_to?(:[]) ? field[key] || field[key.to_s] : nil
+        next if value.nil?
+
+        fragment = copy(value)
+        copied[key] = fragment.respond_to?(:deep_symbolize_keys) ? fragment.deep_symbolize_keys : fragment
+      end
+    end
+
     def stringify(value)
       case value
       when Hash

@@ -30,16 +30,10 @@ module RecordingStudioMcp
       DESCRIBE_PROPERTIES = {
         type: { type: "string" },
         description: { type: "string" },
-        operations: { type: "array", items: { type: "string" } },
-        writable_fields: { type: "array", items: ACTION },
-        sortable_fields: { type: "array", items: { type: "string" } },
-        capability_actions: { type: "array", items: CAPABILITY_ACTION },
-        nesting: { type: "string" },
-        output_keys: { type: "array", items: { type: "string" } },
-        fields: { type: "array", items: { type: "string" } },
+        tools: { type: "array", items: { type: "string" } },
+        skills: { type: "array", items: { type: "string" } },
         relationships: { type: "array", items: ACTION },
-        allowed_children: { type: "array", items: { type: "string" } },
-        parent: ACTION
+        nesting: { type: "string" }
       }.freeze
       METRIC_POINT = {
         type: "object",

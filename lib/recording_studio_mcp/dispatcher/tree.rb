@@ -19,10 +19,26 @@ module RecordingStudioMcp
       validate_index_arguments!(args) if operation_name == :index
       recordable_type = catalog.resolve_type!(args["type"])
       reject_disabled_operation!(recordable_type, operation_name)
-      handler = resource_handler(recordable_type, operation_name)
-      return call_resource_handler(handler, recordable_type, operation_name, args) if handler
+      lookup = resource_lookup(recordable_type, operation_name)
+      if custom_lookup?(lookup, recordable_type, operation_name)
+        call_resource_handler(lookup.handler, recordable_type, operation_name, args)
+      else
+        call_builtin_resource(recordable_type, operation_name, args, handler: lookup.handler)
+      end
+    end
 
-      call_builtin_resource(recordable_type, operation_name, args)
+    def resource_lookup(recordable_type, operation_name)
+      lookup = RecordingStudioApi.lookup(api: api_key, recordable_type: recordable_type, operation: operation_name)
+      if lookup.nil?
+        raise RecordingStudioApi::UnsupportedActionError, "Unknown API resource operation #{operation_name}"
+      end
+
+      lookup
+    end
+
+    def custom_lookup?(lookup, recordable_type, operation_name)
+      custom = RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
+      lookup.handler && custom && lookup.handler == custom
     end
 
     def reject_disabled_operation!(recordable_type, operation_name)
@@ -31,10 +47,6 @@ module RecordingStudioMcp
 
       shown = catalog.displayed_type_name(recordable_type)
       raise RecordingStudioApi::UnsupportedActionError, "#{operation_name} is not enabled for #{shown}"
-    end
-
-    def resource_handler(recordable_type, operation_name)
-      RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
     end
 
     def call_resource_handler(handler, recordable_type, operation_name, args)
@@ -46,64 +58,10 @@ module RecordingStudioMcp
       render_handler_result(result)
     end
 
-    def call_builtin_resource(recordable_type, operation_name, args)
-      operation = RecordingStudioApi.resource_action(operation_name, version: api_version, api: api_key)
-      if operation.nil?
-        raise RecordingStudioApi::UnsupportedActionError, "Unknown API resource operation #{operation_name}"
-      end
-
+    def call_builtin_resource(recordable_type, operation_name, args, handler:)
       recording = builtin_member_recording_for(operation_name, recordable_type, args["id"])
       context = resource_context(recordable_type, args, recording: recording, operation_name: operation_name)
-      success_result(operation.handler.call(context).fetch(:json))
-    end
-
-    def dispatch_capability_action(args)
-      recordable_type = catalog.resolve_type!(args["type"])
-      action = enabled_capability_action!(recordable_type, args["action"].to_s)
-      handler = resource_handler(recordable_type, action.name)
-      return call_capability_handler(handler, args, action, recordable_type) if handler
-
-      run_capability_action(recordable_type, args, action)
-    end
-
-    def call_capability_handler(handler, args, action, recordable_type)
-      guarded = handler_scope { capability_guard(recordable_type, action, args) }
-      return scope_miss_result unless guarded
-
-      context = capability_context(guarded.recording, args, action, recordable_type)
-      result = replay_creating_action(action, recordable_type, context) { handler.call(context) }
-      render_handler_result(result)
-    end
-
-    def run_capability_action(recordable_type, args, action)
-      recording = load_recording(recordable_type, args["id"])
-      authorize_capability!(recording, action)
-      context = action_context(recording, args, action)
-      result = replay_creating_action(action, recordable_type, context) do
-        called = action.handler.call(context)
-        { json: serialize_capability_result(action, called, args), status: :ok }
-      end
-      success_result(result.fetch(:json))
-    end
-
-    def enabled_capability_action!(recordable_type, action_name)
-      raise RecordingStudioApi::InvalidActionInputError, "action is required" if action_name.blank?
-
-      action = RecordingStudioApi.capability_action(action_name, version: api_version, api: api_key)
-      enabled = action && RecordingStudioApi.capability_action_enabled_for?(action, recordable_type, api: api_key)
-      return action if enabled
-
-      raise RecordingStudioApi::UnsupportedActionError, catalog.unknown_action_message(action_name, recordable_type)
-    end
-
-    def authorize_capability!(recording, action)
-      required_role = RecordingStudioApi.configuration.capability_action_role_for(
-        action: action,
-        recording: recording,
-        api_client: access_grant.api_client,
-        access_grant: access_grant
-      )
-      access_grant.authorize!(recording: recording, role: required_role) if required_role.present?
+      success_result(handler.call(context).fetch(:json))
     end
 
     def builtin_member_recording_for(operation_name, recordable_type, id)

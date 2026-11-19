@@ -46,7 +46,7 @@ module RecordingStudioMcp
     def describe_line(surface)
       return unless surface.tree_enabled? && surface.tree_tool_names.include?("describe")
 
-      line = "Call describe on a type for allowed children, actions, and values"
+      line = "Call the docs for writable fields, children, and actions"
       before = describe_before(surface.tree_tool_names)
       return "#{line}." if before.nil?
 

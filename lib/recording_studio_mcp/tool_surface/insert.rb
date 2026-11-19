@@ -2,109 +2,101 @@
 
 module RecordingStudioMcp
   class ToolSurface
+    include InsertMetrics
+    include InsertEndpoints
+
     private
 
-    def advertised_endpoints(catalog)
-      Array(catalog.registered_endpoints).sort_by { |endpoint| endpoint.name.to_s }.select do |endpoint|
-        advertise_endpoint?(endpoint)
-      end
-    end
-
-    def advertise_endpoint?(endpoint)
-      name = endpoint.name.to_s
-      name.match?(TOOL_NAME) && Tools::TREE_NAMES.exclude?(name)
-    end
-
-    def insert_tree_tools
-      return unless tree_enabled?
-
-      Tools.tree_definitions(catalog).each do |definition|
-        insert(definition.fetch(:name), Entry.new(family: :tree, definition: definition))
-      end
-    end
-
-    def insert_metric_tools
-      recordable = MetricTools.collect_recordable(catalog)
-      recordable = [] if recordable.empty? || !metric_view_allowed?
-      catalog_metrics = MetricTools.collect_catalog(catalog, @access_grant)
-      (recordable + catalog_metrics).each do |metric|
-        insert(metric.name.to_s, metric_entry(metric))
-      end
-    end
-
-    def metric_view_allowed?
-      return true if @access_grant.nil?
-
-      recording = @access_grant.scope_recording || @access_grant.root_recording
-      @access_grant.authorized?(recording: recording, role: :view)
-    end
-
-    def insert_endpoint_tools
-      @endpoints.each do |endpoint|
-        insert(endpoint.name.to_s, endpoint_entry(endpoint))
-      end
-    end
-
-    def metric_entry(metric)
-      Entry.new(
-        family: :metric,
-        definition: Tools.metric_tool(metric),
-        metric: metric
+    def insert_describe
+      insert(
+        Catalogs::DESCRIBE_NAME,
+        Entry.new(family: :tree, definition: Tools.describe_tool(catalog))
       )
     end
 
-    def endpoint_entry(endpoint)
-      Entry.new(
-        family: :endpoint,
-        definition: Tools.endpoint_tool(endpoint, api: catalog.api),
-        endpoint: endpoint
+    def insert_server_tools
+      insert_generic_tools
+      insert_describe
+      return unless server
+
+      server.tools.each_value do |tool|
+        next if Catalogs::GENERIC_NAMES.include?(tool.name)
+
+        insert_built_tool(tool)
+      end
+    end
+
+    def insert_generic_tools
+      return unless server
+
+      Catalogs::GENERIC_NAMES.each do |name|
+        tool = server.tool(name)
+        insert_built_tool(tool) if tool
+      end
+    end
+
+    def insert_built_tool(tool)
+      if tool.metric
+        metric = live_metric(tool.name)
+        insert(tool.name, metric_entry(metric)) if metric
+      elsif tool.registration&.target&.endpoint?
+        insert_endpoint_tool(tool)
+      elsif Catalogs::GENERIC_NAMES.include?(tool.name)
+        insert_generic_tool(tool)
+      else
+        insert_typed_tool(tool)
+      end
+    end
+
+    def insert_generic_tool(tool)
+      return unless advertise_generic?(tool.name)
+
+      definition = Tools.public_send("#{tool.name}_tool", catalog)
+      definition = SchemaFromContract.overlay_tool(
+        definition,
+        title: tool.title,
+        description: overlay_description(tool)
       )
+      copy = tool.registration&.input || {}
+      SchemaFromContract.overlay_copy(definition[:inputSchema][:properties], copy)
+      insert(tool.name, Entry.new(family: :tree, definition: definition))
+    end
+
+    def overlay_description(tool)
+      stock = GenericTools::DEFINITIONS.find { |item| item.fetch(:name) == tool.name }
+      return if stock && tool.description == stock[:description]
+
+      tool.description
+    end
+
+    def advertise_generic?(name)
+      return catalog.capability_actions? if name == "capability_action"
+
+      operation = Tools::TREE_OPERATION_TOOLS.key(name)
+      operation && catalog.visible_operations.map(&:to_sym).include?(operation)
+    end
+
+    def insert_typed_tool(tool)
+      definition = Tools.registered_tool(tool, catalog)
+      insert(tool.name, Entry.new(family: :tree, definition: definition))
     end
 
     def insert(name, entry)
       key = name.to_s
       if metric_family?(entry) && blocked_metric_name?(key)
-        warn_skipped_tool(key, blocked_metric_reason(key))
+        MetricTools.warn_skipped(key, blocked_metric_reason(key))
         return
-      end
-      if entry.family != :tree && Tools::TREE_NAMES.include?(key)
-        raise RecordingStudioApi::ConfigurationError, reserved_name_message(key, entry)
       end
       raise RecordingStudioApi::ConfigurationError, duplicate_name_message(key, entry) if @by_name.key?(key)
 
       @by_name[key] = entry
     end
 
-    def blocked_metric_name?(key)
-      Tools::TREE_NAMES.include?(key) || endpoint_name?(key) || @by_name.key?(key)
-    end
-
-    def endpoint_name?(key)
-      @endpoints.any? { |endpoint| endpoint.name.to_s == key }
-    end
-
-    def blocked_metric_reason(key)
-      return "name collides with a tree tool" if Tools::TREE_NAMES.include?(key)
-      return "name collides with an endpoint tool" if endpoint_name?(key)
-
-      "name collides with an existing tool"
-    end
-
-    def warn_skipped_tool(name, reason)
-      MetricTools.warn_skipped(name, reason)
-    end
-
-    def reserved_name_message(name, entry)
-      return "Registered endpoint names collide with tree tools: #{name}" if entry.family == :endpoint
-
-      "Recordable metric tool #{name} collides with a tree tool"
-    end
-
     def duplicate_name_message(name, entry)
       if entry.family == :endpoint
         "Registered endpoint name #{name} collides with an existing tool"
       else
-        "Recordable metric tool #{name} collides with an existing tool"
+        "Tool #{name} collides with an existing tool"
       end
     end
   end

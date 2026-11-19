@@ -54,18 +54,38 @@ module RecordingStudioMcp
     end
 
     def dispatch_known(name, arguments)
-      metric = surface.metric_tool(name)
-      if metric
-        return wrap_metric(
-          metric,
-          MetricTools.execute(metric, arguments, access_grant, progress_reporter: progress_reporter)
-        )
-      end
-
       args = stringify_keys(arguments)
+      metric = surface.metric_tool(name)
+      return execute_metric(metric, args) if metric
       return dispatch_tree(name, args) if surface.tree_tool?(name)
 
+      built = surface.server&.tool(name)
+      return dispatch_registered(built, args) if built&.registration
+
       dispatch_endpoint(surface.endpoint_for(name), args)
+    end
+
+    def execute_metric(metric, args)
+      wrap_metric(metric, MetricTools.execute(metric, args, access_grant, progress_reporter: progress_reporter))
+    end
+
+    def dispatch_registered(built, args)
+      registration = built.registration
+      return dispatch_endpoint(surface.endpoint_for(built.name), args) if registration.target.endpoint?
+
+      forced = args.merge(forced_registration_args(registration))
+      if registration.target.operation?
+        dispatch_resource(registration.target.value, forced)
+      else
+        dispatch_capability_action(forced)
+      end
+    end
+
+    def forced_registration_args(registration)
+      forced = {}
+      forced["type"] = registration.type if registration.type.present?
+      forced["action"] = registration.target.value.to_s if registration.target.action?
+      forced
     end
 
     def wrap_metric(tool, result)
@@ -78,6 +98,7 @@ end
 
 require "recording_studio_mcp/dispatcher/handler_scope"
 require "recording_studio_mcp/dispatcher/tree"
+require "recording_studio_mcp/dispatcher/capability"
 require "recording_studio_mcp/dispatcher/endpoint"
 require "recording_studio_mcp/dispatcher/contexts"
 require "recording_studio_mcp/dispatcher/idempotency"

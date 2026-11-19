@@ -92,13 +92,14 @@ class ToolSurfaceTest < Minitest::Test
         path: "shout",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
       assert_equal false, surface.tree_enabled?
       assert_equal true, surface.endpoints_enabled?
       assert_equal false, surface.tree_tool?("list")
       assert_equal true, surface.known?("ping")
-      assert_equal %w[ping shout], surface.tool_names
+      assert_equal %w[describe ping shout], surface.tool_names
       assert_equal :get, surface.endpoint_for("ping").http_verb
       assert_equal true, surface.read_only_tool?("ping")
       assert_equal false, surface.read_only_tool?("shout")
@@ -114,6 +115,7 @@ class ToolSurfaceTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
       assert_equal false, surface.metric_tools?
@@ -137,6 +139,8 @@ class ToolSurfaceTest < Minitest::Test
           path: "alpha",
           handler: ->(_context) { { ok: true } }
         )
+        include_metric_server
+        include_api_endpoints(tree: true)
         surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
         assert_equal(
@@ -173,6 +177,8 @@ class ToolSurfaceTest < Minitest::Test
           path: "folders-total",
           handler: ->(_context) { { ok: true } }
         )
+        include_metric_server
+        include_api_endpoints(tree: true)
         surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
         assert_includes surface.tool_names, "folders-total"
@@ -216,6 +222,7 @@ class ToolSurfaceTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
       assert_equal %w[list describe ping], surface.tool_names
@@ -231,6 +238,7 @@ class ToolSurfaceTest < Minitest::Test
         required_role: :edit,
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       dotted = RecordingStudioMcp::ToolSurface.for(api: "public")
       assert_equal true, dotted.known?("presskits.edit")
     end
@@ -276,7 +284,7 @@ class ToolSurfaceTest < Minitest::Test
 
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:docs)
-      register_tree_type("Article", api: :docs, operations: nil)
+      register_tree_type("Article", api: :docs, operations: nil, allow_sensitive: true)
       read_only = RecordingStudioMcp::ToolSurface.for(api: "docs")
 
       assert_equal %w[list show describe], read_only.tool_names
@@ -284,7 +292,7 @@ class ToolSurfaceTest < Minitest::Test
 
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:docs).default_access = :read_write
-      register_tree_type("Note", api: :docs, operations: nil)
+      register_tree_type("Note", api: :docs, operations: nil, allow_sensitive: true)
       writable = RecordingStudioMcp::ToolSurface.for(api: "docs")
 
       assert_includes writable.tool_names, "delete"

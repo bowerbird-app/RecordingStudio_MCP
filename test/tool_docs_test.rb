@@ -8,15 +8,14 @@ class ToolDocsTest < Minitest::Test
   def test_describe_output_schema_includes_action_title_and_summary
     schema = RecordingStudioMcp::ToolDocs.describe_output_schema
     properties = schema.fetch(:properties)
-    action = properties.fetch(:capability_actions).fetch(:items).fetch(:properties)
 
     assert_equal "string", properties.dig(:description, :type)
-    assert_equal "string", action.dig(:name, :type)
-    assert_equal "string", action.dig(:title, :type)
-    assert_equal "string", action.dig(:summary, :type)
-    assert_equal "string", action.dig(:description, :type)
-    assert_equal "string", action.dig(:idempotency_key, :type)
+    assert_equal "array", properties.dig(:tools, :type)
+    assert_equal "string", properties.dig(:tools, :items, :type)
+    assert_equal "array", properties.dig(:skills, :type)
+    assert_equal "array", properties.dig(:relationships, :type)
     assert_equal "string", properties.dig(:nesting, :type)
+    refute properties.key?(:capability_actions)
   end
 
   def test_type_tags_use_registered_endpoint_tags_not_the_scalar_group

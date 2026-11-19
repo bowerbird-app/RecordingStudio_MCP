@@ -18,7 +18,7 @@ class ToolsTest < Minitest::Test
       assert_equal "array", list.dig(:outputSchema, :properties, :records, :type)
       describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
       assert describe.key?(:outputSchema)
-      assert_includes describe[:description], "Each type's describe output lists its allowed operations"
+      assert_includes describe[:description], "Returns the type paragraph, included tools, skills, and relationships."
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "Call describe before"
     end
@@ -49,48 +49,38 @@ class ToolsTest < Minitest::Test
   end
 
   def test_definitions_with_empty_types_and_endpoints_are_endpoint_tools_only
-    with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
-        :zeta,
-        http_verb: :get,
-        path: "zeta",
-        handler: ->(_context) { { ok: true } }
-      )
-      RecordingStudioApi.register_endpoint(
-        :alpha,
-        http_verb: :post,
-        path: "alpha/:name",
-        handler: ->(_context) { { ok: true } }
-      )
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_mcp_endpoint_tool(:zeta, http_verb: :get, path: "zeta", handler: ->(_context) { { ok: true } })
+        register_mcp_endpoint_tool(
+          :alpha,
+          http_verb: :post,
+          path: "alpha/:name",
+          handler: ->(_context) { { ok: true } }
+        )
+        RecordingStudioMcp.register_server(:public, api: :public) { include_tools :alpha, :zeta }
 
-      tools = RecordingStudioMcp::Tools.definitions
-      names = tools.map { |tool| tool[:name] }
+        tools = RecordingStudioMcp::Tools.definitions
+        names = tools.map { |tool| tool[:name] }
 
-      assert_equal %w[alpha zeta], names
-      refute_includes names, "list"
-      refute_includes names, "describe"
+        assert_equal %w[describe alpha zeta], names
+        refute_includes names, "list"
+      end
     end
   end
 
   def test_mixed_definitions_put_tree_tools_before_sorted_endpoints
-    with_isolated_api_configuration do
-      register_tree_type("Page")
-      RecordingStudioApi.register_endpoint(
-        :zeta,
-        http_verb: :get,
-        path: "zeta",
-        handler: ->(_context) { { ok: true } }
-      )
-      RecordingStudioApi.register_endpoint(
-        :alpha,
-        http_verb: :get,
-        path: "alpha",
-        handler: ->(_context) { { ok: true } }
-      )
+    with_isolated_mcp_configuration do
+      with_isolated_api_configuration do
+        register_tree_type("Page")
+        register_mcp_endpoint_tool(:zeta, http_verb: :get, path: "zeta", handler: ->(_context) { { ok: true } })
+        register_mcp_endpoint_tool(:alpha, http_verb: :get, path: "alpha", handler: ->(_context) { { ok: true } })
+        ensure_tree_server(:public, extra_tools: %w[alpha zeta])
 
-      names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
+        names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update describe] + %w[alpha zeta], names
+        assert_equal %w[list show create update describe alpha zeta], names
+      end
     end
   end
 
@@ -114,7 +104,7 @@ class ToolsTest < Minitest::Test
       sort = tool.dig(:inputSchema, :properties, :sort)
 
       assert_equal "string", sort.fetch(:type)
-      assert_includes sort.fetch(:description), "sortable field from describe"
+      assert_includes sort.fetch(:description), "sortable field from the docs"
       assert_includes sort.fetch(:description), "created_at"
       assert_includes sort.fetch(:description), "default"
       assert_includes sort.fetch(:description), "order sets the direction"
@@ -186,6 +176,7 @@ class ToolsTest < Minitest::Test
         assert_equal false, tool.dig(:annotations, :destructiveHint), tool[:name]
         assert_equal false, tool.dig(:annotations, :openWorldHint), tool[:name]
         assert_includes tool[:description], "Changes data"
+        assert_includes tool[:description], "Send writable fields at the root"
       end
 
       assert_equal true, create.dig(:annotations, :idempotentHint)
@@ -196,6 +187,7 @@ class ToolsTest < Minitest::Test
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
       assert_includes action[:description], "destructively change data"
+      assert_includes action[:description], "Call the docs for the type"
       assert_equal(
         "Optional. On an action flagged creates: true, the same key and the same input " \
         "return the first result. A different input with that key is refused. " \
@@ -214,7 +206,7 @@ class ToolsTest < Minitest::Test
 
       assert_equal %w[list show describe], names
       describe = tools.find { |tool| tool[:name] == "describe" }
-      assert_includes describe[:description], "Each type's describe output lists its allowed operations"
+      assert_includes describe[:description], "Returns the type paragraph, included tools, skills, and relationships."
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "before create"
     end
@@ -267,6 +259,11 @@ class ToolsTest < Minitest::Test
           }
         }
       )
+      RecordingStudioMcp.register_type(type: "Article", description: "Article records.")
+      %w[Page Article].each do |type|
+        RecordingStudioApi.register_resource_handler(type, :create, handler: ->(_) { { json: {} } })
+      end
+      ensure_tree_server(:public)
 
       tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
       schema = tool.fetch(:inputSchema)
@@ -279,22 +276,29 @@ class ToolsTest < Minitest::Test
       assert schema[:properties].key?(:parent_id)
       assert schema[:properties].key?(:idempotency_key)
       refute schema[:properties].key?(:title)
+      page_title = clauses.fetch("Page").dig(:then, :properties, :title)
+      article_body = clauses.fetch("Article").dig(:then, :properties, :body)
       assert_equal ["title"], clauses.fetch("Page").dig(:then, :required)
-      assert_equal "string", clauses.fetch("Page").dig(:then, :properties, :title, :type)
-      assert_equal "Page title.", clauses.fetch("Page").dig(:then, :properties, :title, :description)
+      assert_equal "string", page_title[:type]
+      assert_equal "Page title.", page_title[:description]
+      assert_equal 1, page_title[:minLength]
       assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
-      assert_equal %w[short long], clauses.fetch("Article").dig(:then, :properties, :body, :enum)
+      assert_equal "string", article_body[:type]
+      assert_equal %w[short long], article_body[:enum]
     end
   end
 
   def test_create_and_update_keep_nested_field_schema
     with_isolated_api_configuration do
       register_menu_section
+      RecordingStudioMcp.register_type(type: "MenuSection", description: "Menu section records.")
+      %i[create update].each do |operation|
+        RecordingStudioApi.register_resource_handler("MenuSection", operation, handler: ->(_) { { json: {} } })
+      end
+      ensure_tree_server(:public)
       create_clause = type_clause("create", "MenuSection")
       update_clause = type_clause("update", "MenuSection")
       items = create_clause.dig(:then, :properties, :items)
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("MenuSection")
-      field = described.fetch("writable_fields").find { |entry| entry["name"] == "items" }
 
       assert_equal ["title"], create_clause.dig(:then, :required)
       assert_nil update_clause.dig(:then, :required)
@@ -305,10 +309,40 @@ class ToolsTest < Minitest::Test
       assert_equal "boolean", items.dig(:additionalProperties, "properties", "hidden", "type")
       assert_equal [], items.dig(:additionalProperties, "required")
       assert_equal [{ "hero" => { "hidden" => false } }], items[:examples]
-      assert_equal items[:additionalProperties], field["additionalProperties"]
-      assert_equal items[:examples], field["examples"]
-      assert_equal false, field["required"]
       assert_equal items, update_clause.dig(:then, :properties, :items)
+    end
+  end
+
+  def test_typed_create_schema_matches_generic_create_for_the_same_type
+    with_isolated_api_configuration do
+      register_tree_type(
+        "Page",
+        openapi: {
+          details_schema: {
+            properties: {
+              title: { type: "string", minLength: 1 }
+            },
+            required: ["title"]
+          }
+        }
+      )
+      RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: {} } })
+      RecordingStudioMcp.register_tool(
+        name: "page_create",
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Create a page.",
+        input: {},
+        output: "the page"
+      )
+      ensure_tree_server(:public, extra_tools: %w[page_create])
+
+      generic = type_clause("create", "Page").fetch(:then)
+      typed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }.fetch(:inputSchema)
+
+      assert_equal generic.fetch(:properties), typed.fetch(:properties)
+      assert_equal generic.fetch(:required), typed.fetch(:required)
     end
   end
 

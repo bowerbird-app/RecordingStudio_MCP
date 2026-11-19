@@ -23,11 +23,27 @@ class DispatcherTest < Minitest::Test
     def scope_recording
       access_recording.respond_to?(:parent_recording) ? access_recording.parent_recording : root_recording
     end
+
+    def authorized?(**)
+      !deny_authorization
+    end
   end
   FakeClient = Struct.new(:api_key)
   FakeRegistration = Struct.new(:enabled) do
     def supports_operation?(_name)
       enabled
+    end
+
+    def sensitive_operation?(*)
+      false
+    end
+
+    def writable_attributes
+      %w[title]
+    end
+
+    def openapi
+      {}
     end
 
     def metric_names
@@ -136,6 +152,10 @@ class DispatcherTest < Minitest::Test
     def list_parent_id?
       false
     end
+
+    def resolved_server
+      RecordingStudioMcp.configuration.catalogs.server_for(api: api)
+    end
   end
 
   class PublicTypeCatalog < FakeCatalog
@@ -186,6 +206,8 @@ class DispatcherTest < Minitest::Test
   end
 
   def setup
+    @lookup_handler_calls = 0
+    @lookup_sensitive = false
     @grant = FakeGrant.new(
       api_client: FakeClient.new("public"),
       credential: nil,
@@ -194,6 +216,7 @@ class DispatcherTest < Minitest::Test
       accessible_recordings: []
     )
     @catalog = FakeCatalog.new("public")
+    ensure_tree_server(:public)
   end
 
   def test_unknown_tool_is_error
@@ -245,9 +268,31 @@ class DispatcherTest < Minitest::Test
               result = dispatch("list", { type: "Workspace" })
 
               refute result[:isError]
+              assert_operator @lookup_handler_calls, :>=, 1
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
               payload = JSON.parse(result.dig(:content, 0, :text))
               assert_equal "Studio", payload.dig("records", 0, "name")
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_sensitive_lookup_handler_still_runs
+    @lookup_sensitive = true
+    operation = FakeOperation.new(FakeHandler.new({ json: { records: [{ name: "Studio" }] } }))
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :index ? operation : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { type: "Workspace" })
+
+              refute result[:isError]
+              assert_operator @lookup_handler_calls, :>=, 1
+              assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
             end
           end
         end
@@ -696,11 +741,7 @@ class DispatcherTest < Minitest::Test
           RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :destroy ? operation : nil }) do
             RecordingStudioApi.stub(:resource_name_for, "pages") do
               RecordingStudioApi.stub(:default_api_version, "v1") do
-                result = RecordingStudioMcp::Dispatcher.call(
-                  tool_name: "delete",
-                  arguments: { type: "Page", id: "rec-1" },
-                  access_grant: grant
-                )
+                result = call_as(grant, "delete", { type: "Page", id: "rec-1" })
 
                 refute result[:isError]
                 assert_equal true, result.dig(:structuredContent, "deleted")
@@ -739,11 +780,7 @@ class DispatcherTest < Minitest::Test
           RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :show ? show : nil }) do
             RecordingStudioApi.stub(:resource_name_for, "pages") do
               RecordingStudioApi.stub(:default_api_version, "v1") do
-                result = RecordingStudioMcp::Dispatcher.call(
-                  tool_name: "show",
-                  arguments: { type: "Page", id: "rec-1" },
-                  access_grant: grant
-                )
+                result = call_as(grant, "show", { type: "Page", id: "rec-1" })
 
                 assert result[:isError]
                 assert_includes result.dig(:content, 0, :text), "Resource was not found in this API scope"
@@ -880,11 +917,7 @@ class DispatcherTest < Minitest::Test
         }) do
           RecordingStudioApi.stub(:resource_name_for, "pages") do
             RecordingStudioApi.stub(:default_api_version, "v1") do
-              result = RecordingStudioMcp::Dispatcher.call(
-                tool_name: "create",
-                arguments: { type: "Page", title: "Hello", idempotency_key: "create-1" },
-                access_grant: @grant
-              )
+              result = dispatch("create", { type: "Page", title: "Hello", idempotency_key: "create-1" })
 
               refute result[:isError]
               assert_equal "create-1", captured.idempotency_key
@@ -914,6 +947,11 @@ class DispatcherTest < Minitest::Test
         capability: :accessible,
         handler: ->(_context) { recording }
       )
+      RecordingStudioMcp.register_type(
+        type: "GrantFieldNote",
+        description: "A note used to assert grant-backed fields."
+      )
+      ensure_tree_server(:public)
       @grant.accessible_recordings = FakeRelation.new(recording)
 
       result = dispatch(
@@ -953,7 +991,7 @@ class DispatcherTest < Minitest::Test
   def test_endpoint_dispatch_returns_handler_payload
     captured = nil
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      mcp_endpoint(
         :echo,
         http_verb: :post,
         path: "echo/:key",
@@ -975,7 +1013,7 @@ class DispatcherTest < Minitest::Test
 
   def test_endpoint_serializer_wraps_handler_result
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      mcp_endpoint(
         :shout,
         http_verb: :post,
         path: "shout",
@@ -992,7 +1030,7 @@ class DispatcherTest < Minitest::Test
 
   def test_endpoint_input_contract_failure_is_tool_error
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      register_mcp_endpoint_tool(
         :shout,
         http_verb: :post,
         path: "shout",
@@ -1003,6 +1041,7 @@ class DispatcherTest < Minitest::Test
         },
         handler: ->(_context) { { ok: true } }
       )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :shout }
 
       result = dispatch("shout", {})
 
@@ -1013,7 +1052,7 @@ class DispatcherTest < Minitest::Test
 
   def test_endpoint_contract_errors_are_named_in_the_tool_message
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      register_mcp_endpoint_tool(
         :shout,
         http_verb: :post,
         path: "shout",
@@ -1024,6 +1063,7 @@ class DispatcherTest < Minitest::Test
         },
         handler: ->(_context) { { ok: true } }
       )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :shout }
 
       result = dispatch("shout", { foo: "bar" })
 
@@ -1036,12 +1076,13 @@ class DispatcherTest < Minitest::Test
 
   def test_endpoint_missing_path_token_is_tool_error
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      register_mcp_endpoint_tool(
         :echo,
         http_verb: :post,
         path: "echo/:key",
         handler: ->(_context) { { ok: true } }
       )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :echo }
 
       result = dispatch("echo", {})
 
@@ -1052,19 +1093,20 @@ class DispatcherTest < Minitest::Test
 
   def test_unknown_tool_on_catalog_only_host_lists_endpoint_names
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      register_mcp_endpoint_tool(
         :echo,
         http_verb: :get,
         path: "echo",
         handler: ->(_context) { { ok: true } }
       )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :echo }
 
       result = dispatch("explode", {})
 
       assert result[:isError]
       assert_includes result.dig(:content, 0, :text), "Unknown tool explode"
       assert_includes result.dig(:content, 0, :text), "echo"
-      refute_includes result.dig(:content, 0, :text), "describe"
+      assert_includes result.dig(:content, 0, :text), "describe"
     end
   end
 
@@ -1082,7 +1124,7 @@ class DispatcherTest < Minitest::Test
     )
 
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      mcp_endpoint(
         :demo_progress,
         http_verb: :get,
         path: "demo-progress",
@@ -1093,12 +1135,7 @@ class DispatcherTest < Minitest::Test
         }
       )
 
-      result = RecordingStudioMcp::Dispatcher.call(
-        tool_name: "demo_progress",
-        arguments: {},
-        access_grant: @grant,
-        request_context: context
-      )
+      result = dispatch("demo_progress", {}, request_context: context)
 
       refute result[:isError]
       assert_equal true, result.dig(:structuredContent, "done")
@@ -1111,7 +1148,7 @@ class DispatcherTest < Minitest::Test
     captured = nil
 
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      mcp_endpoint(
         :demo_progress,
         http_verb: :get,
         path: "demo-progress",
@@ -1126,6 +1163,55 @@ class DispatcherTest < Minitest::Test
       refute result[:isError]
       assert_nil captured.progress_reporter
       assert_equal false, captured.cancelled?
+    end
+  end
+
+  def test_client_sent_type_and_action_are_ignored_for_registered_tools
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show], capability_actions: %i[inspect])
+      register_tree_type("Folder", operations: %i[show])
+      RecordingStudioApi.register_capability_action(
+        :inspect,
+        capability: :accessible,
+        handler: ->(_context) { { json: { action: "inspect" } } }
+      )
+      shown = nil
+      RecordingStudioApi.register_resource_handler("Page", :show, handler: lambda { |context|
+        shown = context.recordable_type
+        { json: { id: "1", type: context.recordable_type } }
+      })
+      RecordingStudioApi.register_resource_handler("Folder", :show, handler: lambda { |_context|
+        { json: { id: "2", type: "Folder" } }
+      })
+      RecordingStudioMcp.register_tool(
+        name: "page_show",
+        type: "Page",
+        operation: :show,
+        title: "Show page",
+        description: "Show a page.",
+        input: {},
+        output: "the page"
+      )
+      RecordingStudioMcp.register_tool(
+        name: "page_inspect",
+        type: "Page",
+        action: :inspect,
+        title: "Inspect page",
+        description: "Inspect a page.",
+        input: {},
+        output: "the result"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_show, :page_inspect }
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      shown_result = dispatch("page_show", { type: "Folder", id: "1" })
+      inspect_result = dispatch("page_inspect", { type: "Folder", id: "1", action: "missing" })
+
+      refute shown_result[:isError]
+      assert_equal "Page", shown
+      assert_equal "Page", shown_result.dig(:structuredContent, "type")
+      refute inspect_result[:isError]
+      assert_equal "inspect", inspect_result.dig(:structuredContent, "action")
     end
   end
 
@@ -1163,11 +1249,7 @@ class DispatcherTest < Minitest::Test
       nested = dispatch("list", { type: "Page", filter: { name: { nested: "x" } } })
       listed = dispatch("list", { type: "Page", filter: ["name"] })
       limited = dispatch("list", { type: "Page", limit: { n: 1 } })
-      arguments = RecordingStudioMcp::Dispatcher.call(
-        tool_name: "list",
-        arguments: [1],
-        access_grant: @grant
-      )
+      arguments = dispatch("list", [1])
 
       assert nested[:isError]
       assert_includes nested.dig(:content, 0, :text), "Invalid filter"
@@ -1333,14 +1415,14 @@ class DispatcherTest < Minitest::Test
     }
 
     with_isolated_api_configuration do
-      RecordingStudioApi.register_endpoint(
+      mcp_endpoint(
         :guard_page,
         http_verb: :post,
         path: "guard-page/:id",
         recordable_type: "Page",
         handler: handler
       )
-      RecordingStudioApi.register_endpoint(
+      mcp_endpoint(
         :guard_open,
         http_verb: :post,
         path: "guard-open/:id",
@@ -1435,11 +1517,73 @@ class DispatcherTest < Minitest::Test
     assert_equal row, JSON.parse(result.dig(:content, 0, :text)).dig("records", 0)
   end
 
-  def dispatch(tool_name, arguments)
-    call_as(@grant, tool_name, arguments)
+  def mcp_endpoint(name, **)
+    register_mcp_endpoint_tool(name, **)
+    existing = Array(RecordingStudioMcp.configuration.servers["public"]&.included_tools).map(&:name)
+    extras = (existing - RecordingStudioMcp::Catalogs::GENERIC_NAMES) + [name.to_s]
+    ensure_tree_server(:public, extra_tools: extras)
   end
 
-  def call_as(grant, tool_name, arguments)
-    RecordingStudioMcp::Dispatcher.call(tool_name: tool_name, arguments: arguments, access_grant: grant)
+  def dispatch(tool_name, arguments, request_context: nil)
+    call_as(@grant, tool_name, arguments, request_context: request_context)
+  end
+
+  def call_as(grant, tool_name, arguments, request_context: nil)
+    RecordingStudioApi::Lookup.stub(:call, method(:stubbed_lookup)) do
+      RecordingStudioMcp::Dispatcher.call(
+        tool_name: tool_name,
+        arguments: arguments,
+        access_grant: grant,
+        request_context: request_context
+      )
+    end
+  end
+
+  def stubbed_lookup(**kwargs)
+    _custom_handler, handler = stubbed_lookup_handler(
+      kwargs[:api] || :public,
+      kwargs[:recordable_type],
+      kwargs[:operation],
+      kwargs[:action],
+      kwargs[:endpoint]
+    )
+    return if handler.nil?
+
+    RecordingStudioApi::Lookup::Result.new(
+      handler: counting_lookup_handler(handler),
+      input_contract: {},
+      output_schema: {},
+      sensitive: @lookup_sensitive,
+      apis: [kwargs[:api] || :public]
+    )
+  end
+
+  def counting_lookup_handler(handler)
+    inner = handler
+    wrapper = lambda { |context|
+      @lookup_handler_calls += 1
+      inner.call(context)
+    }
+    wrapper.define_singleton_method(:==) { |other| equal?(other) || inner == other }
+    wrapper
+  end
+
+  def stubbed_lookup_handler(api, recordable_type, operation, action, endpoint)
+    if operation
+      custom = RecordingStudioApi.resource_handler(recordable_type, operation, api: api)
+      [!custom.nil?, custom || stubbed_resource_action_handler(api, operation)]
+    elsif action
+      custom = RecordingStudioApi.resource_handler(recordable_type, action, api: api)
+      [!custom.nil?, custom || RecordingStudioApi.capability_action(action, api: api)&.handler]
+    elsif endpoint
+      [false, RecordingStudioApi.registered_endpoint(endpoint, api: api)&.handler]
+    end
+  end
+
+  def stubbed_resource_action_handler(api, operation)
+    registered = RecordingStudioApi.resource_action(operation, api: api)
+    return unless registered
+
+    registered.handler || FakeHandler.new({ json: {} })
   end
 end

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-19
+
+### Changed
+- Breaking: MCP tools are opt-in. Hosts register tools, types, and skills, then include them on `RecordingStudioMcp.register_server`. The old generic per-type auto-catalog is gone. `describe` stays on every server and lists only that server's types, tools, and skills.
+- Dispatch uses `RecordingStudioApi.lookup` for the handler, input contract, output schema, sensitive flag, and API membership. Authorization stays in the API handler and Accessible.
+- Create and update tool schemas start from `RecordingStudioApi::Services::DocumentationCatalog.attributes_schema_for`, which keeps descriptions, examples, `additionalProperties`, and nested shapes. Lookup supplies `required` and `allow_blank` (`minLength: 1`). Host overrides may change descriptions and examples only.
+- Typed and generic create for the same type share that schema. Update fields stay optional.
+- Requires `recording_studio_api` `>= 1.21.3`, `< 2.0`.
+
+### Added
+- `RecordingStudioMcp.register_tool`, `register_type`, `register_skill`, and `register_server` (`include_tools`, `include_tool`, `include_skills`). Generic tools `list`, `show`, `create`, `update`, `delete`, and `capability_action` remain includable. Per-tool `allow_sensitive: true` is allowed.
+- Boot checks for unknown API names, sensitive tools without `allow_sensitive`, and overrides that change type or target.
+- `rake recording_studio_mcp:audit` lists each server's tools and sensitive flags and fails on mismatches.
+
+### Upgrade notes
+- Bump to `0.40.0`. Previous version is `0.39.2`. This is a breaking MCP surface change. See [UPGRADING.md](UPGRADING.md).
+- Hosts must upgrade `recording_studio_api` to `1.21.3` or later (`>= 1.21.3, < 2.0`). Development and dummy Gemfiles pin API `v1.21.3`.
+- Register and include every tool the host wants advertised. API endpoints and metrics no longer appear automatically.
+
 ## [0.39.2] - 2026-11-18
 
 ### Fixed
@@ -1151,7 +1170,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.0...HEAD
+[0.40.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.2...v0.40.0
 [0.39.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...v0.39.2
 [0.39.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.0...v0.39.1
 [0.39.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.38.0...v0.39.0

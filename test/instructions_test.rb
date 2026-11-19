@@ -12,8 +12,8 @@ class InstructionsTest < Minitest::Test
 
       assert_includes text, "## Sign in"
       assert_includes text, "Use an OAuth Bearer token. It has the same access as the app."
-      assert_equal 1, text.scan("Call describe").length
-      assert_includes text, "Call describe on a type for allowed children, actions, and values before you create"
+      assert_equal 1, text.scan("Call the docs").length
+      assert_includes text, "Call the docs for writable fields, children, and actions before you create"
       assert_includes text, "not refreshed on its own"
       assert_includes text, "ping checks the connection."
       assert_includes text, "Call list with the workspace type and no parent_id to find workspaces."
@@ -46,6 +46,7 @@ class InstructionsTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       text = RecordingStudioMcp::Instructions.text
 
       assert_includes text, "## If you only see named route tools"
@@ -53,7 +54,7 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "One tool per named route. Path parameters are arguments."
       assert_includes text, "not refreshed on its own"
       assert_includes text, "ping checks the connection."
-      refute_includes text, "Call describe"
+      refute_includes text, "Call the docs for writable fields"
       refute_includes text, "Records nest by parent_id."
       refute_includes text, "generating UI"
       refute_includes text, "recordable"
@@ -70,9 +71,10 @@ class InstructionsTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe on a type"
+      assert_includes text, "Call the docs for writable fields, children, and actions"
       assert_includes text, "plus named route tools"
       refute_includes text, "If you only see named route tools"
       refute_includes text, "generating UI"
@@ -117,7 +119,7 @@ class InstructionsTest < Minitest::Test
       register_tree_type("SupportPage", operations: %i[index show])
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe on a type for allowed children, actions, and values."
+      assert_includes text, "Call the docs for writable fields, children, and actions."
       refute_includes text, "before you create"
       assert_includes text, "pagination_token"
       refute_includes text, "not under attributes"
@@ -133,7 +135,7 @@ class InstructionsTest < Minitest::Test
       text = RecordingStudioMcp::Instructions.text
 
       assert_includes text, "before you create or run an action."
-      assert_equal 1, text.scan("Call describe").length
+      assert_equal 1, text.scan("Call the docs").length
       assert_includes text, "list, show, create, update, delete, capability_action, describe, and ping"
     end
   end
@@ -195,6 +197,7 @@ class InstructionsTest < Minitest::Test
 
       with_recordable_metric_registry do
         register_folder_and_page_metrics
+        include_metric_server
         text = RecordingStudioMcp::Instructions.text
 
         assert_includes text, "## Metrics"

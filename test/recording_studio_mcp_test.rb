@@ -5,7 +5,7 @@ require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
   def test_version_is_0_37_1
-    assert_equal "0.39.2", ::RecordingStudioMcp::VERSION
+    assert_equal "0.40.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -18,7 +18,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemspec, 'spec.add_dependency "recording_studio", ">= 7.0", "< 8.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.19.0", "< 3.0"'
     refute_includes gemspec, '"recording_studio_admin", ">= 2.0", "< 2.6"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.19.0", "< 2.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.21.3", "< 2.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.8.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.9.0", "< 1.0"'
     refute_includes gemspec, "recording_studio_mcp_ui"
@@ -89,7 +89,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v7.7.2"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.54.1"'
     assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.19.1"'
-    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v1.19.0"'
+    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v1.21.3"'
     assert_includes gemfile, api_pin
     assert_includes root_gemfile, api_pin
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
@@ -136,7 +136,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.39.2\n"
+    assert_includes readme, "## Version\n\n0.40.0\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."

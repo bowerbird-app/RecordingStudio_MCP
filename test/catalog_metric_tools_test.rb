@@ -11,7 +11,7 @@ class CatalogMetricToolsTest < Minitest::Test
       total = tool(surface, "widgets-total")
       series = tool(surface, "widgets-created_over_time")
 
-      assert_equal %w[widgets-created_over_time widgets-total], surface.tool_names
+      assert_equal %w[describe widgets-created_over_time widgets-total], surface.tool_names
       assert_equal true, surface.catalog_metric_tools?
       assert_equal false, surface.recordable_metric_tools?
       assert_equal true, surface.read_only_tool?("widgets-total")
@@ -65,6 +65,7 @@ class CatalogMetricToolsTest < Minitest::Test
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         register_widgets(authorize)
+        include_metric_server(tree: false)
         grant = catalog_grant(allowed: true)
         assert_includes RecordingStudioMcp::ToolSurface.for(access_grant: grant).tool_names, "widgets-total"
 
@@ -144,6 +145,7 @@ class CatalogMetricToolsTest < Minitest::Test
       with_recordable_metric_registry do
         register_folder_and_page_metrics
         register_widgets(->(_context) { true })
+        include_metric_server(tree: true)
         surface = RecordingStudioMcp::ToolSurface.for(access_grant: catalog_grant(allowed: false))
 
         refute_includes surface.tool_names, "folders-total"
@@ -154,20 +156,21 @@ class CatalogMetricToolsTest < Minitest::Test
 
   def test_resource_allowlist_limits_catalog_tools
     with_widget_metrics do
-      with_isolated_mcp_configuration do
-        RecordingStudioMcp.configuration.catalog_metric_resources = ["other"]
-        hidden = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
+      RecordingStudioMcp.configuration.catalog_metric_resources = ["other"]
+      include_metric_server(tree: false)
+      hidden = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
 
-        RecordingStudioMcp.configuration.catalog_metric_resources = ["widgets"]
-        shown = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
+      RecordingStudioMcp.configuration.catalog_metric_resources = ["widgets"]
+      include_metric_server(tree: false)
+      shown = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
 
-        RecordingStudioMcp.configuration.catalog_metric_resources = []
-        empty = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
+      RecordingStudioMcp.configuration.catalog_metric_resources = []
+      include_metric_server(tree: false)
+      empty = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
 
-        refute_includes hidden, "widgets-total"
-        assert_includes shown, "widgets-total"
-        refute_includes empty, "widgets-total"
-      end
+      refute_includes hidden, "widgets-total"
+      assert_includes shown, "widgets-total"
+      refute_includes empty, "widgets-total"
     end
   end
 
@@ -182,6 +185,7 @@ class CatalogMetricToolsTest < Minitest::Test
           count :total, title: "Widgets", expose: { api: [:public] }
           count leaf.to_sym, title: "Long", expose: { api: [:public] }
         end
+        include_metric_server(tree: false)
         names = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
 
         assert_includes names, "widgets-total"
@@ -207,6 +211,8 @@ class CatalogMetricToolsTest < Minitest::Test
           path: "widgets-total",
           handler: ->(_context) { { ok: true } }
         )
+        include_metric_server(tree: false)
+        include_api_endpoints
         surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
         assert_equal 1, surface.tool_names.count("widgets-total")
@@ -227,6 +233,7 @@ class CatalogMetricToolsTest < Minitest::Test
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         register_widgets(->(context) { context.access_grant.allowed })
+        include_metric_server(tree: false)
         yield
       end
     end

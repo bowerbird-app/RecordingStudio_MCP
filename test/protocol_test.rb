@@ -46,6 +46,7 @@ class ProtocolTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       result = RecordingStudioMcp::Protocol.handle(
         {
           "jsonrpc" => "2.0",
@@ -100,7 +101,7 @@ class ProtocolTest < Minitest::Test
       instructions = initialized.body.dig(:result, :instructions)
 
       assert_equal %w[list show describe], names
-      assert_includes instructions, "allowed children, actions, and values."
+      assert_includes instructions, "Call the docs for writable fields, children, and actions."
       refute_includes instructions, "before you create"
       refute_includes instructions, "before create"
       refute_includes instructions, "capability_action"
@@ -116,13 +117,14 @@ class ProtocolTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       result = RecordingStudioMcp::Protocol.handle(
         { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
         access_grant: @grant
       )
 
       names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-      assert_equal %w[ping], names
+      assert_equal %w[describe ping], names
     end
   end
 
@@ -780,6 +782,7 @@ class ProtocolTest < Minitest::Test
         path: "custom-list",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       result = RecordingStudioMcp::Protocol.handle(
         { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
         access_grant: @grant
@@ -821,7 +824,7 @@ class ProtocolTest < Minitest::Test
       assert_includes tool_names_for(admin), "create"
       assert_equal %w[describe], tool_names_for(deleted)
       view_instructions = initialize_instructions(view)
-      assert_includes view_instructions, "allowed children, actions, and values."
+      assert_includes view_instructions, "Call the docs for writable fields, children, and actions."
       refute_includes view_instructions, "before you create"
       assert_includes initialize_instructions(admin), "before you create."
 

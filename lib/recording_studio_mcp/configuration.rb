@@ -1,9 +1,15 @@
 # frozen_string_literal: true
 
 require "recording_studio_mcp/resources_page_size"
+require_relative "catalogs"
+require_relative "configuration/registries"
+require_relative "configuration/defaults"
 
 module RecordingStudioMcp
   class Configuration
+    include Registries
+    include Defaults
+
     DEFAULT_PROTOCOL_VERSION = "2025-06-18"
     SUPPORTED_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18 2025-11-25 2026-07-28].freeze
     LEGACY_PROTOCOL_VERSIONS = %w[2025-03-26 2025-06-18 2025-11-25].freeze
@@ -19,7 +25,8 @@ module RecordingStudioMcp
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :describe_payload, :skill_policy, :events_enabled,
                   :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
-    attr_reader :catalog_metric_resources, :list_parent_id_types, :skill_catalog, :event_catalog
+    attr_reader :catalog_metric_resources, :list_parent_id_types, :skill_catalog, :event_catalog,
+                :tools, :types, :mcp_skills, :servers
 
     DOC_FIELDS.each do |public_name, field|
       define_method(public_name) { documentation.public_send(field) }
@@ -27,22 +34,9 @@ module RecordingStudioMcp
     end
 
     def initialize
-      @mcp_mount_path = DEFAULT_MCP_MOUNT_PATH
-      @oauth_protected_resource_path = "/.well-known/oauth-protected-resource#{DEFAULT_MCP_MOUNT_PATH}"
-      @oauth_engine_mount_path = "/recording_studio_oauth"
-      @protocol_version = DEFAULT_PROTOCOL_VERSION
-      @allowed_origins = []
-      @instructions_suffix = nil
-      @describe_payload = nil
-      @skill_catalog = Skills::SkillCatalog.empty
-      @event_catalog = Events::Catalog.empty
-      @skill_policy = nil
-      @events_enabled = false
-      @event_subscription_ttl = 24.hours
-      @event_subscriptions_per_principal = 50
-      @event_callback_host_allowed = nil
-      @catalog_metric_resources = nil
-      @list_parent_id_types = nil
+      reset_paths
+      reset_registries
+      reset_runtime
     end
 
     def documentation
@@ -71,14 +65,8 @@ module RecordingStudioMcp
 
     def validate!
       documentation.validate!
-    end
-
-    def update_skill_catalog
-      @skill_catalog = yield(@skill_catalog)
-    end
-
-    def update_event_catalog
-      @event_catalog = yield(@event_catalog)
+      catalogs.build!
+      nil
     end
 
     def self.legacy_protocol?(version)
@@ -96,28 +84,6 @@ module RecordingStudioMcp
         setter = "#{key}="
         public_send(setter, value) if respond_to?(setter)
       end
-    end
-
-    private
-
-    def core_settings
-      {
-        oauth_protected_resource_path: oauth_protected_resource_path,
-        oauth_engine_mount_path: oauth_engine_mount_path,
-        mcp_mount_path: mcp_mount_path,
-        protocol_version: protocol_version,
-        allowed_origins: allowed_origins,
-        instructions_suffix: instructions_suffix,
-        describe_payload: describe_payload,
-        skill_policy: skill_policy,
-        events_enabled: events_enabled,
-        event_subscription_ttl: event_subscription_ttl,
-        event_subscriptions_per_principal: event_subscriptions_per_principal,
-        event_callback_host_allowed: event_callback_host_allowed,
-        catalog_metric_resources: catalog_metric_resources,
-        list_parent_id_types: list_parent_id_types,
-        resources_page_size: resources_page_size
-      }
     end
   end
 end

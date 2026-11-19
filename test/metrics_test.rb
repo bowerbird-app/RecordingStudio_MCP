@@ -63,7 +63,7 @@ class MetricsTest < Minitest::Test
 
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.9.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.8.0", "< 1.0"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.19.0", "< 2.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.21.3", "< 2.0"'
     refute_includes gemspec, '"~> 0.7"'
     assert_includes dummy_metrics, "RecordingStudioMetrics::Api.register!(api: :operations)"
   end

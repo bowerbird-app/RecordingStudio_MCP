@@ -12,6 +12,7 @@ class McpRecordableMetricsTest < ActionDispatch::IntegrationTest
     @oauth_client, = create_oauth_client(name: "Recordable metrics #{SecureRandom.hex(4)}")
     remember_recordable_metrics!
     register_dummy_recordable_metrics!
+    mcp_include_metrics("folders-total", "folders-created_over_time", "pages-total")
   end
 
   teardown do

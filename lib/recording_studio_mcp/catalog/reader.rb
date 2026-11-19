@@ -17,6 +17,11 @@ module RecordingStudioMcp
         apply_describe_payload(payload, type: recordable_type, registration: registration)
       end
 
+      def documentation_type(recordable_type)
+        registration = registration_for(recordable_type)
+        describe_registered(recordable_type).merge(documentation_type_fields(recordable_type, registration))
+      end
+
       def resolve_type!(type_name)
         raise RecordingStudioApi::InvalidActionInputError, "type is required" if type_name.blank?
 
