@@ -221,6 +221,16 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
+  def test_matching_catalog_and_lookup_enum_and_min_length_stay_aligned
+    contract_field = { type: :string, required: true, enum: %w[draft published], allow_blank: false }
+    catalog_property = { "type" => "string", "enum" => %w[draft published], "minLength" => 1 }
+
+    built = RecordingStudioMcp::SchemaFromContract.property(contract_field, catalog_property: catalog_property)
+
+    assert_equal %w[draft published], built[:enum]
+    assert_equal 1, built[:minLength]
+  end
+
   def test_unknown_type_raises_configuration_error
     with_isolated_api_configuration do
       RecordingStudioApi.register_recordable_type_api(

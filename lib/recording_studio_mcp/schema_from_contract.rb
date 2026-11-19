@@ -17,6 +17,7 @@ module RecordingStudioMcp
       return name if JSON_TYPES.include?(name)
 
       token = name.presence&.to_sym || :string
+      # Invert contract_type_for: JSON schema type whose contract token matches this field.
       JSON_TYPES.find do |json|
         RecordingStudioApi::Services::DocumentationCatalog.contract_type_for(json) == token
       end || "string"
@@ -40,6 +41,9 @@ module RecordingStudioMcp
     def property(contract_field, copy: {}, catalog_property: nil)
       built = catalog_property_schema(catalog_property)
       built[:type] ||= json_type(contract_field)
+      if catalog_property.blank?
+        built.merge!(NestedSchema.copy_nested(contract_field, :items, :properties, :additionalProperties))
+      end
       overlay_copy_on(built, copy)
       apply_contract_constraints(built, contract_field)
       built

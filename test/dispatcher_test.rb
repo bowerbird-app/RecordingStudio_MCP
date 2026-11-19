@@ -206,6 +206,7 @@ class DispatcherTest < Minitest::Test
   end
 
   def setup
+    @lookup_handler_calls = 0
     @lookup_sensitive = false
     @grant = FakeGrant.new(
       api_client: FakeClient.new("public"),
@@ -267,6 +268,7 @@ class DispatcherTest < Minitest::Test
               result = dispatch("list", { type: "Workspace" })
 
               refute result[:isError]
+              assert_operator @lookup_handler_calls, :>=, 1
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
               payload = JSON.parse(result.dig(:content, 0, :text))
               assert_equal "Studio", payload.dig("records", 0, "name")
@@ -289,6 +291,7 @@ class DispatcherTest < Minitest::Test
               result = dispatch("list", { type: "Workspace" })
 
               refute result[:isError]
+              assert_operator @lookup_handler_calls, :>=, 1
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
             end
           end
@@ -1547,12 +1550,22 @@ class DispatcherTest < Minitest::Test
     return if handler.nil?
 
     RecordingStudioApi::Lookup::Result.new(
-      handler: handler,
+      handler: counting_lookup_handler(handler),
       input_contract: {},
       output_schema: {},
       sensitive: @lookup_sensitive,
       apis: [kwargs[:api] || :public]
     )
+  end
+
+  def counting_lookup_handler(handler)
+    inner = handler
+    wrapper = lambda { |context|
+      @lookup_handler_calls += 1
+      inner.call(context)
+    }
+    wrapper.define_singleton_method(:==) { |other| equal?(other) || inner == other }
+    wrapper
   end
 
   def stubbed_lookup_handler(api, recordable_type, operation, action, endpoint)
