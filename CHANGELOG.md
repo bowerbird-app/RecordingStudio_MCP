@@ -7,13 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-19
+
+### Fixed
+- `include_tool` `title:` and `description:` apply to metric tools through the same BuiltTool host copy typed tools use. `tools/list` shows the override, or the metric default when none is given.
+- Recordable metric tools use `MetricEntry#title`. A blank title falls back to the capitalized identifier.
+- Boot raises when an included catalog metric is excluded by `catalog_metric_resources`. Runtime listing already omitted those tools.
+
+### Upgrade notes
+- Bump to `0.41.0`. Previous version is `0.40.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts that include a catalog metric whose resource is not in `catalog_metric_resources` now fail at boot. Add the resource to the allowlist, or stop including that tool. A nil allowlist still includes every catalog metric.
+
 ## [0.40.1] - 2026-11-19
 
 ### Fixed
 - README `register_skill` examples pass `name:` as a keyword, matching `RecordingStudioMcp::Registry::Skills#register_skill`.
 
 ### Upgrade notes
-- Bump to `0.40.1`. Previous version is `0.40.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Bump to `0.40.1`. Previous version is `0.40.0`. No MCP migration.
 
 ## [0.40.0] - 2026-11-19
 
@@ -1178,7 +1189,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.0...HEAD
+[0.41.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...v0.41.0
 [0.40.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.0...v0.40.1
 [0.40.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.2...v0.40.0
 [0.39.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...v0.39.2

@@ -16,18 +16,18 @@ class RecordableMetricToolsTest < Minitest::Test
       created = tool(surface, "folders-created_over_time")
       pages = tool(surface, "pages-total")
 
-      assert_equal "Folders total", total.fetch(:title)
+      assert_equal "Folders", total.fetch(:title)
       assert_equal "How many folders are in this scope.", total.fetch(:description)
       assert_equal folders_total_schema, total.fetch(:inputSchema)
       assert_equal read_only_annotations, total.fetch(:annotations)
       refute total.key?(:_meta)
 
-      assert_equal "Folders created over time", created.fetch(:title)
+      assert_equal "Created over time", created.fetch(:title)
       assert_equal "Folders created in the window.", created.fetch(:description)
       assert_equal folders_created_over_time_schema, created.fetch(:inputSchema)
       assert_equal read_only_annotations, created.fetch(:annotations)
 
-      assert_equal "Pages total", pages.fetch(:title)
+      assert_equal "Pages", pages.fetch(:title)
       assert_equal "How many pages are in this scope.", pages.fetch(:description)
       assert_equal pages_total_schema, pages.fetch(:inputSchema)
       assert_equal read_only_annotations, pages.fetch(:annotations)
@@ -162,6 +162,36 @@ class RecordableMetricToolsTest < Minitest::Test
       assert_equal ["name"], group_by.dig(:schema, :enum)
       assert_equal ["name"], created.dig(:group_by, :enum)
       assert_includes created.dig(:from, :description), "start must match from"
+    end
+  end
+
+  def test_recordable_metric_title_falls_back_when_metric_entry_title_is_blank
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        RecordingStudioApi.register_recordable_type_api(
+          RecordableMetricToolHelpers::FOLDER,
+          writable_attributes: %i[name],
+          operations: %i[index],
+          metrics: %w[folders.total]
+        )
+        register_folder_metric_definitions
+        blank = RecordingStudioApi::MetricEntry.new(
+          name: "folders.total",
+          description: "How many folders are in this scope.",
+          parameters: [],
+          unit: nil,
+          title: "",
+          timezone: "UTC",
+          freshness: { cached: false }
+        )
+        RecordingStudioApi.stub(:metrics_for, [blank]) do
+          include_metric_server
+          listed = tool(RecordingStudioMcp::ToolSurface.for(api: "public"), "folders-total")
+
+          assert_equal "Folders total", listed.fetch(:title)
+          assert_equal "How many folders are in this scope.", listed.fetch(:description)
+        end
+      end
     end
   end
 

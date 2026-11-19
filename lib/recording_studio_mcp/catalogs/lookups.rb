@@ -87,11 +87,15 @@ module RecordingStudioMcp
         metric_by_name(api, name).present?
       end
 
-      def metric_by_name(api, name)
+      def metric_by_name(api, name, ignore_allowlist: false)
         catalog = Catalog.new(api: api, server: false)
         recordable = MetricTools.collect_recordable(catalog)
-        catalog_tools = MetricTools.collect_catalog(catalog, nil, ignore_allowlist: true)
+        catalog_tools = MetricTools.collect_catalog(catalog, nil, ignore_allowlist: ignore_allowlist)
         (recordable + catalog_tools).find { |metric| metric.name.to_s == name }
+      end
+
+      def excluded_catalog_metric?(api, name)
+        metric_by_name(api, name, ignore_allowlist: true)&.catalog? && metric_by_name(api, name).nil?
       end
     end
   end

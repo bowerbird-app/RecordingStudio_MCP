@@ -60,7 +60,7 @@ module RecordingStudioMcp
       {
         name: ToolName.from_identifier(entry.name), metric_name: entry.name, kind: :recordable,
         identifier: entry.name, recordable_type: type_name, resource_name: resource_name, resource: resource_name,
-        title: entry.name.to_s.tr("._", " ").capitalize, api: catalog.api, description: entry.description,
+        title: entry.title, api: catalog.api, description: entry.description,
         plan: ArgumentPlan.from(entry.parameters)
       }
     end

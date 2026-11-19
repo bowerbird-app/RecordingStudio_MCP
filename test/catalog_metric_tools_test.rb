@@ -154,6 +154,41 @@ class CatalogMetricToolsTest < Minitest::Test
     end
   end
 
+  def test_tools_list_uses_include_tool_copy_or_metric_defaults
+    with_widget_metrics do
+      defaults = tools_list(catalog_grant(allowed: true)).find { |entry| entry[:name] == "widgets-total" }
+
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tool "widgets-total", title: "Host widgets", description: "Host widget count."
+      end
+      overridden = tools_list(catalog_grant(allowed: true)).find { |entry| entry[:name] == "widgets-total" }
+
+      assert_equal "Widgets", defaults.fetch(:title)
+      assert_equal "How many widgets.", defaults.fetch(:description)
+      assert_equal "Host widgets", overridden.fetch(:title)
+      assert_equal "Host widget count.", overridden.fetch(:description)
+    end
+  end
+
+  def test_included_catalog_metric_outside_allowlist_fails_boot
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        register_widgets(->(_context) { true })
+        RecordingStudioMcp.configuration.catalog_metric_resources = ["other"]
+        RecordingStudioMcp.register_server(:public, api: :public) { include_tool "widgets-total" }
+
+        error = assert_raises(RecordingStudioApi::ConfigurationError) do
+          RecordingStudioMcp.configuration.catalogs.build!
+        end
+
+        assert_equal(
+          "MCP server public includes catalog metric widgets-total that catalog_metric_resources excludes",
+          error.message
+        )
+      end
+    end
+  end
+
   def test_resource_allowlist_limits_catalog_tools
     with_widget_metrics do
       RecordingStudioMcp.configuration.catalog_metric_resources = ["other"]
@@ -288,5 +323,12 @@ class CatalogMetricToolsTest < Minitest::Test
 
   def tool(surface, name)
     surface.tool_definitions.find { |entry| entry.fetch(:name) == name }
+  end
+
+  def tools_list(grant)
+    RecordingStudioMcp::Protocol.handle(
+      { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+      access_grant: grant
+    ).body.dig(:result, :tools)
   end
 end

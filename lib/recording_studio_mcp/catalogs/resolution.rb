@@ -15,8 +15,15 @@ module RecordingStudioMcp
         registration = @configuration.tool(name)
         return built_registered_tool(server, api, included, registration) if registration
         return built_metric_tool(server, api, included, name) if metric_tool?(api, name)
+        raise excluded_catalog_metric_error(server, name) if excluded_catalog_metric?(api, name)
 
         raise RecordingStudioApi::ConfigurationError, "MCP server #{server.name} includes unknown tool #{name}"
+      end
+
+      def excluded_catalog_metric_error(server, name)
+        RecordingStudioApi::ConfigurationError.new(
+          "MCP server #{server.name} includes catalog metric #{name} that catalog_metric_resources excludes"
+        )
       end
 
       def built_registered_tool(server, api, included, registration)

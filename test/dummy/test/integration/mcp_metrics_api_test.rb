@@ -284,6 +284,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
   test "catalog metric resources allowlist hides mcp_calls tools" do
     previous = RecordingStudioMcp.configuration.catalog_metric_resources
+    mcp(@staff_operations_token, "tools/list")
     RecordingStudioMcp.configuration.catalog_metric_resources = ["other"]
     names = mcp(@staff_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
 
