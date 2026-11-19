@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.40.2
+
+Previous version is `0.40.1`. No MCP migration.
+
+A named `register_tool` for a recordable type and capability action is the only docs entry for that type/action. The `{type}--{action}` `x-mcp-docs-only` copy is omitted when that named tool is on the server. Type/actions with no named tool still get the docs-only page.
+
 ## 0.40.0
 
 Previous version is `0.39.2`. This is a breaking MCP surface change.

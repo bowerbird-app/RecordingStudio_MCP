@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.2] - 2026-11-19
+
+### Fixed
+- Public MCP docs list a type/action once. When the host registers a named tool for that type and action, the `{type}--{action}` `x-mcp-docs-only` copy is left out. Type/actions with no named tool still get the docs-only entry.
+
+### Upgrade notes
+- Bump to `0.40.2`. Previous version is `0.40.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts that counted both the named tool and the docs-only `{type}--{action}` copy should expect one entry.
+
 ## [0.40.1] - 2026-11-19
 
 ### Fixed
@@ -1178,7 +1187,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.2...HEAD
+[0.40.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...v0.40.2
 [0.40.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.0...v0.40.1
 [0.40.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.2...v0.40.0
 [0.39.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...v0.39.2
