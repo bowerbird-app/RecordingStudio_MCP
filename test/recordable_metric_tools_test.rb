@@ -175,6 +175,7 @@ class RecordableMetricToolsTest < Minitest::Test
           writable_attributes: %i[name]
         )
         register_folder_metric_definitions
+        include_metric_server
         names = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
 
         assert_includes names, "show"
@@ -235,6 +236,7 @@ class RecordableMetricToolsTest < Minitest::Test
           metrics: %w[folders.total]
         )
         register_folder_metric_definitions
+        include_metric_server
         solo = tool(RecordingStudioMcp::ToolSurface.for(api: "public"), "folders-total").fetch(:inputSchema)
       end
     end
@@ -251,6 +253,7 @@ class RecordableMetricToolsTest < Minitest::Test
           metrics: %w[folders.absent folders.total]
         )
         register_folder_metric_definitions
+        include_metric_server
         surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
         assert_includes surface.tool_names, "folders-total"
@@ -287,6 +290,7 @@ class RecordableMetricToolsTest < Minitest::Test
           count :total, title: "Folders", description: "How many folders are in this scope."
         end
 
+        include_metric_server
         names = RecordingStudioMcp::ToolSurface.for(api: "public").tool_names
         assert_equal 65, tool_name.length
         refute_includes names, tool_name
@@ -305,6 +309,7 @@ class RecordableMetricToolsTest < Minitest::Test
     with_isolated_api_configuration do
       with_recordable_metric_registry do
         register_folder_and_page_metrics
+        include_metric_server
         yield RecordingStudioMcp::ToolSurface.for(api: "public")
       end
     end

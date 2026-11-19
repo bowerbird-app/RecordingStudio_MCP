@@ -46,6 +46,7 @@ class InstructionsTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       text = RecordingStudioMcp::Instructions.text
 
       assert_includes text, "## If you only see named route tools"
@@ -70,6 +71,7 @@ class InstructionsTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       text = RecordingStudioMcp::Instructions.text
 
       assert_includes text, "Call describe on a type"
@@ -195,6 +197,7 @@ class InstructionsTest < Minitest::Test
 
       with_recordable_metric_registry do
         register_folder_and_page_metrics
+        include_metric_server
         text = RecordingStudioMcp::Instructions.text
 
         assert_includes text, "## Metrics"

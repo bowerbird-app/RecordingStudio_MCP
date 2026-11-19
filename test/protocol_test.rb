@@ -46,6 +46,7 @@ class ProtocolTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       result = RecordingStudioMcp::Protocol.handle(
         {
           "jsonrpc" => "2.0",
@@ -116,13 +117,14 @@ class ProtocolTest < Minitest::Test
         path: "ping",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints
       result = RecordingStudioMcp::Protocol.handle(
         { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
         access_grant: @grant
       )
 
       names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-      assert_equal %w[ping], names
+      assert_equal %w[describe ping], names
     end
   end
 
@@ -780,6 +782,7 @@ class ProtocolTest < Minitest::Test
         path: "custom-list",
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
       result = RecordingStudioMcp::Protocol.handle(
         { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
         access_grant: @grant

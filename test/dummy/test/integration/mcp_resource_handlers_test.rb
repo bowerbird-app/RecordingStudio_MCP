@@ -156,6 +156,8 @@ class McpResourceHandlersTest < ActionDispatch::IntegrationTest
       @handler_calls << :move
       { json: { handled: "move", id: context.id, parent_id: context.params[:parent_id] }, status: :accepted }
     })
+    mcp_register_type("SupportPage", api: :operations)
+    mcp_register_type("Folder", api: :operations)
   end
 
   def restore_operations_support_surface!

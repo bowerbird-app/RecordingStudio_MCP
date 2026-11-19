@@ -54,18 +54,44 @@ module RecordingStudioMcp
     end
 
     def dispatch_known(name, arguments)
+      args = apply_fixed_filters(name, stringify_keys(arguments))
       metric = surface.metric_tool(name)
       if metric
         return wrap_metric(
           metric,
-          MetricTools.execute(metric, arguments, access_grant, progress_reporter: progress_reporter)
+          MetricTools.execute(metric, args, access_grant, progress_reporter: progress_reporter)
         )
       end
 
-      args = stringify_keys(arguments)
       return dispatch_tree(name, args) if surface.tree_tool?(name)
 
+      built = surface.server&.tool(name)
+      return dispatch_registered(built, args) if built&.registration
+
       dispatch_endpoint(surface.endpoint_for(name), args)
+    end
+
+    def apply_fixed_filters(name, args)
+      filters = surface.server&.filters&.[](name.to_s)
+      return args if filters.blank?
+
+      args.merge(filters) { |_key, _from_client, fixed| fixed }
+    end
+
+    def dispatch_registered(built, args)
+      registration = built.registration
+      if registration.target.endpoint?
+        dispatch_endpoint(surface.endpoint_for(built.name), args)
+      elsif registration.target.operation?
+        merged = args.merge("type" => args["type"].presence || registration.type)
+        dispatch_resource(registration.target.value, merged)
+      else
+        merged = args.merge(
+          "type" => args["type"].presence || registration.type,
+          "action" => args["action"].presence || registration.target.value.to_s
+        )
+        dispatch_capability_action(merged)
+      end
     end
 
     def wrap_metric(tool, result)

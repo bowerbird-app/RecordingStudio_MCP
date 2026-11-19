@@ -339,6 +339,7 @@ class SkillsTest < Minitest::Test
           path: "ping",
           handler: ->(_context) { { ok: true } }
         )
+        include_api_endpoints
         endpoint = handle("initialize", params: { "protocolVersion" => "2025-06-18" })
         endpoint_text = endpoint.body.dig(:result, :instructions)
 

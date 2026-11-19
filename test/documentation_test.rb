@@ -50,6 +50,7 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Ops ping" },
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(api: :operations)
 
       page = RecordingStudioMcp::Documentation.page(api: :operations)
 
@@ -69,7 +70,7 @@ class DocumentationTest < Minitest::Test
       boom = lambda do |*|
         raise RecordingStudioApi::NotFoundError, "Unknown type Folder"
       end
-      catalog.stub(:describe_registered, boom) do
+      catalog.stub(:documentation_type, boom) do
         RecordingStudioMcp::Catalog.stub(:new, catalog) do
           page = RecordingStudioMcp::Documentation.page(api: :public)
           folder = page.types.find { |entry| entry["type"] == "Folder" }
@@ -101,6 +102,7 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Ping" },
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       mcp = spec.fetch("x-mcp")
@@ -165,6 +167,7 @@ class DocumentationTest < Minitest::Test
         },
         handler: ->(_context) { { chats: [] } }
       )
+      include_api_endpoints(tree: true)
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       mcp = spec.fetch("x-mcp")
@@ -237,6 +240,7 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Ops ping" },
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(api: :operations)
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :operations)
       description = spec.dig("info", "description")
@@ -274,6 +278,8 @@ class DocumentationTest < Minitest::Test
         ) do
           count :total, title: "Users", description: "How many users.", expose: { api: [:public] }
         end
+        include_metric_server
+        include_api_endpoints(tree: true)
 
         spec = RecordingStudioMcp::Documentation.openapi(api: :public)
         tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
@@ -310,6 +316,7 @@ class DocumentationTest < Minitest::Test
         },
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
 
       spec = openapi_with_credit_label!
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
@@ -839,7 +846,7 @@ class DocumentationTest < Minitest::Test
 
       spec = openapi_with_labels!("RecordingStudioPresskits::Podcast" => "Podcast")
       add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Podcast--add" }
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Podcast")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("RecordingStudioPresskits::Podcast")
 
       assert_equal "Podcast - Add", add["title"]
       assert_equal "Podcast - Add", described.fetch("capability_actions").first.fetch("title")
@@ -915,7 +922,7 @@ class DocumentationTest < Minitest::Test
 
       spec = openapi_with_labels!("RecordingStudioPresskits::Podcast" => "Podcast")
       add = spec.dig("x-mcp", "tools").find { |tool| tool["name"] == "Podcast--add" }
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Podcast")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("RecordingStudioPresskits::Podcast")
 
       assert_equal "Add podcast", add["title"]
       assert_equal "Add podcast", described.fetch("capability_actions").first.fetch("title")
@@ -942,7 +949,7 @@ class DocumentationTest < Minitest::Test
         "RecordingStudioPresskits::Podcast" => "Podcast"
       )
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Files")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("RecordingStudioPresskits::Files")
       describe_titles = described.fetch("capability_actions").to_h do |action|
         [action.fetch("name"), action.fetch("title")]
       end
@@ -1055,6 +1062,7 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Workspace ping" },
         handler: ->(_context) { { ok: true } }
       )
+      include_api_endpoints(tree: true)
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
@@ -1117,8 +1125,8 @@ class DocumentationTest < Minitest::Test
       spec = openapi_with_labels!("Podcast" => "Podcast", "Quote" => "Quote")
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
-      quote = catalog.describe("Quote").fetch("capability_actions").first
-      podcast = catalog.describe("Podcast").fetch("capability_actions").first
+      quote = catalog.documentation_type("Quote").fetch("capability_actions").first
+      podcast = catalog.documentation_type("Podcast").fetch("capability_actions").first
       quote_page = tools.fetch("Quote--add").fetch("description")
       podcast_page = tools.fetch("Podcast--add").fetch("description")
 
@@ -1164,7 +1172,7 @@ class DocumentationTest < Minitest::Test
 
       spec = openapi_with_labels!("Podcast" => "Podcast", "Quote" => "Quote")
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-      described = RecordingStudioMcp::Catalog.new(api: :public).describe("Quote")
+      described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Quote")
 
       assert_equal "Add podcast", tools.fetch("Podcast--add")["title"]
       assert_equal "Add a quote", tools.fetch("Quote--add")["title"]

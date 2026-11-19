@@ -1,5 +1,33 @@
 # Upgrading Recording Studio MCP
 
+## 0.40.0
+
+Previous version is `0.39.2`. This is a breaking MCP surface change.
+
+Require `recording_studio_api` `>= 1.20.0`, `< 2.0`. MCP looks up handlers with `RecordingStudioApi.lookup`. Do not keep a second API registry in the host.
+
+Tools are opt-in. Register each tool, type, and skill, then include them on a named-API server:
+
+```ruby
+RecordingStudioMcp.register_tool(name: "ping", endpoint: :ping, title: "Ping", description: "...", input: {}, output: "ok")
+RecordingStudioMcp.register_type(type: "Page", description: "A page under a folder or workspace.")
+RecordingStudioMcp.register_skill(name: "page-desk", type: "Page", title: "Page desk", description: "...", body: "...", tools: %w[list show describe])
+RecordingStudioMcp.register_server(:public, api: :public) do
+  include_tools :list, :show, :create, :update, :ping
+  include_skills "page-desk"
+end
+```
+
+`list`, `show`, `create`, `update`, `delete`, and `capability_action` still exist, but only when included. `describe` is always on. It no longer lists operations, writable fields, or capability action contracts. Call docs or the API registration for those. Type paragraphs and relationships come from `register_type` and the API.
+
+Sensitive API items need `allow_sensitive: true` on the server or on `include_tool`. Host overrides of a tool name may change title, description, and input copy only. Type, target, required, and non-empty rules stay on the API contract.
+
+Boot raises when a registration names something the API does not have. Run `rake recording_studio_mcp:audit` in host CI.
+
+Metric and endpoint tools are included by their MCP names (hyphenated metric names, endpoint names). They are not auto-listed from the API catalog.
+
+Do not mention Access in MCP descriptions. Copy is for humans and agents: what the recording is, its purpose, and write prerequisites.
+
 ## 0.39.2
 
 Previous version is `0.39.1`. No MCP migration.

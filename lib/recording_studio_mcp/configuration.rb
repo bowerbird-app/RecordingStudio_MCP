@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "recording_studio_mcp/resources_page_size"
+require_relative "catalogs"
 
 module RecordingStudioMcp
   class Configuration
@@ -19,7 +20,8 @@ module RecordingStudioMcp
     attr_accessor :oauth_protected_resource_path, :oauth_engine_mount_path, :mcp_mount_path, :protocol_version,
                   :allowed_origins, :instructions_suffix, :describe_payload, :skill_policy, :events_enabled,
                   :event_subscription_ttl, :event_subscriptions_per_principal, :event_callback_host_allowed
-    attr_reader :catalog_metric_resources, :list_parent_id_types, :skill_catalog, :event_catalog
+    attr_reader :catalog_metric_resources, :list_parent_id_types, :skill_catalog, :event_catalog,
+                :tools, :types, :mcp_skills, :servers
 
     DOC_FIELDS.each do |public_name, field|
       define_method(public_name) { documentation.public_send(field) }
@@ -36,6 +38,11 @@ module RecordingStudioMcp
       @describe_payload = nil
       @skill_catalog = Skills::SkillCatalog.empty
       @event_catalog = Events::Catalog.empty
+      @tools = {}
+      @types = {}
+      @mcp_skills = {}
+      @servers = {}
+      GenericTools.install(self)
       @skill_policy = nil
       @events_enabled = false
       @event_subscription_ttl = 24.hours
@@ -71,6 +78,51 @@ module RecordingStudioMcp
 
     def validate!
       documentation.validate!
+      catalogs.build!
+      nil
+    end
+
+    def catalogs
+      @catalogs ||= Catalogs.new(self)
+    end
+
+    def tool(name)
+      @tools[name.to_s]
+    end
+
+    def type(name)
+      @types[name.to_s]
+    end
+
+    def skill(name)
+      @mcp_skills[name.to_s]
+    end
+
+    def add_tool(registration, override: false)
+      key = registration.name.to_s
+      existing = @tools[key]
+      assert_override!(existing, registration) if existing && !override
+      @tools[key] = registration
+      catalogs.invalidate!
+      registration
+    end
+
+    def add_type(registration)
+      @types[registration.type.to_s] = registration
+      catalogs.invalidate!
+      registration
+    end
+
+    def add_skill(registration)
+      @mcp_skills[registration.name.to_s] = registration
+      catalogs.invalidate!
+      registration
+    end
+
+    def add_server(registration)
+      @servers[registration.name.to_s] = registration
+      catalogs.invalidate!
+      registration
     end
 
     def update_skill_catalog
@@ -99,6 +151,13 @@ module RecordingStudioMcp
     end
 
     private
+
+    def assert_override!(existing, incoming)
+      return if existing.type.to_s == incoming.type.to_s && existing.target == incoming.target
+
+      raise RecordingStudioApi::ConfigurationError,
+            "MCP tool #{incoming.name} override cannot change type or target"
+    end
 
     def core_settings
       {

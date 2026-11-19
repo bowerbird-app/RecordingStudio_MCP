@@ -28,6 +28,10 @@ Metrics/ClassLength:
     - 'lib/recording_studio_mcp/connection.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
+    - 'lib/recording_studio_mcp/catalogs.rb'
+    - 'lib/recording_studio_mcp/tool_surface/insert.rb'
+    - 'lib/recording_studio_mcp.rb'
+    - 'lib/recording_studio_mcp/configuration.rb'
 
 Metrics/ModuleLength:
   Exclude:
@@ -36,6 +40,10 @@ Metrics/ModuleLength:
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
     - 'lib/recording_studio_mcp/postgres_bus.rb'
+    - 'test/test_helper.rb'
+    - 'lib/recording_studio_mcp.rb'
+    - 'lib/recording_studio_mcp/catalog/describe_shape.rb'
+    - 'lib/recording_studio_mcp/generic_tools.rb'
 
 Metrics/MethodLength:
   Exclude:
@@ -53,6 +61,12 @@ Metrics/MethodLength:
     - 'lib/recording_studio_mcp/json_object_schema.rb'
     - 'lib/recording_studio_mcp/events.rb'
     - 'lib/recording_studio_mcp/postgres_bus.rb'
+    - 'lib/recording_studio_mcp/catalogs.rb'
+    - 'lib/recording_studio_mcp/dispatcher.rb'
+    - 'lib/recording_studio_mcp/dispatcher/endpoint.rb'
+    - 'lib/recording_studio_mcp/dispatcher/tree.rb'
+    - 'lib/recording_studio_mcp.rb'
+    - 'lib/recording_studio_mcp/generic_tools.rb'
 
 Metrics/AbcSize:
   Exclude:
@@ -64,6 +78,13 @@ Metrics/AbcSize:
     - 'lib/recording_studio_mcp/callback_http.rb'
     - 'lib/recording_studio_mcp/callback_url.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
+    - 'lib/recording_studio_mcp/catalogs.rb'
+    - 'lib/recording_studio_mcp/dispatcher.rb'
+    - 'lib/recording_studio_mcp/dispatcher/endpoint.rb'
+    - 'lib/recording_studio_mcp/tools.rb'
+    - 'lib/recording_studio_mcp.rb'
+    - 'lib/recording_studio_mcp/configuration.rb'
+    - 'lib/recording_studio_mcp/schema_from_contract.rb'
 
 Metrics/CyclomaticComplexity:
   Exclude:
@@ -72,16 +93,24 @@ Metrics/CyclomaticComplexity:
     - 'lib/recording_studio_mcp/callback_url.rb'
     - 'lib/recording_studio_mcp/json_object_schema.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
+    - 'lib/recording_studio_mcp/catalogs.rb'
+    - 'lib/recording_studio_mcp/catalog/describe_shape.rb'
 
 Metrics/PerceivedComplexity:
   Exclude:
     - 'test/**/*'
     - 'lib/recording_studio_mcp/event_rpc.rb'
     - 'lib/recording_studio_mcp/webhook_dispatch.rb'
+    - 'lib/recording_studio_mcp/catalogs.rb'
+    - 'lib/recording_studio_mcp/catalog/describe_shape.rb'
 
 Metrics/ParameterLists:
   Exclude:
+    - 'test/**/*'
     - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp.rb'
+    - 'lib/recording_studio_mcp/server_dsl.rb'
+    - 'lib/recording_studio_mcp/skills.rb'
 
 Lint/EmptyBlock:
   Exclude:

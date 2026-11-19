@@ -65,7 +65,7 @@ module RecordingStudioMcp
     end
 
     def page_type(catalog, type_name)
-      catalog.describe_registered(type_name).merge("recordable_type" => type_name.to_s)
+      catalog.documentation_type(type_name).merge("recordable_type" => type_name.to_s)
     rescue RecordingStudioApi::InvalidActionInputError, RecordingStudioApi::NotFoundError
       empty_type_describe(catalog, type_name)
     end

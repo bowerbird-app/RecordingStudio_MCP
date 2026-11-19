@@ -5,6 +5,9 @@ module RecordingStudioMcp
     private
 
     def dispatch_endpoint(endpoint, args)
+      lookup = RecordingStudioApi.lookup(api: api_key, endpoint: endpoint.name)
+      raise RecordingStudioApi::UnsupportedActionError, "Unknown API endpoint #{endpoint.name}" if lookup.nil?
+
       guarded = handler_scope do
         RecordingStudioApi::HandlerGuard.endpoint!(
           access_grant: access_grant,
@@ -15,7 +18,7 @@ module RecordingStudioMcp
       return scope_miss_result unless guarded
 
       context = endpoint_context(endpoint, args, recording: guarded.recording)
-      success_result(serialize_endpoint_result(endpoint, endpoint.handler.call(context)))
+      success_result(serialize_endpoint_result(endpoint, lookup.handler.call(context)))
     end
 
     def endpoint_context(endpoint, args, recording: nil)

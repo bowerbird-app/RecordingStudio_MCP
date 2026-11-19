@@ -157,6 +157,7 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
   test "scoped endpoints scope the recording and hide guard messages" do
     register_guard_endpoint(:guard_page, verb: :get, path: "guard-page/:id")
     register_guard_endpoint(:guard_page_edit, verb: :post, path: "guard-page-edit/:id")
+    mcp_include_endpoints(:guard_page, :guard_page_edit)
     view = view_token
     edit = edit_token
 
@@ -193,6 +194,7 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
         { recording_id: context.recording&.id }
       }
     )
+    mcp_include_endpoints(:guard_open)
     view = view_token
 
     shown = call_tool(view, "show", type: "Page", id: @foreign.id)

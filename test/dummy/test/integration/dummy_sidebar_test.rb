@@ -57,6 +57,8 @@ class DummySidebarTest < ActionDispatch::IntegrationTest
       name: "Cursor",
       redirect_uris: ["https://cursor.com/oauth/callback"]
     )
+    seed_client = RecordingStudioOauth::OauthClient.find_by!(name: "Seed MCP App")
+    RecordingStudioOauth::OauthClient.where.not(id: [ seed_client.id, dcr_client.id ]).find_each(&:destroy)
 
     get "/admin/screens/oauth_clients"
 

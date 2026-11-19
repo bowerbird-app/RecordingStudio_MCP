@@ -294,6 +294,57 @@ module RecordingStudioMcp
       )
     end
 
+    def registered_tool(built, catalog)
+      registration = built.registration
+      lookup = built.lookup
+      contract = stringify_contract(lookup&.input_contract)
+      properties = contract_properties(contract, registration.input)
+      required = SchemaFromContract.required_names(contract)
+      required = %w[type] if required.empty? && registration.type.present?
+      properties = merge_type_property(properties, registration, catalog)
+      ToolDocs.decorate(
+        tool(
+          name: registration.name,
+          title: built.title,
+          description: built.description,
+          read_only: read_only_target?(registration),
+          destructive: destructive_target?(registration),
+          idempotent: read_only_target?(registration),
+          required: required,
+          properties: properties.symbolize_keys
+        ),
+        output_schema: lookup&.output_schema
+      )
+    end
+
+    def merge_type_property(properties, registration, catalog)
+      return properties unless registration.type.present?
+      return properties if properties.key?("type") || properties.key?(:type)
+
+      properties.merge(type: catalog.type_schema)
+    end
+
+    def stringify_contract(contract)
+      return {} if contract.blank?
+
+      contract.to_h.transform_keys(&:to_s)
+    end
+
+    def contract_properties(contract, copy)
+      contract.to_h.each_with_object({}) do |(name, field), properties|
+        key = name.to_s
+        properties[key.to_sym] = SchemaFromContract.property(field, copy: copy[key] || {})
+      end
+    end
+
+    def read_only_target?(registration)
+      registration.target.operation? && %i[index show].include?(registration.target.value)
+    end
+
+    def destructive_target?(registration)
+      registration.target.operation? && registration.target.value == :destroy
+    end
+
     def describe_tool(catalog)
       ToolDocs.decorate(
         tool(
@@ -309,12 +360,8 @@ module RecordingStudioMcp
       )
     end
 
-    DESCRIBE_DESCRIPTION = "Describe one type on this named API. " \
-                           "Returns operations, typed writable fields with requirements, allowed values, " \
-                           "and nested field schema, " \
-                           "sortable fields, output keys, extra fields, relationships and allowed children, " \
-                           "enabled capability actions with input contracts, and parent rules. " \
-                           "Each type's describe output lists its allowed operations."
+    DESCRIBE_DESCRIPTION = "Describe one type on this server. " \
+                           "Returns the type paragraph, included tools, skills, and relationships."
 
     def endpoint_title(endpoint)
       endpoint.openapi[:summary].presence || endpoint.name.to_s.tr("_", " ").capitalize
@@ -367,6 +414,7 @@ module RecordingStudioMcp
                          :endpoint_description, :list_description, :list_properties,
                          :create_type_requirements, :schema_fields, :type_clause,
                          :field_input_property, :nested_field?, :update_type_requirements,
-                         :attach_meta, :attach_ui_meta
+                         :attach_meta, :attach_ui_meta, :stringify_contract, :contract_properties,
+                         :read_only_target?, :destructive_target?
   end
 end

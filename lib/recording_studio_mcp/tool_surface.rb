@@ -53,18 +53,17 @@ module RecordingStudioMcp
     def initialize(catalog:, access_grant: nil)
       @catalog = catalog
       @access_grant = access_grant
-      @endpoints = advertised_endpoints(catalog)
+      @server = catalog.resolved_server
+      @endpoints = advertised_endpoints
       @by_name = {}
-      insert_tree_tools
-      insert_metric_tools
-      insert_endpoint_tools
+      insert_server_tools
       @by_name.freeze
     end
 
-    attr_reader :catalog, :endpoints
+    attr_reader :server, :catalog, :endpoints
 
     def tree_enabled?
-      catalog.type_names.any?
+      tree_tool_names.intersect?(Catalogs::GENERIC_NAMES) || catalog.type_names.any?
     end
 
     def list_parent_id?
@@ -80,11 +79,13 @@ module RecordingStudioMcp
     end
 
     def tree_tool_names
-      Tools.advertised_tree_names(catalog)
+      names = [Catalogs::DESCRIBE_NAME]
+      names.concat(Tools.advertised_tree_names(catalog).select { |name| server&.tool?(name) }) if server
+      names.uniq
     end
 
     def tree_tool?(name)
-      tree_enabled? && tree_tool_names.include?(name.to_s)
+      tree_tool_names.include?(name.to_s)
     end
 
     def metric_tool(name)

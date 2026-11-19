@@ -487,7 +487,6 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_response :success, response.body
     payload = JSON.parse(response.body)
     described = tool_payload(payload)
-    title = described.fetch("writable_fields").find { |field| field["name"] == "title" }
 
     refute payload.dig("result", "isError")
     assert_equal(
@@ -495,10 +494,10 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
       "type's actions (for example add_image), not as their own types.",
       described.fetch("nesting")
     )
-    assert_equal "string", title.fetch("type")
-    assert_equal false, title.fetch("required")
-    assert_includes described.fetch("operations"), "create"
-    refute_includes described.fetch("capability_actions").map { |action| action.fetch("name") }, "move"
+    assert_includes described.fetch("tools"), "list"
+    assert_includes described.fetch("tools"), "create"
+    refute described.key?("writable_fields")
+    refute described.key?("capability_actions")
   end
 
   test "describe includes required fields and capability input contracts" do
@@ -510,12 +509,13 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
     assert_response :success, response.body
     described = tool_payload(JSON.parse(response.body))
-    name = described.fetch("writable_fields").find { |field| field["name"] == "name" }
-    ping = described.fetch("capability_actions").find { |action| action["name"] == "ping" }
 
-    assert_equal true, name.fetch("required")
-    assert_equal "string", name.fetch("type")
-    assert_equal "string", ping.dig("params", "fields", "style", "type")
+    assert_includes described.fetch("tools"), "capability_action"
+    assert described["description"].present?
+    refute described.key?("writable_fields")
+    documented = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Workspace")
+    ping = documented.fetch("capability_actions").find { |action| action["name"] == "ping" }
+    assert_equal :string, ping.dig("params", "fields", "style", "type")
     assert_equal %w[quiet loud], ping.dig("params", "fields", "style", "enum")
   end
 

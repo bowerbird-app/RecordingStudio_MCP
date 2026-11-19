@@ -13,7 +13,12 @@ module RecordingStudioMcp
     include Reader
 
     def self.for(access_grant)
-      new(api: api_from(access_grant), access_grant: access_grant)
+      api = api_from(access_grant)
+      new(
+        api: api,
+        access_grant: access_grant,
+        server: RecordingStudioMcp.configuration.catalogs.server_for(api: api)
+      )
     end
 
     def self.api_from(access_grant)
@@ -22,15 +27,16 @@ module RecordingStudioMcp
       access_grant.api_client&.api_key.presence || "public"
     end
 
-    def initialize(api:, access_grant: nil)
+    def initialize(api:, access_grant: nil, server: nil)
       @api = RecordingStudioApi.configuration.fetch_api(api).name
       @access_grant = access_grant
+      @server = server
     end
 
-    attr_reader :api, :access_grant
+    attr_reader :api, :access_grant, :server
 
     def type_names
-      @type_names ||= registered_types.sort.freeze
+      @type_names ||= included_type_names.sort.freeze
     end
 
     def union_output_keys
@@ -71,9 +77,27 @@ module RecordingStudioMcp
       type_names_for(:index).select { |type| configured.include?(type) }
     end
 
+    def resolved_server
+      return if @server == false
+      return @server if @server.is_a?(BuiltServer)
+
+      RecordingStudioMcp.configuration.catalogs.server_for(api: api)
+    end
+
     private
 
+    def included_type_names
+      return api_registered_types if @server == false
+
+      names = resolved_server&.type_names
+      names ? names.map(&:to_s) : []
+    end
+
     def registered_types
+      included_type_names
+    end
+
+    def api_registered_types
       registry = RecordingStudioApi.configuration.fetch_api(api).recordable_registry
       registry.to_h.keys.map(&:to_s)
     end

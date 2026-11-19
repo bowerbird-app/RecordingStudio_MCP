@@ -30,7 +30,20 @@ module RecordingStudioMcp
       end
     end
 
-    Registration = Data.define(:name, :path, :available_if) do
+    Registration = Data.define(:name, :path, :available_if, :type, :title, :description, :body, :tools) do
+      def initialize(name:, path: nil, available_if: nil, type: nil, title: nil, description: nil, body: nil, tools: [])
+        super(
+          name: name,
+          path: path,
+          available_if: available_if,
+          type: type,
+          title: title,
+          description: description,
+          body: body,
+          tools: Array(tools)
+        )
+      end
+
       def uri
         "skill://#{name}/SKILL.md"
       end
@@ -63,7 +76,9 @@ module RecordingStudioMcp
     class Document
       class << self
         def read(registration)
-          raw = File.binread(registration.path.to_s)
+          raw = source_bytes(registration)
+          return nil if raw.nil?
+
           text = utf8(raw)
           return nil if text.nil?
 
@@ -73,6 +88,30 @@ module RecordingStudioMcp
           assemble(registration, raw, text, frontmatter)
         rescue StandardError
           nil
+        end
+
+        def source_bytes(registration)
+          path = registration.path&.to_s
+          return File.binread(path) if path.present? && File.file?(path)
+
+          synthetic_markdown(registration)&.b
+        end
+
+        def synthetic_markdown(registration)
+          description = registration.description.to_s
+          return if description.blank?
+
+          title = registration.title.presence || registration.name
+          body = registration.body.to_s
+          <<~MARKDOWN
+            ---
+            name: #{registration.name}
+            description: #{description}
+            ---
+            # #{title}
+
+            #{body}
+          MARKDOWN
         end
 
         private
