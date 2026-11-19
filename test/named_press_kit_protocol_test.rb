@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "support/mcp_test_kits"
 
 class NamedPressKitProtocolTest < Minitest::Test
-  PRESS_KIT = "RecordingStudioPresskits::PressKit"
+  PRESS_KIT = "McpTestKits::Kit"
 
   FakeRecording = Struct.new(:id, :recordable_type)
   FakeRelation = Struct.new(:recording) do
@@ -20,9 +21,9 @@ class NamedPressKitProtocolTest < Minitest::Test
       refute result[:isError], result.dig(:content, 0, :text)
       assert_equal "kit-1", result.dig(:structuredContent, "id")
       assert rejected[:isError]
-      assert_includes rejected.dig(:content, 0, :text), "Unknown type RecordingStudioPresskits::PressKit"
+      assert_includes rejected.dig(:content, 0, :text), "Unknown type McpTestKits::Kit"
       refute_includes rejected.dig(:content, 0, :text).to_s.split("Allowed types:").last.to_s,
-                      "RecordingStudioPresskits::PressKit"
+                      "McpTestKits::Kit"
     end
   end
 
@@ -100,7 +101,7 @@ class NamedPressKitProtocolTest < Minitest::Test
 
       assert missing[:isError]
       assert_includes missing.dig(:content, 0, :text),
-                      "parent_id is required for RecordingStudioPresskits::PressKit"
+                      "parent_id is required for McpTestKits::Kit"
     end
   end
 
@@ -138,15 +139,13 @@ class NamedPressKitProtocolTest < Minitest::Test
       @grant = press_kit_grant(recording)
       RecordingStudio.stub(:root_allowed?, ->(type) { type.to_s != PRESS_KIT }) do
         RecordingStudio.stub(:allowed_parent_types_for, lambda { |type|
-          type.to_s == PRESS_KIT ? %w[RecordingStudioPresskits::PressCenter] : []
+          type.to_s == PRESS_KIT ? %w[McpTestKits::Center] : []
         }) do
           register_press_kit(custom_create: custom_create)
           yield
         end
       end
     end
-  ensure
-    remove_press_kit_constant
   end
 
   def register_press_kit(custom_create: true)
@@ -173,7 +172,8 @@ class NamedPressKitProtocolTest < Minitest::Test
       PRESS_KIT,
       operations: %i[index show create],
       capability_actions: %i[create_section],
-      writable_attributes: %i[title]
+      writable_attributes: %i[title],
+      public_name: "PressKit"
     )
     if custom_create
       RecordingStudioApi.register_resource_handler(
@@ -183,7 +183,6 @@ class NamedPressKitProtocolTest < Minitest::Test
       )
     else
       RecordingStudioApi.register_default_resource_actions!(api: :public)
-      stub_press_kit_constant
     end
     RecordingStudioMcp.register_tool(
       name: "PressKit--create_section",
@@ -197,24 +196,6 @@ class NamedPressKitProtocolTest < Minitest::Test
       output: "the section"
     )
     ensure_tree_server(:public, extra_tools: %w[PressKit--create_section])
-  end
-
-  def stub_press_kit_constant
-    return if PRESS_KIT.safe_constantize
-
-    @created_presskits_module = !Object.const_defined?(:RecordingStudioPresskits, false)
-    Object.const_set(:RecordingStudioPresskits, Module.new) if @created_presskits_module
-    presskits = Object.const_get(:RecordingStudioPresskits)
-    @created_presskit_class = !presskits.const_defined?(:PressKit, false)
-    presskits.const_set(:PressKit, Class.new) if @created_presskit_class
-  end
-
-  def remove_press_kit_constant
-    return unless Object.const_defined?(:RecordingStudioPresskits, false)
-
-    presskits = Object.const_get(:RecordingStudioPresskits)
-    presskits.send(:remove_const, :PressKit) if @created_presskit_class && presskits.const_defined?(:PressKit, false)
-    Object.send(:remove_const, :RecordingStudioPresskits) if @created_presskits_module
   end
 
   def press_kit_grant(recording)
