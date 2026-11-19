@@ -20,13 +20,22 @@ module RecordingStudioMcp
         end
       end
 
+      def assert_sensitive!(server, included, name, sensitive)
+        message = sensitive_mismatch(server, included, name, sensitive)
+        raise RecordingStudioApi::ConfigurationError, message if message
+      end
+
       def mismatches(server)
         server.tools.each_value.filter_map do |tool|
-          next unless tool.sensitive
-          next if server.allow_sensitive || tool.allow_sensitive == true
-
-          "server #{server.name} tool #{tool.name} is sensitive without allow_sensitive"
+          sensitive_mismatch(server, tool, tool.name, tool.sensitive)
         end
+      end
+
+      def sensitive_mismatch(server, included, name, sensitive)
+        return unless sensitive
+        return if server.allow_sensitive || included.allow_sensitive == true
+
+        "MCP server #{server.name} includes sensitive tool #{name} without allow_sensitive"
       end
     end
   end

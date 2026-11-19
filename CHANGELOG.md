@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Breaking: MCP tools are opt-in. Hosts register tools, types, and skills, then include them on `RecordingStudioMcp.register_server`. The old generic per-type auto-catalog is gone. `describe` stays on every server and lists only that server's types, tools, and skills.
 - Dispatch uses `RecordingStudioApi.lookup` for the handler, input contract, output schema, sensitive flag, and API membership. Authorization stays in the API handler and Accessible.
-- Schema `type`, `required`, and non-empty rules always come from the API contract. MCP text may only describe or narrow inputs. A host override of the same tool name changes copy only.
-- Typed and generic create for the same type share that lookup schema, including `enum`, nested `items`/`properties`, and `minLength` from `allow_blank`.
+- Create and update tool schemas start from `RecordingStudioApi::Services::DocumentationCatalog.attributes_schema_for`, which keeps descriptions, examples, `additionalProperties`, and nested shapes. Lookup supplies `required` and `allow_blank` (`minLength: 1`). Host overrides may change descriptions and examples only.
+- Typed and generic create for the same type share that schema. Update fields stay optional.
 - Requires `recording_studio_api` `>= 1.21.3`, `< 2.0`.
 
 ### Added

@@ -187,8 +187,6 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  LookupResult = Data.define(:handler, :input_contract, :output_schema, :sensitive, :apis, :custom)
-
   class CallTrackingScope
     def initialize(recording)
       @recording = recording
@@ -208,7 +206,6 @@ class DispatcherTest < Minitest::Test
   end
 
   def setup
-    @lookup_handler_calls = 0
     @lookup_sensitive = false
     @grant = FakeGrant.new(
       api_client: FakeClient.new("public"),
@@ -270,7 +267,6 @@ class DispatcherTest < Minitest::Test
               result = dispatch("list", { type: "Workspace" })
 
               refute result[:isError]
-              assert_operator @lookup_handler_calls, :>=, 1
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
               payload = JSON.parse(result.dig(:content, 0, :text))
               assert_equal "Studio", payload.dig("records", 0, "name")
@@ -293,7 +289,6 @@ class DispatcherTest < Minitest::Test
               result = dispatch("list", { type: "Workspace" })
 
               refute result[:isError]
-              assert_operator @lookup_handler_calls, :>=, 1
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
             end
           end
@@ -1542,7 +1537,7 @@ class DispatcherTest < Minitest::Test
   end
 
   def stubbed_lookup(**kwargs)
-    custom_handler, handler = stubbed_lookup_handler(
+    _custom_handler, handler = stubbed_lookup_handler(
       kwargs[:api] || :public,
       kwargs[:recordable_type],
       kwargs[:operation],
@@ -1551,17 +1546,12 @@ class DispatcherTest < Minitest::Test
     )
     return if handler.nil?
 
-    distinct = lambda do |context|
-      @lookup_handler_calls += 1
-      handler.call(context)
-    end
-    LookupResult.new(
-      handler: distinct,
+    RecordingStudioApi::Lookup::Result.new(
+      handler: handler,
       input_contract: {},
       output_schema: {},
       sensitive: @lookup_sensitive,
-      apis: [kwargs[:api] || :public],
-      custom: custom_handler
+      apis: [kwargs[:api] || :public]
     )
   end
 

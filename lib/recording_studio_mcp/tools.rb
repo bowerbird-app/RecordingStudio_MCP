@@ -186,7 +186,12 @@ module RecordingStudioMcp
       contract = SchemaFromContract.stringify(lookup&.input_contract)
       return if contract.blank?
 
-      properties = SchemaFromContract.properties(contract)
+      properties = SchemaFromContract.properties_for(
+        lookup,
+        recordable_type: type_name,
+        operation: operation,
+        api: catalog.api
+      )
       required = SchemaFromContract.required_names(contract)
       clause = {
         if: {
@@ -278,13 +283,12 @@ module RecordingStudioMcp
       )
     end
 
-    def registered_tool(built, _catalog)
-      ToolDocs.decorate(tool(registered_tool_options(built)), output_schema: built.lookup&.output_schema)
+    def registered_tool(built, catalog)
+      ToolDocs.decorate(tool(registered_tool_options(built, catalog)), output_schema: built.lookup&.output_schema)
     end
 
-    def registered_tool_options(built)
+    def registered_tool_options(built, catalog)
       registration = built.registration
-      contract = SchemaFromContract.stringify(built.lookup&.input_contract)
       {
         name: registration.name,
         title: built.title,
@@ -292,9 +296,19 @@ module RecordingStudioMcp
         read_only: read_only_target?(registration),
         destructive: destructive_target?(registration),
         idempotent: read_only_target?(registration),
-        required: SchemaFromContract.required_names(contract) - forced_keys(registration),
-        properties: drop_forced_keys(SchemaFromContract.properties(contract, copy: registration.input), registration)
+        required: SchemaFromContract.required_names(built.lookup&.input_contract) - forced_keys(registration),
+        properties: drop_forced_keys(lookup_properties(built, catalog, registration), registration)
       }
+    end
+
+    def lookup_properties(built, catalog, registration)
+      SchemaFromContract.properties_for(
+        built.lookup,
+        recordable_type: registration.type,
+        operation: registration.target.value,
+        api: catalog.api,
+        copy: registration.input
+      )
     end
 
     def forced_keys(registration)
@@ -394,6 +408,6 @@ module RecordingStudioMcp
                          :create_type_requirements, :lookup_clause, :update_type_requirements,
                          :attach_meta, :attach_ui_meta, :forced_keys, :drop_forced_keys,
                          :protocol_field, :read_only_target?, :destructive_target?,
-                         :registered_tool_options
+                         :registered_tool_options, :lookup_properties
   end
 end

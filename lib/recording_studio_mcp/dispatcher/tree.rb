@@ -20,7 +20,7 @@ module RecordingStudioMcp
       recordable_type = catalog.resolve_type!(args["type"])
       reject_disabled_operation!(recordable_type, operation_name)
       lookup = resource_lookup(recordable_type, operation_name)
-      if custom_lookup?(lookup, operation_name)
+      if custom_lookup?(lookup, recordable_type, operation_name)
         call_resource_handler(lookup.handler, recordable_type, operation_name, args)
       else
         call_builtin_resource(recordable_type, operation_name, args, handler: lookup.handler)
@@ -36,11 +36,9 @@ module RecordingStudioMcp
       lookup
     end
 
-    def custom_lookup?(lookup, operation_name)
-      return lookup.custom if lookup.respond_to?(:custom)
-
-      builtin = RecordingStudioApi.resource_action(operation_name, api: api_key)&.handler
-      lookup.handler && lookup.handler != builtin
+    def custom_lookup?(lookup, recordable_type, operation_name)
+      custom = RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
+      lookup.handler && custom && lookup.handler == custom
     end
 
     def reject_disabled_operation!(recordable_type, operation_name)

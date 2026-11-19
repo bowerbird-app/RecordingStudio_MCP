@@ -2,6 +2,7 @@
 
 require_relative "lookups"
 require_relative "types"
+require_relative "audit"
 
 module RecordingStudioMcp
   class Catalogs
@@ -50,11 +51,7 @@ module RecordingStudioMcp
       end
 
       def assert_sensitive!(server, included, name, sensitive)
-        return unless sensitive
-        return if server.allow_sensitive || included.allow_sensitive == true
-
-        raise RecordingStudioApi::ConfigurationError,
-              "MCP server #{server.name} includes sensitive tool #{name} without allow_sensitive"
+        Audit.assert_sensitive!(server, included, name, sensitive)
       end
 
       def included_skills(server, api, tools, types)

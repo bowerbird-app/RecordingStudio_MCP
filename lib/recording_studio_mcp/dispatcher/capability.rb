@@ -21,7 +21,6 @@ module RecordingStudioMcp
 
     def custom_capability?(lookup, action)
       return false if lookup.nil?
-      return lookup.custom if lookup.respond_to?(:custom)
 
       lookup.handler && lookup.handler != action.handler
     end

@@ -1,27 +1,25 @@
 # frozen_string_literal: true
 
+require_relative "nested_schema"
+
 module RecordingStudioMcp
   module SchemaFromContract
-    TYPE_MAP = {
-      "string" => "string",
-      "integer" => "integer",
-      "float" => "number",
-      "number" => "number",
-      "boolean" => "boolean",
-      "array" => "array",
-      "hash" => "object",
-      "object" => "object",
-      "symbol" => "string"
-    }.freeze
     PROTOCOL_KEYS = %w[
       type id parent_id q limit sort order filter pagination_token action params idempotency_key
     ].freeze
-    NESTED_SCHEMA_KEYS = %i[items properties additionalProperties].freeze
+    JSON_TYPES = %w[string integer number boolean array object].freeze
 
     module_function
 
     def json_type(contract_field)
-      TYPE_MAP.fetch(field_value(contract_field, :type).to_s, "string")
+      raw = field_value(contract_field, :type)
+      name = raw.to_s
+      return name if JSON_TYPES.include?(name)
+
+      token = name.presence&.to_sym || :string
+      JSON_TYPES.find do |json|
+        RecordingStudioApi::Services::DocumentationCatalog.contract_type_for(json) == token
+      end || "string"
     end
 
     def required?(contract_field)
@@ -33,20 +31,25 @@ module RecordingStudioMcp
       value.nil? ? !required?(contract_field) : value != false
     end
 
-    def property(contract_field, copy: {})
-      json = json_type(contract_field)
-      built = { type: json }
+    def properties_for(lookup, recordable_type:, operation:, api:, copy: {})
+      contract = stringify(lookup&.input_contract)
+      catalog = stringify(attributes_properties(recordable_type, operation, api))
+      properties(contract, copy: copy, catalog_properties: catalog)
+    end
+
+    def property(contract_field, copy: {}, catalog_property: nil)
+      built = catalog_property_schema(catalog_property)
+      built[:type] ||= json_type(contract_field)
       overlay_copy_on(built, copy)
-      enum = field_value(contract_field, :enum)
-      built[:enum] = Array(enum) if enum.present?
-      built[:minLength] = 1 if json == "string" && !allow_blank?(contract_field)
-      attach_nested_schema(built, contract_field)
+      apply_contract_constraints(built, contract_field)
       built
     end
 
-    def properties(contract, copy: {})
+    def properties(contract, copy: {}, catalog_properties: {})
+      catalog = stringify(catalog_properties)
+      host = stringify(copy)
       stringify(contract).to_h do |name, field|
-        [name.to_sym, property(field, copy: copy[name] || {})]
+        [name.to_sym, property(field, copy: host[name] || {}, catalog_property: catalog[name])]
       end
     end
 
@@ -57,7 +60,7 @@ module RecordingStudioMcp
     end
 
     def overlay_copy(properties, copy)
-      copy.to_h.each do |name, meta|
+      stringify(copy).each do |name, meta|
         key = name.to_sym
         next unless properties[key]
 
@@ -92,27 +95,29 @@ module RecordingStudioMcp
       property[:examples] = Array(meta[:example]) if meta.key?(:example)
     end
 
-    def attach_nested_schema(built, contract_field)
-      NESTED_SCHEMA_KEYS.each do |key|
-        value = field_value(contract_field, key)
-        next if value.nil?
+    def catalog_property_schema(catalog_property)
+      return {} if catalog_property.blank?
 
-        built[key] = json_schema_fragment(value)
-      end
+      NestedSchema.copy(catalog_property).transform_keys(&:to_sym)
     end
 
-    def json_schema_fragment(value)
-      case value
-      when Hash
-        value.to_h.each_with_object({}) do |(key, entry), copy|
-          copy[key.to_sym] = json_schema_fragment(entry)
-        end
-      when Array
-        value.map { |entry| json_schema_fragment(entry) }
-      else
-        value
-      end
+    def apply_contract_constraints(built, contract_field)
+      enum = field_value(contract_field, :enum)
+      built[:enum] = Array(enum) if enum.present? && !built.key?(:enum)
+      return unless built[:type].to_s == "string" && !allow_blank?(contract_field) && !built.key?(:minLength)
+
+      built[:minLength] = 1
     end
-    private_class_method :overlay_copy_on, :attach_nested_schema, :json_schema_fragment
+
+    def attributes_properties(recordable_type, operation, api)
+      schema = RecordingStudioApi::Services::DocumentationCatalog.attributes_schema_for(
+        recordable_type,
+        mutable: operation.to_sym == :update,
+        api: api
+      )
+      schema.is_a?(Hash) ? schema[:properties] || schema["properties"] : nil
+    end
+    private_class_method :overlay_copy_on, :catalog_property_schema, :attributes_properties,
+                         :apply_contract_constraints
   end
 end

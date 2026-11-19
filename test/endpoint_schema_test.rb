@@ -49,8 +49,10 @@ class EndpointSchemaTest < Minitest::Test
     assert_equal "integer", schema.dig(:properties, :limit, :type)
     assert_equal "object", schema.dig(:properties, :flags, :type)
     assert_equal %w[quiet loud], schema.dig(:properties, :style, :enum)
-    assert_equal({ type: "string" }, schema.dig(:properties, :tags, :items))
-    assert_equal({ heading: { type: "string" } }, schema.dig(:properties, :meta, :properties))
+    assert_equal "array", schema.dig(:properties, :tags, :type)
+    refute schema.dig(:properties, :tags).key?(:items)
+    assert_equal "object", schema.dig(:properties, :meta, :type)
+    refute schema.dig(:properties, :meta).key?(:properties)
     assert_equal 1, schema.dig(:properties, :q, :minLength)
     assert_equal false, schema[:additionalProperties]
     refute schema.dig(:properties, :q).key?(:description)

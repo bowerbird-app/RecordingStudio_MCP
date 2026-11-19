@@ -280,6 +280,7 @@ class ToolsTest < Minitest::Test
       article_body = clauses.fetch("Article").dig(:then, :properties, :body)
       assert_equal ["title"], clauses.fetch("Page").dig(:then, :required)
       assert_equal "string", page_title[:type]
+      assert_equal "Page title.", page_title[:description]
       assert_equal 1, page_title[:minLength]
       assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
       assert_equal "string", article_body[:type]
@@ -302,7 +303,12 @@ class ToolsTest < Minitest::Test
       assert_equal ["title"], create_clause.dig(:then, :required)
       assert_nil update_clause.dig(:then, :required)
       assert_equal "object", items[:type]
-      assert_equal({ heading: { type: "string" } }, items[:properties])
+      assert_equal "Labels for kit sections.", items[:description]
+      assert_equal "object", items.dig(:additionalProperties, "type")
+      assert_equal "string", items.dig(:additionalProperties, "properties", "label", "type")
+      assert_equal "boolean", items.dig(:additionalProperties, "properties", "hidden", "type")
+      assert_equal [], items.dig(:additionalProperties, "required")
+      assert_equal [{ "hero" => { "hidden" => false } }], items[:examples]
       assert_equal items, update_clause.dig(:then, :properties, :items)
     end
   end
@@ -518,9 +524,16 @@ class ToolsTest < Minitest::Test
             title: { type: "string" },
             items: {
               type: "object",
-              properties: {
-                heading: { type: "string" }
-              }
+              description: "Labels for kit sections.",
+              additionalProperties: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  hidden: { type: "boolean" }
+                },
+                required: []
+              },
+              examples: [{ "hero" => { "hidden" => false } }]
             }
           },
           required: ["title"]
