@@ -2,11 +2,17 @@
 
 ## 0.41.0
 
-Previous version is `0.40.1`. No MCP migration.
+Previous version is `0.40.2`. No MCP migration.
 
 `include_tool` `title:` and `description:` now apply to metric tools. Typed tools already used that BuiltTool host copy. Recordable metric tools list `MetricEntry#title`, and fall back to the capitalized identifier only when that title is blank.
 
 Boot raises `RecordingStudioApi::ConfigurationError` when a server includes a catalog metric whose resource is not in `catalog_metric_resources`. Runtime `tools/list` already left those tools out. Add the resource to the allowlist, or stop including the tool. A nil allowlist still includes every catalog metric.
+
+## 0.40.2
+
+Previous version is `0.40.1`. No MCP migration.
+
+A named `register_tool` for a recordable type and capability action is the only docs entry for that type/action. The `{type}--{action}` `x-mcp-docs-only` copy is omitted when that named tool is on the server. Type/actions with no named tool still get the docs-only page.
 
 ## 0.40.0
 

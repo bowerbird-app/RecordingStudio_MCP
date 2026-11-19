@@ -779,6 +779,34 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_named_tool_for_a_type_action_is_listed_once
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type("Folder", operations: %i[index show], capability_actions: %i[ping])
+      register_tree_type("Page", operations: %i[index show], capability_actions: %i[ping])
+      RecordingStudioMcp.register_tool(
+        name: "folder_ping",
+        type: "Folder",
+        action: :ping,
+        title: "Ping folder",
+        description: "Ping a folder.",
+        input: {},
+        output: "ok"
+      )
+      ensure_tree_server(:public, extra_tools: %w[folder_ping])
+
+      spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
+      tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
+
+      assert_equal 1, names.count("folder_ping")
+      refute_includes names, "Folder--ping"
+      refute tools.fetch("folder_ping")["x-mcp-docs-only"]
+      assert_equal 1, names.count("Page--ping")
+      assert tools.fetch("Page--ping")["x-mcp-docs-only"]
+    end
+  end
+
   def test_openapi_files_actions_use_the_gem_type_group
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public

@@ -6,10 +6,10 @@ module RecordingStudioMcp
       module TypeActions
         module_function
 
-        def tools(page, group_tags: nil)
+        def tools(page, group_tags: nil, covered: nil)
           type_names = page_type_names(page)
           listed = Array(page.types).flat_map do |entry|
-            tools_for(entry, page.api_key, group_tags, type_names)
+            tools_for(entry, page.api_key, group_tags, type_names, covered)
           end
           listed.sort_by { |tool| [tool["title"].to_s, tool["name"].to_s] }
         end
@@ -24,13 +24,14 @@ module RecordingStudioMcp
         end
         private_class_method :page_type_names
 
-        def tools_for(entry, api_key, group_tags, type_names)
+        def tools_for(entry, api_key, group_tags, type_names, covered)
           entry = Internals.stringify(entry)
-          Array(entry["capability_actions"]).map do |action|
+          type = entry["recordable_type"].to_s
+          Array(entry["capability_actions"]).filter_map do |action|
             action = Internals.stringify(action)
-            tags = action_tag_names(
-              entry["recordable_type"].to_s, action["name"].to_s, api_key, group_tags, type_names
-            )
+            next if Array(covered).include?([type, action["name"].to_s])
+
+            tags = action_tag_names(type, action["name"].to_s, api_key, group_tags, type_names)
             action_tool(entry, action, api_key, tags)
           end
         end
