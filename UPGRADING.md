@@ -6,11 +6,11 @@ Previous version is `0.41.0`. No MCP migration.
 
 `describe` and other tools tell callers to call `describe`. There is no docs tool.
 
-`resolve_type!` accepts the registered class name and the public name through the same public-name catalog. `RecordingStudioPresskits::PressKit` and `PressKit` both select that type. Tool results still use the public name.
+Generic tools accept only the public type name. `PressKit` selects `RecordingStudioPresskits::PressKit`. The class name is still rejected on `list`, `create`, `update`, `delete`, `capability_action`, and `describe`. Named `{type}--{action}` tools pass the registered class name through the same public-name catalog without that public resolver.
 
-Named `{type}--{action}` tools include `id` when the action targets an existing recording. A contract field named `type` stays on the schema. Send those fields at the root. `params` still works for generic `capability_action`.
+Named `{type}--{action}` tools include `id` when the action targets an existing recording. A contract field named `type` stays on the schema. Send those fields at the root. `params` still works. A root field overrides `params` when both set the same key.
 
-`create` requires `parent_id` when type metadata says the type is not a root and lists allowed parents. The schema's per-type clause lists it, and a missing value is `parent_id is required for {type}`.
+`create` schemas mark `parent_id` required when the type is not a root. A missing value is refused by Recording Studio API on the builtin create path.
 
 ## 0.41.0
 

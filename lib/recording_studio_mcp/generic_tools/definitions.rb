@@ -85,7 +85,8 @@ module RecordingStudioMcp
       action: :capability_action,
       title: "Run a capability action",
       description: "May destructively change data by running one named API capability action on a record. " \
-                   "Call describe for the type to see which actions are enabled.",
+                   "Call describe for the type to see which actions are enabled. " \
+                   "Root fields override params when both set the same key.",
       input: {
         "type" => { description: "Type on this server." },
         "id" => { description: "Recording id." },

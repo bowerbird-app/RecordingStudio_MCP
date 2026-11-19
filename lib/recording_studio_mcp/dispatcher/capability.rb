@@ -6,7 +6,7 @@ module RecordingStudioMcp
 
     def dispatch_capability_action(args, type_name: nil)
       named_tool = type_name.present?
-      recordable_type = catalog.resolve_type!(type_name.presence || args["type"])
+      recordable_type = named_recordable_type(type_name) || catalog.resolve_type!(args["type"])
       action = enabled_capability_action!(recordable_type, args["action"].to_s)
       lookup = capability_lookup(recordable_type, action)
       if custom_capability?(lookup, action)
@@ -14,6 +14,15 @@ module RecordingStudioMcp
       else
         run_capability_action(recordable_type, args, action, handler: lookup&.handler, named_tool: named_tool)
       end
+    end
+
+    def named_recordable_type(type_name)
+      return if type_name.blank?
+
+      name = type_name.to_s
+      return name if catalog.displayed_type_names.key?(name)
+
+      raise RecordingStudioApi::NotFoundError, catalog.unknown_type_message(name)
     end
 
     def capability_lookup(recordable_type, action)

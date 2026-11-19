@@ -14,10 +14,15 @@ class NamedPressKitProtocolTest < Minitest::Test
 
   def test_tools_call_resolves_a_namespaced_type_through_the_public_name_catalog
     with_press_kit_surface do
-      result = call_tool("create", type: PRESS_KIT, parent_id: "center-1", title: "Kit")
+      result = call_tool("create", type: "PressKit", parent_id: "center-1", title: "Kit")
+      rejected = call_tool("create", type: PRESS_KIT, parent_id: "center-1", title: "Kit")
 
       refute result[:isError], result.dig(:content, 0, :text)
       assert_equal "kit-1", result.dig(:structuredContent, "id")
+      assert rejected[:isError]
+      assert_includes rejected.dig(:content, 0, :text), "Unknown type RecordingStudioPresskits::PressKit"
+      refute_includes rejected.dig(:content, 0, :text).to_s.split("Allowed types:").last.to_s,
+                      "RecordingStudioPresskits::PressKit"
     end
   end
 
@@ -60,17 +65,42 @@ class NamedPressKitProtocolTest < Minitest::Test
     end
   end
 
+  def test_named_action_root_fields_override_params
+    with_press_kit_surface do
+      clash = call_tool(
+        "PressKit--create_section",
+        id: "kit-1",
+        type: "Text",
+        content_type: "body",
+        params: { type: "Quote", content_type: "pull" }
+      )
+
+      refute clash[:isError], clash.dig(:content, 0, :text)
+      assert_equal "Text", clash.dig(:structuredContent, "section_type")
+      assert_equal "body", clash.dig(:structuredContent, "content_type")
+    end
+  end
+
   def test_create_requires_parent_id_when_the_type_is_not_a_root
     with_press_kit_surface do
-      missing = call_tool("create", type: "PressKit", title: "Kit")
       created = call_tool("create", type: "PressKit", parent_id: "center-1", title: "Kit")
       schema = listed_tool("create").fetch(:inputSchema)
       clause = schema.fetch(:allOf).find { |entry| entry.dig(:if, :properties, :type, :const) == "PressKit" }
+      action = listed_tool("capability_action")
 
-      assert missing[:isError]
-      assert_includes missing.dig(:content, 0, :text), "parent_id is required for PressKit"
       refute created[:isError], created.dig(:content, 0, :text)
       assert_includes clause.dig(:then, :required), "parent_id"
+      assert_includes action[:description], "Root fields override params"
+    end
+  end
+
+  def test_create_without_parent_id_raises_the_api_error
+    with_press_kit_surface(custom_create: false) do
+      missing = call_tool("create", type: "PressKit", title: "Kit")
+
+      assert missing[:isError]
+      assert_includes missing.dig(:content, 0, :text),
+                      "parent_id is required for RecordingStudioPresskits::PressKit"
     end
   end
 
@@ -102,7 +132,7 @@ class NamedPressKitProtocolTest < Minitest::Test
 
   private
 
-  def with_press_kit_surface
+  def with_press_kit_surface(custom_create: true)
     with_isolated_api_configuration do
       recording = FakeRecording.new("kit-1", PRESS_KIT)
       @grant = press_kit_grant(recording)
@@ -110,14 +140,16 @@ class NamedPressKitProtocolTest < Minitest::Test
         RecordingStudio.stub(:allowed_parent_types_for, lambda { |type|
           type.to_s == PRESS_KIT ? %w[RecordingStudioPresskits::PressCenter] : []
         }) do
-          register_press_kit
+          register_press_kit(custom_create: custom_create)
           yield
         end
       end
     end
+  ensure
+    remove_press_kit_constant
   end
 
-  def register_press_kit
+  def register_press_kit(custom_create: true)
     RecordingStudioApi.register_capability_action(
       :create_section,
       capability: :accessible,
@@ -143,11 +175,16 @@ class NamedPressKitProtocolTest < Minitest::Test
       capability_actions: %i[create_section],
       writable_attributes: %i[title]
     )
-    RecordingStudioApi.register_resource_handler(
-      PRESS_KIT,
-      :create,
-      handler: ->(_context) { { json: { id: "kit-1", type: "PressKit" } } }
-    )
+    if custom_create
+      RecordingStudioApi.register_resource_handler(
+        PRESS_KIT,
+        :create,
+        handler: ->(_context) { { json: { id: "kit-1", type: "PressKit" } } }
+      )
+    else
+      RecordingStudioApi.register_default_resource_actions!(api: :public)
+      stub_press_kit_constant
+    end
     RecordingStudioMcp.register_tool(
       name: "PressKit--create_section",
       type: PRESS_KIT,
@@ -160,6 +197,24 @@ class NamedPressKitProtocolTest < Minitest::Test
       output: "the section"
     )
     ensure_tree_server(:public, extra_tools: %w[PressKit--create_section])
+  end
+
+  def stub_press_kit_constant
+    return if PRESS_KIT.safe_constantize
+
+    @created_presskits_module = !Object.const_defined?(:RecordingStudioPresskits, false)
+    Object.const_set(:RecordingStudioPresskits, Module.new) if @created_presskits_module
+    presskits = Object.const_get(:RecordingStudioPresskits)
+    @created_presskit_class = !presskits.const_defined?(:PressKit, false)
+    presskits.const_set(:PressKit, Class.new) if @created_presskit_class
+  end
+
+  def remove_press_kit_constant
+    return unless Object.const_defined?(:RecordingStudioPresskits, false)
+
+    presskits = Object.const_get(:RecordingStudioPresskits)
+    presskits.send(:remove_const, :PressKit) if @created_presskit_class && presskits.const_defined?(:PressKit, false)
+    Object.send(:remove_const, :RecordingStudioPresskits) if @created_presskits_module
   end
 
   def press_kit_grant(recording)

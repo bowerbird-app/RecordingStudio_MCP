@@ -273,6 +273,7 @@ module RecordingStudioMcp
           title: "Run a capability action",
           description: "May destructively change data by running one named API capability action on a record. " \
                        "Call describe for the type to see which actions are enabled. " \
+                       "Root fields override params when both set the same key. " \
                        "Returns the action result.",
           read_only: false,
           destructive: true,

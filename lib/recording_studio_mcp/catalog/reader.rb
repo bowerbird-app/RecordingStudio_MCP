@@ -58,17 +58,14 @@ module RecordingStudioMcp
       end
 
       def parent_required?(recordable_type)
-        rules = parent_rules(recordable_type)
-        return false if rules.blank? || rules["root"]
+        return false unless defined?(RecordingStudio) && RecordingStudio.respond_to?(:root_allowed?)
 
-        Array(rules["allowed_parent_types"]).any?
+        !RecordingStudio.root_allowed?(recordable_type)
       end
 
       private
 
       def resolve_registered_type(name)
-        return name if displayed_type_names.key?(name)
-
         match = accepted_type(name, types_shown_as(name)) || accepted_type(name, type_name_matches(name))
         return match if match
 

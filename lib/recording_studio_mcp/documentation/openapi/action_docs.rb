@@ -111,7 +111,6 @@ module RecordingStudioMcp
           hash = definition.to_h
           hash[:fields] || hash["fields"]
         end
-        private_class_method :definition_fields
 
         def example_value(name, property)
           property = Internals.stringify(property)

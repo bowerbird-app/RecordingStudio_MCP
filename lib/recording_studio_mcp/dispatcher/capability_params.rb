@@ -39,10 +39,7 @@ module RecordingStudioMcp
       return {} if contract.nil?
 
       payload = contract.respond_to?(:as_json) ? contract.as_json : contract
-      return {} unless payload.respond_to?(:to_h)
-
-      hash = payload.to_h
-      hash[:fields] || hash["fields"] || hash
+      Documentation::Openapi::ActionDocs.definition_fields(payload) || {}
     end
   end
 end

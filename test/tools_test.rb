@@ -306,7 +306,7 @@ class ToolsTest < Minitest::Test
       update_clause = type_clause("update", "MenuSection")
       items = create_clause.dig(:then, :properties, :items)
 
-      assert_equal ["title"], create_clause.dig(:then, :required)
+      assert_equal %w[title parent_id], create_clause.dig(:then, :required)
       assert_nil update_clause.dig(:then, :required)
       assert_equal "object", items[:type]
       assert_equal "Labels for kit sections.", items[:description]

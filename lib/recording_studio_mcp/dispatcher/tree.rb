@@ -18,7 +18,6 @@ module RecordingStudioMcp
     def dispatch_resource(operation_name, args)
       validate_index_arguments!(args) if operation_name == :index
       recordable_type = catalog.resolve_type!(args["type"])
-      require_parent_id!(recordable_type, args) if operation_name == :create
       reject_disabled_operation!(recordable_type, operation_name)
       lookup = resource_lookup(recordable_type, operation_name)
       if custom_lookup?(lookup, recordable_type, operation_name)
@@ -40,14 +39,6 @@ module RecordingStudioMcp
     def custom_lookup?(lookup, recordable_type, operation_name)
       custom = RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
       lookup.handler && custom && lookup.handler == custom
-    end
-
-    def require_parent_id!(recordable_type, args)
-      return unless catalog.parent_required?(recordable_type)
-      return if args["parent_id"].present?
-
-      shown = catalog.displayed_type_name(recordable_type)
-      raise RecordingStudioApi::InvalidActionInputError, "parent_id is required for #{shown}"
     end
 
     def reject_disabled_operation!(recordable_type, operation_name)
