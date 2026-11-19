@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
 module IsolatedMcpServers
-  def ensure_tree_server(api = :public, extra_tools: [])
+  def ensure_tree_server(api = :public, extra_tools: [], allow_sensitive: false)
     extras = retained_tool_names(api) | extra_tools.map(&:to_s)
-    publish_mcp_server(api, tools: RecordingStudioMcp::Catalogs::GENERIC_NAMES + extras)
+    publish_mcp_server(
+      api,
+      tools: RecordingStudioMcp::Catalogs::GENERIC_NAMES + extras,
+      allow_sensitive: allow_sensitive
+    )
   end
 
   def include_metric_server(api = :public, tree: true)
@@ -13,10 +17,14 @@ module IsolatedMcpServers
       RecordingStudioMcp.register_type(type: type, description: "#{type} records.")
     end
     kept = endpoint_tool_names(api)
-    tree ? ensure_tree_server(api, extra_tools: names + kept) : publish_mcp_server(api, tools: kept | names)
+    if tree
+      ensure_tree_server(api, extra_tools: names + kept)
+    else
+      publish_mcp_server(api, tools: kept | names)
+    end
   end
 
-  def include_api_endpoints(api: :public, tree: false, allow_sensitive: nil)
+  def include_api_endpoints(api: :public, tree: false, allow_sensitive: false)
     names = advertised_endpoint_names(api)
     names.each do |name|
       next if RecordingStudioMcp.configuration.tool(name)
@@ -26,9 +34,8 @@ module IsolatedMcpServers
     publish_included_endpoints(api, names, tree: tree, allow_sensitive: allow_sensitive)
   end
 
-  def publish_mcp_server(api = :public, tools: [], skills: [], allow_sensitive: nil)
-    sensitive = allow_sensitive.nil? ? api.to_s == "operations" : allow_sensitive
-    RecordingStudioMcp.register_server(api, api: api, allow_sensitive: sensitive) do
+  def publish_mcp_server(api = :public, tools: [], skills: [], allow_sensitive: false)
+    RecordingStudioMcp.register_server(api, api: api, allow_sensitive: allow_sensitive) do
       include_tools(*tools.map(&:to_s).uniq)
       include_skills(*skills.map(&:to_s))
     end
@@ -79,12 +86,15 @@ module IsolatedMcpServers
   end
 
   def publish_included_endpoints(api, names, tree:, allow_sensitive:)
-    sensitive = allow_sensitive.nil? ? api.to_s == "operations" : allow_sensitive
     if tree
       extras = retained_tool_names(api) | names
-      publish_mcp_server(api, tools: RecordingStudioMcp::Catalogs::GENERIC_NAMES + extras, allow_sensitive: sensitive)
+      publish_mcp_server(
+        api,
+        tools: RecordingStudioMcp::Catalogs::GENERIC_NAMES + extras,
+        allow_sensitive: allow_sensitive
+      )
     else
-      publish_mcp_server(api, tools: retained_tool_names(api) | names, allow_sensitive: sensitive)
+      publish_mcp_server(api, tools: retained_tool_names(api) | names, allow_sensitive: allow_sensitive)
     end
   end
 end

@@ -85,7 +85,7 @@ class ResourcesTest < Minitest::Test
           Hi
         MD
         RecordingStudioMcp.register_skill(name: "desk-notes", path: path)
-        include_registered_skills!
+        include_mcp_skills("desk-notes")
         grant = FakeGrant.new(FakeScope.new([]))
         listed = RecordingStudioMcp::Resources.list(access_grant: grant)
 

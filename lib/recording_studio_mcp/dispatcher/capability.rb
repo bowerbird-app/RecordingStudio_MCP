@@ -7,17 +7,23 @@ module RecordingStudioMcp
     def dispatch_capability_action(args)
       recordable_type = catalog.resolve_type!(args["type"])
       action = enabled_capability_action!(recordable_type, args["action"].to_s)
-      handler = capability_lookup_handler(recordable_type, action)
-      return call_capability_handler(handler, args, action, recordable_type) if custom_resource?(
-        recordable_type, action.name
-      )
-
-      run_capability_action(recordable_type, args, action, handler: handler)
+      lookup = capability_lookup(recordable_type, action)
+      if custom_capability?(lookup, action)
+        call_capability_handler(lookup.handler, args, action, recordable_type)
+      else
+        run_capability_action(recordable_type, args, action, handler: lookup&.handler)
+      end
     end
 
-    def capability_lookup_handler(recordable_type, action)
-      lookup = RecordingStudioApi.lookup(api: api_key, recordable_type: recordable_type, action: action.name)
-      lookup&.handler
+    def capability_lookup(recordable_type, action)
+      RecordingStudioApi.lookup(api: api_key, recordable_type: recordable_type, action: action.name)
+    end
+
+    def custom_capability?(lookup, action)
+      return false if lookup.nil?
+      return lookup.custom if lookup.respond_to?(:custom)
+
+      lookup.handler && lookup.handler != action.handler
     end
 
     def call_capability_handler(handler, args, action, recordable_type)

@@ -19,25 +19,28 @@ module RecordingStudioMcp
       validate_index_arguments!(args) if operation_name == :index
       recordable_type = catalog.resolve_type!(args["type"])
       reject_disabled_operation!(recordable_type, operation_name)
-      handler = resource_lookup_handler(recordable_type, operation_name)
-      return call_resource_handler(handler, recordable_type, operation_name, args) if custom_resource?(
-        recordable_type, operation_name
-      )
-
-      call_builtin_resource(recordable_type, operation_name, args, handler: handler)
+      lookup = resource_lookup(recordable_type, operation_name)
+      if custom_lookup?(lookup, operation_name)
+        call_resource_handler(lookup.handler, recordable_type, operation_name, args)
+      else
+        call_builtin_resource(recordable_type, operation_name, args, handler: lookup.handler)
+      end
     end
 
-    def resource_lookup_handler(recordable_type, operation_name)
+    def resource_lookup(recordable_type, operation_name)
       lookup = RecordingStudioApi.lookup(api: api_key, recordable_type: recordable_type, operation: operation_name)
       if lookup.nil?
         raise RecordingStudioApi::UnsupportedActionError, "Unknown API resource operation #{operation_name}"
       end
 
-      lookup.handler
+      lookup
     end
 
-    def custom_resource?(recordable_type, operation_name)
-      RecordingStudioApi.resource_handler(recordable_type, operation_name, api: api_key)
+    def custom_lookup?(lookup, operation_name)
+      return lookup.custom if lookup.respond_to?(:custom)
+
+      builtin = RecordingStudioApi.resource_action(operation_name, api: api_key)&.handler
+      lookup.handler && lookup.handler != builtin
     end
 
     def reject_disabled_operation!(recordable_type, operation_name)

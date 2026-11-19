@@ -187,7 +187,7 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  LookupResult = Data.define(:handler, :input_contract, :output_schema, :sensitive, :apis)
+  LookupResult = Data.define(:handler, :input_contract, :output_schema, :sensitive, :apis, :custom)
 
   class CallTrackingScope
     def initialize(recording)
@@ -1168,6 +1168,55 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_client_sent_type_and_action_are_ignored_for_registered_tools
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show], capability_actions: %i[inspect])
+      register_tree_type("Folder", operations: %i[show])
+      RecordingStudioApi.register_capability_action(
+        :inspect,
+        capability: :accessible,
+        handler: ->(_context) { { json: { action: "inspect" } } }
+      )
+      shown = nil
+      RecordingStudioApi.register_resource_handler("Page", :show, handler: lambda { |context|
+        shown = context.recordable_type
+        { json: { id: "1", type: context.recordable_type } }
+      })
+      RecordingStudioApi.register_resource_handler("Folder", :show, handler: lambda { |_context|
+        { json: { id: "2", type: "Folder" } }
+      })
+      RecordingStudioMcp.register_tool(
+        name: "page_show",
+        type: "Page",
+        operation: :show,
+        title: "Show page",
+        description: "Show a page.",
+        input: {},
+        output: "the page"
+      )
+      RecordingStudioMcp.register_tool(
+        name: "page_inspect",
+        type: "Page",
+        action: :inspect,
+        title: "Inspect page",
+        description: "Inspect a page.",
+        input: {},
+        output: "the result"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_show, :page_inspect }
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      shown_result = dispatch("page_show", { type: "Folder", id: "1" })
+      inspect_result = dispatch("page_inspect", { type: "Folder", id: "1", action: "missing" })
+
+      refute shown_result[:isError]
+      assert_equal "Page", shown
+      assert_equal "Page", shown_result.dig(:structuredContent, "type")
+      refute inspect_result[:isError]
+      assert_equal "inspect", inspect_result.dig(:structuredContent, "action")
+    end
+  end
+
   def test_show_only_rejects_list
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show])
@@ -1493,7 +1542,7 @@ class DispatcherTest < Minitest::Test
   end
 
   def stubbed_lookup(**kwargs)
-    handler = stubbed_lookup_handler(
+    custom_handler, handler = stubbed_lookup_handler(
       kwargs[:api] || :public,
       kwargs[:recordable_type],
       kwargs[:operation],
@@ -1511,19 +1560,20 @@ class DispatcherTest < Minitest::Test
       input_contract: {},
       output_schema: {},
       sensitive: @lookup_sensitive,
-      apis: [kwargs[:api] || :public]
+      apis: [kwargs[:api] || :public],
+      custom: custom_handler
     )
   end
 
   def stubbed_lookup_handler(api, recordable_type, operation, action, endpoint)
     if operation
-      RecordingStudioApi.resource_handler(recordable_type, operation, api: api) ||
-        stubbed_resource_action_handler(api, operation)
+      custom = RecordingStudioApi.resource_handler(recordable_type, operation, api: api)
+      [!custom.nil?, custom || stubbed_resource_action_handler(api, operation)]
     elsif action
-      RecordingStudioApi.resource_handler(recordable_type, action, api: api) ||
-        RecordingStudioApi.capability_action(action, api: api)&.handler
+      custom = RecordingStudioApi.resource_handler(recordable_type, action, api: api)
+      [!custom.nil?, custom || RecordingStudioApi.capability_action(action, api: api)&.handler]
     elsif endpoint
-      RecordingStudioApi.registered_endpoint(endpoint, api: api)&.handler
+      [false, RecordingStudioApi.registered_endpoint(endpoint, api: api)&.handler]
     end
   end
 

@@ -116,7 +116,7 @@ class ResourceListPagingTest < Minitest::Test
         path = File.join(dir, "SKILL.md")
         File.write(path, "---\nname: desk-notes\ndescription: Notes.\n---\nHi\n")
         RecordingStudioMcp.register_skill(name: "desk-notes", path: path)
-        include_registered_skills!
+        include_mcp_skills("desk-notes")
         ids = IDS.first(3)
         pages = each_page(grant_for(ids))
 

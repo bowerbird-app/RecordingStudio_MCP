@@ -287,10 +287,208 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
-  def test_audit_rake_task_is_defined
-    path = File.expand_path("../lib/recording_studio_mcp/tasks/audit.rake", __dir__)
+  def test_delete_on_sensitive_destroy_requires_allow_sensitive
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_recordable_type_api(
+        "Page",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[show destroy],
+        sensitive: [:destroy]
+      )
+      RecordingStudioMcp.register_type(type: "Page", description: "A page.")
+      RecordingStudioApi.register_resource_handler("Page", :destroy, handler: ->(_) { { json: {} } })
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :delete }
 
-    assert_includes File.read(path), "task audit:"
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "allow_sensitive"
+    end
+  end
+
+  def test_delete_on_a_non_public_api_requires_allow_sensitive
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api(:operations)
+      RecordingStudioApi.register_recordable_type_api(
+        "Page",
+        api: :operations,
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[show destroy]
+      )
+      RecordingStudioMcp.register_type(type: "Page", description: "A page.")
+      RecordingStudioApi.register_resource_handler(
+        "Page", :destroy, api: :operations, handler: ->(_) { { json: {} } }
+      )
+      RecordingStudioMcp.register_server(:operations, api: :operations) { include_tools :delete }
+
+      assert_equal true, RecordingStudioApi::SensitiveFlag.default?(:operations)
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "allow_sensitive"
+    end
+  end
+
+  def test_audit_prints_sensitive_true
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_recordable_type_api(
+        "Page",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[show destroy],
+        sensitive: [:destroy]
+      )
+      RecordingStudioMcp.register_type(type: "Page", description: "A page.")
+      RecordingStudioApi.register_resource_handler("Page", :destroy, handler: ->(_) { { json: {} } })
+      RecordingStudioMcp.register_server(:public, api: :public, allow_sensitive: true) { include_tools :delete }
+      lines = RecordingStudioMcp.configuration.catalogs.audit!
+
+      assert(lines.any? { |line| line.include?("tool delete sensitive=true") })
+    end
+  end
+
+  def test_extra_input_key_on_generic_list_fails_boot
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_tool(
+        name: "list",
+        operation: :index,
+        title: "List",
+        description: "List records.",
+        input: { "extra" => { description: "not a protocol key" } },
+        output: "records"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :list }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "extra"
+    end
+  end
+
+  def test_extra_input_key_on_generic_create_fails_boot
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_tool(
+        name: "create",
+        operation: :create,
+        title: "Create",
+        description: "Create a record.",
+        input: { "sneaky" => { description: "not a protocol key" } },
+        output: "the created record"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :create }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "sneaky"
+    end
+  end
+
+  def test_unused_register_type_is_left_off_describe
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show])
+      RecordingStudioApi.register_recordable_type_api(
+        "Folder",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[create]
+      )
+      RecordingStudioMcp.register_type(type: "Folder", description: "Unused folder.")
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :show }
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_equal ["Page"], catalog.type_names
+      refute_includes catalog.type_schema[:enum], "Folder"
+    end
+  end
+
+  def test_type_used_only_by_a_skill_shows_up_on_describe
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show])
+      RecordingStudioApi.register_recordable_type_api(
+        "Note",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[create]
+      )
+      RecordingStudioMcp.register_type(type: "Note", description: "Notes.")
+      RecordingStudioMcp.register_skill(
+        name: "note-desk",
+        type: "Note",
+        title: "Note desk",
+        description: "Read notes.",
+        body: "Look at Note.",
+        tools: %w[describe]
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tools :show
+        include_skills "note-desk"
+      end
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_includes catalog.type_names, "Note"
+      assert_includes catalog.type_schema[:enum], "Note"
+    end
+  end
+
+  def test_host_enum_in_copy_is_ignored
+    with_isolated_api_configuration do
+      register_tree_type("Page", writable_attributes: %i[title])
+      RecordingStudioApi.register_resource_handler(
+        "Page",
+        :create,
+        handler: ->(_) { { json: { id: "1", type: "Page" } } }
+      )
+      RecordingStudioMcp.register_tool(
+        name: "page_create",
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Create a page.",
+        input: {
+          "title" => { description: "Host title.", enum: %w[short long] }
+        },
+        output: "the page"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_create }
+
+      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }
+      title = listed.dig(:inputSchema, :properties, :title)
+
+      assert_equal "Host title.", title[:description]
+      refute title.key?(:enum)
+    end
+  end
+
+  def test_audit_rake_task_prints_lines
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      require "rake"
+      previous = Rake.application
+      Rake.application = Rake::Application.new
+      Rake::Task.define_task(:environment)
+      load File.expand_path("../lib/recording_studio_mcp/tasks/audit.rake", __dir__)
+      output = capture_io { Rake.application["recording_studio_mcp:audit"].invoke }.first
+
+      assert_includes output, "server public"
+      assert_includes output, "sensitive="
+    ensure
+      Rake.application = previous if previous
+    end
   end
 
   def test_audit_lists_tools_and_sensitive_flags

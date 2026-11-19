@@ -50,7 +50,7 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Ops ping" },
         handler: ->(_context) { { ok: true } }
       )
-      include_api_endpoints(api: :operations)
+      include_api_endpoints(api: :operations, allow_sensitive: true)
 
       page = RecordingStudioMcp::Documentation.page(api: :operations)
 
@@ -240,7 +240,7 @@ class DocumentationTest < Minitest::Test
         openapi: { summary: "Ops ping" },
         handler: ->(_context) { { ok: true } }
       )
-      include_api_endpoints(api: :operations)
+      include_api_endpoints(api: :operations, allow_sensitive: true)
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :operations)
       description = spec.dig("info", "description")

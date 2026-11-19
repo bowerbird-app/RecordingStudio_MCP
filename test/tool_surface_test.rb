@@ -284,7 +284,7 @@ class ToolSurfaceTest < Minitest::Test
 
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:docs)
-      register_tree_type("Article", api: :docs, operations: nil)
+      register_tree_type("Article", api: :docs, operations: nil, allow_sensitive: true)
       read_only = RecordingStudioMcp::ToolSurface.for(api: "docs")
 
       assert_equal %w[list show describe], read_only.tool_names
@@ -292,7 +292,7 @@ class ToolSurfaceTest < Minitest::Test
 
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:docs).default_access = :read_write
-      register_tree_type("Note", api: :docs, operations: nil)
+      register_tree_type("Note", api: :docs, operations: nil, allow_sensitive: true)
       writable = RecordingStudioMcp::ToolSurface.for(api: "docs")
 
       assert_includes writable.tool_names, "delete"

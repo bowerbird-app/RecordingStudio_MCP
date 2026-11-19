@@ -35,7 +35,8 @@ class CatalogTest < Minitest::Test
       register_tree_type(
         "SupportPage",
         api: :operations,
-        operations: %i[index show create update destroy]
+        operations: %i[index show create update destroy],
+        allow_sensitive: true
       )
 
       public_catalog = RecordingStudioMcp::Catalog.new(api: :public)
@@ -271,7 +272,7 @@ class CatalogTest < Minitest::Test
   def test_resolve_type_accepts_a_resource_name_only_when_it_is_the_public_name
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:operations)
-      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations, allow_sensitive: true)
       catalog = RecordingStudioMcp::Catalog.new(api: :operations)
 
       error = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("press_kits") }
@@ -322,7 +323,7 @@ class CatalogTest < Minitest::Test
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api(:operations)
       register_tree_type("Page")
-      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations, allow_sensitive: true)
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
 
       error = assert_raises(RecordingStudioApi::NotFoundError) { catalog.resolve_type!("PressKit") }
@@ -536,7 +537,7 @@ class CatalogTest < Minitest::Test
       RecordingStudioApi.configuration.api(:operations)
       register_tree_type("RecordingStudioPresskits::PressKit")
       register_tree_type("Folder")
-      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations)
+      register_tree_type("RecordingStudioPresskits::PressKit", api: :operations, allow_sensitive: true)
       with_public_name("RecordingStudioPresskits::PressKit", :public, "Kit") do
         catalog = RecordingStudioMcp::Catalog.new(api: :public)
         operations = RecordingStudioMcp::Catalog.new(api: :operations)

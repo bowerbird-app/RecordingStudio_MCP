@@ -33,9 +33,10 @@ module IsolatedApiConfiguration
 
   def register_tree_type(name = "Page", **options)
     api = options.fetch(:api, :public)
+    allow_sensitive = options.delete(:allow_sensitive) || false
     RecordingStudioApi.register_recordable_type_api(name, **tree_type_attrs(options))
     RecordingStudioMcp.register_type(type: name, description: options[:description].to_s)
-    ensure_tree_server(api)
+    ensure_tree_server(api, allow_sensitive: allow_sensitive)
   end
 
   def role_grant(role)
@@ -62,7 +63,7 @@ module IsolatedApiConfiguration
   private
 
   def tree_type_attrs(options)
-    extras = options.except(:api, :operations, :capability_actions, :openapi, :description)
+    extras = options.except(:api, :operations, :capability_actions, :openapi, :description, :allow_sensitive)
     attrs = {
       api: options.fetch(:api, :public),
       serializer: ->(*) { { title: "Title" } },
@@ -77,16 +78,13 @@ module IsolatedApiConfiguration
 end
 
 module IsolatedMcpConfiguration
-  def include_registered_skills!(api: :public)
-    names = RecordingStudioMcp.configuration.mcp_skills.keys
-    return if names.empty?
-
+  def include_mcp_skills(*names, api: :public)
     existing = RecordingStudioMcp.configuration.servers[api.to_s]
     tools = Array(existing&.included_tools).map(&:name)
     allow = existing&.allow_sensitive || false
     RecordingStudioMcp.register_server(api, api: api, allow_sensitive: allow) do
       include_tools(*tools)
-      include_skills(*names)
+      include_skills(*names.map(&:to_s))
     end
   end
 
