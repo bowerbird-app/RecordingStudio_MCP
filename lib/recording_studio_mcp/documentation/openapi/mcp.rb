@@ -19,8 +19,28 @@ module RecordingStudioMcp
 
         def documented_tools(page, surface, group_tags)
           protocol = page.tools.map { |tool| tool_entry(tool, surface) }
-          actions = TypeActions.tools(page, group_tags: group_tags).map { |tool| tool_entry(tool, surface) }
+          covered = named_action_keys(surface.server)
+          actions = TypeActions.tools(page, group_tags: group_tags, covered: covered).map do |tool|
+            tool_entry(tool, surface)
+          end
           protocol + actions
+        end
+
+        def named_action_keys(server)
+          return [] unless server
+
+          server.tools.each_value.filter_map { |tool| named_action_key(server, tool) }
+        end
+
+        def named_action_key(server, tool)
+          registration = tool.registration
+          return if registration.nil? || Catalogs::GENERIC_NAMES.include?(tool.name)
+          return unless registration.target.action?
+          return unless RecordingStudioApi.lookup(
+            api: server.api, recordable_type: registration.type, action: registration.target.value
+          )
+
+          [registration.type.to_s, registration.target.value.to_s]
         end
 
         def capabilities
@@ -43,7 +63,7 @@ module RecordingStudioMcp
           entry.merge(ToolDocs.openapi_extras(entry, tool, surface))
         end
 
-        private_class_method :documented_tools, :capabilities, :tool_entry
+        private_class_method :documented_tools, :named_action_keys, :named_action_key, :capabilities, :tool_entry
       end
     end
   end
