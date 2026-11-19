@@ -39,11 +39,15 @@ module RecordingStudioMcp
       )
     end
 
-    def metric_tool(recordable_metric)
+    def metric_tool(built, metric = built.metric)
       ToolDocs.decorate(
-        tool(recordable_metric.definition_options),
+        tool(metric_tool_options(built, metric)),
         output_schema: ToolDocs.metric_output_schema
       )
+    end
+
+    def metric_tool_options(built, metric)
+      metric.definition_options.merge(title: built.title, description: built.description)
     end
 
     def endpoint_tool_options(endpoint, api, copy: {})
@@ -408,6 +412,6 @@ module RecordingStudioMcp
                          :create_type_requirements, :lookup_clause, :update_type_requirements,
                          :attach_meta, :attach_ui_meta, :forced_keys, :drop_forced_keys,
                          :protocol_field, :read_only_target?, :destructive_target?,
-                         :registered_tool_options, :lookup_properties
+                         :registered_tool_options, :lookup_properties, :metric_tool_options
   end
 end

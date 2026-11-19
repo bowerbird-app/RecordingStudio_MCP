@@ -20,8 +20,8 @@ module RecordingStudioMcp
         @access_grant.authorized?(recording: recording, role: :view)
       end
 
-      def metric_entry(metric)
-        Entry.new(family: :metric, definition: Tools.metric_tool(metric), metric: metric)
+      def metric_entry(built, metric)
+        Entry.new(family: :metric, definition: Tools.metric_tool(built, metric), metric: metric)
       end
 
       def warn_skipped_metric_collision(name)

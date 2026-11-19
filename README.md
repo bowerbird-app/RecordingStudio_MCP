@@ -54,7 +54,7 @@ end
 
 `describe` lists the types, tools, and skills that server includes. Type paragraphs and relationships come from `register_type` and the API registration. Docs pages still list operations, writable fields, and capability actions from the API.
 
-Boot raises when a tool, type, field, or skill names something the API does not have, when a sensitive item is included without `allow_sensitive`, or when an override changes a target. Run `rake recording_studio_mcp:audit` in host CI to print each server's tools and sensitive flags.
+Boot raises when a tool, type, field, or skill names something the API does not have, when a sensitive item is included without `allow_sensitive`, when an override changes a target, or when an included catalog metric is outside `catalog_metric_resources`. Run `rake recording_studio_mcp:audit` in host CI to print each server's tools and sensitive flags.
 
 Catalogs are built at boot. `tools/list` descriptions stay short. Each session sees the tools on its named API, then filtered by grant role. Dispatch rejects a tool that is not on that session's server. Copy is reviewed code, not runtime input.
 
@@ -164,7 +164,7 @@ Metrics exposed on the named API also become includable read-only tools. The too
 
 A timeseries tool takes `from` and `to`. `start` and `start_at` are the same as `from`. `end` and `end_at` are the same as `to`. `interval` is present when the metric has supported intervals. `group_by` is present when the metric has group columns. Metric filters are one `filters` object. The input schema sets `additionalProperties` to false. Unknown arguments return a tool error instead of being ignored.
 
-`config.catalog_metric_resources` limits which resources get these tools. Leave it unset and every metric exposed on the named API may be included by name. Set it to a list of resource names, such as `%w[users]`, to advertise only those. An empty list advertises none. `operations_metrics_index` and `operations_metrics_show` stay either way.
+`config.catalog_metric_resources` limits which resources get these tools. Leave it unset and every metric exposed on the named API may be included by name. Set it to a list of resource names, such as `%w[users]`, to advertise only those. An empty list advertises none. Including a catalog metric the allowlist excludes fails at boot. `operations_metrics_index` and `operations_metrics_show` stay either way.
 
 ```ruby
 config.catalog_metric_resources = %w[mcp_calls]
@@ -409,4 +409,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.40.2
+0.41.0

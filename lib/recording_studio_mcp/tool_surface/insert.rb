@@ -38,7 +38,7 @@ module RecordingStudioMcp
     def insert_built_tool(tool)
       if tool.metric
         metric = live_metric(tool.name)
-        insert(tool.name, metric_entry(metric)) if metric
+        insert(tool.name, metric_entry(tool, metric)) if metric
       elsif tool.registration&.target&.endpoint?
         insert_endpoint_tool(tool)
       elsif Catalogs::GENERIC_NAMES.include?(tool.name)
