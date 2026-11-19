@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.1] - 2026-11-19
+
+### Fixed
+- README `register_skill` examples pass `name:` as a keyword, matching `RecordingStudioMcp::Registry::Skills#register_skill`.
+
+### Upgrade notes
+- Bump to `0.40.1`. Previous version is `0.40.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.40.0] - 2026-11-19
 
 ### Changed
@@ -1170,7 +1178,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...HEAD
+[0.40.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.0...v0.40.1
 [0.40.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.2...v0.40.0
 [0.39.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.1...v0.39.2
 [0.39.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.39.0...v0.39.1
