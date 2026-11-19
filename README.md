@@ -188,7 +188,7 @@ A domain gem registers the file it ships.
 
 ```ruby
 RecordingStudioMcp.register_skill(
-  "research-publications",
+  name: "research-publications",
   path: RecordingStudioPublications::Engine.root.join(
     "skills/research-publications/SKILL.md"
   )
@@ -199,7 +199,7 @@ RecordingStudioMcp.register_skill(
 
 ```ruby
 RecordingStudioMcp.register_skill(
-  "research-publications",
+  name: "research-publications",
   path: ".../SKILL.md",
   available_if: ->(access_grant:) { true }
 )
@@ -409,4 +409,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.40.0
+0.40.1
