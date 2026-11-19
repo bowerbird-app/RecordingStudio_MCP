@@ -4,7 +4,7 @@
 
 Previous version is `0.39.2`. This is a breaking MCP surface change.
 
-Require `recording_studio_api` `>= 1.20.0`, `< 2.0`. MCP looks up handlers with `RecordingStudioApi.lookup`. Do not keep a second API registry in the host.
+Require `recording_studio_api` `>= 1.21.3`, `< 2.0`. MCP looks up handlers with `RecordingStudioApi.lookup`. Do not keep a second API registry in the host. Create and update input schemas come from that lookup contract, including required fields, enums, nested `items`/`properties`, and `minLength` when `allow_blank` is false.
 
 Tools are opt-in. Register each tool, type, and skill, then include them on a named-API server:
 

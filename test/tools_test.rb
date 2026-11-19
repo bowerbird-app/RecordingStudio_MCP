@@ -278,15 +278,16 @@ class ToolsTest < Minitest::Test
       refute schema[:properties].key?(:title)
       page_title = clauses.fetch("Page").dig(:then, :properties, :title)
       article_body = clauses.fetch("Article").dig(:then, :properties, :body)
+      assert_equal ["title"], clauses.fetch("Page").dig(:then, :required)
       assert_equal "string", page_title[:type]
-      refute_includes Array(clauses.fetch("Page").dig(:then, :required)), "title"
-      refute page_title.key?(:minLength)
+      assert_equal 1, page_title[:minLength]
+      assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
       assert_equal "string", article_body[:type]
-      refute article_body.key?(:enum)
+      assert_equal %w[short long], article_body[:enum]
     end
   end
 
-  def test_create_and_update_use_lookup_writable_fields
+  def test_create_and_update_keep_nested_field_schema
     with_isolated_api_configuration do
       register_menu_section
       RecordingStudioMcp.register_type(type: "MenuSection", description: "Menu section records.")
@@ -298,10 +299,44 @@ class ToolsTest < Minitest::Test
       update_clause = type_clause("update", "MenuSection")
       items = create_clause.dig(:then, :properties, :items)
 
-      assert_equal "string", create_clause.dig(:then, :properties, :title, :type)
-      assert_equal "string", items[:type]
-      refute items.key?(:description)
-      assert_equal items[:type], update_clause.dig(:then, :properties, :items, :type)
+      assert_equal ["title"], create_clause.dig(:then, :required)
+      assert_nil update_clause.dig(:then, :required)
+      assert_equal "object", items[:type]
+      assert_equal({ heading: { type: "string" } }, items[:properties])
+      assert_equal items, update_clause.dig(:then, :properties, :items)
+    end
+  end
+
+  def test_typed_create_schema_matches_generic_create_for_the_same_type
+    with_isolated_api_configuration do
+      register_tree_type(
+        "Page",
+        openapi: {
+          details_schema: {
+            properties: {
+              title: { type: "string", minLength: 1 }
+            },
+            required: ["title"]
+          }
+        }
+      )
+      RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: {} } })
+      RecordingStudioMcp.register_tool(
+        name: "page_create",
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Create a page.",
+        input: {},
+        output: "the page"
+      )
+      ensure_tree_server(:public, extra_tools: %w[page_create])
+
+      generic = type_clause("create", "Page").fetch(:then)
+      typed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }.fetch(:inputSchema)
+
+      assert_equal generic.fetch(:properties), typed.fetch(:properties)
+      assert_equal generic.fetch(:required), typed.fetch(:required)
     end
   end
 
@@ -483,16 +518,9 @@ class ToolsTest < Minitest::Test
             title: { type: "string" },
             items: {
               type: "object",
-              description: "Labels for kit sections.",
-              additionalProperties: {
-                type: "object",
-                properties: {
-                  label: { type: "string" },
-                  hidden: { type: "boolean" }
-                },
-                required: []
-              },
-              examples: [{ "hero" => { "hidden" => false } }]
+              properties: {
+                heading: { type: "string" }
+              }
             }
           },
           required: ["title"]
