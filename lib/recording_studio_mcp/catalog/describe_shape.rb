@@ -18,57 +18,11 @@ module RecordingStudioMcp
         }.merge("nesting" => NESTED_ITEMS).compact
       end
 
-      def type_paragraph(recordable_type)
-        registered = resolved_server&.types&.[](recordable_type.to_s)
-        return registered.description if registered&.description.present?
-
-        Documentation::Openapi::Schemas.registered_type_description(recordable_type, api)
-      end
-
-      def describe_tools(recordable_type, registration)
-        names = []
-        names.concat(generic_tools_for(recordable_type, registration))
-        names.concat(typed_tools_for(recordable_type))
-        names.uniq
-      end
-
-      def generic_tools_for(recordable_type, registration)
-        return [] unless resolved_server
-
-        operations = Array(registration&.operations).map(&:to_sym)
-        Catalogs::GENERIC_NAMES.select do |name|
-          next false unless resolved_server.tool?(name)
-          next true if name == "capability_action" && visible_capability_names(recordable_type).any?
-
-          operation = Tools::TREE_OPERATION_TOOLS.key(name)
-          operation && operations.include?(operation)
-        end
-      end
-
-      def typed_tools_for(recordable_type)
-        return [] unless resolved_server
-
-        resolved_server.tools.each_value.filter_map do |tool|
-          next if Catalogs::GENERIC_NAMES.include?(tool.name)
-          next unless tool.registration&.type.to_s == recordable_type.to_s
-
-          tool.name
-        end
-      end
-
-      def describe_skills(recordable_type)
-        return [] unless resolved_server
-
-        resolved_server.skills.each_value.filter_map do |skill|
-          skill.name if skill.type.blank? || skill.type.to_s == recordable_type.to_s
-        end
-      end
-
       def documentation_type_fields(recordable_type, registration)
         {
           "operations" => Array(registration&.operations).map(&:to_s),
           "writable_fields" => writable_fields(recordable_type),
-          "sortable_fields" => (["created_at"] + sortable_fields(recordable_type)).uniq,
+          "sortable_fields" => sortable_fields(recordable_type),
           "capability_actions" => enabled_capability_actions(recordable_type)
         }.merge(describe_registry(recordable_type, registration))
       end

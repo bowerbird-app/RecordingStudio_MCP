@@ -114,7 +114,7 @@ class DocumentationTest < Minitest::Test
       refute_empty spec.dig("info", "description")
       assert_equal overview_for(mcp["instructions"]), spec.dig("info", "description")
       assert_includes spec.dig("info", "description"), "## Sign in"
-      assert_includes mcp["instructions"], "Call describe on a type"
+      assert_includes mcp["instructions"], "Call the docs for writable fields, children, and actions"
       assert_includes names, "list"
       assert_includes names, "describe"
       assert_includes names, "ping"

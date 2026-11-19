@@ -33,7 +33,7 @@ module RecordingStudioMcp
       end
     end
 
-    IncludedTool = Data.define(:name, :title, :description, :allow_sensitive, :filters)
+    IncludedTool = Data.define(:name, :title, :description, :allow_sensitive)
 
     Server = Data.define(:name, :api, :allow_sensitive, :included_tools, :included_skills)
   end

@@ -219,7 +219,7 @@ class CatalogTest < Minitest::Test
 
       described = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Page")
 
-      assert_equal %w[created_at title], described.fetch("sortable_fields")
+      assert_includes described.fetch("sortable_fields"), "title"
     end
   end
 

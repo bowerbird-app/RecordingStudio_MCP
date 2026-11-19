@@ -12,14 +12,13 @@ module RecordingStudioMcp
       nil
     end
 
-    def include_tool(name, title: nil, description: nil, allow_sensitive: nil, filter: nil, filters: nil)
+    def include_tool(name, title: nil, description: nil, allow_sensitive: nil)
       key = name.to_s
       @tools[key] = Registrations::IncludedTool.new(
         name: key,
         title: title,
         description: description,
-        allow_sensitive: allow_sensitive,
-        filters: stringify_filters(filter || filters)
+        allow_sensitive: allow_sensitive
       )
       nil
     end
@@ -36,15 +35,6 @@ module RecordingStudioMcp
 
     def included_skills
       @skills.dup
-    end
-
-    private
-
-    def stringify_filters(value)
-      return {} if value.blank?
-      raise ArgumentError, "filter must be an object" unless value.respond_to?(:to_h)
-
-      value.to_h.transform_keys(&:to_s).transform_values { |entry| entry.respond_to?(:to_h) ? entry.to_h : entry }
     end
   end
 end

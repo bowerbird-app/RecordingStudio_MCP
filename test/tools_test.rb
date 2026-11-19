@@ -104,7 +104,7 @@ class ToolsTest < Minitest::Test
       sort = tool.dig(:inputSchema, :properties, :sort)
 
       assert_equal "string", sort.fetch(:type)
-      assert_includes sort.fetch(:description), "sortable field from describe"
+      assert_includes sort.fetch(:description), "sortable field from the docs"
       assert_includes sort.fetch(:description), "created_at"
       assert_includes sort.fetch(:description), "default"
       assert_includes sort.fetch(:description), "order sets the direction"
@@ -175,6 +175,7 @@ class ToolsTest < Minitest::Test
         assert_equal false, tool.dig(:annotations, :readOnlyHint), tool[:name]
         assert_equal false, tool.dig(:annotations, :destructiveHint), tool[:name]
         assert_equal false, tool.dig(:annotations, :openWorldHint), tool[:name]
+        assert_includes tool[:description], "Changes data"
         assert_includes tool[:description], "Send writable fields at the root"
       end
 
@@ -185,7 +186,8 @@ class ToolsTest < Minitest::Test
       assert_equal true, action.dig(:annotations, :destructiveHint)
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
-      assert_includes action[:description], "Call describe for the type"
+      assert_includes action[:description], "destructively change data"
+      assert_includes action[:description], "Call the docs for the type"
       assert_equal(
         "Optional. On an action flagged creates: true, the same key and the same input " \
         "return the first result. A different input with that key is refused. " \
@@ -224,7 +226,7 @@ class ToolsTest < Minitest::Test
       assert_equal false, delete.dig(:annotations, :readOnlyHint)
       assert_equal true, delete.dig(:annotations, :destructiveHint)
       assert_equal false, delete.dig(:annotations, :idempotentHint)
-      assert_includes delete[:description], "destroy"
+      assert_includes delete[:description], "destructively change data"
       assert_equal ["SupportPage"], delete.dig(:inputSchema, :properties, :type, :enum)
     end
   end
@@ -258,6 +260,9 @@ class ToolsTest < Minitest::Test
         }
       )
       RecordingStudioMcp.register_type(type: "Article", description: "Article records.")
+      %w[Page Article].each do |type|
+        RecordingStudioApi.register_resource_handler(type, :create, handler: ->(_) { { json: {} } })
+      end
       ensure_tree_server(:public)
 
       tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
@@ -271,33 +276,32 @@ class ToolsTest < Minitest::Test
       assert schema[:properties].key?(:parent_id)
       assert schema[:properties].key?(:idempotency_key)
       refute schema[:properties].key?(:title)
-      assert_equal ["title"], clauses.fetch("Page").dig(:then, :required)
-      assert_equal "string", clauses.fetch("Page").dig(:then, :properties, :title, :type)
-      assert_equal "Page title.", clauses.fetch("Page").dig(:then, :properties, :title, :description)
-      assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
-      assert_equal %w[short long], clauses.fetch("Article").dig(:then, :properties, :body, :enum)
+      page_title = clauses.fetch("Page").dig(:then, :properties, :title)
+      article_body = clauses.fetch("Article").dig(:then, :properties, :body)
+      assert_equal "string", page_title[:type]
+      refute_includes Array(clauses.fetch("Page").dig(:then, :required)), "title"
+      refute page_title.key?(:minLength)
+      assert_equal "string", article_body[:type]
+      refute article_body.key?(:enum)
     end
   end
 
-  def test_create_and_update_keep_nested_field_schema
+  def test_create_and_update_use_lookup_writable_fields
     with_isolated_api_configuration do
       register_menu_section
       RecordingStudioMcp.register_type(type: "MenuSection", description: "Menu section records.")
+      %i[create update].each do |operation|
+        RecordingStudioApi.register_resource_handler("MenuSection", operation, handler: ->(_) { { json: {} } })
+      end
       ensure_tree_server(:public)
       create_clause = type_clause("create", "MenuSection")
       update_clause = type_clause("update", "MenuSection")
       items = create_clause.dig(:then, :properties, :items)
 
-      assert_equal ["title"], create_clause.dig(:then, :required)
-      assert_nil update_clause.dig(:then, :required)
-      assert_equal "object", items[:type]
-      assert_equal "Labels for kit sections.", items[:description]
-      assert_equal "object", items.dig(:additionalProperties, "type")
-      assert_equal "string", items.dig(:additionalProperties, "properties", "label", "type")
-      assert_equal "boolean", items.dig(:additionalProperties, "properties", "hidden", "type")
-      assert_equal [], items.dig(:additionalProperties, "required")
-      assert_equal [{ "hero" => { "hidden" => false } }], items[:examples]
-      assert_equal items, update_clause.dig(:then, :properties, :items)
+      assert_equal "string", create_clause.dig(:then, :properties, :title, :type)
+      assert_equal "string", items[:type]
+      refute items.key?(:description)
+      assert_equal items[:type], update_clause.dig(:then, :properties, :items, :type)
     end
   end
 

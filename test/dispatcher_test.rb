@@ -23,6 +23,10 @@ class DispatcherTest < Minitest::Test
     def scope_recording
       access_recording.respond_to?(:parent_recording) ? access_recording.parent_recording : root_recording
     end
+
+    def authorized?(**)
+      !deny_authorization
+    end
   end
   FakeClient = Struct.new(:api_key)
   FakeRegistration = Struct.new(:enabled) do
@@ -204,6 +208,8 @@ class DispatcherTest < Minitest::Test
   end
 
   def setup
+    @lookup_handler_calls = 0
+    @lookup_sensitive = false
     @grant = FakeGrant.new(
       api_client: FakeClient.new("public"),
       credential: nil,
@@ -264,9 +270,31 @@ class DispatcherTest < Minitest::Test
               result = dispatch("list", { type: "Workspace" })
 
               refute result[:isError]
+              assert_operator @lookup_handler_calls, :>=, 1
               assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
               payload = JSON.parse(result.dig(:content, 0, :text))
               assert_equal "Studio", payload.dig("records", 0, "name")
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_sensitive_lookup_handler_still_runs
+    @lookup_sensitive = true
+    operation = FakeOperation.new(FakeHandler.new({ json: { records: [{ name: "Studio" }] } }))
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(name, **) { name == :index ? operation : nil }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("list", { type: "Workspace" })
+
+              refute result[:isError]
+              assert_operator @lookup_handler_calls, :>=, 1
+              assert_equal "Studio", result.dig(:structuredContent, "records", 0, "name")
             end
           end
         end
@@ -1464,11 +1492,27 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def stubbed_lookup(api: :public, recordable_type: nil, operation: nil, action: nil, endpoint: nil, **)
-    handler = stubbed_lookup_handler(api, recordable_type, operation, action, endpoint)
+  def stubbed_lookup(**kwargs)
+    handler = stubbed_lookup_handler(
+      kwargs[:api] || :public,
+      kwargs[:recordable_type],
+      kwargs[:operation],
+      kwargs[:action],
+      kwargs[:endpoint]
+    )
     return if handler.nil?
 
-    LookupResult.new(handler: handler, input_contract: {}, output_schema: {}, sensitive: false, apis: [api])
+    distinct = lambda do |context|
+      @lookup_handler_calls += 1
+      handler.call(context)
+    end
+    LookupResult.new(
+      handler: distinct,
+      input_contract: {},
+      output_schema: {},
+      sensitive: @lookup_sensitive,
+      apis: [kwargs[:api] || :public]
+    )
   end
 
   def stubbed_lookup_handler(api, recordable_type, operation, action, endpoint)

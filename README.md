@@ -56,7 +56,7 @@ end
 
 Boot raises when a tool, type, field, or skill names something the API does not have, when a sensitive item is included without `allow_sensitive`, or when an override changes a target. Run `rake recording_studio_mcp:audit` in host CI to print each server's tools and sensitive flags.
 
-Catalogs are built at boot. `tools/list` descriptions stay short. Each session sees the tools on its named API, then filtered by grant role. Dispatch rejects a tool that is not on that session's server. Fixed `filter:` values on `include_tool` are applied server-side. Copy is reviewed code, not runtime input.
+Catalogs are built at boot. `tools/list` descriptions stay short. Each session sees the tools on its named API, then filtered by grant role. Dispatch rejects a tool that is not on that session's server. Copy is reviewed code, not runtime input.
 
 Hosts opt in to live updates with `RecordingStudioMcp.register_event`, next to skill registration. The dummy registers `recording updated` (built-in after-save trigger) and `page commented` (host `notify`). Unregistered events never notify. `notify` with an unknown name raises `ArgumentError`. Initialize advertises `resources.subscribe` only when at least one event is registered. Event registration stays in this gem; it is not an API `register_endpoint`.
 

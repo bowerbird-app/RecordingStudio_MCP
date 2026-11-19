@@ -7,8 +7,7 @@ module RecordingStudioMcp
     :allow_sensitive,
     :tools,
     :types,
-    :skills,
-    :filters
+    :skills
   ) do
     def tool(name)
       tools[name.to_s]

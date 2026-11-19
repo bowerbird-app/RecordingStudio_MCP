@@ -36,6 +36,7 @@ class EndpointSchemaTest < Minitest::Test
     )
 
     schema = RecordingStudioMcp::EndpointSchema.build(endpoint)
+    copied = RecordingStudioMcp::EndpointSchema.build(endpoint, copy: { "q" => { description: "Search query" } })
 
     assert_equal ["q"], schema[:required]
     assert_equal "string", schema.dig(:properties, :q, :type)
@@ -43,7 +44,8 @@ class EndpointSchemaTest < Minitest::Test
     assert_equal "object", schema.dig(:properties, :flags, :type)
     assert_equal %w[quiet loud], schema.dig(:properties, :style, :enum)
     assert_equal false, schema[:additionalProperties]
-    assert_equal "Search query", schema.dig(:properties, :q, :description)
+    refute schema.dig(:properties, :q).key?(:description)
+    assert_equal "Search query", copied.dig(:properties, :q, :description)
   end
 
   def test_reject_unknown_false_leaves_additional_properties_open

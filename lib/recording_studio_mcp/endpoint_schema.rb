@@ -64,22 +64,13 @@ module RecordingStudioMcp
   end
 
   class EndpointSchema
-    CONTRACT_TYPE_MAP = {
-      string: "string",
-      integer: "integer",
-      float: "number",
-      boolean: "boolean",
-      array: "array",
-      hash: "object",
-      symbol: "string"
-    }.freeze
-
-    def self.build(endpoint)
-      new(endpoint).build
+    def self.build(endpoint, copy: {})
+      new(endpoint, copy: copy).build
     end
 
-    def initialize(endpoint)
+    def initialize(endpoint, copy: {})
       @endpoint = endpoint
+      @copy = copy.to_h.transform_keys(&:to_s)
     end
 
     def build
@@ -97,7 +88,7 @@ module RecordingStudioMcp
 
     private
 
-    attr_reader :endpoint
+    attr_reader :endpoint, :copy
 
     def path_properties
       properties = {}
@@ -148,24 +139,11 @@ module RecordingStudioMcp
     end
 
     def contract_properties
-      return { properties: {}, required: [] } if contract_fields.blank?
-
-      properties = {}
-      required = []
-      contract_fields.each do |field_name, rules|
-        rules = rules.to_h.deep_symbolize_keys
-        name = field_name.to_sym
-        properties[name] = contract_field_property(rules)
-        required << name.to_s if rules[:required]
-      end
-      { properties: properties, required: required }
-    end
-
-    def contract_field_property(rules)
-      property = { type: CONTRACT_TYPE_MAP.fetch(rules[:type]&.to_sym, "string") }
-      property[:enum] = Array(rules[:enum]) if rules[:enum].present?
-      property[:description] = rules[:description] if rules[:description].present?
-      property
+      contract = SchemaFromContract.stringify(contract_fields)
+      {
+        properties: SchemaFromContract.properties(contract, copy: copy),
+        required: SchemaFromContract.required_names(contract)
+      }
     end
 
     def contract_definition

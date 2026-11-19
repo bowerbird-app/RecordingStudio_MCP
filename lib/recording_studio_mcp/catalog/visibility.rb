@@ -36,7 +36,7 @@ module RecordingStudioMcp
 
       def destroy_type_schema
         type_schema_for(:destroy).merge(
-          description: "Type on this named API that allows destroy. Call describe for operations."
+          description: "Type on this named API that allows destroy. Call the docs for operations."
         )
       end
 

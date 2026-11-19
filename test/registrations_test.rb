@@ -172,6 +172,127 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
+  def test_override_copy_cannot_change_lookup_schema
+    with_isolated_api_configuration do
+      register_tree_type("Page", writable_attributes: %i[title])
+      RecordingStudioApi.register_resource_handler(
+        "Page",
+        :create,
+        handler: ->(_) { { json: { id: "1", type: "Page" } } }
+      )
+      RecordingStudioMcp.register_tool(
+        name: "page_create",
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Create a page.",
+        input: {},
+        output: "the page"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_create }
+      RecordingStudioMcp.register_tool(
+        name: "page_create",
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Host copy.",
+        input: {
+          "title" => { type: "integer", required: true, minLength: 9, description: "Host title.", example: "Hello" }
+        },
+        output: "the page"
+      )
+
+      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }
+      lookup = RecordingStudioApi.lookup(api: :public, recordable_type: "Page", operation: :create)
+      title = listed.dig(:inputSchema, :properties, :title)
+      contract = lookup.input_contract[:title] || lookup.input_contract["title"]
+
+      refute listed.dig(:inputSchema, :properties).key?(:type)
+      schema = RecordingStudioMcp::SchemaFromContract
+      assert_equal schema.json_type(contract), title[:type]
+      assert_equal schema.required?(contract), listed[:inputSchema][:required]&.include?("title")
+      if schema.allow_blank?(contract)
+        refute title.key?(:minLength)
+      else
+        assert_equal 1, title[:minLength]
+      end
+      assert_equal "Host title.", title[:description]
+      assert_equal ["Hello"], title[:examples]
+    end
+  end
+
+  def test_unknown_type_raises_configuration_error
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_recordable_type_api(
+        "Page",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        operations: %i[show]
+      )
+      RecordingStudioApi.register_resource_handler("Page", :show, handler: ->(_) { { json: {} } })
+      RecordingStudioMcp.register_tool(
+        name: "page_show",
+        type: "Page",
+        operation: :show,
+        title: "Show page",
+        description: "Show a page.",
+        input: {},
+        output: "the page"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_show }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "unregistered type Page"
+    end
+  end
+
+  def test_unknown_tool_raises_configuration_error
+    with_isolated_api_configuration do
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :missing }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "unknown tool missing"
+    end
+  end
+
+  def test_register_skill_stores_body_and_tools
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_skill(
+        name: "page-desk",
+        type: "Page",
+        title: "Page desk",
+        description: "Read pages.",
+        body: "Use list then show.",
+        tools: %w[list show describe]
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tools :list, :show
+        include_skills "page-desk"
+      end
+
+      skill = RecordingStudioMcp.configuration.skill("page-desk")
+      listed = RecordingStudioMcp.configuration.catalogs.server_for(api: :public).skills.fetch("page-desk")
+
+      assert_equal "Use list then show.", skill.body
+      assert_equal %w[list show describe], skill.tools
+      assert_equal skill.body, listed.body
+      assert_equal skill.tools, listed.tools
+    end
+  end
+
+  def test_audit_rake_task_is_defined
+    path = File.expand_path("../lib/recording_studio_mcp/tasks/audit.rake", __dir__)
+
+    assert_includes File.read(path), "task audit:"
+  end
+
   def test_audit_lists_tools_and_sensitive_flags
     with_isolated_api_configuration do
       register_tree_type("Page")

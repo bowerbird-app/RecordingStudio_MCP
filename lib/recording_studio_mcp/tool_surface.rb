@@ -133,4 +133,6 @@ module RecordingStudioMcp
 end
 
 require "recording_studio_mcp/tool_surface/families"
+require "recording_studio_mcp/tool_surface/insert_metrics"
+require "recording_studio_mcp/tool_surface/insert_endpoints"
 require "recording_studio_mcp/tool_surface/insert"

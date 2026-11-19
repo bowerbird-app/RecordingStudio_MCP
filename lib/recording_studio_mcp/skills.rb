@@ -31,16 +31,16 @@ module RecordingStudioMcp
     end
 
     Registration = Data.define(:name, :path, :available_if, :type, :title, :description, :body, :tools) do
-      def initialize(name:, path: nil, available_if: nil, type: nil, title: nil, description: nil, body: nil, tools: [])
+      def initialize(**attrs)
         super(
-          name: name,
-          path: path,
-          available_if: available_if,
-          type: type,
-          title: title,
-          description: description,
-          body: body,
-          tools: Array(tools)
+          name: attrs.fetch(:name),
+          path: attrs[:path],
+          available_if: attrs[:available_if],
+          type: attrs[:type],
+          title: attrs[:title],
+          description: attrs[:description],
+          body: attrs[:body],
+          tools: Array(attrs[:tools])
         )
       end
 

@@ -13,12 +13,14 @@ module RecordingStudioMcp
       "object" => "object",
       "symbol" => "string"
     }.freeze
+    PROTOCOL_KEYS = %w[
+      type id parent_id q limit sort order filter pagination_token action params idempotency_key
+    ].freeze
 
     module_function
 
     def json_type(contract_field)
-      raw = field_value(contract_field, :type)
-      TYPE_MAP.fetch(raw.to_s, "string")
+      TYPE_MAP.fetch(field_value(contract_field, :type).to_s, "string")
     end
 
     def required?(contract_field)
@@ -30,20 +32,50 @@ module RecordingStudioMcp
       value.nil? ? !required?(contract_field) : value != false
     end
 
-    def property(contract_field, copy:)
-      property = { type: json_type(contract_field) }
-      property[:description] = copy[:description] if copy[:description].present?
-      property[:examples] = Array(copy[:example]) if copy.key?(:example)
-      enum = field_value(contract_field, :enum) || copy[:enum]
-      property[:enum] = Array(enum) if enum.present?
-      property[:minLength] = 1 if property[:type] == "string" && !allow_blank?(contract_field)
-      property
+    def property(contract_field, copy: {})
+      json = json_type(contract_field)
+      built = { type: json }
+      overlay_copy_on(built, copy)
+      enum = field_value(contract_field, :enum)
+      built[:enum] = Array(enum) if enum.present?
+      built[:minLength] = 1 if json == "string" && !allow_blank?(contract_field)
+      built
+    end
+
+    def properties(contract, copy: {})
+      stringify(contract).to_h do |name, field|
+        [name.to_sym, property(field, copy: copy[name] || {})]
+      end
     end
 
     def required_names(contract)
-      contract.each_with_object([]) do |(name, field), names|
-        names << name.to_s if required?(field)
+      stringify(contract).each_with_object([]) do |(name, field), names|
+        names << name if required?(field)
       end
+    end
+
+    def overlay_copy(properties, copy)
+      copy.to_h.each do |name, meta|
+        key = name.to_sym
+        next unless properties[key]
+
+        properties[key] = properties[key].dup
+        overlay_copy_on(properties[key], meta)
+      end
+      properties
+    end
+
+    def overlay_tool(definition, title:, description:)
+      overlaid = definition.dup
+      overlaid[:title] = title if title.present?
+      overlaid[:description] = description if description.present?
+      overlaid
+    end
+
+    def stringify(contract)
+      return {} if contract.blank?
+
+      contract.to_h.transform_keys(&:to_s)
     end
 
     def field_value(field, key)
@@ -51,5 +83,12 @@ module RecordingStudioMcp
 
       field[key] || field[key.to_s]
     end
+
+    def overlay_copy_on(property, copy)
+      meta = copy.to_h.transform_keys(&:to_sym)
+      property[:description] = meta[:description] if meta[:description].present?
+      property[:examples] = Array(meta[:example]) if meta.key?(:example)
+    end
+    private_class_method :overlay_copy_on
   end
 end

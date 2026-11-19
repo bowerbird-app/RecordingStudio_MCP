@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `recording_studio_api` `>= 1.20.0`, `< 2.0`.
 
 ### Added
-- `RecordingStudioMcp.register_tool`, `register_type`, `register_skill`, and `register_server` (`include_tools`, `include_tool`, `include_skills`). Generic tools `list`, `show`, `create`, `update`, `delete`, and `capability_action` remain includable. Per-tool `allow_sensitive: true` is allowed. `include_tool` may set a server-side `filter:`.
+- `RecordingStudioMcp.register_tool`, `register_type`, `register_skill`, and `register_server` (`include_tools`, `include_tool`, `include_skills`). Generic tools `list`, `show`, `create`, `update`, `delete`, and `capability_action` remain includable. Per-tool `allow_sensitive: true` is allowed.
 - Boot checks for unknown API names, sensitive tools without `allow_sensitive`, and overrides that change type or target.
 - `rake recording_studio_mcp:audit` lists each server's tools and sensitive flags and fails on mismatches.
 

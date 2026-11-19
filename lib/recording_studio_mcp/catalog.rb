@@ -2,6 +2,7 @@
 
 require_relative "catalog/public_names"
 require_relative "catalog/visibility"
+require_relative "catalog/describe_tools"
 require_relative "catalog/describe_shape"
 require_relative "catalog/reader"
 
@@ -9,6 +10,7 @@ module RecordingStudioMcp
   class Catalog
     include PublicNames
     include Visibility
+    include DescribeTools
     include DescribeShape
     include Reader
 
@@ -47,14 +49,14 @@ module RecordingStudioMcp
       {
         type: "string",
         enum: displayed_names_for(type_names),
-        description: "Type registered on this named API. Call describe for writable fields and actions."
+        description: "Type registered on this named API. Call the docs for writable fields and actions."
       }
     end
 
     def type_schema_for(operation)
       type_schema.merge(
         enum: displayed_names_for(type_names_for(operation)),
-        description: "Type on this named API that allows #{operation}. Call describe for operations."
+        description: "Type on this named API that allows #{operation}. Call the docs for operations."
       )
     end
 

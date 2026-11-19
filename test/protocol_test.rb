@@ -101,7 +101,7 @@ class ProtocolTest < Minitest::Test
       instructions = initialized.body.dig(:result, :instructions)
 
       assert_equal %w[list show describe], names
-      assert_includes instructions, "allowed children, actions, and values."
+      assert_includes instructions, "Call the docs for writable fields, children, and actions."
       refute_includes instructions, "before you create"
       refute_includes instructions, "before create"
       refute_includes instructions, "capability_action"
@@ -824,7 +824,7 @@ class ProtocolTest < Minitest::Test
       assert_includes tool_names_for(admin), "create"
       assert_equal %w[describe], tool_names_for(deleted)
       view_instructions = initialize_instructions(view)
-      assert_includes view_instructions, "allowed children, actions, and values."
+      assert_includes view_instructions, "Call the docs for writable fields, children, and actions."
       refute_includes view_instructions, "before you create"
       assert_includes initialize_instructions(admin), "before you create."
 

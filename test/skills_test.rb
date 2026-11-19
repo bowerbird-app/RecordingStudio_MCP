@@ -18,7 +18,7 @@ class SkillsTest < Minitest::Test
       Dir.mktmpdir do |dir|
         Dir.chdir(dir) do
           File.binwrite("SKILL.md", skill_text("research-publications", "Use the house style.\n"))
-          RecordingStudioMcp.register_skill("research-publications", path: "SKILL.md")
+          RecordingStudioMcp.register_skill(name: "research-publications", path: "SKILL.md")
         end
 
         stored = RecordingStudioMcp.configuration.skill_catalog.fetch("research-publications")
@@ -178,7 +178,7 @@ class SkillsTest < Minitest::Test
         outside = File.expand_path("../../secret", skill_dir)
         FileUtils.mkdir_p(File.dirname(outside))
         File.binwrite(outside, secret)
-        RecordingStudioMcp.register_skill("research-publications", path: File.join(skill_dir, "SKILL.md"))
+        RecordingStudioMcp.register_skill(name: "research-publications", path: File.join(skill_dir, "SKILL.md"))
 
         [
           "skill://research-publications/../../secret",
@@ -285,7 +285,7 @@ class SkillsTest < Minitest::Test
         Dir.mktmpdir do |dir|
           register_tree_type
           path = write_skill(dir, "research-publications", "Use the house style.\n")
-          RecordingStudioMcp.register_skill("research-publications", path: path)
+          RecordingStudioMcp.register_skill(name: "research-publications", path: path)
           result = handle("tools/list", id: 2)
           names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
 
@@ -299,7 +299,7 @@ class SkillsTest < Minitest::Test
     with_isolated_mcp_configuration do
       Dir.mktmpdir do |dir|
         path = write_skill(dir, "research-publications", "Use the house style.\n")
-        RecordingStudioMcp.register_skill("research-publications", path: path)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: path)
         stub_result = {
           content: [{ type: "text", text: "{}" }],
           structuredContent: {},
@@ -370,7 +370,7 @@ class SkillsTest < Minitest::Test
     with_isolated_mcp_configuration do
       Dir.mktmpdir do |dir|
         path = File.join(dir, "research-publications-SKILL.md")
-        RecordingStudioMcp.register_skill("research-publications", path: path)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: path)
         listed = handle("skills/list")
         fetched = handle("skills/get", params: { "uri" => "skill://research-publications/SKILL.md" })
         read = handle("resources/read", params: { "uri" => "skill://research-publications/SKILL.md" })
@@ -389,7 +389,7 @@ class SkillsTest < Minitest::Test
       Dir.mktmpdir do |dir|
         path = File.join(dir, "hidden-research-SKILL.md")
         RecordingStudioMcp.register_skill(
-          "hidden-research",
+          name: "hidden-research",
           path: path,
           available_if: ->(access_grant:) { access_grant.nil? }
         )
@@ -422,9 +422,9 @@ class SkillsTest < Minitest::Test
         first = write_skill(dir, "research-publications", "FIRST-BODY\n")
         second = write_skill(File.join(dir, "next"), "research-publications", "SECOND-BODY\n")
         other = write_skill(dir, "other-skill", "OTHER-BODY\n")
-        RecordingStudioMcp.register_skill("research-publications", path: first)
-        RecordingStudioMcp.register_skill("other-skill", path: other)
-        RecordingStudioMcp.register_skill("research-publications", path: second)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: first)
+        RecordingStudioMcp.register_skill(name: "other-skill", path: other)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: second)
         read = handle("resources/read", params: { "uri" => "skill://research-publications/SKILL.md" })
         names = handle("skills/list").body.dig(:result, :skills).map { |card| card[:frontmatter]["name"] }
 
@@ -438,7 +438,7 @@ class SkillsTest < Minitest::Test
   def test_register_skill_rejects_a_bad_name
     with_isolated_mcp_configuration do
       assert_raises(ArgumentError) do
-        RecordingStudioMcp.register_skill("../etc", path: "/tmp/not-a-skill")
+        RecordingStudioMcp.register_skill(name: "../etc", path: "/tmp/not-a-skill")
       end
     end
   end
@@ -485,7 +485,7 @@ class SkillsTest < Minitest::Test
           Use the house style.
         MARKDOWN
         File.binwrite(path, text)
-        RecordingStudioMcp.register_skill("research-publications", path: path)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: path)
         frontmatter = handle(
           "skills/get",
           params: { "uri" => "skill://research-publications/SKILL.md" }
@@ -504,7 +504,7 @@ class SkillsTest < Minitest::Test
       Dir.mktmpdir do |dir|
         path = File.join(dir, "research-publications-SKILL.md")
         File.binwrite(path, "---\nname: [\n---\n")
-        RecordingStudioMcp.register_skill("research-publications", path: path)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: path)
         result = handle("resources/read", params: { "uri" => "skill://research-publications/SKILL.md" })
 
         assert_unavailable result
@@ -518,8 +518,8 @@ class SkillsTest < Minitest::Test
       Dir.mktmpdir do |dir|
         kept = write_skill(dir, "research-publications", "Use the house style.\n")
         missing = File.join(dir, "other-skill-SKILL.md")
-        RecordingStudioMcp.register_skill("research-publications", path: kept)
-        RecordingStudioMcp.register_skill("other-skill", path: missing)
+        RecordingStudioMcp.register_skill(name: "research-publications", path: kept)
+        RecordingStudioMcp.register_skill(name: "other-skill", path: missing)
 
         assert_unavailable handle("skills/list")
       end
@@ -529,6 +529,7 @@ class SkillsTest < Minitest::Test
   private
 
   def handle(method, params: {}, id: 1)
+    include_registered_skills!
     RecordingStudioMcp::Protocol.handle(
       { "jsonrpc" => "2.0", "id" => id, "method" => method, "params" => params },
       access_grant: @grant
@@ -539,7 +540,7 @@ class SkillsTest < Minitest::Test
     with_isolated_mcp_configuration do
       Dir.mktmpdir do |dir|
         path = write_skill(dir, name, body)
-        RecordingStudioMcp.register_skill(name, path: path, available_if: available_if)
+        RecordingStudioMcp.register_skill(name: name, path: path, available_if: available_if)
         yield dir, path
       end
     end
@@ -547,7 +548,7 @@ class SkillsTest < Minitest::Test
 
   def register_named(dir, name, available_if:)
     path = write_skill(dir, name, "Body for #{name}.\n")
-    RecordingStudioMcp.register_skill(name, path: path, available_if: available_if)
+    RecordingStudioMcp.register_skill(name: name, path: path, available_if: available_if)
   end
 
   def write_skill(dir, name, body)

@@ -500,7 +500,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     refute described.key?("capability_actions")
   end
 
-  test "describe includes required fields and capability input contracts" do
+  test "describe workspace is lean" do
     token = issue_delegated_token
 
     post "/recording_studio_mcp",
@@ -513,10 +513,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes described.fetch("tools"), "capability_action"
     assert described["description"].present?
     refute described.key?("writable_fields")
-    documented = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("Workspace")
-    ping = documented.fetch("capability_actions").find { |action| action["name"] == "ping" }
-    assert_equal :string, ping.dig("params", "fields", "style", "type")
-    assert_equal %w[quiet loud], ping.dig("params", "fields", "style", "enum")
+    refute described.key?("capability_actions")
   end
 
   test "list with pagination_token reaches page two when has_more" do
