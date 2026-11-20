@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.42.0
+
+Previous version is `0.41.1`. No MCP migration.
+
+Development and dummy Gemfiles move to the flat_pack 0.2 sweep tags. `recording_studio_api` stays on tag `v1.21.3` (`~> 1.21`). Gemspec floors are unchanged.
+
+flat_pack 0.2.0 is supported; hosts moving to 0.2 must remove the manual `flat_pack/heroicons` importmap pin and any `flat-pack--icon` controller registration.
+
+Hosts MUST run the Recording Studio 7.4, 7.5 and 7.7 migrations if they have not.
+
 ## 0.41.1
 
 Previous version is `0.41.0`. No MCP migration.

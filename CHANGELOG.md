@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-20
+
+### Changed
+- Development and dummy Gemfiles pin Recording Studio `v7.8.0` (`~> 7.8`), Flatpack `v0.2.0` (`~> 0.2`), Accessible `v0.58.0` (`~> 0.58`), Admin `v2.20.0` (`~> 2.20`), Attachable `v0.34.0` (`~> 0.34`), Cache `v0.8.0` (`~> 0.8`), Icons `v0.5.0` (`~> 0.5`), Logs `v0.9.0` (`~> 0.9`), Metrics `v0.10.0` (`~> 0.10`), Moveable `v6.1.0` (`~> 6.1`), Oauth `v0.26.0` (`~> 0.26`), Site Settings `v0.7.0` (`~> 0.7`), and Trashable `v1.3.0` (`~> 1.3`, `require: false`). Dummy also pins Root Switchable `v0.17.0` (`~> 0.17`). API stays `v1.21.3` (`~> 1.21`). Gemspec floors are unchanged.
+
+### Upgrade notes
+- Bump to `0.42.0`. Previous version is `0.41.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts MUST run the Recording Studio 7.4, 7.5 and 7.7 migrations if they have not.
+- flat_pack 0.2.0 is supported; hosts moving to 0.2 must remove the manual `flat_pack/heroicons` importmap pin and any `flat-pack--icon` controller registration.
+
 ## [0.41.1] - 2026-11-19
 
 ### Fixed
@@ -1213,7 +1223,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.0...HEAD
+[0.42.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.1...v0.42.0
 [0.41.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.0...v0.41.1
 [0.41.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.2...v0.41.0
 [0.40.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...v0.40.2
