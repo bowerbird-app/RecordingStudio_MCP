@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.4] - 2026-11-20
+
+### Fixed
+- Named `Type--create` / `Type--show` (and other `register_tool(operation:)` tools) resolve the registered class name through the public-name catalog. Generic `create` / `show` still accept only the public name.
+
+### Upgrade notes
+- Bump to `0.43.4`. Previous version is `0.43.3`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts that register `Type--*` operation tools with the API class name (when that differs from the public name) can call those tools. Keep `type:` on `register_tool` as the class name.
+
 ## [0.43.3] - 2026-11-20
 
 ### Fixed
@@ -1275,7 +1284,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.3...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.4...HEAD
+[0.43.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.3...v0.43.4
 [0.43.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.2...v0.43.3
 [0.43.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.1...v0.43.2
 [0.43.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.0...v0.43.1

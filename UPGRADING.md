@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.43.4
+
+Previous version is `0.43.3`. No MCP migration.
+
+Named `register_tool(operation:)` tools (`Type--create`, `Type--show`, and the rest) map the registered class name through `displayed_type_name` then `resolve_type!`, the same public-name catalog generic tools use. Generic `create` / `show` / `list` still reject a class name for `type`. Keep `type:` on `register_tool` as the API class name.
+
 ## 0.43.3
 
 Previous version is `0.43.2`. No MCP migration.
