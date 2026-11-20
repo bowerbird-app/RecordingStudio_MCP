@@ -31,10 +31,11 @@ module RecordingStudioMcp
     end
 
     def type_plural_snake(type)
-      declared = RecordingStudio.recordable_type_plural_label(type).to_s.parameterize(separator: "_")
+      token = type_public_token(type)
+      declared = RecordingStudio.recordable_type_plural_label(token).to_s.parameterize(separator: "_")
       return declared if declared.present?
 
-      type_singular_snake(type).pluralize
+      token.underscore.singularize.pluralize
     end
 
     def type_public_token(type)
