@@ -149,6 +149,10 @@ class DispatcherTest < Minitest::Test
       true
     end
 
+    def capability_actions_advertised?
+      resolved_server&.tool?("capability_action")
+    end
+
     def registered_endpoints
       []
     end

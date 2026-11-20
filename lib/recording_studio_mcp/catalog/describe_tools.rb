@@ -51,7 +51,7 @@ module RecordingStudioMcp
       end
 
       def advertised_capability_actions(recordable_type, title: :docs)
-        return unless resolved_server&.tool?("capability_action")
+        return unless capability_actions_advertised?
 
         enabled_capability_actions(recordable_type, title: title)
       end

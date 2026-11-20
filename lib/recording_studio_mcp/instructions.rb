@@ -55,7 +55,7 @@ module RecordingStudioMcp
     def describe_line(surface)
       return unless surface.tree_enabled? && surface.tree_tool_names.include?("describe")
 
-      line = "Call describe for #{describe_returns(surface.catalog.resolved_server&.tool?('capability_action'))}"
+      line = "Call describe for #{describe_returns(surface.catalog.capability_actions_advertised?)}"
       before = describe_before(surface.tree_tool_names)
       return "#{line}." if before.nil?
 

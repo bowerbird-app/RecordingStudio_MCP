@@ -21,6 +21,7 @@ class ToolDocsTest < Minitest::Test
       assert properties.key?(:capability_actions)
       assert properties.key?(:writable_fields)
       assert properties.key?(:parent)
+      assert_equal %w[object null], properties.dig(:parent, :type)
     end
   end
 

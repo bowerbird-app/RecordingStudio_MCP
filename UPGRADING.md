@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.43.5
+
+Previous version is `0.43.4`. No MCP migration.
+
+`describe` still keeps `parent` when there are no parent rules; the value is `null`. The `describe` `outputSchema` now types `parent` as object or null. `capability_actions` is still omitted from the payload and from `describe`'s `outputSchema` when the named server does not include `capability_action`.
+
 ## 0.43.4
 
 Previous version is `0.43.3`. No MCP migration.

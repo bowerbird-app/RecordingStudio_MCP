@@ -19,6 +19,7 @@ class IncludeToolsFilterTest < Minitest::Test
       refute_includes listed, "show"
       refute_includes listed, "capability_action"
       refute_includes listed, "PressKit--publish"
+      refute RecordingStudioMcp::Catalog.new(api: :public).capability_actions_advertised?
       spec.dig("x-mcp", "tools").each do |tool|
         refute tool["x-mcp-docs-only"], "#{tool['name']} must not be docs-only"
       end
@@ -86,8 +87,8 @@ class IncludeToolsFilterTest < Minitest::Test
       assert_includes intro, "Capability actions:"
       assert_includes intro, "- publish"
       @grant = role_grant(:admin)
-      assert describe_output_properties.key?(:capability_actions) ||
-             describe_output_properties.key?("capability_actions")
+      assert RecordingStudioMcp::Catalog.new(api: :public).capability_actions_advertised?
+      assert describe_output_properties.key?(:capability_actions)
     end
   end
 
