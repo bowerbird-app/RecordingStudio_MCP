@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.5] - 2026-11-20
+
+### Fixed
+- `describe`'s `tools/list` `outputSchema` types `parent` as object or null, matching a `null` parent in the payload.
+
+### Changed
+- Catalog describe payloads drop absent keys through one `reject_nils` helper. `Catalog#capability_actions_advertised?` is the check for whether `capability_action` is on that server.
+
+### Upgrade notes
+- Bump to `0.43.5`. Previous version is `0.43.4`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.43.4] - 2026-11-20
 
 ### Fixed
@@ -1284,7 +1295,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.4...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.5...HEAD
+[0.43.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.4...v0.43.5
 [0.43.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.3...v0.43.4
 [0.43.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.2...v0.43.3
 [0.43.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.1...v0.43.2
