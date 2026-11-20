@@ -74,7 +74,7 @@ module RecordingStudioMcp
 
       reject_attributes_wrapper!(args)
       payload = stringify_keys(args).except(*WRITE_RESERVED_KEYS, *FINGERPRINT_EXCLUDED_KEYS)
-      reject_unknown_fields!(recordable_type, payload)
+      reject_unknown_fields!(recordable_type, payload, operation_name)
       payload["parent_id"] = args["parent_id"] if args.key?("parent_id")
       payload
     end
@@ -86,15 +86,31 @@ module RecordingStudioMcp
             "Send writable fields at the request root, not inside attributes"
     end
 
-    def reject_unknown_fields!(recordable_type, payload)
-      allowed = catalog.writable_fields(recordable_type)
+    def reject_unknown_fields!(recordable_type, payload, operation_name)
+      allowed = catalog.writable_fields(recordable_type, operation: operation_name)
+      reject_immutable_update_fields!(recordable_type, payload, allowed)
       unknown = payload.keys - allowed
       return if unknown.empty?
 
-      allowed_sentence = allowed.any? ? allowed.join(", ") : "(none)"
+      raise RecordingStudioApi::InvalidActionInputError, unknown_fields_message(recordable_type, unknown, allowed)
+    end
+
+    def reject_immutable_update_fields!(recordable_type, payload, allowed)
+      frozen = payload.keys & (catalog.writable_fields(recordable_type) - allowed)
+      return if frozen.empty?
+
       raise RecordingStudioApi::InvalidActionInputError,
-            "Unknown fields #{unknown.sort.join(', ')}. " \
-            "Writable fields for #{catalog.displayed_type_name(recordable_type)}: #{allowed_sentence}"
+            "#{frozen.sort.join(', ')} cannot be changed on update. " \
+            "#{writable_fields_sentence(recordable_type, allowed)}"
+    end
+
+    def unknown_fields_message(recordable_type, unknown, allowed)
+      "Unknown fields #{unknown.sort.join(', ')}. #{writable_fields_sentence(recordable_type, allowed)}"
+    end
+
+    def writable_fields_sentence(recordable_type, allowed)
+      listed = allowed.any? ? allowed.join(", ") : "(none)"
+      "Writable fields for #{catalog.displayed_type_name(recordable_type)}: #{listed}"
     end
 
     def create_idempotency_key(args, operation_name)

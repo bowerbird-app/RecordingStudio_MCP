@@ -91,7 +91,7 @@ class DispatcherTest < Minitest::Test
       name.to_s
     end
 
-    def writable_fields(_type)
+    def writable_fields(*)
       %w[title]
     end
 
@@ -934,6 +934,49 @@ class DispatcherTest < Minitest::Test
           end
         end
       end
+    end
+  end
+
+  def test_update_rejects_immutable_fields_and_create_still_accepts_them
+    with_isolated_api_configuration do
+      register_tree_type(
+        "Credit",
+        writable_attributes: %i[name credit_id],
+        immutable_fields: %i[credit_id],
+        operations: %i[index show create update]
+      )
+      RecordingStudioApi.register_resource_handler(
+        "Credit",
+        :create,
+        handler: ->(_context) { { json: { id: "1", name: "Ada", credit_id: "c-1" } } }
+      )
+      RecordingStudioApi.register_resource_handler(
+        "Credit",
+        :update,
+        handler: ->(context) { { json: { id: context.id, name: "Ada" } } }
+      )
+      ensure_tree_server(:public)
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Credit"))
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      update_tool = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "update" }
+      update_clause = update_tool.dig(:inputSchema, :allOf).find do |clause|
+        clause.dig(:if, :properties, :type, :const) == "Credit"
+      end
+
+      assert_equal %w[name], catalog.writable_fields("Credit", operation: :update)
+      refute update_clause.dig(:then, :properties).key?(:credit_id)
+      assert_equal %w[name], update_clause.dig(:then, :properties).keys.map(&:to_s).sort
+
+      rejected = dispatch("update", { type: "Credit", id: "1", credit_id: "c-1", name: "Ada" })
+      updated = dispatch("update", { type: "Credit", id: "1", name: "Ada" })
+      created = dispatch("create", { type: "Credit", credit_id: "c-1", name: "Ada" })
+
+      assert rejected[:isError]
+      assert_includes rejected.dig(:content, 0, :text), "credit_id cannot be changed on update"
+      assert_includes rejected.dig(:content, 0, :text), "Writable fields for Credit: name"
+      refute_includes rejected.dig(:content, 0, :text), "name, credit_id"
+      refute updated[:isError], updated.dig(:content, 0, :text)
+      refute created[:isError], created.dig(:content, 0, :text)
     end
   end
 

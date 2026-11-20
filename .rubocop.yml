@@ -27,6 +27,7 @@ Metrics/ClassLength:
     - 'test/**/*'
     - 'lib/recording_studio_mcp/connection.rb'
     - 'lib/recording_studio_mcp/event_rpc.rb'
+    - 'lib/recording_studio_mcp/dispatcher/contexts.rb'
     - 'app/controllers/recording_studio_mcp/mcp_controller.rb'
 
 Metrics/ModuleLength:

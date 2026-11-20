@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Named `register_tool(operation:)` tools now advertise the same protocol fields as the generic tree tools. `show`, `update`, and `destroy` require `id`. `index` lists `q`, `limit`, `sort`, `order`, `filter`, `pagination_token`, and `parent_id` when the generic `list` tool does. A missing `id` on show, update, or destroy is the validation error `id is required`.
+- `update` rejects immutable, create-only fields (for example `credit_id`) with `cannot be changed on update` instead of forwarding them for the API to ignore. Create is unchanged. The dispatch allow-list matches the advertised update schema.
 
 ### Upgrade notes
 - Bump to `0.44.1`. Previous version is `0.44.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
