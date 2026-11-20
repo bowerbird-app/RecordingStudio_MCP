@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.2] - 2026-11-20
+
+### Fixed
+- Docs and `describe` advertise only tools from that named server's `include_tools` (plus `describe`, which is always on). When `capability_action` is not included, `describe` and type intros omit `capability_actions` and do not tell callers to use `capability_action` or generic `create` / `list` / `show`.
+- `tools/call` for a name that is not on that server still returns an unknown-tool error and does not run the handler.
+
+### Upgrade notes
+- Bump to `0.43.2`. Previous version is `0.43.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Hosts that omit generic `create` / `list` / `show` / `capability_action` in favour of named `Type--*` tools will no longer see those names in docs, `describe`, or initialize copy for that server.
+
 ## [0.43.1] - 2026-11-20
 
 ### Changed
@@ -1255,7 +1265,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.2...HEAD
+[0.43.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.1...v0.43.2
 [0.43.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.1...v0.43.0
 [0.42.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.0...v0.42.1

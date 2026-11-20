@@ -17,7 +17,7 @@ module RecordingStudioMcp
           "relationships" => describe_relationships(registration),
           "parent" => parent_rules(recordable_type),
           "writable_fields" => FieldSchema.for(recordable_type, registration),
-          "capability_actions" => enabled_capability_actions(recordable_type, title: :mcp)
+          "capability_actions" => advertised_capability_actions(recordable_type, title: :mcp)
         }.merge("nesting" => NESTED_ITEMS).compact
       end
 
@@ -33,8 +33,8 @@ module RecordingStudioMcp
           "operations" => Array(registration&.operations).map(&:to_s),
           "writable_fields" => writable_fields(recordable_type),
           "sortable_fields" => sortable_fields(recordable_type),
-          "capability_actions" => enabled_capability_actions(recordable_type)
-        }.merge(describe_registry(recordable_type, registration))
+          "capability_actions" => advertised_capability_actions(recordable_type)
+        }.merge(describe_registry(recordable_type, registration)).compact
       end
 
       def describe_registry(recordable_type, registration)

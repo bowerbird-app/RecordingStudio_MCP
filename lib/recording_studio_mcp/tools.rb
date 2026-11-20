@@ -130,7 +130,7 @@ module RecordingStudioMcp
         tool(
           name: "show",
           title: "Show a record",
-          description: "Show one record by id. Use list or a create result to get ids. Returns the record.",
+          description: show_description(catalog),
           read_only: true,
           idempotent: true,
           required: %w[type id],
@@ -388,7 +388,7 @@ module RecordingStudioMcp
         tool(
           name: "describe",
           title: "Describe a type",
-          description: DESCRIBE_DESCRIPTION,
+          description: describe_description(catalog),
           read_only: true,
           idempotent: true,
           required: ["type"],
@@ -401,6 +401,32 @@ module RecordingStudioMcp
     DESCRIBE_DESCRIPTION = "Describe one type on this server. " \
                            "Returns the type paragraph, included tools, skills, relationships, " \
                            "allowed parents, writable fields, and available actions."
+    DESCRIBE_DESCRIPTION_WITHOUT_ACTIONS = "Describe one type on this server. " \
+                                           "Returns the type paragraph, included tools, skills, relationships, " \
+                                           "allowed parents, and writable fields."
+
+    def describe_description(catalog)
+      return DESCRIBE_DESCRIPTION if catalog.resolved_server&.tool?("capability_action")
+
+      DESCRIBE_DESCRIPTION_WITHOUT_ACTIONS
+    end
+
+    def show_description(catalog)
+      sources = show_id_sources(catalog)
+      return "Show one record by id. Returns the record." if sources.empty?
+
+      "Show one record by id. Use #{sources} to get ids. Returns the record."
+    end
+
+    def show_id_sources(catalog)
+      parts = []
+      parts << "list" if catalog.resolved_server&.tool?("list")
+      parts << "a create result" if catalog.resolved_server&.tool?("create")
+      return "" if parts.empty?
+      return parts.first if parts.one?
+
+      "#{parts[0]} or #{parts[1]}"
+    end
 
     def endpoint_title(endpoint)
       endpoint.openapi[:summary].presence || endpoint.name.to_s.tr("_", " ").capitalize
@@ -455,6 +481,7 @@ module RecordingStudioMcp
                          :attach_meta, :attach_ui_meta, :forced_keys, :keep_contract_type?,
                          :drop_forced_keys, :apply_named_action_id, :apply_named_create_parent_id,
                          :parent_id_schema, :protocol_field, :read_only_target?, :destructive_target?,
-                         :registered_tool_options, :lookup_properties, :metric_tool_options
+                         :registered_tool_options, :lookup_properties, :metric_tool_options,
+                         :describe_description, :show_description, :show_id_sources
   end
 end
