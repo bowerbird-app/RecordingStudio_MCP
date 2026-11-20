@@ -5,21 +5,46 @@ module RecordingStudioMcp
     module_function
 
     def grouped_tag_copy(page, group_tags:)
-      prose = {}
-      lines = {}
-      fill_tag_buckets(page, group_tags, prose, lines)
-      { descriptions: joined_tag_copy(prose, lines), intro_tags: lines.keys }
+      descriptions = type_tag_sections(page, group_tags)
+      { descriptions: descriptions, intro_tags: descriptions.keys }
     end
     private_class_method :grouped_tag_copy
 
-    def fill_tag_buckets(page, group_tags, prose, lines)
+    def type_tag_sections(page, group_tags)
       state = tag_state(page, group_tags)
-      Array(page.types).each do |entry|
-        assign_type_tag_description(prose, entry, page, group_tags)
-        collect_core_lines(lines, entry, state)
+      grouped = grouped_type_entries(page, state)
+      grouped.each_with_object({}) do |(tag, entries), copy|
+        texts = type_sections_for(entries, state)
+        copy[tag] = texts.join("\n\n") if texts.any?
       end
     end
-    private_class_method :fill_tag_buckets
+    private_class_method :type_tag_sections
+
+    def grouped_type_entries(page, state)
+      Array(page.types).each_with_object({}) do |entry, grouped|
+        shown = string_keyed(entry)
+        type_name = entry_recordable_type(shown)
+        next if type_name.blank?
+
+        tags_for_type(type_name, state).each do |tag|
+          grouped[tag] = Array(grouped[tag]) << shown
+        end
+      end
+    end
+    private_class_method :grouped_type_entries
+
+    def type_sections_for(entries, state)
+      prefix = entries.size > 1
+      entries.filter_map do |entry|
+        text = Documentation::Openapi::TypeOperationLines.section_for(
+          entry, entry["type"].to_s, state[:context]
+        )
+        next if text.blank?
+
+        prefix ? "Type: `#{entry['type']}`\n\n#{text}" : text
+      end
+    end
+    private_class_method :type_sections_for
 
     def tag_state(page, group_tags)
       {
@@ -36,29 +61,10 @@ module RecordingStudioMcp
     end
     private_class_method :page_type_names
 
-    def collect_core_lines(lines, entry, state)
-      shown = string_keyed(entry)
-      type_name = entry_recordable_type(shown)
-      return if type_name.blank?
-
-      core = core_lines_for(shown, type_name, state)
-      return if core.empty?
-
-      tags_for_type(type_name, state).each { |tag| lines[tag] = Array(lines[tag]) + core }
-    end
-    private_class_method :collect_core_lines
-
     def string_keyed(entry)
       entry.respond_to?(:deep_stringify_keys) ? entry.deep_stringify_keys : entry
     end
     private_class_method :string_keyed
-
-    def core_lines_for(entry, type_name, state)
-      Documentation::Openapi::TypeOperationLines.lines_for(
-        entry, entry["type"].to_s, type_name, state[:context]
-      )
-    end
-    private_class_method :core_lines_for
 
     def tags_for_type(type_name, state)
       action_tags(
@@ -69,13 +75,5 @@ module RecordingStudioMcp
       )
     end
     private_class_method :tags_for_type
-
-    def joined_tag_copy(prose, lines)
-      (prose.keys | lines.keys).each_with_object({}) do |tag, copy|
-        text = [prose[tag], *Array(lines[tag])].compact.reject(&:blank?).join("\n\n")
-        copy[tag] = text if text.present?
-      end
-    end
-    private_class_method :joined_tag_copy
   end
 end

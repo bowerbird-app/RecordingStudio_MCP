@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.1] - 2026-11-20
+
+### Changed
+- MCP docs list exactly the live tools for that named API (`tools/list` with no grant). Docs no longer add `{type}--{action}` copies of capability actions. Those actions stay on `capability_action` and in `describe`.
+- Named `Type--*` tools use that type's sidebar tag. Generic `list` / `show` / `create` / `update` / `delete` / `capability_action` / `describe` stay under Overview.
+- Each type's group intro is that type's `describe` payload: paragraph, live tools for the type (including generic `create` when `describe` lists it, and named `Type--*` tools), capability action names (plus the creates/idempotency_key line when that action creates), parent rules, and relationships.
+
+### Upgrade notes
+- Bump to `0.43.1`. Previous version is `0.43.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Docs OpenAPI `x-mcp.tools` matches `Tools.definitions` for that named API. Capability actions without a `register_tool` entry are not sidebar tools.
+- Hosts that read a type's group intro as a reconstructed `list` / `show` / `create` / `update` / `delete` list, or as docs-only `{type}--{action}` pages, should read the `describe` payload and the live named tools instead.
+
 ## [0.43.0] - 2026-11-20
 
 ### Changed
@@ -1243,7 +1255,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.1...HEAD
+[0.43.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.1...v0.43.0
 [0.42.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.0...v0.42.1
 [0.42.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.1...v0.42.0

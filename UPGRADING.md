@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.43.1
+
+Previous version is `0.43.0`. No MCP migration.
+
+MCP docs list exactly the live tools for that named API. The OpenAPI `x-mcp.tools` array is `Tools.definitions` for that API, the same set `tools/list` returns when there is no grant. Docs no longer add `{type}--{action}` copies of capability actions. A capability action without `register_tool` is not a sidebar tool. It stays on `capability_action` and in `describe`.
+
+Named `Type--*` tools use that type's sidebar tag. Generic tree tools stay under Overview.
+
+Each type's group intro is that type's `describe` payload: paragraph, tools that apply to the type (generic `create` / `list` / `show` when `describe` lists them, plus named `Type--*` tools), capability action names (plus the creates/idempotency_key line when that action creates), parent rules, and relationships. A type without `delete` in `describe` does not show `delete` on the docs page.
+
 ## 0.43.0
 
 Previous version is `0.42.1`. No MCP migration.

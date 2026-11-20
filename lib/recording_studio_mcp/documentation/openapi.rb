@@ -26,7 +26,7 @@ end
 
 require_relative "openapi/mcp"
 require_relative "openapi/action_docs"
-require_relative "openapi/type_actions"
+require_relative "openapi/type_describe_blocks"
 require_relative "openapi/type_operation_lines"
 require_relative "openapi/schemas"
 
@@ -36,20 +36,19 @@ module RecordingStudioMcp
       module_function
 
       def document(page)
-        group_tags = group_tags_for(page)
-        spec = document_spec(page, group_tags)
-        ToolDocs.attach_sidebar!(spec, page, group_tags: group_tags)
+        spec = document_spec(page)
+        ToolDocs.attach_sidebar!(spec, page, group_tags: group_tags_for(page))
         spec
       end
 
-      def document_spec(page, group_tags)
+      def document_spec(page)
         {
           "openapi" => OPENAPI_VERSION,
           "info" => info(page),
           "servers" => servers(page.api_key),
           "paths" => {},
           "components" => { "schemas" => Schemas.for(page) },
-          "x-mcp" => Mcp.section(page, group_tags: group_tags)
+          "x-mcp" => Mcp.section(page)
         }
       end
 

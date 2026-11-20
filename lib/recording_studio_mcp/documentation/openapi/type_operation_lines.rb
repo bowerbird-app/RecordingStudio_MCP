@@ -8,39 +8,40 @@ module RecordingStudioMcp
 
         def context_for(page)
           {
-            catalog: Catalog.new(api: page.api_key),
+            api_key: page.api_key,
             schemas: Tools.definitions(api: page.api_key).each_with_object({}) do |tool, schemas|
               schemas[tool[:name]] = Internals.stringify(tool[:inputSchema] || {})
             end
           }
         end
 
-        def lines_for(entry, shown, full_name, context)
-          Tools::TREE_OPERATION_TOOLS.filter_map do |operation, tool_name|
-            next unless context[:catalog].type_names_for(operation).include?(full_name)
+        def section_for(entry, shown, context)
+          shown_entry = Internals.stringify(entry)
+          [
+            shown_entry["description"],
+            *lines_for(shown_entry, shown, context),
+            TypeDescribeBlocks.capability_actions_block(shown_entry, context[:api_key]),
+            TypeDescribeBlocks.parent_block(shown_entry),
+            TypeDescribeBlocks.relationships_block(shown_entry)
+          ].compact.reject(&:blank?).join("\n\n")
+        end
 
-            tool_line(tool_name, shown, context[:schemas].fetch(tool_name, {}), entry)
+        def lines_for(entry, shown, context)
+          Array(entry["tools"]).filter_map do |name|
+            line_for_tool(name.to_s, shown, Internals.stringify(entry), context)
           end
         end
 
-        def capability_line(type_name, action_name, include_idempotency_key:)
-          line = "Tool: capability_action with type `#{type_name}` and action `#{action_name}`."
-          return line unless include_idempotency_key
-
-          "#{line} Pass idempotency_key to replay an action flagged creates: true when the input matches. " \
-            "A different input for that key is an error."
+        def line_for_tool(name, type_name, entry, context)
+          if Tools::TREE_OPERATION_TOOLS.value?(name)
+            tool_line(name, type_name, context[:schemas].fetch(name, {}), entry)
+          elsif name == "capability_action"
+            "Tool: capability_action with type `#{type_name}`."
+          else
+            "Tool: #{name}"
+          end
         end
-
-        def replays?(action_name, recordable_type, api_key)
-          action = RecordingStudioApi.capability_action(action_name, api: api_key)
-          return false if action.nil?
-          return true if action.creates?
-
-          registration = RecordingStudioApi.resource_handler_registration(
-            recordable_type, action.name, api: api_key
-          )
-          registration.respond_to?(:creates?) && registration.creates?
-        end
+        private_class_method :line_for_tool
 
         def tool_line(tool_name, type_name, schema, entry)
           "Tool: #{tool_name} with #{joined(argument_parts(tool_name, type_name, schema, entry))}"

@@ -6,41 +6,19 @@ module RecordingStudioMcp
       module Mcp
         module_function
 
-        def section(page, group_tags: nil)
+        def section(page)
           surface = ToolSurface.for(api: page.api_key)
           {
             "protocolVersion" => RecordingStudioMcp.configuration.protocol_version,
             "instructions" => page.instructions.to_s,
             "servers" => Internals.servers(page.api_key),
             "capabilities" => capabilities,
-            "tools" => documented_tools(page, surface, group_tags)
+            "tools" => documented_tools(page, surface)
           }
         end
 
-        def documented_tools(page, surface, group_tags)
-          protocol = page.tools.map { |tool| tool_entry(tool, surface) }
-          covered = named_action_keys(surface.server)
-          actions = TypeActions.tools(page, group_tags: group_tags, covered: covered).map do |tool|
-            tool_entry(tool, surface)
-          end
-          protocol + actions
-        end
-
-        def named_action_keys(server)
-          return [] unless server
-
-          server.tools.each_value.filter_map { |tool| named_action_key(server, tool) }
-        end
-
-        def named_action_key(server, tool)
-          registration = tool.registration
-          return if registration.nil? || Catalogs::GENERIC_NAMES.include?(tool.name)
-          return unless registration.target.action?
-          return unless RecordingStudioApi.lookup(
-            api: server.api, recordable_type: registration.type, action: registration.target.value
-          )
-
-          [registration.type.to_s, registration.target.value.to_s]
+        def documented_tools(page, surface)
+          page.tools.map { |tool| tool_entry(tool, surface) }
         end
 
         def capabilities
@@ -59,11 +37,10 @@ module RecordingStudioMcp
             "description" => tool["description"].presence || tool["title"].presence || tool["name"],
             "inputSchema" => Internals.stringify(tool["inputSchema"]) || { "type" => "object" }
           }.compact
-          entry["x-mcp-docs-only"] = true if tool["x-mcp-docs-only"]
           entry.merge(ToolDocs.openapi_extras(entry, tool, surface))
         end
 
-        private_class_method :documented_tools, :named_action_keys, :named_action_key, :capabilities, :tool_entry
+        private_class_method :documented_tools, :capabilities, :tool_entry
       end
     end
   end
