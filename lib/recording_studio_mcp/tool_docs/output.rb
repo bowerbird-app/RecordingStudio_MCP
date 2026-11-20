@@ -73,8 +73,10 @@ module RecordingStudioMcp
         DELETE
       end
 
-      def describe
-        object(properties: DESCRIBE_PROPERTIES)
+      def describe(catalog)
+        properties = DESCRIBE_PROPERTIES
+        properties = properties.except(:capability_actions) unless catalog.resolved_server&.tool?("capability_action")
+        object(properties: properties)
       end
 
       def action

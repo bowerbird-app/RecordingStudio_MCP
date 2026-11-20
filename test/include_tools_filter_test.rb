@@ -39,6 +39,8 @@ class IncludeToolsFilterTest < Minitest::Test
       refute_includes overview, "capability_action"
       refute_includes overview, "available actions"
       refute_includes listed_tool("describe")[:description], "available actions"
+      refute describe_output_properties.key?(:capability_actions)
+      refute describe_output_properties.key?("capability_actions")
     end
   end
 
@@ -83,6 +85,9 @@ class IncludeToolsFilterTest < Minitest::Test
       assert_includes intro, "Tool: capability_action with type `PressKit`."
       assert_includes intro, "Capability actions:"
       assert_includes intro, "- publish"
+      @grant = role_grant(:admin)
+      assert describe_output_properties.key?(:capability_actions) ||
+             describe_output_properties.key?("capability_actions")
     end
   end
 
@@ -195,6 +200,10 @@ class IncludeToolsFilterTest < Minitest::Test
 
   def docs_tool_names(spec)
     spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
+  end
+
+  def describe_output_properties
+    listed_tool("describe").fetch(:outputSchema).fetch(:properties)
   end
 
   def listed_tool(name)

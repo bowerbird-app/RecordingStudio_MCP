@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `describe` and docs type fields keep a `parent` key when there are no parent rules (`null`). They still omit `capability_actions` when that server does not include `capability_action`.
+- `describe`'s `tools/list` `outputSchema` omits `capability_actions` when that server does not include `capability_action`.
 - Tool and initialize copy that lists what `describe` returns now shares one list.
 
 ### Upgrade notes

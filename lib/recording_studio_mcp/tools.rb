@@ -394,7 +394,7 @@ module RecordingStudioMcp
           required: ["type"],
           properties: { type: catalog.type_schema }
         ),
-        output_schema: ToolDocs.describe_output_schema
+        output_schema: ToolDocs.describe_output_schema(catalog)
       )
     end
 
