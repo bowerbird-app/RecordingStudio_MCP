@@ -59,7 +59,7 @@ This is the locked `register_tool` / `register_type` shape other gems copy. Do n
 - `name` — MCP tool name. Gems pick readable names, as much as possible in `verb_type` form (`show_press_kit`, `feature_press_kit`, `add_quote_section`). When `verb_type` does not fit, use any readable snake_case name. `RecordingStudioMcp.tool_name` is an optional helper for the `verb_type` form. Only duplicates raise. Gems whose verb already names an object (for example Press Centers' `:feature_kit` on PressCenter becoming `feature_press_kit`) pass `name:` explicitly instead of using the builder. Generic tree tools stay `list`, `show`, `create`, `update`, `delete`, and `capability_action`.
 - `title` — short label
 - `description` — what the tool does, for people and agents. No Access wording. Audience values stay in this text, not an enum
-- `type` — optional recordable type when the tool is typed. Use the class name on the named API. Named typed operation tools map that class through the public-name catalog the same way generic `create` / `show` do.
+- `type` — optional recordable type when the tool is typed. Use the class name on the named API. Named typed operation tools map that class through the public-name catalog the same way generic `create` / `show` do. Leave `type` out for a named capability action that runs on whichever host type the caller passes (Attachable `create_upload`, `attach`, `import_attachment`). Do not send `type: ""`.
 - exactly one of `operation`, `action`, or `endpoint` — the lookup target
 - `input` — copy overlay only (descriptions and examples). Required, type, and allow-blank stay on the API contract
 - `output` — short result phrase
@@ -428,4 +428,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.45.0
+0.45.1

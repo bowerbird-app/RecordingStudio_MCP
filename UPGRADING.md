@@ -1,5 +1,24 @@
 # Upgrading Recording Studio MCP
 
+## 0.45.1
+
+Previous version is `0.45.0`. No MCP migration for typed tools or generic tree tools.
+
+A named capability-action tool registered without `type` now advertises the API action `inputSchema` (contract fields plus `id`). Callers still pass `type` in args for the host record. Leave `type` off `register_tool`. `type: ""` is not needed.
+
+```ruby
+RecordingStudioMcp.register_tool(
+  name: "create_upload",
+  action: :create_upload,
+  title: "Create upload",
+  description: "Create an upload on the host type passed in args.",
+  input: {},
+  output: "the upload"
+)
+```
+
+An unknown action name on that shape now raises at boot, the same as a typed named action. Generic `list` / `show` / `create` / `update` / `delete` / `capability_action` are unchanged.
+
 ## 0.45.0
 
 Previous version is `0.44.0`. This is a breaking change. No MCP migration.

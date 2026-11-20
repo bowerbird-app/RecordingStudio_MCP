@@ -45,7 +45,7 @@ module RecordingStudioMcp
       def lookup_target(registration)
         kind = registration.target.kind
         return { endpoint: registration.target.value } if kind == :endpoint
-        return if registration.generic?
+        return if registration.generic? && (kind == :operation || GENERIC_NAMES.include?(registration.name))
 
         { kind => registration.target.value } if %i[operation action].include?(kind)
       end

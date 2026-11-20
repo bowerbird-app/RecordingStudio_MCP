@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.45.1] - 2026-11-21
+
+### Fixed
+- Named capability-action tools registered without `type` keep the API action `inputSchema` (contract fields plus `id`). Generic tree tools and typed named tools are unchanged.
+
+### Upgrade notes
+- Bump to `0.45.1`. Previous version is `0.45.0`. Leave `type` off `register_tool` for host-agnostic actions such as Attachable `create_upload`. `type: ""` is not needed. An unknown action name on that shape now raises at boot. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.45.0] - 2026-11-21
 
 ### Changed (breaking)
@@ -1317,7 +1325,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.1...HEAD
+[0.45.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.0...v0.45.1
 [0.45.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.5...v0.44.0
 [0.43.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.4...v0.43.5

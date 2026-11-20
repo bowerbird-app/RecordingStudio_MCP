@@ -1371,6 +1371,47 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_typeless_named_action_dispatch_uses_args_type
+    with_isolated_api_configuration do
+      captured = nil
+      RecordingStudioApi.register_capability_action(
+        :create_upload,
+        capability: :attachable,
+        input_contract: {
+          fields: {
+            filename: { type: :string, required: true },
+            byte_size: { type: :integer, required: true }
+          }
+        },
+        handler: lambda { |context|
+          captured = context
+          { json: { ok: true, filename: context.params[:filename] } }
+        }
+      )
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      RecordingStudioMcp.register_tool(
+        name: "create_upload",
+        action: :create_upload,
+        title: "Create upload",
+        description: "Create an upload on the host type passed in args.",
+        input: {},
+        output: "the upload"
+      )
+      ensure_tree_server(:public, extra_tools: %w[create_upload])
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      result = dispatch("create_upload", { type: "Page", id: "1", filename: "cover.jpg", byte_size: 12 })
+
+      refute result[:isError], result.dig(:content, 0, :text)
+      assert_equal "cover.jpg", result.dig(:structuredContent, "filename")
+      assert_equal "cover.jpg", captured.params[:filename]
+      assert_equal 12, captured.params[:byte_size]
+      refute captured.params.key?(:type)
+      refute captured.params.key?(:id)
+      refute captured.params.key?(:action)
+    end
+  end
+
   def test_client_sent_type_and_action_are_ignored_for_registered_tools
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show], capability_actions: %i[inspect])
