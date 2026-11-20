@@ -37,7 +37,7 @@ module RecordingStudioMcp
       prefix = entries.size > 1
       entries.filter_map do |entry|
         text = Documentation::Openapi::TypeOperationLines.section_for(
-          entry, entry["type"].to_s, entry_recordable_type(entry), state[:context]
+          entry, entry["type"].to_s, state[:context]
         )
         next if text.blank?
 

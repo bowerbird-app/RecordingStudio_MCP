@@ -100,9 +100,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes names, "describe"
     assert_includes names, "ping"
     assert_includes names, "create"
-    refute_includes names, "Workspace--ping"
-    live = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name].to_s }.sort
-    assert_equal live, names.sort
+    assert_includes names, "Workspace--ping"
+    assert_docs_match_tools_list names, path: "/recording_studio_mcp", api: "public"
     assert_equal ["TypeName"], schemas.keys
     refute_includes schemas.keys, "Workspace"
     refute_includes schemas.keys, "Folder"
@@ -122,7 +121,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_equal ["Overview"], tools.fetch("list")["tags"]
     assert_equal ["Overview"], tools.fetch("ping")["tags"]
     assert_equal ["Overview"], tools.fetch("create")["tags"]
-    %w[ping grant_access list_access revoke_access update_access].each do |action|
+    assert_equal ["Workspace"], tools.fetch("Workspace--ping")["tags"]
+    %w[grant_access list_access revoke_access update_access].each do |action|
       refute_includes names, "Workspace--#{action}"
     end
     assert tools.fetch("list").key?("outputSchema")
@@ -137,6 +137,10 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes intro, "Tool: update with type `Workspace`, id, and writable fields"
     refute_includes intro, "Tool: delete"
     assert_includes intro, "Tool: capability_action with type `Workspace`."
+    assert_includes intro, "Capability actions:"
+    %w[ping grant_access list_access revoke_access update_access].each do |action|
+      assert_includes intro, "- #{action}"
+    end
     folder = spec.fetch("tags").find { |tag| tag["name"] == "Folder" }
     assert_includes folder.fetch("description"), "Tool: list with type `Folder`"
     refute tools.key?("Folder--list")
@@ -170,6 +174,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     schemas = spec.dig("components", "schemas") || {}
 
     assert_includes names, "ops_ping"
+    assert_docs_match_tools_list names, path: named_mcp_path("operations"), api: "operations"
     refute_includes schemas.keys, "Workspace"
     refute_includes schemas.keys, "Folder"
     assert_includes schemas.keys, "TypeName"
@@ -276,11 +281,60 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes fallback, ">list<"
     assert_includes fallback, ">create<"
     assert_includes fallback, ">ping<"
-    refute_includes fallback, ">Workspace--ping<"
+    assert_includes fallback, ">Workspace--ping<"
     refute_includes fallback, ">Core<"
+    assert_operator fallback.index(">Overview<"), :<, fallback.index(">Workspace<")
     other = fallback.index(">Other tools<")
-    overview = fallback.index(">Overview<")
-    assert_operator overview, :<, other if other
+    assert_operator fallback.index(">Overview<"), :<, other if other
+  end
+
+  def assert_docs_match_tools_list(docs_names, path:, api:)
+    token = mcp_docs_list_token(api)
+    post path,
+         params: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }.to_json,
+         headers: {
+           "Content-Type" => "application/json",
+           "Accept" => "application/json",
+           "Authorization" => "Bearer #{token}"
+         }
+
+    assert_response :success, response.body
+    listed = JSON.parse(response.body).dig("result", "tools").map { |tool| tool["name"] }
+    assert_equal listed.sort, docs_names.sort
+  end
+
+  def mcp_docs_list_token(api)
+    previous = Current.actor if defined?(Current)
+    user = create_user
+    Current.actor = user
+    client, = create_oauth_client(name: "Docs list #{SecureRandom.hex(4)}", api: api)
+    access = if api.to_s == "operations"
+               _admin_root, recording = create_admin_root_recording
+               grant_or_bootstrap_access!(recording: recording, actor: user, role: :admin)
+             else
+               _root, access_recording = create_access_recording_for(user: user, role: :admin)
+               access_recording
+             end
+    pkce = pkce_pair
+    approved = approve_delegated_oauth(
+      oauth_client: client,
+      user: user,
+      access_recording: access,
+      role: "edit",
+      pkce: pkce
+    )
+    token_url = api.to_s == "public" ? "/recording_studio_api/oauth/token" : named_api_token_path(api)
+    post token_url, params: {
+      grant_type: "authorization_code",
+      client_id: client.client_id,
+      code: approved.fetch(:code),
+      redirect_uri: "http://127.0.0.1/callback",
+      code_verifier: pkce.fetch(:verifier)
+    }
+    assert_response :success, response.body
+    JSON.parse(response.body).fetch("access_token")
+  ensure
+    Current.actor = previous if defined?(Current)
   end
 
   def assert_docs_surfaces(status)

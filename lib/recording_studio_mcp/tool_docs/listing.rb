@@ -32,23 +32,19 @@ module RecordingStudioMcp
     private_class_method :tree_entry_tags
 
     def named_tree_tags(name, api)
-      registration = named_tree_registration(name, api)
+      catalog = Catalog.new(api: api)
+      registration = catalog.resolved_server&.tool(name)&.registration
       type_name = registration&.type.to_s
       return tree_tags if type_name.blank?
 
       action_tags(
         type_name,
         api: api,
-        type_names: Catalog.new(api: api).type_names,
+        type_names: catalog.type_names,
         tag_suffix: named_action_tag_suffix(registration, api, type_name)
       )
     end
     private_class_method :named_tree_tags
-
-    def named_tree_registration(name, api)
-      Catalog.new(api: api).resolved_server&.tool(name)&.registration
-    end
-    private_class_method :named_tree_registration
 
     def named_action_tag_suffix(registration, api, type_name)
       return unless registration.target.action?

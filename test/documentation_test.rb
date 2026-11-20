@@ -454,6 +454,10 @@ class DocumentationTest < Minitest::Test
       assert_equal 1, intro.scan("Tool: list with type `Identity`").size
       assert_includes intro, "Tool: delete with type `Identity` and id"
       assert_includes intro, "Tool: capability_action with type `Identity`."
+      assert_includes intro, "Capability actions:"
+      assert_includes intro, "- identity_remove_image. #{remove.fetch('idempotency_key')}"
+      assert_includes intro, "- ping"
+      refute_includes intro, "- ping."
     end
   end
 
@@ -474,8 +478,13 @@ class DocumentationTest < Minitest::Test
       refute_includes docs_tool_names(spec), "Folder--add_file"
       refute_includes docs_tool_names(spec), "Folder--peek"
       assert_docs_tools_match_live spec
+      intro = spec.fetch("tags").find { |tag| tag["name"] == "Folder" }.fetch("description")
+
       assert_includes add.fetch("idempotency_key"), "creates: true"
       assert peek.fetch("idempotency_key")
+      assert_includes intro, "- add_file. #{add.fetch('idempotency_key')}"
+      assert_includes intro, "- peek"
+      refute_includes intro, "- peek."
     end
   end
 
@@ -547,6 +556,8 @@ class DocumentationTest < Minitest::Test
       assert_equal "A folder of notes.", described.fetch("description")
       assert_includes intro, described.fetch("description")
       described.fetch("tools").each { |name| assert_includes intro, "Tool: #{name}" }
+      assert_includes intro, "Capability actions:"
+      assert_includes intro, "- ping"
       assert_includes described.fetch("tools"), "list"
       assert_includes described.fetch("tools"), "show"
       assert_includes described.fetch("tools"), "Folder--ping"
@@ -646,6 +657,10 @@ class DocumentationTest < Minitest::Test
       assert_includes intro, "Tool: PressKit--create_section"
       assert_includes intro, "Tool: PressKit--set_visibility"
       assert_includes intro, "Tool: capability_action with type `PressKit`."
+      assert_includes intro, "Capability actions:"
+      %w[create_section set_visibility publish unpublish attach create_upload import_attachment].each do |name|
+        assert_includes intro, "- #{name}"
+      end
       assert_equal ["Press Kit"], tools.fetch("PressKit--create_section")["tags"]
       assert_equal ["Press Kit"], tools.fetch("PressKit--set_visibility")["tags"]
       assert_equal ["Overview"], tools.fetch("create")["tags"]

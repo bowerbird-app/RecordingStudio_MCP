@@ -26,6 +26,7 @@ end
 
 require_relative "openapi/mcp"
 require_relative "openapi/action_docs"
+require_relative "openapi/type_describe_blocks"
 require_relative "openapi/type_operation_lines"
 require_relative "openapi/schemas"
 

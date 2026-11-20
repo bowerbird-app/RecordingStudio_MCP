@@ -8,17 +8,19 @@ module RecordingStudioMcp
 
         def context_for(page)
           {
+            api_key: page.api_key,
             schemas: Tools.definitions(api: page.api_key).each_with_object({}) do |tool, schemas|
               schemas[tool[:name]] = Internals.stringify(tool[:inputSchema] || {})
             end
           }
         end
 
-        def section_for(entry, shown, _full_name, context)
+        def section_for(entry, shown, context)
           shown_entry = Internals.stringify(entry)
           [
             shown_entry["description"],
             *lines_for(shown_entry, shown, context),
+            TypeDescribeBlocks.capability_actions_block(shown_entry, context[:api_key]),
             TypeDescribeBlocks.parent_block(shown_entry),
             TypeDescribeBlocks.relationships_block(shown_entry)
           ].compact.reject(&:blank?).join("\n\n")
@@ -121,51 +123,6 @@ module RecordingStudioMcp
         end
         private_class_method :joined
       end
-
-      module TypeDescribeBlocks
-        module_function
-
-        def parent_block(entry)
-          parent = entry["parent"]
-          return if parent.blank?
-
-          parts = []
-          parts << "root #{parent['root']}" if parent.key?("root")
-          parts << allowed_parents_part(parent) if parent.key?("allowed_parent_types")
-          return if parts.empty?
-
-          "Parents: #{parts.join('. ')}."
-        end
-
-        def relationships_block(entry)
-          rels = Array(entry["relationships"])
-          return if rels.empty?
-
-          lines = rels.map { |rel| relationship_line(Internals.stringify(rel)) }
-          (["Relationships:"] + lines).join("\n")
-        end
-
-        def allowed_parents_part(parent)
-          types = Array(parent["allowed_parent_types"])
-          return "allowed parent types none" if types.empty?
-
-          "allowed parent types #{types.join(', ')}"
-        end
-        private_class_method :allowed_parents_part
-
-        def relationship_line(rel)
-          bits = [rel["name"]]
-          bits << rel["source"] if rel["source"].present?
-          bits << rel["child_type"] if rel["child_type"].present?
-          bits << (rel["many"] ? "many" : "one") if rel.key?("many")
-          line = "- #{bits.join(', ')}"
-          return line if rel["description"].blank?
-
-          "#{line}. #{rel['description']}"
-        end
-        private_class_method :relationship_line
-      end
-      private_constant :TypeDescribeBlocks
     end
   end
 end

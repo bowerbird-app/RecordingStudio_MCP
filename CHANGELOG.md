@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - MCP docs list exactly the live tools for that named API (`tools/list` with no grant). Docs no longer add `{type}--{action}` copies of capability actions. Those actions stay on `capability_action` and in `describe`.
 - Named `Type--*` tools use that type's sidebar tag. Generic `list` / `show` / `create` / `update` / `delete` / `capability_action` / `describe` stay under Overview.
-- Each type's group intro is that type's `describe` payload: paragraph, live tools for the type (including generic `create` when `describe` lists it, and named `Type--*` tools), parent rules, and relationships.
+- Each type's group intro is that type's `describe` payload: paragraph, live tools for the type (including generic `create` when `describe` lists it, and named `Type--*` tools), capability action names (plus the creates/idempotency_key line when that action creates), parent rules, and relationships.
 
 ### Upgrade notes
 - Bump to `0.43.1`. Previous version is `0.43.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).

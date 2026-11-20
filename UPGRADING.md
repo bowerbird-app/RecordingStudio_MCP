@@ -8,7 +8,7 @@ MCP docs list exactly the live tools for that named API. The OpenAPI `x-mcp.tool
 
 Named `Type--*` tools use that type's sidebar tag. Generic tree tools stay under Overview.
 
-Each type's group intro is that type's `describe` payload: paragraph, tools that apply to the type (generic `create` / `list` / `show` when `describe` lists them, plus named `Type--*` tools), parent rules, and relationships. A type without `delete` in `describe` does not show `delete` on the docs page.
+Each type's group intro is that type's `describe` payload: paragraph, tools that apply to the type (generic `create` / `list` / `show` when `describe` lists them, plus named `Type--*` tools), capability action names (plus the creates/idempotency_key line when that action creates), parent rules, and relationships. A type without `delete` in `describe` does not show `delete` on the docs page.
 
 ## 0.43.0
 
