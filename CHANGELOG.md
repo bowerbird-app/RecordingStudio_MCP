@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.42.1] - 2026-11-20
+
+### Fixed
+- Named typed tools pass the catalog API into MCP UI lookup. `tools/list` and `initialize` no longer raise `ConfigurationError` when MCP UI is loaded.
+
+### Upgrade notes
+- Bump to `0.42.1`. Previous version is `0.42.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.42.0] - 2026-11-20
 
 ### Changed
@@ -1223,7 +1231,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.1...HEAD
+[0.42.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.0...v0.42.1
 [0.42.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.1...v0.42.0
 [0.41.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.0...v0.41.1
 [0.41.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.2...v0.41.0
