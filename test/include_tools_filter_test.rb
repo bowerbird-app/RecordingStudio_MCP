@@ -24,6 +24,8 @@ class IncludeToolsFilterTest < Minitest::Test
       end
 
       assert_equal ["PressKit--create"], described.fetch("tools")
+      assert described.key?("parent")
+      assert documented.key?("parent")
       refute described.key?("capability_actions")
       refute documented.key?("capability_actions")
       assert_includes intro, "Tool: PressKit--create"
@@ -81,6 +83,23 @@ class IncludeToolsFilterTest < Minitest::Test
       assert_includes intro, "Tool: capability_action with type `PressKit`."
       assert_includes intro, "Capability actions:"
       assert_includes intro, "- publish"
+    end
+  end
+
+  def test_describe_keeps_nil_parent_and_omits_unadvertised_capability_actions
+    with_restricted_press_kit_server do
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      catalog.stub(:parent_rules, nil) do
+        described = catalog.describe("PressKit")
+        documented = catalog.documentation_type("PressKit")
+
+        assert described.key?("parent")
+        assert_nil described.fetch("parent")
+        refute described.key?("capability_actions")
+        assert documented.key?("parent")
+        assert_nil documented.fetch("parent")
+        refute documented.key?("capability_actions")
+      end
     end
   end
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.3] - 2026-11-20
+
+### Fixed
+- `describe` and docs type fields keep a `parent` key when there are no parent rules (`null`). They still omit `capability_actions` when that server does not include `capability_action`.
+- Tool and initialize copy that lists what `describe` returns now shares one list.
+
+### Upgrade notes
+- Bump to `0.43.3`. Previous version is `0.43.2`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.43.2] - 2026-11-20
 
 ### Fixed
@@ -1265,7 +1274,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.3...HEAD
+[0.43.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.2...v0.43.3
 [0.43.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.1...v0.43.2
 [0.43.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.1...v0.43.0

@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.43.3
+
+Previous version is `0.43.2`. No MCP migration.
+
+`describe` and docs type fields always include `parent`. When Recording Studio has no parent rules for that type, the value is `null`. `capability_actions` is still omitted when the named server does not include `capability_action`.
+
 ## 0.43.2
 
 Previous version is `0.43.1`. No MCP migration.

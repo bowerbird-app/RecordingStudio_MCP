@@ -398,17 +398,9 @@ module RecordingStudioMcp
       )
     end
 
-    DESCRIBE_DESCRIPTION = "Describe one type on this server. " \
-                           "Returns the type paragraph, included tools, skills, relationships, " \
-                           "allowed parents, writable fields, and available actions."
-    DESCRIBE_DESCRIPTION_WITHOUT_ACTIONS = "Describe one type on this server. " \
-                                           "Returns the type paragraph, included tools, skills, relationships, " \
-                                           "allowed parents, and writable fields."
-
     def describe_description(catalog)
-      return DESCRIBE_DESCRIPTION if catalog.resolved_server&.tool?("capability_action")
-
-      DESCRIBE_DESCRIPTION_WITHOUT_ACTIONS
+      returns = Instructions.describe_returns(catalog.resolved_server&.tool?("capability_action"))
+      "Describe one type on this server. Returns #{returns}."
     end
 
     def show_description(catalog)
@@ -419,13 +411,14 @@ module RecordingStudioMcp
     end
 
     def show_id_sources(catalog)
-      parts = []
-      parts << "list" if catalog.resolved_server&.tool?("list")
-      parts << "a create result" if catalog.resolved_server&.tool?("create")
-      return "" if parts.empty?
-      return parts.first if parts.one?
-
-      "#{parts[0]} or #{parts[1]}"
+      [
+        ("list" if catalog.resolved_server&.tool?("list")),
+        ("a create result" if catalog.resolved_server&.tool?("create"))
+      ].compact.to_sentence(
+        words_connector: " or ",
+        two_words_connector: " or ",
+        last_word_connector: " or "
+      )
     end
 
     def endpoint_title(endpoint)

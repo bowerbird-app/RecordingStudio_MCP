@@ -69,7 +69,7 @@ This is the locked `register_tool` / `register_type` shape other gems copy. Do n
 
 `list`, `show`, `create`, `update`, `delete`, and `capability_action` are includable generic tools. Re-registering a tool name overrides title, description, and input copy only. Type, target, required, and non-empty rules stay on the API contract. MCP text may only describe or narrow inputs. A host override that changes type or target raises at boot.
 
-`describe` lists the types, tools, and skills that server includes. It also returns `parent` (`root`, `allowed_parent_types`), `writable_fields` (name, required, type, allowed values, description), and `capability_actions`. Type paragraphs come from `register_type`. Field types, enums, parents, and actions come from the API registration and Recording Studio. Docs type sections use that same `describe` payload.
+`describe` lists the types, tools, and skills that server includes. It also returns `parent` (`root`, `allowed_parent_types`; `null` when there are no parent rules), `writable_fields` (name, required, type, allowed values, description), and `capability_actions` when that server includes `capability_action`. Type paragraphs come from `register_type`. Field types, enums, parents, and actions come from the API registration and Recording Studio. Docs type sections use that same `describe` payload.
 
 Boot raises when a tool, type, field, or skill names something the API does not have, when a sensitive item is included without `allow_sensitive`, when an override changes a target, or when an included catalog metric is outside `catalog_metric_resources`. Run `rake recording_studio_mcp:audit` in host CI to print each server's tools and sensitive flags.
 
@@ -426,4 +426,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.43.2
+0.43.3
