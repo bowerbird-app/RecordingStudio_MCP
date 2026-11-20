@@ -35,6 +35,7 @@ require "recording_studio_mcp/change_observer"
 require "recording_studio_mcp/listen_stream"
 require "recording_studio_mcp/documentation_configuration"
 require "recording_studio_mcp/registrations"
+require "recording_studio_mcp/tool_name"
 require "recording_studio_mcp/server_dsl"
 require "recording_studio_mcp/generic_tools"
 require "recording_studio_mcp/built_server"
@@ -94,6 +95,10 @@ module RecordingStudioMcp
     def configure
       yield(configuration) if block_given?
       configuration
+    end
+
+    def tool_name(type, action)
+      ToolName.call(type, action)
     end
 
     # Origin RFC 9728 documents for named-API MCP identities

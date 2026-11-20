@@ -247,15 +247,16 @@ class McpUiTest < Minitest::Test
         capability: :accessible,
         handler: ->(_context) { { json: { ok: true } } }
       )
+      clear_embargo = RecordingStudioMcp.tool_name("PressKit", :clear_embargo)
       RecordingStudioApi.register_capability_action(
-        "PressKit--clear_embargo",
+        clear_embargo,
         capability: :accessible,
         handler: ->(_context) { { json: { ok: true } } },
         ui: "presskits.clear_embargo"
       )
       register_tree_type("PressKit", operations: %i[index show], capability_actions: %i[clear_embargo])
       RecordingStudioMcp.register_tool(
-        name: "PressKit--clear_embargo",
+        name: clear_embargo,
         type: "PressKit",
         action: :clear_embargo,
         title: "Clear embargo",
@@ -263,11 +264,11 @@ class McpUiTest < Minitest::Test
         input: {},
         output: "ok"
       )
-      ensure_tree_server(:public, extra_tools: %w[PressKit--clear_embargo])
+      ensure_tree_server(:public, extra_tools: [clear_embargo])
       McpUiSupport::FakeUi.register("presskits.clear_embargo")
 
       tools = RecordingStudioMcp::ToolSurface.for(api: :public).tool_definitions
-      tool = tools.find { |entry| entry[:name] == "PressKit--clear_embargo" }
+      tool = tools.find { |entry| entry[:name] == clear_embargo }
 
       refute_nil tool
       assert_match(%r{\Aui://presskits/clear_embargo\?v=}, tool.dig(:_meta, :ui, :resourceUri))

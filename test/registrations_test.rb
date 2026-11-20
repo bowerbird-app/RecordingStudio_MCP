@@ -182,8 +182,9 @@ class RegistrationsTest < Minitest::Test
         :create,
         handler: ->(_) { { json: { id: "1", type: "Page" } } }
       )
+      create_name = RecordingStudioMcp.tool_name("Page", :create)
       RecordingStudioMcp.register_tool(
-        name: "page_create",
+        name: create_name,
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -191,9 +192,9 @@ class RegistrationsTest < Minitest::Test
         input: {},
         output: "the page"
       )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_create }
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools create_name }
       RecordingStudioMcp.register_tool(
-        name: "page_create",
+        name: create_name,
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -204,7 +205,7 @@ class RegistrationsTest < Minitest::Test
         output: "the page"
       )
 
-      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }
+      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_name }
       lookup = RecordingStudioApi.lookup(api: :public, recordable_type: "Page", operation: :create)
       title = listed.dig(:inputSchema, :properties, :title)
       contract = lookup.input_contract[:title] || lookup.input_contract["title"]
@@ -243,7 +244,7 @@ class RegistrationsTest < Minitest::Test
       )
       RecordingStudioApi.register_resource_handler("Page", :show, handler: ->(_) { { json: {} } })
       RecordingStudioMcp.register_tool(
-        name: "page_show",
+        name: RecordingStudioMcp.tool_name("Page", :show),
         type: "Page",
         operation: :show,
         title: "Show page",
@@ -251,7 +252,9 @@ class RegistrationsTest < Minitest::Test
         input: {},
         output: "the page"
       )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_show }
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tools RecordingStudioMcp.tool_name("Page", :show)
+      end
 
       error = assert_raises(RecordingStudioApi::ConfigurationError) do
         RecordingStudioMcp.configuration.catalogs.build!
@@ -466,7 +469,7 @@ class RegistrationsTest < Minitest::Test
         handler: ->(_) { { json: { id: "1", type: "Page" } } }
       )
       RecordingStudioMcp.register_tool(
-        name: "page_create",
+        name: RecordingStudioMcp.tool_name("Page", :create),
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -476,9 +479,10 @@ class RegistrationsTest < Minitest::Test
         },
         output: "the page"
       )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_create }
+      create_name = RecordingStudioMcp.tool_name("Page", :create)
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools create_name }
 
-      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }
+      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_name }
       title = listed.dig(:inputSchema, :properties, :title)
 
       assert_equal "Host title.", title[:description]

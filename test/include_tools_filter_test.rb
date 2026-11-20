@@ -13,26 +13,28 @@ class IncludeToolsFilterTest < Minitest::Test
       documented = RecordingStudioMcp::Catalog.new(api: :public).documentation_type("PressKit")
 
       assert_equal listed.sort, docs_tool_names(spec).sort
-      assert_equal %w[PressKit--create describe], listed.sort
+      create_press_kit = RecordingStudioMcp.tool_name("PressKit", :create)
+      assert_equal [create_press_kit, "describe"].sort, listed.sort
       refute_includes listed, "create"
       refute_includes listed, "list"
       refute_includes listed, "show"
       refute_includes listed, "capability_action"
+      refute_includes listed, RecordingStudioMcp.tool_name("PressKit", :publish)
       refute_includes listed, "PressKit--publish"
       refute RecordingStudioMcp::Catalog.new(api: :public).capability_actions_advertised?
       spec.dig("x-mcp", "tools").each do |tool|
         refute tool["x-mcp-docs-only"], "#{tool['name']} must not be docs-only"
       end
 
-      assert_equal ["PressKit--create"], described.fetch("tools")
+      assert_equal [create_press_kit], described.fetch("tools")
       assert described.key?("parent")
       assert documented.key?("parent")
       refute described.key?("capability_actions")
       refute documented.key?("capability_actions")
-      assert_includes intro, "Tool: PressKit--create"
-      refute_includes intro, "Tool: create"
-      refute_includes intro, "Tool: list"
-      refute_includes intro, "Tool: show"
+      assert_includes intro, "Tool: #{create_press_kit}"
+      refute_includes intro, "Tool: create with type `PressKit`"
+      refute_includes intro, "Tool: list with type `PressKit`"
+      refute_includes intro, "Tool: show with type `PressKit`"
       refute_includes intro, "capability_action"
       refute_includes intro, "Capability actions:"
       refute_includes intro, "publish"
@@ -58,8 +60,9 @@ class IncludeToolsFilterTest < Minitest::Test
         :create,
         handler: ->(_context) { { json: { id: "kit-1", type: "PressKit" } } }
       )
+      create_press_kit = RecordingStudioMcp.tool_name("PressKit", :create)
       RecordingStudioMcp.register_tool(
-        name: "PressKit--create",
+        name: create_press_kit,
         type: "PressKit",
         operation: :create,
         title: "Create press kit",
@@ -67,7 +70,7 @@ class IncludeToolsFilterTest < Minitest::Test
         input: {},
         output: "the kit"
       )
-      ensure_tree_server(:public, extra_tools: %w[PressKit--create])
+      ensure_tree_server(:public, extra_tools: [create_press_kit])
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       described = RecordingStudioMcp::Catalog.new(api: :public).describe("PressKit")
@@ -78,7 +81,7 @@ class IncludeToolsFilterTest < Minitest::Test
       assert_includes described.fetch("tools"), "list"
       assert_includes described.fetch("tools"), "show"
       assert_includes described.fetch("tools"), "capability_action"
-      assert_includes described.fetch("tools"), "PressKit--create"
+      assert_includes described.fetch("tools"), create_press_kit
       names = described.fetch("capability_actions").map { |action| action["name"] }
 
       assert_equal ["publish"], names
@@ -114,14 +117,18 @@ class IncludeToolsFilterTest < Minitest::Test
       before_creates = @creates
       before_publishes = @publishes
 
-      %w[create list show capability_action PressKit--publish].each do |name|
+      %w[create list show capability_action].each do |name|
         result = call_tool(name, type: "PressKit", id: "kit-1", action: "publish", title: "Kit")
 
         assert_equal true, result[:isError], name
         assert_includes result.dig(:content, 0, :text), "Unknown tool #{name}"
       end
 
-      created = call_tool("PressKit--create", title: "Kit")
+      unknown_publish = call_tool("PressKit--publish", type: "PressKit", id: "kit-1", action: "publish", title: "Kit")
+      assert_equal true, unknown_publish[:isError]
+      assert_includes unknown_publish.dig(:content, 0, :text), "Unknown tool PressKit--publish"
+
+      created = call_tool(RecordingStudioMcp.tool_name("PressKit", :create), title: "Kit")
 
       refute created[:isError], created.dig(:content, 0, :text)
       assert_equal "kit-1", created.dig(:structuredContent, "id")
@@ -158,8 +165,10 @@ class IncludeToolsFilterTest < Minitest::Test
           { json: { id: "kit-1", type: "PressKit" } }
         }
       )
+      create_press_kit = RecordingStudioMcp.tool_name("PressKit", :create)
+      publish_press_kit = RecordingStudioMcp.tool_name("PressKit", :publish)
       RecordingStudioMcp.register_tool(
-        name: "PressKit--create",
+        name: create_press_kit,
         type: "PressKit",
         operation: :create,
         title: "Create press kit",
@@ -168,7 +177,7 @@ class IncludeToolsFilterTest < Minitest::Test
         output: "the kit"
       )
       RecordingStudioMcp.register_tool(
-        name: "PressKit--publish",
+        name: publish_press_kit,
         type: "PressKit",
         action: :publish,
         title: "Publish press kit",
@@ -177,7 +186,7 @@ class IncludeToolsFilterTest < Minitest::Test
         output: "ok"
       )
       RecordingStudioMcp.register_server(:public, api: :public) do
-        include_tools "PressKit--create"
+        include_tools create_press_kit
       end
       @grant = role_grant(:admin)
       yield

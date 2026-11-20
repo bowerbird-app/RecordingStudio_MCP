@@ -29,8 +29,8 @@ class NamedPressKitProtocolTest < Minitest::Test
 
   def test_named_create_and_show_resolve_the_class_name_through_the_public_name
     with_press_kit_surface(named_operations: true) do
-      created = call_tool("PressKit--create", parent_id: "center-1", title: "Kit")
-      shown = call_tool("PressKit--show", id: "kit-1")
+      created = call_tool(RecordingStudioMcp.tool_name(PRESS_KIT, :create), parent_id: "center-1", title: "Kit")
+      shown = call_tool(RecordingStudioMcp.tool_name(PRESS_KIT, :show), id: "kit-1")
       generic_class_name = call_tool("create", type: PRESS_KIT, parent_id: "center-1", title: "Kit")
 
       refute created[:isError], created.dig(:content, 0, :text)
@@ -44,7 +44,7 @@ class NamedPressKitProtocolTest < Minitest::Test
 
   def test_named_action_schema_keeps_id_and_section_type
     with_press_kit_surface do
-      tool = listed_tool("PressKit--create_section")
+      tool = listed_tool(RecordingStudioMcp.tool_name(PRESS_KIT, :create_section))
       schema = tool.fetch(:inputSchema)
       properties = schema.fetch(:properties)
 
@@ -61,13 +61,13 @@ class NamedPressKitProtocolTest < Minitest::Test
   def test_named_action_reads_root_fields_and_still_accepts_params
     with_press_kit_surface do
       root = call_tool(
-        "PressKit--create_section",
+        RecordingStudioMcp.tool_name(PRESS_KIT, :create_section),
         id: "kit-1",
         type: "Text",
         content_type: "body"
       )
       nested = call_tool(
-        "PressKit--create_section",
+        RecordingStudioMcp.tool_name(PRESS_KIT, :create_section),
         id: "kit-1",
         params: { type: "Quote", content_type: "pull" }
       )
@@ -84,7 +84,7 @@ class NamedPressKitProtocolTest < Minitest::Test
   def test_named_action_root_fields_override_params
     with_press_kit_surface do
       clash = call_tool(
-        "PressKit--create_section",
+        RecordingStudioMcp.tool_name(PRESS_KIT, :create_section),
         id: "kit-1",
         type: "Text",
         content_type: "body",
@@ -201,8 +201,9 @@ class NamedPressKitProtocolTest < Minitest::Test
     else
       RecordingStudioApi.register_default_resource_actions!(api: :public)
     end
+    create_section = RecordingStudioMcp.tool_name(PRESS_KIT, :create_section)
     RecordingStudioMcp.register_tool(
-      name: "PressKit--create_section",
+      name: create_section,
       type: PRESS_KIT,
       action: :create_section,
       title: "Create section",
@@ -212,7 +213,7 @@ class NamedPressKitProtocolTest < Minitest::Test
       },
       output: "the section"
     )
-    extras = %w[PressKit--create_section]
+    extras = [create_section]
     extras.concat(register_named_press_kit_operations) if named_operations
     ensure_tree_server(:public, extra_tools: extras)
   end
@@ -225,8 +226,10 @@ class NamedPressKitProtocolTest < Minitest::Test
         { json: { id: context.recording.id, type: PRESS_KIT, title: "Kit" } }
       }
     )
+    create_press_kit = RecordingStudioMcp.tool_name(PRESS_KIT, :create)
+    show_press_kit = RecordingStudioMcp.tool_name(PRESS_KIT, :show)
     RecordingStudioMcp.register_tool(
-      name: "PressKit--create",
+      name: create_press_kit,
       type: PRESS_KIT,
       operation: :create,
       title: "Create press kit",
@@ -235,7 +238,7 @@ class NamedPressKitProtocolTest < Minitest::Test
       output: "the kit"
     )
     RecordingStudioMcp.register_tool(
-      name: "PressKit--show",
+      name: show_press_kit,
       type: PRESS_KIT,
       operation: :show,
       title: "Show press kit",
@@ -243,7 +246,7 @@ class NamedPressKitProtocolTest < Minitest::Test
       input: {},
       output: "the kit"
     )
-    %w[PressKit--create PressKit--show]
+    [create_press_kit, show_press_kit]
   end
 
   def press_kit_grant(recording)

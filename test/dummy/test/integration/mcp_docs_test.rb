@@ -100,7 +100,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes names, "describe"
     assert_includes names, "ping"
     assert_includes names, "create"
-    assert_includes names, "Workspace--ping"
+    ping_workspace = RecordingStudioMcp.tool_name("Workspace", :ping)
+    assert_includes names, ping_workspace
     assert_docs_match_tools_list names, path: "/recording_studio_mcp", api: "public"
     assert_equal ["TypeName"], schemas.keys
     refute_includes schemas.keys, "Workspace"
@@ -121,7 +122,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_equal ["Overview"], tools.fetch("list")["tags"]
     assert_equal ["Overview"], tools.fetch("ping")["tags"]
     assert_equal ["Overview"], tools.fetch("create")["tags"]
-    assert_equal ["Workspace"], tools.fetch("Workspace--ping")["tags"]
+    assert_equal ["Workspace"], tools.fetch(ping_workspace)["tags"]
     %w[grant_access list_access revoke_access update_access].each do |action|
       refute_includes names, "Workspace--#{action}"
     end
@@ -281,7 +282,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes fallback, ">list<"
     assert_includes fallback, ">create<"
     assert_includes fallback, ">ping<"
-    assert_includes fallback, ">Workspace--ping<"
+    assert_includes fallback, ">#{RecordingStudioMcp.tool_name("Workspace", :ping)}<"
     refute_includes fallback, ">Core<"
     assert_operator fallback.index(">Overview<"), :<, fallback.index(">Workspace<")
     other = fallback.index(">Other tools<")

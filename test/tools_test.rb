@@ -337,8 +337,9 @@ class ToolsTest < Minitest::Test
         }
       )
       RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: {} } })
+      create_page = RecordingStudioMcp.tool_name("Page", :create)
       RecordingStudioMcp.register_tool(
-        name: "page_create",
+        name: create_page,
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -346,10 +347,10 @@ class ToolsTest < Minitest::Test
         input: {},
         output: "the page"
       )
-      ensure_tree_server(:public, extra_tools: %w[page_create])
+      ensure_tree_server(:public, extra_tools: [create_page])
 
       generic = type_clause("create", "Page").fetch(:then)
-      typed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }.fetch(:inputSchema)
+      typed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_page }.fetch(:inputSchema)
 
       assert_equal generic.fetch(:properties), typed.fetch(:properties)
       assert_equal generic.fetch(:required), typed.fetch(:required)
