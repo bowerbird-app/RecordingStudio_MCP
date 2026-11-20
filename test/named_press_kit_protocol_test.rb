@@ -27,6 +27,21 @@ class NamedPressKitProtocolTest < Minitest::Test
     end
   end
 
+  def test_named_create_and_show_resolve_the_class_name_through_the_public_name
+    with_press_kit_surface(named_operations: true) do
+      created = call_tool("PressKit--create", parent_id: "center-1", title: "Kit")
+      shown = call_tool("PressKit--show", id: "kit-1")
+      generic_class_name = call_tool("create", type: PRESS_KIT, parent_id: "center-1", title: "Kit")
+
+      refute created[:isError], created.dig(:content, 0, :text)
+      assert_equal "kit-1", created.dig(:structuredContent, "id")
+      refute shown[:isError], shown.dig(:content, 0, :text)
+      assert_equal "kit-1", shown.dig(:structuredContent, "id")
+      assert generic_class_name[:isError]
+      assert_includes generic_class_name.dig(:content, 0, :text), "Unknown type McpTestKits::Kit"
+    end
+  end
+
   def test_named_action_schema_keeps_id_and_section_type
     with_press_kit_surface do
       tool = listed_tool("PressKit--create_section")
@@ -135,7 +150,7 @@ class NamedPressKitProtocolTest < Minitest::Test
 
   private
 
-  def with_press_kit_surface(custom_create: true)
+  def with_press_kit_surface(custom_create: true, named_operations: false)
     with_isolated_api_configuration do
       recording = FakeRecording.new("kit-1", PRESS_KIT)
       @grant = press_kit_grant(recording)
@@ -143,14 +158,14 @@ class NamedPressKitProtocolTest < Minitest::Test
         RecordingStudio.stub(:allowed_parent_types_for, lambda { |type|
           type.to_s == PRESS_KIT ? %w[McpTestKits::Center] : []
         }) do
-          register_press_kit(custom_create: custom_create)
+          register_press_kit(custom_create: custom_create, named_operations: named_operations)
           yield
         end
       end
     end
   end
 
-  def register_press_kit(custom_create: true)
+  def register_press_kit(custom_create: true, named_operations: false)
     RecordingStudioApi.register_capability_action(
       :create_section,
       capability: :accessible,
@@ -197,7 +212,38 @@ class NamedPressKitProtocolTest < Minitest::Test
       },
       output: "the section"
     )
-    ensure_tree_server(:public, extra_tools: %w[PressKit--create_section])
+    extras = %w[PressKit--create_section]
+    extras.concat(register_named_press_kit_operations) if named_operations
+    ensure_tree_server(:public, extra_tools: extras)
+  end
+
+  def register_named_press_kit_operations
+    RecordingStudioApi.register_resource_handler(
+      PRESS_KIT,
+      :show,
+      handler: lambda { |context|
+        { json: { id: context.recording.id, type: PRESS_KIT, title: "Kit" } }
+      }
+    )
+    RecordingStudioMcp.register_tool(
+      name: "PressKit--create",
+      type: PRESS_KIT,
+      operation: :create,
+      title: "Create press kit",
+      description: "Create a press kit.",
+      input: {},
+      output: "the kit"
+    )
+    RecordingStudioMcp.register_tool(
+      name: "PressKit--show",
+      type: PRESS_KIT,
+      operation: :show,
+      title: "Show press kit",
+      description: "Show a press kit.",
+      input: {},
+      output: "the kit"
+    )
+    %w[PressKit--create PressKit--show]
   end
 
   def press_kit_grant(recording)

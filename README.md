@@ -57,7 +57,7 @@ This is the locked `register_tool` / `register_type` shape other gems copy. Do n
 - `name` — MCP tool name
 - `title` — short label
 - `description` — what the tool does, for people and agents. No Access wording. Audience values stay in this text, not an enum
-- `type` — optional recordable type when the tool is typed
+- `type` — optional recordable type when the tool is typed. Use the class name on the named API. Named `Type--*` operation tools map that class through the public-name catalog the same way generic `create` / `show` do.
 - exactly one of `operation`, `action`, or `endpoint` — the lookup target
 - `input` — copy overlay only (descriptions and examples). Required, type, and allow-blank stay on the API contract
 - `output` — short result phrase
@@ -426,4 +426,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.43.3
+0.43.4

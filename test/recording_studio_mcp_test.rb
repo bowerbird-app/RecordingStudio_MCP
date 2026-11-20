@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_43_3
-    assert_equal "0.43.3", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_43_4
+    assert_equal "0.43.4", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -148,7 +148,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.43.3\n"
+    assert_includes readme, "## Version\n\n0.43.4\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."

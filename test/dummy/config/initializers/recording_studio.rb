@@ -5,6 +5,7 @@ RecordingStudio.configure do |config|
     "Workspace",
     "Folder",
     "Page",
+    "Dummy::Leaf",
     "AdminRoot",
     "RecordingStudioSiteSettings::SiteSetting",
     "RecordingStudioAttachable::Attachment"

@@ -89,7 +89,7 @@ module RecordingStudioMcp
 
     def forced_registration_args(registration)
       forced = {}
-      forced["type"] = registration.type if registration.type.present?
+      forced["type"] = catalog.displayed_type_name(registration.type) if registration.type.present?
       forced["action"] = registration.target.value.to_s if registration.target.action?
       forced
     end
