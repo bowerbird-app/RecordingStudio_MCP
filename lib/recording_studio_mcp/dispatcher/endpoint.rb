@@ -78,20 +78,7 @@ module RecordingStudioMcp
       contract_result = endpoint.input_contract.call(merged)
       return contract_result.value if contract_result.success?
 
-      raise RecordingStudioApi::InvalidActionInputError.new(
-        endpoint_contract_error_message(endpoint, contract_result),
-        details: contract_result.errors
-      )
-    end
-
-    def endpoint_contract_error_message(endpoint, contract_result)
-      ["Invalid input for endpoint #{endpoint.name}", contract_errors_text(contract_result.errors)].compact.join(": ")
-    end
-
-    def contract_errors_text(errors)
-      return if errors.blank?
-
-      errors.to_sentence
+      raise_contract_failure!("Invalid input for endpoint #{endpoint.name}", endpoint.input_contract, contract_result)
     end
 
     def serialize_endpoint_result(endpoint, result)

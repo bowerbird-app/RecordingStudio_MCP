@@ -4,6 +4,10 @@ require "json"
 require "test_helper"
 
 class DispatcherTest < Minitest::Test
+  class PlanGateError < StandardError
+    include RecordingStudio::Denial
+  end
+
   FakeGrant = Struct.new(
     :api_client, :credential, :access_recording, :root_recording, :accessible_recordings, :actor,
     :authorized_by, :deny_authorization,
@@ -430,6 +434,55 @@ class DispatcherTest < Minitest::Test
 
               assert result[:isError]
               assert_includes result.dig(:content, 0, :text), "actor is required"
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_plan_denial_inside_an_action_is_tool_error
+    error = PlanGateError.new("plan full").denial(
+      code: :plan_limit,
+      details: { message: "This plan includes 3 pages" }
+    )
+    interpreted = {
+      code: "plan_limit",
+      message: "This plan includes 3 pages",
+      details: { message: "This plan includes 3 pages" }
+    }
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(*) { raise error }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              RecordingStudioApi::BillingDenial.stub(:interpret, interpreted) do
+                result = dispatch("create", { "type" => "Page", "title" => "Nope" })
+
+                assert result[:isError]
+                assert_equal "This plan includes 3 pages", result.dig(:content, 0, :text)
+                assert_equal "plan_limit", result.dig(:structuredContent, "code")
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_unrecognized_denial_inside_an_action_is_tool_error
+    error = PlanGateError.new("blocked").denial(code: :mystery_gate, details: { message: "blocked" })
+
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(*) { raise error }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch("create", { "type" => "Page", "title" => "Nope" })
+
+              assert result[:isError]
+              assert_equal "This action is not allowed", result.dig(:content, 0, :text)
             end
           end
         end
@@ -965,6 +1018,53 @@ class DispatcherTest < Minitest::Test
 
       refute result[:isError], result.dig(:content, 0, :text)
       assert_equal "visible", result.dig(:structuredContent, "headline")
+    end
+  end
+
+  def test_capability_contract_names_fields_and_rules
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :create_upload,
+        capability: :attachable,
+        input_contract: {
+          fields: {
+            filename: { type: :string, required: true },
+            byte_size: { type: :integer, required: true, description: "The file size in bytes." },
+            checksum: {
+              type: :string,
+              required: true,
+              description: "MD5 checksum of the file bytes, Base64-encoded, as Active Storage expects."
+            },
+            kind: { type: :string, required: true, enum: %w[image file] }
+          }
+        },
+        handler: ->(_context) { { json: { ok: true } } }
+      )
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      missing = dispatch(
+        "capability_action",
+        { type: "Page", id: "1", action: "create_upload", params: { filename: "cover.jpg" } }
+      )
+      enum = dispatch(
+        "capability_action",
+        {
+          type: "Page",
+          id: "1",
+          action: "create_upload",
+          params: { filename: "cover.jpg", byte_size: 12, checksum: "abcd", kind: "video" }
+        }
+      )
+
+      assert missing[:isError]
+      missing_text = missing.dig(:content, 0, :text)
+      assert_includes missing_text, "byte_size is required"
+      assert_includes missing_text, "checksum is required"
+      assert_includes missing_text, "Base64"
+      assert_includes missing_text, "MD5"
+      assert enum[:isError]
+      assert_includes enum.dig(:content, 0, :text), "kind must be one of: image, file"
     end
   end
 

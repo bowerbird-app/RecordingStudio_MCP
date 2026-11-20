@@ -15,7 +15,9 @@ class ToolDocsTest < Minitest::Test
     assert_equal "array", properties.dig(:skills, :type)
     assert_equal "array", properties.dig(:relationships, :type)
     assert_equal "string", properties.dig(:nesting, :type)
-    refute properties.key?(:capability_actions)
+    assert properties.key?(:capability_actions)
+    assert properties.key?(:writable_fields)
+    assert properties.key?(:parent)
   end
 
   def test_type_tags_use_registered_endpoint_tags_not_the_scalar_group

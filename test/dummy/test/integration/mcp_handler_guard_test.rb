@@ -102,7 +102,7 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     assert_tool_miss(view, "capability_action", invalid)
     assert_equal 0, calls[0]
 
-    assert_tool_text(edit, "capability_action", invalid, "Invalid input for action guard_edit")
+    assert_tool_text(edit, "capability_action", invalid, "Invalid input for action guard_edit: note is required")
     assert_equal 1, calls[0]
 
     probed = call_tool(edit, "capability_action", type: "Page", id: @page.id, action: "guard_edit", params: { note: "ok" })

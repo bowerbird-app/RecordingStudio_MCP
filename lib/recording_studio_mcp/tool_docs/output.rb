@@ -33,7 +33,10 @@ module RecordingStudioMcp
         tools: { type: "array", items: { type: "string" } },
         skills: { type: "array", items: { type: "string" } },
         relationships: { type: "array", items: ACTION },
-        nesting: { type: "string" }
+        nesting: { type: "string" },
+        parent: ACTION,
+        writable_fields: { type: "array", items: ACTION },
+        capability_actions: { type: "array", items: CAPABILITY_ACTION }
       }.freeze
       METRIC_POINT = {
         type: "object",

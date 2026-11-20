@@ -496,8 +496,11 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     )
     assert_includes described.fetch("tools"), "list"
     assert_includes described.fetch("tools"), "create"
-    refute described.key?("writable_fields")
-    refute described.key?("capability_actions")
+    title = described.fetch("writable_fields").find { |field| field["name"] == "title" }
+    assert_equal "string", title.fetch("type")
+    assert_equal false, described.dig("parent", "root")
+    assert_includes described.dig("parent", "allowed_parent_types"), "Workspace"
+    assert_equal [], described.fetch("capability_actions")
   end
 
   test "describe workspace is lean" do
@@ -512,8 +515,10 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
 
     assert_includes described.fetch("tools"), "capability_action"
     assert described["description"].present?
-    refute described.key?("writable_fields")
-    refute described.key?("capability_actions")
+    assert described.fetch("writable_fields").any? { |field| field["name"] == "name" }
+    ping = described.fetch("capability_actions").find { |action| action["name"] == "ping" }
+    assert_equal "ping", ping.fetch("name")
+    assert_equal %w[quiet loud], ping.dig("params", "fields", "style", "enum")
   end
 
   test "list with pagination_token reaches page two when has_more" do

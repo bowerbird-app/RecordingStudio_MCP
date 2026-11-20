@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-11-20
+
+### Changed
+- `describe` for a type now returns allowed parents, writable fields (type, required, enum values), and available capability actions. `register_tool` and `register_type` keep the same keys; other gems copy that shape. Docs pages still list writable field names.
+- Capability and endpoint input-contract failures name the field and include the contract rule or allowed values. Missing `create_upload` `byte_size` and `checksum` name those fields; `checksum` repeats that it is Base64 MD5.
+- A `RecordingStudio::Denial` or `RecordingStudio::AuthorizationError` raised inside an action is a tool error (`isError`), not JSON-RPC `-32603`. Known billing denials use `RecordingStudioApi::BillingDenial.interpret`.
+
+### Upgrade notes
+- Bump to `0.43.0`. Previous version is `0.42.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Callers of `describe` must accept `parent`, `writable_fields` hashes, and `capability_actions`.
+- Contract error text now includes the field name and rule. Match on those names, not only `Invalid input for action …`.
+
 ## [0.42.1] - 2026-11-20
 
 ### Fixed
@@ -1231,7 +1243,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.0...HEAD
+[0.43.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.1...v0.43.0
 [0.42.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.42.0...v0.42.1
 [0.42.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.1...v0.42.0
 [0.41.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.0...v0.41.1

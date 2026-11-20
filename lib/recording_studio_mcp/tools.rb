@@ -399,7 +399,8 @@ module RecordingStudioMcp
     end
 
     DESCRIBE_DESCRIPTION = "Describe one type on this server. " \
-                           "Returns the type paragraph, included tools, skills, and relationships."
+                           "Returns the type paragraph, included tools, skills, relationships, " \
+                           "allowed parents, writable fields, and available actions."
 
     def endpoint_title(endpoint)
       endpoint.openapi[:summary].presence || endpoint.name.to_s.tr("_", " ").capitalize

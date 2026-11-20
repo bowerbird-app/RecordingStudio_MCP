@@ -1,5 +1,17 @@
 # Upgrading Recording Studio MCP
 
+## 0.43.0
+
+Previous version is `0.42.1`. No MCP migration.
+
+`describe` returns `parent` (`root`, `allowed_parent_types`), `writable_fields` as hashes (`name`, `required`, `type`, `allowed_values`, `description`, `immutable_on_update`), and `capability_actions`. Copy still comes from `register_type`. Field types, enums, and actions come from the API registration and Recording Studio declarations. Do not add those keys to `register_type`.
+
+`register_tool` stays `name`, `title`, `description`, optional `type`, exactly one of `operation` / `action` / `endpoint`, `input` (copy overlay only), and `output`. `register_type` stays `type` and `description`. That is the shape other gems copy. See the README.
+
+Create `parent_id` is required in the tool schema when `RecordingStudio.root_allowed?` is false, which is the same rule Recording Studio API uses on create. MCP does not add a second parent check. A wrong parent still surfaces the Recording Studio API / core message.
+
+Capability and endpoint contract errors name the field and the rule (`checksum is required. MD5 checksum of the file bytes, Base64-encoded…`, `kind must be one of: image, file`). A plan `RecordingStudio::Denial` or `RecordingStudio::AuthorizationError` from an action is an MCP tool error, not `-32603`.
+
 ## 0.42.1
 
 Previous version is `0.42.0`. No MCP migration.

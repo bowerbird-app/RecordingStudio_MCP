@@ -14,7 +14,8 @@ module RecordingStudioMcp
       ActiveRecord::RecordInvalid,
       RecordingStudio::AuthorizationError,
       RecordingStudio::ActorRequired,
-      RecordingStudio::InvalidParent
+      RecordingStudio::InvalidParent,
+      RecordingStudio::Denial
     ].freeze
     TOOL_ERROR_CLASSES = (API_TOOL_ERRORS + DOMAIN_TOOL_ERRORS).freeze
 
@@ -25,8 +26,30 @@ module RecordingStudioMcp
       return error_result(record_invalid_tool_message(error)) if error.is_a?(ActiveRecord::RecordInvalid)
       return error_result(error.message) if error.is_a?(RecordingStudio::ActorRequired)
       return error_result(error.message) if error.is_a?(RecordingStudio::InvalidParent)
+      return denial_tool_error(error) if error.is_a?(RecordingStudio::Denial)
 
       error_result("Not authorized")
+    end
+
+    def denial_tool_error(error)
+      interpreted = RecordingStudioApi::BillingDenial.interpret(error)
+      if interpreted
+        return error_result(
+          interpreted.fetch(:message),
+          details: interpreted[:details],
+          code: interpreted[:code]
+        )
+      end
+
+      error_result(unrecognized_denial_message)
+    end
+
+    def unrecognized_denial_message
+      if defined?(RecordingStudioApi::Concerns::BillingDenials::UNRECOGNIZED_DENIAL_MESSAGE)
+        RecordingStudioApi::Concerns::BillingDenials::UNRECOGNIZED_DENIAL_MESSAGE
+      else
+        "This action is not allowed"
+      end
     end
 
     def api_error_result(error)
