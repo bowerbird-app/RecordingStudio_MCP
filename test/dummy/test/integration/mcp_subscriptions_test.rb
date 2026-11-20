@@ -172,7 +172,7 @@ class McpSubscriptionsTest < ActionDispatch::IntegrationTest
 
     assert_equal "recording updated", parsed["event"]
     assert_equal @page_recording.id.to_s, parsed["id"]
-    wait_until { connection.pending? }
+    wait_until(timeout: 10) { connection.pending? }
     assert connection.pending?
   ensure
     RecordingStudioMcp::PostgresBus.stop!
