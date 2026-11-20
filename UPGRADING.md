@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.43.2
+
+Previous version is `0.43.1`. No MCP migration.
+
+Docs, initialize Overview, and `describe` follow the same `include_tools` list as `tools/list` for that named server. `describe` is always present. If `capability_action` is not included, `describe` omits `capability_actions` and type docs do not list those actions. Generic `create` / `list` / `show` / `update` are not named when they are not included. A `tools/call` for an excluded name is an unknown-tool error.
+
 ## 0.43.1
 
 Previous version is `0.43.0`. No MCP migration.

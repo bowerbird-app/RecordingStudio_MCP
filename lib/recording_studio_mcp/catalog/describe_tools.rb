@@ -49,6 +49,12 @@ module RecordingStudioMcp
           skill.name if skill.type.blank? || skill.type.to_s == recordable_type.to_s
         end
       end
+
+      def advertised_capability_actions(recordable_type, title: :docs)
+        return unless resolved_server&.tool?("capability_action")
+
+        enabled_capability_actions(recordable_type, title: title)
+      end
     end
   end
 end

@@ -46,12 +46,24 @@ module RecordingStudioMcp
     def describe_line(surface)
       return unless surface.tree_enabled? && surface.tree_tool_names.include?("describe")
 
-      line = "Call describe for the type paragraph, included tools, skills, relationships, " \
-             "allowed parents, writable fields, and available actions"
+      line = "Call describe for #{describe_returns(surface)}"
       before = describe_before(surface.tree_tool_names)
       return "#{line}." if before.nil?
 
       "#{line} before you #{before}."
+    end
+
+    def describe_returns(surface)
+      parts = [
+        "the type paragraph",
+        "included tools",
+        "skills",
+        "relationships",
+        "allowed parents",
+        "writable fields"
+      ]
+      parts << "available actions" if surface.catalog.resolved_server&.tool?("capability_action")
+      listed(parts)
     end
 
     def describe_before(names)
@@ -102,8 +114,8 @@ module RecordingStudioMcp
     end
 
     private_class_method :sections_for, :sign_in_section, :find_tools_section, :find_tool_lines,
-                         :describe_line, :describe_before, :general_tools_line, :listed, :per_type_page_line,
-                         :suffix_text, :section
+                         :describe_line, :describe_returns, :describe_before, :general_tools_line, :listed,
+                         :per_type_page_line, :suffix_text, :section
   end
 end
 

@@ -16,7 +16,7 @@ module RecordingStudioMcp
       lines << workspace_line if names.include?("list")
       lines << "Records nest by parent_id."
       lines << "root_id is the workspace, not the parent."
-      lines << parent_line if surface.list_parent_id? && names.include?("list")
+      lines << parent_line(names) if surface.list_parent_id? && names.include?("list")
       lines << pagination_line if names.include?("list")
       lines
     end
@@ -25,8 +25,10 @@ module RecordingStudioMcp
       "Call list with the workspace type and no parent_id to find workspaces."
     end
 
-    def parent_line
-      "List with parent_id, then show."
+    def parent_line(names)
+      return "List with parent_id, then show." if names.include?("show")
+
+      "Pass parent_id to list children of that parent."
     end
 
     def pagination_line
