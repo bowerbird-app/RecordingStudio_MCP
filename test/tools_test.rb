@@ -18,7 +18,9 @@ class ToolsTest < Minitest::Test
       assert_equal "array", list.dig(:outputSchema, :properties, :records, :type)
       describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
       assert describe.key?(:outputSchema)
-      assert_includes describe[:description], "Returns the type paragraph, included tools, skills, and relationships."
+      assert_includes describe[:description],
+                      "Returns the type paragraph, included tools, skills, relationships, " \
+                      "allowed parents, writable fields, and available actions."
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "Call describe before"
     end
@@ -206,7 +208,9 @@ class ToolsTest < Minitest::Test
 
       assert_equal %w[list show describe], names
       describe = tools.find { |tool| tool[:name] == "describe" }
-      assert_includes describe[:description], "Returns the type paragraph, included tools, skills, and relationships."
+      assert_includes describe[:description],
+                      "Returns the type paragraph, included tools, skills, relationships, " \
+                      "allowed parents, writable fields, and available actions."
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "before create"
     end

@@ -233,7 +233,10 @@ class CatalogTest < Minitest::Test
         catalog = RecordingStudioMcp::Catalog.new(api: :public)
         documented = catalog.documentation_type(catalog.resolve_type!("Folder"))
 
-        assert_equal %w[description nesting relationships skills tools type], described.keys.sort
+        assert_equal(
+          %w[capability_actions description nesting parent relationships skills tools type writable_fields],
+          described.keys.sort
+        )
         refute described.key?("metrics")
         refute described.key?("operations")
         assert_equal "Folder", described.fetch("type")
@@ -515,6 +518,39 @@ class CatalogTest < Minitest::Test
 
         assert_equal ["Folder"], catalog.list_parent_id_type_names
       end
+    end
+  end
+
+  def test_describe_returns_parents_writable_fields_and_actions
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type(
+        "Page",
+        writable_attributes: %i[title status],
+        openapi: {
+          details_schema: {
+            properties: {
+              status: { type: "string", enum: %w[draft published], description: "draft or published." }
+            }
+          }
+        },
+        capability_actions: %i[ping]
+      )
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+      described = nil
+      RecordingStudio.stub(:root_allowed?, false) do
+        RecordingStudio.stub(:allowed_parent_types_for, ->(_type) { %w[Workspace Folder] }) do
+          described = catalog.describe("Page")
+        end
+      end
+      status = described.fetch("writable_fields").find { |field| field["name"] == "status" }
+      ping = described.fetch("capability_actions").find { |action| action["name"] == "ping" }
+
+      assert_equal false, described.dig("parent", "root")
+      assert_equal %w[Folder Workspace], described.dig("parent", "allowed_parent_types")
+      assert_equal "string", status["type"]
+      assert_equal %w[draft published], status["allowed_values"]
+      assert ping
     end
   end
 

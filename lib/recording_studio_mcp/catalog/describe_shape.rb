@@ -14,8 +14,18 @@ module RecordingStudioMcp
           "description" => type_paragraph(recordable_type),
           "tools" => describe_tools(recordable_type, registration),
           "skills" => describe_skills(recordable_type),
-          "relationships" => describe_relationships(registration)
+          "relationships" => describe_relationships(registration),
+          "parent" => parent_rules(recordable_type),
+          "writable_fields" => FieldSchema.for(recordable_type, registration),
+          "capability_actions" => enabled_capability_actions(recordable_type, title: :mcp)
         }.merge("nesting" => NESTED_ITEMS).compact
+      end
+
+      def action_title_for(action, recordable_type, source, copied)
+        return copied if copied.present?
+        return "#{displayed_type_name(recordable_type)} - #{action.name.to_s.humanize.titleize}" if source == :mcp
+
+        Documentation::Openapi::ActionDocs.title(action.name, api, recordable_type)
       end
 
       def documentation_type_fields(recordable_type, registration)

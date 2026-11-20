@@ -140,7 +140,7 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
-  def test_describe_is_lean_and_uses_register_type
+  def test_describe_uses_register_type_and_hydrates_write_shape
     with_isolated_api_configuration do
       register_tree_type("Page")
       RecordingStudioMcp.register_type(type: "Page", description: "A page under a folder or workspace.")
@@ -151,8 +151,10 @@ class RegistrationsTest < Minitest::Test
       assert_includes payload["tools"], "list"
       assert_equal [], payload["skills"]
       assert payload.key?("relationships")
-      refute payload.key?("writable_fields")
-      refute payload.key?("capability_actions")
+      assert payload.key?("parent")
+      title = payload.fetch("writable_fields").find { |field| field["name"] == "title" }
+      assert_equal "string", title["type"]
+      assert_equal [], payload.fetch("capability_actions")
     end
   end
 

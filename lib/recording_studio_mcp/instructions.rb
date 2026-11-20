@@ -46,7 +46,8 @@ module RecordingStudioMcp
     def describe_line(surface)
       return unless surface.tree_enabled? && surface.tree_tool_names.include?("describe")
 
-      line = "Call describe for the type paragraph, included tools, skills, and relationships"
+      line = "Call describe for the type paragraph, included tools, skills, relationships, " \
+             "allowed parents, writable fields, and available actions"
       before = describe_before(surface.tree_tool_names)
       return "#{line}." if before.nil?
 

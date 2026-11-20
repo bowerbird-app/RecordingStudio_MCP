@@ -83,18 +83,18 @@ module RecordingStudioMcp
         raise RecordingStudioApi::InvalidActionInputError, ambiguous_type_message(name, matches)
       end
 
-      def enabled_capability_actions(recordable_type)
+      def enabled_capability_actions(recordable_type, title: :docs)
         enabled_action_registrations(recordable_type).sort_by { |action| action.name.to_s }.map do |action|
-          capability_action_details(action, recordable_type)
+          capability_action_details(action, recordable_type, title: title)
         end
       end
 
-      def capability_action_details(action, recordable_type)
+      def capability_action_details(action, recordable_type, title: :docs)
         details = { "name" => action.name.to_s }
         contract = action.input_contract&.as_json
         details["params"] = contract.deep_stringify_keys if contract.present?
         fields = details.merge(Documentation::Openapi::ActionDocs.copy_for(action, recordable_type))
-        fields["title"] = Documentation::Openapi::ActionDocs.title(action.name, api, recordable_type)
+        fields["title"] = action_title_for(action, recordable_type, title, fields["title"])
         fields["idempotency_key"] = CAPABILITY_IDEMPOTENCY_KEY
         fields
       end

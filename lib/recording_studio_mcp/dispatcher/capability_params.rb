@@ -27,7 +27,7 @@ module RecordingStudioMcp
       result = action.input_contract.call(normalized)
       return result.value if result.success?
 
-      raise RecordingStudioApi::InvalidActionInputError, "Invalid input for action #{action.name}"
+      raise_contract_failure!("Invalid input for action #{action.name}", action.input_contract, result)
     end
 
     def capability_contract_keys(action)
