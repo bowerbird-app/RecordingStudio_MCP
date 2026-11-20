@@ -7,8 +7,8 @@ class ToolNameTest < Minitest::Test
     assert_equal "show_press_kit", RecordingStudioMcp.tool_name("PressKit", :show)
   end
 
-  def test_feature_kit_appends_a_multi_word_type
-    assert_equal "feature_kit_press_center", RecordingStudioMcp.tool_name("PressCenter", :feature_kit)
+  def test_feature_on_press_kit_is_feature_press_kit
+    assert_equal "feature_press_kit", RecordingStudioMcp.tool_name("PressKit", "feature")
   end
 
   def test_list_uses_the_plural_snake_form
@@ -23,6 +23,10 @@ class ToolNameTest < Minitest::Test
   def test_action_that_already_ends_with_the_type_noun_is_not_repeated
     assert_equal "add_image", RecordingStudioMcp.tool_name("Images", :add_image)
     assert_equal "add_file", RecordingStudioMcp.tool_name("RecordingStudioPresskits::Files", :add_file)
+  end
+
+  def test_trailing_action_words_that_match_leading_type_words_are_not_repeated
+    assert_equal "add_quote_section", RecordingStudioMcp.tool_name("QuoteSection", :add_quote)
   end
 
   def test_namespaced_type_uses_the_api_public_name_when_registered

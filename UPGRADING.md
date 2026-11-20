@@ -6,7 +6,7 @@ Previous version is `0.43.5`. This is a breaking MCP tool-name change for named 
 
 Named tools registered with `register_tool` `type:` plus `operation:` or `action:` should use snake_case `{action}_{type}`. Call `RecordingStudioMcp.tool_name(type, action)` to build that name. The helper is optional. Gems still pass `name:`. Generic tree tools stay `list`, `show`, `create`, `update`, `delete`, and `capability_action`.
 
-`list` uses the plural type: `list_press_kits`. If the action already ends with the type noun, the helper does not repeat it (`add_image` on an Images type stays `add_image`).
+`list` uses the plural type: `list_press_kits`. If the action already ends with the type noun, the helper does not repeat it (`add_image` on an Images type stays `add_image`). If the action's trailing word(s) match the type's leading word(s), those words are not repeated (`add_quote` on `QuoteSection` is `add_quote_section`).
 
 Rename callers from the old `Type--action` form to the new name. Include the new name on `register_server`.
 
@@ -15,7 +15,7 @@ Rename callers from the old `Type--action` form to the new name. Include the new
 | `PressKit--show` | `show_press_kit` |
 | `PressKit--create` | `create_press_kit` |
 | `PressKit--list` | `list_press_kits` |
-| `PressCenter--feature_kit` | `feature_kit_press_center` |
+| `PressCenter--feature_kit` | `feature_press_kit` |
 | `Workspace--ping` | `ping_workspace` |
 
 Named `operation` tools still map the registered class name through `displayed_type_name` then `resolve_type!`. Generic `create` / `show` / `list` still reject a class name for `type`. Keep `type:` on `register_tool` as the API class name.

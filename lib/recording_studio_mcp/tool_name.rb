@@ -16,11 +16,9 @@ module RecordingStudioMcp
 
     def call(type, action)
       verb = verb_for(action)
-      type_snake = type_singular_snake(type)
       return "list_#{type_plural_snake(type)}" if verb == "list"
-      return verb if ends_with_noun?(verb, type_snake)
 
-      "#{verb}_#{type_snake}"
+      join_action_and_type(verb, type_singular_snake(type))
     end
 
     def verb_for(action)
@@ -50,11 +48,30 @@ module RecordingStudioMcp
       RecordingStudioApi.recordable_registration_for(type_name, api: :public)&.public_name
     end
 
+    def join_action_and_type(verb, type_snake)
+      return verb if ends_with_noun?(verb, type_snake)
+
+      remainder = type_snake.split("_").drop(leading_type_overlap(verb, type_snake))
+      return verb if remainder.empty?
+
+      "#{verb}_#{remainder.join('_')}"
+    end
+
+    def leading_type_overlap(verb, type_snake)
+      verb_parts = verb.split("_")
+      type_parts = type_snake.split("_")
+      max = [verb_parts.length, type_parts.length].min
+      max.downto(1) do |count|
+        return count if verb_parts.last(count) == type_parts.first(count)
+      end
+      0
+    end
+
     def ends_with_noun?(verb, type_snake)
       verb == type_snake || verb.end_with?("_#{type_snake}")
     end
 
     private_class_method :verb_for, :type_singular_snake, :type_plural_snake, :type_public_token,
-                         :api_public_name, :ends_with_noun?
+                         :api_public_name, :join_action_and_type, :leading_type_overlap, :ends_with_noun?
   end
 end

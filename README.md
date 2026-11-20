@@ -54,7 +54,7 @@ This is the locked `register_tool` / `register_type` shape other gems copy. Do n
 
 `register_tool`:
 
-- `name` — MCP tool name. Gems pass this. For a typed `operation` or `action`, the recommended name is `RecordingStudioMcp.tool_name(type, action)` (`show_press_kit`, `feature_kit_press_center`, `list_press_kits`). That helper is optional. Generic tree tools stay `list`, `show`, `create`, `update`, `delete`, and `capability_action`.
+- `name` — MCP tool name. Gems pass this. For a typed `operation` or `action`, the recommended name is `RecordingStudioMcp.tool_name(type, action)` (`show_press_kit`, `feature_press_kit`, `list_press_kits`). That helper is optional. Generic tree tools stay `list`, `show`, `create`, `update`, `delete`, and `capability_action`.
 - `title` — short label
 - `description` — what the tool does, for people and agents. No Access wording. Audience values stay in this text, not an enum
 - `type` — optional recordable type when the tool is typed. Use the class name on the named API. Named typed operation tools map that class through the public-name catalog the same way generic `create` / `show` do.
