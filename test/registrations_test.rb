@@ -182,8 +182,19 @@ class RegistrationsTest < Minitest::Test
         :create,
         handler: ->(_) { { json: { id: "1", type: "Page" } } }
       )
+      create_name = RecordingStudioMcp.tool_name("Page", :create)
       RecordingStudioMcp.register_tool(
-        name: RecordingStudioMcp.tool_name("Page", :create),
+        name: create_name,
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Create a page.",
+        input: {},
+        output: "the page"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools create_name }
+      RecordingStudioMcp.register_tool(
+        name: create_name,
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -193,8 +204,6 @@ class RegistrationsTest < Minitest::Test
         },
         output: "the page"
       )
-      create_name = RecordingStudioMcp.tool_name("Page", :create)
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools create_name }
 
       listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_name }
       lookup = RecordingStudioApi.lookup(api: :public, recordable_type: "Page", operation: :create)

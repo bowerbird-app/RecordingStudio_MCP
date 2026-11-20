@@ -34,7 +34,21 @@ class ToolNameTest < Minitest::Test
       register_tree_type("McpTestKits::Kit", public_name: "PressKit")
 
       assert_equal "show_press_kit", RecordingStudioMcp.tool_name("McpTestKits::Kit", :show)
-      assert_equal "list_press_kits", RecordingStudioMcp.tool_name("McpTestKits::Kit", :index)
+    end
+  end
+
+  def test_list_uses_core_plural_label_for_the_registered_type
+    with_isolated_api_configuration do
+      register_tree_type("McpTestKits::Kit", public_name: "PressKit")
+      labels = lambda { |recordable_or_type|
+        next "Special Kits" if recordable_or_type.to_s == "McpTestKits::Kit"
+
+        RecordingStudio::Labels.type_plural_label_for(recordable_or_type)
+      }
+
+      RecordingStudio.stub(:recordable_type_plural_label, labels) do
+        assert_equal "list_special_kits", RecordingStudioMcp.tool_name("McpTestKits::Kit", :index)
+      end
     end
   end
 end

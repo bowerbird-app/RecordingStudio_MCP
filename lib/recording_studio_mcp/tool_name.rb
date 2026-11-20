@@ -31,7 +31,7 @@ module RecordingStudioMcp
     end
 
     def type_plural_snake(type)
-      declared = RecordingStudio.recordable_type_plural_label(type_public_token(type)).to_s.parameterize(separator: "_")
+      declared = RecordingStudio.recordable_type_plural_label(type).to_s.parameterize(separator: "_")
       return declared if declared.present?
 
       type_singular_snake(type).pluralize
