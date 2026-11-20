@@ -11,6 +11,7 @@ module RecordingStudioMcp
       "update" => :update,
       "delete" => :destroy
     }.freeze
+    MEMBER_ID_OPERATIONS = %i[show update destroy].freeze
     WRITE_RESERVED_KEYS = %w[type parent_id id idempotency_key].freeze
     FINGERPRINT_EXCLUDED_KEYS = %w[idempotency_key authorized_by_type authorized_by_id].freeze
     SUCCESS_STATUS_RANGE = (200..299)

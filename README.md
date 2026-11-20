@@ -16,7 +16,9 @@ Oauth's named-API protected-resource registry still advertises only the operatio
 
 Authorization is Recording Studio Accessible through that AccessGrant. Same grant as API. No Pundit. No OAuth scopes.
 
-Custom `show`, `update`, and `delete` handlers, custom capability actions, and registered endpoints that capture `:id` or `:recording_id` run through `RecordingStudioApi::HandlerGuard` before the handler. A blank id, a foreign root, the wrong recordable type, a trashed record, and a role that is too low all return the same tool error: `Resource was not found in this API scope`. The handler does not run. `owns_scoping` on a read, and an endpoint with `scope_id: false`, still call the handler with `recording` nil. Built-in list, show, update, delete, and built-in capability actions keep the accessible-recordings lookup. MCP has no nested tools, so `parent_recording` stays nil.
+Named `register_tool(operation:)` tools advertise the same protocol fields as the generic tree tools. `show`, `update`, and `destroy` require `id` (`Recording id.`). `index` lists the same optional list fields as generic `list` (`q`, `limit`, `sort`, `order`, `filter`, `pagination_token`, and `parent_id` when that generic tool offers it). `type` is omitted when the registration already forces it. Gem contract or `input` properties win when they already define the same key. Dispatch already forwards `id` and those list fields on the named-tool path.
+
+Custom `show`, `update`, and `delete` handlers, custom capability actions, and registered endpoints that capture `:id` or `:recording_id` run through `RecordingStudioApi::HandlerGuard` before the handler. A missing `id` on show, update, or destroy is the validation error `id is required`. A foreign root, the wrong recordable type, a trashed record, and a role that is too low all return the same tool error: `Resource was not found in this API scope`. The handler does not run. `owns_scoping` on a read, and an endpoint with `scope_id: false`, still call the handler with `recording` nil. Built-in list, show, update, delete, and built-in capability actions keep the accessible-recordings lookup. MCP has no nested tools, so `parent_recording` stays nil.
 
 `tools/list` advertises the tools the host included on that named API's MCP server. Tools are opt-in. `describe` is always present.
 
@@ -118,7 +120,7 @@ Tree hosts register types with `register_type` and include generic tools on `reg
 
 `operations: []` is blank, so the API normalizes it to `index`, `show`, `create`, `update`, and `destroy`. MCP then treats `destroy` as allowed for that type when `delete` is included. On the public API, `operations: nil` takes that same path. On a named API, `operations: nil` follows `default_access`. Read-only (the named-API default) stores `index` and `show`, so included `delete` still does not advertise for those types. Read-write stores all five. `operations: []` is not `nil`, so a read-only named API still expands it to all five.
 
-When `RecordingStudioApi.register_resource_handler` is set for `show`, `update`, or `delete`, MCP scopes the recording with `RecordingStudioApi::HandlerGuard` before the handler runs. A miss returns `Resource was not found in this API scope` and the handler does not run. `index` and `create` stay unscoped. Custom create passes the client `parent_id` with `recording` and `parent_recording` nil, so the handler scopes that parent. A custom capability action runs its input contract only after the guard allows the call. Types without a handler still load through the grant's scoped recordings.
+When `RecordingStudioApi.register_resource_handler` is set for `show`, `update`, or `delete`, MCP scopes the recording with `RecordingStudioApi::HandlerGuard` before the handler runs. A blank `id` is `id is required`. Any other miss returns `Resource was not found in this API scope` and the handler does not run. `index` and `create` stay unscoped. Custom create passes the client `parent_id` with `recording` and `parent_recording` nil, so the handler scopes that parent. A custom capability action runs its input contract only after the guard allows the call. Types without a handler still load through the grant's scoped recordings.
 
 A built-in capability action that returns a recording is serialized with that call's access grant, scoped recordings, and arguments. That is the same grant `show` uses. Fields that depend on the grant are in the tool result.
 
@@ -426,4 +428,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.44.0
+0.44.1

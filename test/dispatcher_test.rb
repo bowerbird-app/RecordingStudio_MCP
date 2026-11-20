@@ -526,15 +526,17 @@ class DispatcherTest < Minitest::Test
 
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
-        RecordingStudioApi.stub(:resource_action, lambda { |*|
+        handler = lambda { |*|
           raise RecordingStudioApi::InvalidActionInputError.new(
             "Unknown parameters: unknown_field",
             details: details
           )
-        }) do
+        }
+        @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Workspace"))
+        RecordingStudioApi.stub(:resource_handler, ->(*) { handler }) do
           RecordingStudioApi.stub(:resource_name_for, "workspaces") do
             RecordingStudioApi.stub(:default_api_version, "v1") do
-              result = dispatch("update", { "type" => "Workspace" })
+              result = dispatch("update", { "type" => "Workspace", "id" => "1" })
 
               assert result[:isError]
               assert_includes result.dig(:content, 0, :text), "unknown_field"
@@ -1274,6 +1276,58 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_named_show_and_delete_forward_id
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[show destroy])
+      shown = nil
+      deleted = nil
+      RecordingStudioApi.register_resource_handler("Page", :show, handler: lambda { |context|
+        shown = context.id
+        { json: { id: context.id, type: "Page" } }
+      })
+      RecordingStudioApi.register_resource_handler("Page", :destroy, handler: lambda { |context|
+        deleted = context.id
+        { json: { deleted: true, id: context.id } }
+      })
+      show_page = RecordingStudioMcp.tool_name("Page", :show)
+      delete_page = RecordingStudioMcp.tool_name("Page", :destroy)
+      RecordingStudioMcp.register_tool(
+        name: show_page,
+        type: "Page",
+        operation: :show,
+        title: "Show page",
+        description: "Show a page.",
+        input: {},
+        output: "the page"
+      )
+      RecordingStudioMcp.register_tool(
+        name: delete_page,
+        type: "Page",
+        operation: :destroy,
+        title: "Delete page",
+        description: "Delete a page.",
+        input: {},
+        output: "the delete result"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools show_page, delete_page }
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("rec-1", "Page"))
+
+      shown_result = dispatch(show_page, { id: "rec-1" })
+      deleted_result = dispatch(delete_page, { id: "rec-1" })
+      missing_show = dispatch(show_page, {})
+      missing_delete = dispatch(delete_page, {})
+
+      refute shown_result[:isError], shown_result.dig(:content, 0, :text)
+      assert_equal "rec-1", shown
+      refute deleted_result[:isError], deleted_result.dig(:content, 0, :text)
+      assert_equal "rec-1", deleted
+      assert missing_show[:isError]
+      assert_equal "id is required", missing_show.dig(:content, 0, :text)
+      assert missing_delete[:isError]
+      assert_equal "id is required", missing_delete.dig(:content, 0, :text)
+    end
+  end
+
   def test_client_sent_type_and_action_are_ignored_for_registered_tools
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show], capability_actions: %i[inspect])
@@ -1407,15 +1461,24 @@ class DispatcherTest < Minitest::Test
     }
     action = FakeAction.new(name: :move, handler: FakeHandler.new({ json: { builtin: true } }), required_role: :edit)
 
-    cases = [
-      ["show", { type: "Page", id: "missing" }, FakeRelation.new(nil)],
+    [
       ["show", { type: "Page", id: "" }, FakeRelation.new(recording)],
-      ["show", { type: "Page" }, FakeRelation.new(recording)],
+      ["show", { type: "Page" }, FakeRelation.new(recording)]
+    ].each do |tool, args, relation|
+      called = false
+      @grant.accessible_recordings = relation
+      result = dispatch_custom_show(handler, args, tool: tool)
+
+      assert result[:isError], tool
+      assert_equal "id is required", result.dig(:content, 0, :text)
+      refute called, tool
+    end
+
+    [
+      ["show", { type: "Page", id: "missing" }, FakeRelation.new(nil)],
       ["show", { type: "Page", id: "folder-1" }, FakeRelation.new(folder)],
       ["update", { type: "Page", id: "page-1", title: "Hi" }, FakeRelation.new(recording)]
-    ]
-
-    cases.each do |tool, args, relation|
+    ].each do |tool, args, relation|
       called = false
       @grant.accessible_recordings = relation
       @grant.deny_authorization = tool == "update"
