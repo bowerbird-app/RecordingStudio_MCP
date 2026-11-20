@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-11-20
+
+### Changed
+- Named typed MCP tools should use snake_case `{action}_{type}` as the recommended convention. `RecordingStudioMcp.tool_name(type, action)` is the optional shared helper. `PressKit--show` becomes `show_press_kit`. `PressCenter--feature_kit` becomes `feature_kit_press_center`. `list` uses the plural form (`list_press_kits`). An action that already ends with the type noun is not repeated. Generic tree tools are unchanged. Gems still pass `name:`.
+- `register_tool` raises when the name is already registered. Hosts override title or description on `include_tool`.
+
+### Upgrade notes
+- Bump to `0.44.0`. Previous version is `0.43.5`. MCP clients must call the new tool names. See [UPGRADING.md](UPGRADING.md).
+- Domain gems should pass `name: RecordingStudioMcp.tool_name(type, action)` for typed `operation` and `action` tools. The helper is optional. Duplicate names raise.
+
 ## [0.43.5] - 2026-11-20
 
 ### Fixed
@@ -1295,7 +1305,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.5...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.0...HEAD
+[0.44.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.5...v0.44.0
 [0.43.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.4...v0.43.5
 [0.43.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.3...v0.43.4
 [0.43.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.2...v0.43.3

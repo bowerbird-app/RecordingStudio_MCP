@@ -532,8 +532,9 @@ class DocumentationTest < Minitest::Test
         }
       )
       register_tree_type("Page", operations: %i[index show])
+      ping_folder = RecordingStudioMcp.tool_name("Folder", :ping)
       RecordingStudioMcp.register_tool(
-        name: "Folder--ping",
+        name: ping_folder,
         type: "Folder",
         action: :ping,
         title: "Ping folder",
@@ -541,7 +542,7 @@ class DocumentationTest < Minitest::Test
         input: {},
         output: "ok"
       )
-      ensure_tree_server(:public, extra_tools: %w[Folder--ping])
+      ensure_tree_server(:public, extra_tools: [ping_folder])
       parents = ->(type) { type.to_s == "Folder" ? %w[Workspace] : [] }
       spec = nil
       described = nil
@@ -560,7 +561,7 @@ class DocumentationTest < Minitest::Test
       assert_includes intro, "- ping"
       assert_includes described.fetch("tools"), "list"
       assert_includes described.fetch("tools"), "show"
-      assert_includes described.fetch("tools"), "Folder--ping"
+      assert_includes described.fetch("tools"), ping_folder
       refute_includes described.fetch("tools"), "delete"
       refute_includes intro, "Tool: delete"
       assert_equal false, described.dig("parent", "root")
@@ -623,8 +624,10 @@ class DocumentationTest < Minitest::Test
         capability_actions: %i[create_section set_visibility publish unpublish attach create_upload import_attachment],
         openapi: { tags: ["Press Kit"] }
       )
+      create_section = RecordingStudioMcp.tool_name("RecordingStudioPresskits::PressKit", :create_section)
+      set_visibility = RecordingStudioMcp.tool_name("RecordingStudioPresskits::PressKit", :set_visibility)
       RecordingStudioMcp.register_tool(
-        name: "PressKit--create_section",
+        name: create_section,
         type: "RecordingStudioPresskits::PressKit",
         action: :create_section,
         title: "Create a section",
@@ -633,7 +636,7 @@ class DocumentationTest < Minitest::Test
         output: "ok"
       )
       RecordingStudioMcp.register_tool(
-        name: "PressKit--set_visibility",
+        name: set_visibility,
         type: "RecordingStudioPresskits::PressKit",
         action: :set_visibility,
         title: "Set visibility",
@@ -641,7 +644,7 @@ class DocumentationTest < Minitest::Test
         input: {},
         output: "ok"
       )
-      ensure_tree_server(:public, extra_tools: %w[PressKit--create_section PressKit--set_visibility])
+      ensure_tree_server(:public, extra_tools: [create_section, set_visibility])
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       names = docs_tool_names(spec)
@@ -651,18 +654,18 @@ class DocumentationTest < Minitest::Test
 
       assert_docs_tools_match_live spec
       assert_includes described.fetch("tools"), "create"
-      assert_includes described.fetch("tools"), "PressKit--create_section"
+      assert_includes described.fetch("tools"), create_section
       assert_includes intro, "Tool: create with type `PressKit`"
       assert_includes intro, "Tool: list with type `PressKit`"
-      assert_includes intro, "Tool: PressKit--create_section"
-      assert_includes intro, "Tool: PressKit--set_visibility"
+      assert_includes intro, "Tool: #{create_section}"
+      assert_includes intro, "Tool: #{set_visibility}"
       assert_includes intro, "Tool: capability_action with type `PressKit`."
       assert_includes intro, "Capability actions:"
       %w[create_section set_visibility publish unpublish attach create_upload import_attachment].each do |name|
         assert_includes intro, "- #{name}"
       end
-      assert_equal ["Press Kit"], tools.fetch("PressKit--create_section")["tags"]
-      assert_equal ["Press Kit"], tools.fetch("PressKit--set_visibility")["tags"]
+      assert_equal ["Press Kit"], tools.fetch(create_section)["tags"]
+      assert_equal ["Press Kit"], tools.fetch(set_visibility)["tags"]
       assert_equal ["Overview"], tools.fetch("create")["tags"]
       %w[PressKit--publish PressKit--unpublish PressKit--attach PressKit--create_upload
          PressKit--import_attachment].each do |name|
@@ -901,8 +904,9 @@ class DocumentationTest < Minitest::Test
       register_ping_capability
       register_tree_type("Folder", operations: %i[index show], capability_actions: %i[ping])
       register_tree_type("Page", operations: %i[index show], capability_actions: %i[ping])
+      ping_folder = RecordingStudioMcp.tool_name("Folder", :ping)
       RecordingStudioMcp.register_tool(
-        name: "folder_ping",
+        name: ping_folder,
         type: "Folder",
         action: :ping,
         title: "Ping folder",
@@ -910,18 +914,18 @@ class DocumentationTest < Minitest::Test
         input: {},
         output: "ok"
       )
-      ensure_tree_server(:public, extra_tools: %w[folder_ping])
+      ensure_tree_server(:public, extra_tools: [ping_folder])
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
 
       assert_docs_tools_match_live spec
-      assert_equal 1, names.count("folder_ping")
+      assert_equal 1, names.count(ping_folder)
       refute_includes names, "Folder--ping"
       refute_includes names, "Page--ping"
-      refute tools.fetch("folder_ping")["x-mcp-docs-only"]
-      assert_equal ["Folder"], tools.fetch("folder_ping")["tags"]
+      refute tools.fetch(ping_folder)["x-mcp-docs-only"]
+      assert_equal ["Folder"], tools.fetch(ping_folder)["tags"]
     end
   end
 
@@ -939,8 +943,9 @@ class DocumentationTest < Minitest::Test
         capability_actions: %i[add_file]
       )
       register_named_capability(:add_file, summary: "Add a file to this section")
+      add_file = RecordingStudioMcp.tool_name("RecordingStudioPresskits::Files", :add_file)
       RecordingStudioMcp.register_tool(
-        name: "Files--add_file",
+        name: add_file,
         type: "RecordingStudioPresskits::Files",
         action: :add_file,
         title: "Add a file",
@@ -948,11 +953,11 @@ class DocumentationTest < Minitest::Test
         input: {},
         output: "ok"
       )
-      ensure_tree_server(:public, extra_tools: %w[Files--add_file])
+      ensure_tree_server(:public, extra_tools: [add_file])
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
-      add = tools.fetch("Files--add_file")
+      add = tools.fetch(add_file)
 
       assert_docs_tools_match_live spec
       assert_equal ["Press Kit"], add["tags"]
@@ -1382,19 +1387,25 @@ class DocumentationTest < Minitest::Test
         }
       )
 
-      %w[Video--shelve Clip--shelve Video--ping].each do |name|
-        type, action = name.split("--", 2)
+      shelve_video = RecordingStudioMcp.tool_name("Video", :shelve)
+      shelve_clip = RecordingStudioMcp.tool_name("Clip", :shelve)
+      ping_video = RecordingStudioMcp.tool_name("Video", :ping)
+      [
+        ["Video", :shelve, shelve_video],
+        ["Clip", :shelve, shelve_clip],
+        ["Video", :ping, ping_video]
+      ].each do |type, action, name|
         RecordingStudioMcp.register_tool(
           name: name,
           type: type,
-          action: action.to_sym,
+          action: action,
           title: name,
           description: name,
           input: {},
           output: "ok"
         )
       end
-      ensure_tree_server(:public, extra_tools: %w[Video--shelve Clip--shelve Video--ping])
+      ensure_tree_server(:public, extra_tools: [shelve_video, shelve_clip, ping_video])
 
       spec = openapi_with_labels!("Video" => "Video", "Clip" => "Clip")
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
@@ -1403,10 +1414,10 @@ class DocumentationTest < Minitest::Test
       video_trash = tag_names.index("Video Trash")
 
       assert_docs_tools_match_live spec
-      assert_equal ["Video Trash"], tools.fetch("Video--shelve")["tags"]
-      assert_equal ["Clip Archive"], tools.fetch("Clip--shelve")["tags"]
-      assert_equal ["Video"], tools.fetch("Video--ping")["tags"]
-      refute_includes tools.fetch("Video--shelve").keys, "tag_suffix"
+      assert_equal ["Video Trash"], tools.fetch(shelve_video)["tags"]
+      assert_equal ["Clip Archive"], tools.fetch(shelve_clip)["tags"]
+      assert_equal ["Video"], tools.fetch(ping_video)["tags"]
+      refute_includes tools.fetch(shelve_video).keys, "tag_suffix"
       refute_includes spec.to_json, "tag_suffix"
       assert_operator video, :<, video_trash
       assert_equal [], tag_names[(video + 1)...video_trash]

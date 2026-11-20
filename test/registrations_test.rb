@@ -27,14 +27,9 @@ class RegistrationsTest < Minitest::Test
   def test_host_override_changes_title_only
     with_isolated_api_configuration do
       register_tree_type("Page")
-      RecordingStudioMcp.register_tool(
-        name: "list",
-        operation: :index,
-        title: "Find pages",
-        description: "Host list copy.",
-        input: {},
-        output: "records"
-      )
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tool :list, title: "Find pages"
+      end
 
       list = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }
 
@@ -42,20 +37,34 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
-  def test_override_cannot_change_target
+  def test_duplicate_tool_name_raises
     with_isolated_api_configuration do
+      register_tree_type("Page")
+      name = RecordingStudioMcp.tool_name("Page", :create)
+      RecordingStudioMcp.register_tool(
+        name: name,
+        type: "Page",
+        operation: :create,
+        title: "Create page",
+        description: "Create a page.",
+        input: {},
+        output: "the page"
+      )
+
       error = assert_raises(RecordingStudioApi::ConfigurationError) do
         RecordingStudioMcp.register_tool(
-          name: "list",
-          operation: :show,
-          title: "List",
-          description: "Wrong target.",
+          name: name,
+          type: "Page",
+          operation: :create,
+          title: "Create page again",
+          description: "Create a page.",
           input: {},
-          output: "records"
+          output: "the page"
         )
       end
 
-      assert_includes error.message, "cannot change type or target"
+      assert_includes error.message, "already registered"
+      assert_includes error.message, name
     end
   end
 
@@ -183,17 +192,7 @@ class RegistrationsTest < Minitest::Test
         handler: ->(_) { { json: { id: "1", type: "Page" } } }
       )
       RecordingStudioMcp.register_tool(
-        name: "page_create",
-        type: "Page",
-        operation: :create,
-        title: "Create page",
-        description: "Create a page.",
-        input: {},
-        output: "the page"
-      )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_create }
-      RecordingStudioMcp.register_tool(
-        name: "page_create",
+        name: RecordingStudioMcp.tool_name("Page", :create),
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -203,8 +202,10 @@ class RegistrationsTest < Minitest::Test
         },
         output: "the page"
       )
+      create_name = RecordingStudioMcp.tool_name("Page", :create)
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools create_name }
 
-      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }
+      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_name }
       lookup = RecordingStudioApi.lookup(api: :public, recordable_type: "Page", operation: :create)
       title = listed.dig(:inputSchema, :properties, :title)
       contract = lookup.input_contract[:title] || lookup.input_contract["title"]
@@ -243,7 +244,7 @@ class RegistrationsTest < Minitest::Test
       )
       RecordingStudioApi.register_resource_handler("Page", :show, handler: ->(_) { { json: {} } })
       RecordingStudioMcp.register_tool(
-        name: "page_show",
+        name: RecordingStudioMcp.tool_name("Page", :show),
         type: "Page",
         operation: :show,
         title: "Show page",
@@ -251,7 +252,9 @@ class RegistrationsTest < Minitest::Test
         input: {},
         output: "the page"
       )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_show }
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tools RecordingStudioMcp.tool_name("Page", :show)
+      end
 
       error = assert_raises(RecordingStudioApi::ConfigurationError) do
         RecordingStudioMcp.configuration.catalogs.build!
@@ -366,48 +369,6 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
-  def test_extra_input_key_on_generic_list_fails_boot
-    with_isolated_api_configuration do
-      register_tree_type("Page")
-      RecordingStudioMcp.register_tool(
-        name: "list",
-        operation: :index,
-        title: "List",
-        description: "List records.",
-        input: { "extra" => { description: "not a protocol key" } },
-        output: "records"
-      )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :list }
-
-      error = assert_raises(RecordingStudioApi::ConfigurationError) do
-        RecordingStudioMcp.configuration.catalogs.build!
-      end
-
-      assert_includes error.message, "extra"
-    end
-  end
-
-  def test_extra_input_key_on_generic_create_fails_boot
-    with_isolated_api_configuration do
-      register_tree_type("Page")
-      RecordingStudioMcp.register_tool(
-        name: "create",
-        operation: :create,
-        title: "Create",
-        description: "Create a record.",
-        input: { "sneaky" => { description: "not a protocol key" } },
-        output: "the created record"
-      )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :create }
-
-      error = assert_raises(RecordingStudioApi::ConfigurationError) do
-        RecordingStudioMcp.configuration.catalogs.build!
-      end
-
-      assert_includes error.message, "sneaky"
-    end
-  end
-
   def test_unused_register_type_is_left_off_describe
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show])
@@ -466,7 +427,7 @@ class RegistrationsTest < Minitest::Test
         handler: ->(_) { { json: { id: "1", type: "Page" } } }
       )
       RecordingStudioMcp.register_tool(
-        name: "page_create",
+        name: RecordingStudioMcp.tool_name("Page", :create),
         type: "Page",
         operation: :create,
         title: "Create page",
@@ -476,9 +437,10 @@ class RegistrationsTest < Minitest::Test
         },
         output: "the page"
       )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_create }
+      create_name = RecordingStudioMcp.tool_name("Page", :create)
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools create_name }
 
-      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "page_create" }
+      listed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_name }
       title = listed.dig(:inputSchema, :properties, :title)
 
       assert_equal "Host title.", title[:description]

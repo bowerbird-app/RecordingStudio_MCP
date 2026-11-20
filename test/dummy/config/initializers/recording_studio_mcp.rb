@@ -40,7 +40,7 @@ RecordingStudioMcp.register_tool(
 )
 
 RecordingStudioMcp.register_tool(
-  name: "Workspace--ping",
+  name: RecordingStudioMcp.tool_name("Workspace", :ping),
   type: "Workspace",
   action: :ping,
   title: "Ping workspace",
@@ -89,7 +89,7 @@ RecordingStudioMcp.register_skill(
 
 RecordingStudioMcp.register_server(:public, api: :public) do
   include_tools :list, :show, :create, :update, :capability_action, :ping, :demo_progress,
-                "Workspace--ping"
+                RecordingStudioMcp.tool_name("Workspace", :ping)
   include_skills "page-desk"
 end
 

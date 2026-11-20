@@ -19,8 +19,10 @@ class McpIncludeToolsFilterTest < ActionDispatch::IntegrationTest
   end
 
   test "excluded generic tools are unknown and do not write records" do
+    create_page = RecordingStudioMcp.tool_name("Page", :create)
+    ping_workspace = RecordingStudioMcp.tool_name("Workspace", :ping)
     RecordingStudioMcp.register_tool(
-      name: "Page--create",
+      name: create_page,
       type: "Page",
       operation: :create,
       title: "Create page",
@@ -29,7 +31,7 @@ class McpIncludeToolsFilterTest < ActionDispatch::IntegrationTest
       output: "the page"
     )
     RecordingStudioMcp.register_server(:public, api: :public) do
-      include_tools "Page--create", :ping, :demo_progress, "Workspace--ping"
+      include_tools create_page, :ping, :demo_progress, ping_workspace
     end
 
     token = client_credentials_token
@@ -39,7 +41,8 @@ class McpIncludeToolsFilterTest < ActionDispatch::IntegrationTest
 
     refute_includes listed, "create"
     refute_includes listed, "capability_action"
-    assert_includes listed, "Page--create"
+    assert_includes listed, create_page
+    refute_includes listed, "Page--create"
     assert_includes listed, "describe"
 
     %w[create list show capability_action].each do |name|

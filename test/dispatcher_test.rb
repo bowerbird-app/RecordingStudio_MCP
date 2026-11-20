@@ -1291,8 +1291,10 @@ class DispatcherTest < Minitest::Test
       RecordingStudioApi.register_resource_handler("Folder", :show, handler: lambda { |_context|
         { json: { id: "2", type: "Folder" } }
       })
+      show_page = RecordingStudioMcp.tool_name("Page", :show)
+      inspect_page = RecordingStudioMcp.tool_name("Page", :inspect)
       RecordingStudioMcp.register_tool(
-        name: "page_show",
+        name: show_page,
         type: "Page",
         operation: :show,
         title: "Show page",
@@ -1301,7 +1303,7 @@ class DispatcherTest < Minitest::Test
         output: "the page"
       )
       RecordingStudioMcp.register_tool(
-        name: "page_inspect",
+        name: inspect_page,
         type: "Page",
         action: :inspect,
         title: "Inspect page",
@@ -1309,11 +1311,11 @@ class DispatcherTest < Minitest::Test
         input: {},
         output: "the result"
       )
-      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :page_show, :page_inspect }
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools show_page, inspect_page }
       @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
 
-      shown_result = dispatch("page_show", { type: "Folder", id: "1" })
-      inspect_result = dispatch("page_inspect", { type: "Folder", id: "1", action: "missing" })
+      shown_result = dispatch(show_page, { type: "Folder", id: "1" })
+      inspect_result = dispatch(inspect_page, { type: "Folder", id: "1", action: "missing" })
 
       refute shown_result[:isError]
       assert_equal "Page", shown

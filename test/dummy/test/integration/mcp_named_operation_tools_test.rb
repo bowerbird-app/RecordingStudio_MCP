@@ -32,8 +32,11 @@ class McpNamedOperationToolsTest < ActionDispatch::IntegrationTest
   end
 
   test "named create and show succeed when the class name differs from the public name" do
+    create_leaf = RecordingStudioMcp.tool_name("Dummy::Leaf", :create)
+    show_leaf = RecordingStudioMcp.tool_name("Dummy::Leaf", :show)
+    ping_workspace = RecordingStudioMcp.tool_name("Workspace", :ping)
     RecordingStudioMcp.register_tool(
-      name: "Leaf--create",
+      name: create_leaf,
       type: "Dummy::Leaf",
       operation: :create,
       title: "Create leaf",
@@ -42,7 +45,7 @@ class McpNamedOperationToolsTest < ActionDispatch::IntegrationTest
       output: "the leaf"
     )
     RecordingStudioMcp.register_tool(
-      name: "Leaf--show",
+      name: show_leaf,
       type: "Dummy::Leaf",
       operation: :show,
       title: "Show leaf",
@@ -51,20 +54,22 @@ class McpNamedOperationToolsTest < ActionDispatch::IntegrationTest
       output: "the leaf"
     )
     RecordingStudioMcp.register_server(:public, api: :public) do
-      include_tools "Leaf--create", "Leaf--show", :ping, :demo_progress, "Workspace--ping"
+      include_tools create_leaf, show_leaf, :ping, :demo_progress, ping_workspace
     end
 
     token = client_credentials_token
     listed = tools_list(token).map { |tool| tool.fetch("name") }
 
-    assert_includes listed, "Leaf--create"
-    assert_includes listed, "Leaf--show"
+    assert_includes listed, create_leaf
+    assert_includes listed, show_leaf
     refute_includes listed, "create"
     refute_includes listed, "show"
+    refute_includes listed, "Leaf--create"
+    refute_includes listed, "Leaf--show"
 
     created = post_tool(
       token,
-      "Leaf--create",
+      create_leaf,
       parent_id: @root_recording.id.to_s,
       title: "Named leaf"
     )
@@ -73,12 +78,12 @@ class McpNamedOperationToolsTest < ActionDispatch::IntegrationTest
     assert id.present?
     assert_equal "Leaf", created.dig("result", "structuredContent", "type")
 
-    shown = post_tool(token, "Leaf--show", id: id)
+    shown = post_tool(token, show_leaf, id: id)
     refute shown.dig("result", "isError"), shown.to_json
     assert_equal id, shown.dig("result", "structuredContent", "id")
     assert_equal "Leaf", shown.dig("result", "structuredContent", "type")
 
-    %w[create show list capability_action].each do |name|
+    %w[create show list capability_action Leaf--create Leaf--show].each do |name|
       body = post_tool(token, name, type: "Leaf", id: id, parent_id: @root_recording.id.to_s, title: "Nope")
 
       assert_equal true, body.dig("result", "isError"), name
@@ -89,7 +94,7 @@ class McpNamedOperationToolsTest < ActionDispatch::IntegrationTest
   test "generic create rejects the class name and does not write a record" do
     RecordingStudioMcp.register_server(:public, api: :public) do
       include_tools :list, :show, :create, :update, :capability_action, :ping, :demo_progress,
-                    "Workspace--ping"
+                    RecordingStudioMcp.tool_name("Workspace", :ping)
     end
 
     token = client_credentials_token
