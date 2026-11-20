@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_41_1
-    assert_equal "0.41.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_42_0
+    assert_equal "0.42.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -86,30 +86,42 @@ class RecordingStudioMcpTest < Minitest::Test
     gemfile = File.read(File.expand_path("dummy/Gemfile", __dir__))
     root_gemfile = File.read(File.expand_path("../Gemfile", __dir__))
 
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio", tag: "v7.7.2"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_accessible", tag: "v0.54.1"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_admin", tag: "v2.19.1"'
-    api_pin = 'github: "bowerbird-app/RecordingStudio_api", tag: "v1.21.3"'
-    assert_includes gemfile, api_pin
-    assert_includes root_gemfile, api_pin
+    shared_pins = [
+      gem_pin("recording_studio", "~> 7.8", "RecordingStudio", "v7.8.0"),
+      gem_pin("recording_studio_accessible", "~> 0.58", "RecordingStudio_accessible", "v0.58.0"),
+      gem_pin("recording_studio_admin", "~> 2.20", "RecordingStudio_admin", "v2.20.0"),
+      gem_pin("recording_studio_api", "~> 1.21", "RecordingStudio_api", "v1.21.3"),
+      gem_pin("recording_studio_attachable", "~> 0.34", "RecordingStudio_attachable", "v0.34.0"),
+      gem_pin("recording_studio_cache", "~> 0.8", "RecordingStudio_cache", "v0.8.0"),
+      gem_pin("recording_studio_icons", "~> 0.5", "RecordingStudio_icons", "v0.5.0"),
+      gem_pin("recording_studio_logs", "~> 0.9", "RecordingStudio_logs", "v0.9.0"),
+      gem_pin("recording_studio_metrics", "~> 0.10", "RecordingStudio_metrics", "v0.10.0"),
+      gem_pin("recording_studio_moveable", "~> 6.1", "RecordingStudio_moveable", "v6.1.0"),
+      gem_pin("recording_studio_oauth", "~> 0.26", "RecordingStudio_Oauth", "v0.26.0"),
+      gem_pin("recording_studio_site_settings", "~> 0.7", "RecordingStudio_site_settings", "v0.7.0"),
+      gem_pin("flat_pack", "~> 0.2", "flatpack", "v0.2.0")
+    ]
+    shared_pins.each do |pin|
+      assert_includes gemfile, pin
+      assert_includes root_gemfile, pin
+    end
+    trashable_pin = <<~PIN.chomp
+      gem "recording_studio_trashable", "~> 1.3",
+          github: "bowerbird-app/RecordingStudio_trashable",
+          tag: "v1.3.0",
+          require: false
+    PIN
+    assert_includes gemfile, trashable_pin
+    assert_includes root_gemfile, trashable_pin
+    root_switchable_pin = <<~PIN.chomp
+      gem "recording_studio_root_switchable", "~> 0.17",
+          github: "bowerbird-app/RecordingStudio_root_switchable",
+          tag: "v0.17.0"
+    PIN
+    assert_includes gemfile, root_switchable_pin
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes root_gemfile, "cursor/recordable-metrics-hook-0fe9"
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_icons", tag: "v0.4.0"'
-    assert_includes root_gemfile, 'github: "bowerbird-app/RecordingStudio_icons", tag: "v0.4.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_logs", tag: "v0.8.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_metrics", tag: "v0.9.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_moveable", tag: "v6.0.0"'
-    assert_includes root_gemfile, 'github: "bowerbird-app/RecordingStudio_moveable", tag: "v6.0.0"'
     refute_includes gemfile, "recording_studio_mcp_ui"
-    oauth_pin = 'github: "bowerbird-app/RecordingStudio_Oauth", tag: "v0.25.0"'
-    assert_includes gemfile, oauth_pin
-    assert_includes root_gemfile, oauth_pin
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_attachable", tag: "v0.31.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_cache", tag: "v0.7.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_root_switchable", tag: "v0.16.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_site_settings", tag: "v0.6.0"'
-    assert_includes gemfile, 'github: "bowerbird-app/RecordingStudio_trashable", tag: "v1.0.1"'
-    assert_includes gemfile, 'github: "bowerbird-app/flatpack", tag: "v0.1.377"'
     assert_includes gemfile, 'gem "puma", "8.1.0"'
     assert_includes gemfile, 'gem "msgpack", ">= 1.8.7"'
     refute_includes gemfile, "recording_studio_users"
@@ -136,7 +148,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.41.1\n"
+    assert_includes readme, "## Version\n\n0.42.0\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."
@@ -175,5 +187,11 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes view_source, "/recording_studio_mcp"
     refute_includes view_source, "Template Demo"
     refute_includes view_source, "bin/rename_gem"
+  end
+
+  private
+
+  def gem_pin(name, requirement, repo, tag)
+    %(gem "#{name}", "#{requirement}", github: "bowerbird-app/#{repo}", tag: "#{tag}")
   end
 end
