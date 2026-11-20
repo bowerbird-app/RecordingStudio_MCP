@@ -6,18 +6,22 @@ class ToolDocsTest < Minitest::Test
   include IsolatedApiConfiguration
 
   def test_describe_output_schema_includes_action_title_and_summary
-    schema = RecordingStudioMcp::ToolDocs.describe_output_schema
-    properties = schema.fetch(:properties)
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type("Page", capability_actions: %i[ping])
+      schema = RecordingStudioMcp::ToolDocs.describe_output_schema(RecordingStudioMcp::Catalog.new(api: :public))
+      properties = schema.fetch(:properties)
 
-    assert_equal "string", properties.dig(:description, :type)
-    assert_equal "array", properties.dig(:tools, :type)
-    assert_equal "string", properties.dig(:tools, :items, :type)
-    assert_equal "array", properties.dig(:skills, :type)
-    assert_equal "array", properties.dig(:relationships, :type)
-    assert_equal "string", properties.dig(:nesting, :type)
-    assert properties.key?(:capability_actions)
-    assert properties.key?(:writable_fields)
-    assert properties.key?(:parent)
+      assert_equal "string", properties.dig(:description, :type)
+      assert_equal "array", properties.dig(:tools, :type)
+      assert_equal "string", properties.dig(:tools, :items, :type)
+      assert_equal "array", properties.dig(:skills, :type)
+      assert_equal "array", properties.dig(:relationships, :type)
+      assert_equal "string", properties.dig(:nesting, :type)
+      assert properties.key?(:capability_actions)
+      assert properties.key?(:writable_fields)
+      assert properties.key?(:parent)
+    end
   end
 
   def test_type_tags_use_registered_endpoint_tags_not_the_scalar_group

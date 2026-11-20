@@ -81,8 +81,8 @@ module RecordingStudioMcp
       Output.delete
     end
 
-    def describe_output_schema
-      Output.describe
+    def describe_output_schema(catalog)
+      Output.describe(catalog)
     end
 
     def action_output_schema

@@ -3,6 +3,15 @@
 module RecordingStudioMcp
   module Instructions
     GENERAL_TOOL_NAMES = %w[list show create update delete capability_action describe].freeze
+    DESCRIBE_RETURN_ITEMS = [
+      "the type paragraph",
+      "included tools",
+      "skills",
+      "relationships",
+      "allowed parents",
+      "writable fields"
+    ].freeze
+    DESCRIBE_RETURN_ACTIONS = "available actions"
 
     module_function
 
@@ -46,23 +55,16 @@ module RecordingStudioMcp
     def describe_line(surface)
       return unless surface.tree_enabled? && surface.tree_tool_names.include?("describe")
 
-      line = "Call describe for #{describe_returns(surface)}"
+      line = "Call describe for #{describe_returns(surface.catalog.resolved_server&.tool?('capability_action'))}"
       before = describe_before(surface.tree_tool_names)
       return "#{line}." if before.nil?
 
       "#{line} before you #{before}."
     end
 
-    def describe_returns(surface)
-      parts = [
-        "the type paragraph",
-        "included tools",
-        "skills",
-        "relationships",
-        "allowed parents",
-        "writable fields"
-      ]
-      parts << "available actions" if surface.catalog.resolved_server&.tool?("capability_action")
+    def describe_returns(include_actions)
+      parts = DESCRIBE_RETURN_ITEMS.dup
+      parts << DESCRIBE_RETURN_ACTIONS if include_actions
       listed(parts)
     end
 
@@ -114,7 +116,7 @@ module RecordingStudioMcp
     end
 
     private_class_method :sections_for, :sign_in_section, :find_tools_section, :find_tool_lines,
-                         :describe_line, :describe_returns, :describe_before, :general_tools_line, :listed,
+                         :describe_line, :describe_before, :general_tools_line, :listed,
                          :per_type_page_line, :suffix_text, :section
   end
 end
