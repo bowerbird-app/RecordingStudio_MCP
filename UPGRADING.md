@@ -4,9 +4,9 @@
 
 Previous version is `0.43.5`. This is a breaking MCP tool-name change for named typed tools.
 
-Named tools registered with `register_tool` `type:` plus `operation:` or `action:` should use snake_case `{action}_{type}`. Call `RecordingStudioMcp.tool_name(type, action)` to build that name. The helper is optional. Gems still pass `name:`. Generic tree tools stay `list`, `show`, `create`, `update`, `delete`, and `capability_action`.
+Gems pick readable tool names, as much as possible in `verb_type` form (`show_press_kit`, `feature_press_kit`, `add_quote_section`). When `verb_type` does not fit, use any readable snake_case name. `RecordingStudioMcp.tool_name` is an optional helper for the `verb_type` form. Only duplicates raise. Generic tree tools stay `list`, `show`, `create`, `update`, `delete`, and `capability_action`.
 
-`list` uses the plural type: `list_press_kits`. If the action already ends with the type noun, the helper does not repeat it (`add_image` on an Images type stays `add_image`). If the action's trailing word(s) match the type's leading word(s), those words are not repeated (`add_quote` on `QuoteSection` is `add_quote_section`).
+The helper's `verb_type` form uses the plural type for `list` (`list_press_kits`). If the action already ends with the type noun, it does not repeat it (`add_image` on an Images type stays `add_image`). If the action's trailing word(s) match the type's leading word(s), those words are not repeated (`add_quote` on `QuoteSection` is `add_quote_section`).
 
 Rename callers from the old `Type--action` form to the new name. Include the new name on `register_server`.
 

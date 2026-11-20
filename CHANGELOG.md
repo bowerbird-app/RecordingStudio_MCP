@@ -10,11 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.44.0] - 2026-11-20
 
 ### Changed
-- Named typed MCP tools should use snake_case `{action}_{type}` as the recommended convention. `RecordingStudioMcp.tool_name(type, action)` is the optional shared helper. `PressKit--show` becomes `show_press_kit`. `tool_name("PressKit", "feature")` is `feature_press_kit`. `list` uses the plural form (`list_press_kits`). An action that already ends with the type noun is not repeated. Trailing action words that match leading type words are not repeated (`add_quote` on `QuoteSection` is `add_quote_section`). Generic tree tools are unchanged. Gems still pass `name:`.
+- Gems pick readable named MCP tool names, as much as possible in `verb_type` form (`show_press_kit`, `feature_press_kit`, `add_quote_section`). When `verb_type` does not fit, use any readable snake_case name. `RecordingStudioMcp.tool_name` is an optional helper for the `verb_type` form. Only duplicates raise. `PressKit--show` becomes `show_press_kit`. The helper's `list` form is plural (`list_press_kits`). An action that already ends with the type noun is not repeated. Trailing action words that match leading type words are not repeated (`add_quote` on `QuoteSection` is `add_quote_section`). Generic tree tools are unchanged.
 
 ### Upgrade notes
 - Bump to `0.44.0`. Previous version is `0.43.5`. MCP clients must call the new tool names. See [UPGRADING.md](UPGRADING.md).
-- Domain gems should pass `name: RecordingStudioMcp.tool_name(type, action)` for typed `operation` and `action` tools. The helper is optional.
+- Domain gems pick `name:`. Use `RecordingStudioMcp.tool_name(type, action)` when the `verb_type` form fits. The helper is optional. Only duplicates raise.
 
 ## [0.43.5] - 2026-11-20
 
