@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.1] - 2026-11-19
+
+### Fixed
+- Named `Type--action` tools take the registered class name from the tool registration when that name is a key in the public-name catalog. Generic `list` / `create` / `update` / `delete` / `capability_action` still reject class names and accept only the public name.
+- Named action schemas include `id` when the action targets an existing recording, and they keep a contract `type` field instead of dropping it as the forced recordable type.
+- Named action calls read contract fields from the root arguments. A root field wins when the same key is also in `params`. Generic `capability_action` still reads `params`.
+- Generic and named `create` schemas mark `parent_id` required when the type is not a root. A missing value is refused by Recording Studio API on the builtin create path.
+- Tool copy and initialize instructions tell callers to use `describe`. There is no docs tool.
+
+### Upgrade notes
+- Bump to `0.41.1`. Previous version is `0.41.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Generic tools still reject a class name for `type`. Named `{type}--{action}` tools keep working because the registration already holds the class name.
+- Named action tools need `id`. Send action fields at the root. `params` still works. A root field overrides `params` on the same key.
+- Child `create` calls without `parent_id` fail the schema or the Recording Studio API create check.
+
 ## [0.41.0] - 2026-11-19
 
 ### Fixed
@@ -1198,7 +1213,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.1...HEAD
+[0.41.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.41.0...v0.41.1
 [0.41.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.2...v0.41.0
 [0.40.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.1...v0.40.2
 [0.40.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.40.0...v0.40.1

@@ -57,6 +57,12 @@ module RecordingStudioMcp
         Array(registration_for(recordable_type)&.writable_attributes).map(&:to_s)
       end
 
+      def parent_required?(recordable_type)
+        return false unless defined?(RecordingStudio) && RecordingStudio.respond_to?(:root_allowed?)
+
+        !RecordingStudio.root_allowed?(recordable_type)
+      end
+
       private
 
       def resolve_registered_type(name)

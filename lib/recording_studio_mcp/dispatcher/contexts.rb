@@ -38,11 +38,11 @@ module RecordingStudioMcp
       }
     end
 
-    def action_context(recording, args, action, recordable_type: nil)
+    def action_context(recording, args, action, recordable_type: nil, named_tool: false)
       RecordingStudioApi::ActionContext.new(
         **grant_fields,
         recording: recording,
-        params: capability_input_params(args, action),
+        params: capability_input_params(args, action, named_tool: named_tool),
         progress_reporter: progress_reporter,
         id: args["id"],
         recordable_type: recordable_type,
@@ -107,20 +107,6 @@ module RecordingStudioMcp
       body = stringify_keys(args)
       nested = stringify_keys(body["params"])
       body["idempotency_key"].presence || idempotency_key.presence || nested["idempotency_key"].presence
-    end
-
-    def capability_input_params(args, action)
-      raw = stringify_keys(args["params"]).except(*FINGERPRINT_EXCLUDED_KEYS)
-      raw = {} if raw.blank?
-      normalized = raw.respond_to?(:deep_symbolize_keys) ? raw.deep_symbolize_keys : raw
-      return normalized if action.input_contract.nil?
-
-      contract_result = action.input_contract.call(normalized)
-      unless contract_result.success?
-        raise RecordingStudioApi::InvalidActionInputError, "Invalid input for action #{action.name}"
-      end
-
-      contract_result.value
     end
   end
 end

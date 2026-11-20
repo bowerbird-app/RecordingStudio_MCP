@@ -101,7 +101,7 @@ class ProtocolTest < Minitest::Test
       instructions = initialized.body.dig(:result, :instructions)
 
       assert_equal %w[list show describe], names
-      assert_includes instructions, "Call the docs for writable fields, children, and actions."
+      assert_includes instructions, "Call describe for the type paragraph, included tools, skills, and relationships."
       refute_includes instructions, "before you create"
       refute_includes instructions, "before create"
       refute_includes instructions, "capability_action"
@@ -824,7 +824,8 @@ class ProtocolTest < Minitest::Test
       assert_includes tool_names_for(admin), "create"
       assert_equal %w[describe], tool_names_for(deleted)
       view_instructions = initialize_instructions(view)
-      assert_includes view_instructions, "Call the docs for writable fields, children, and actions."
+      assert_includes view_instructions,
+                      "Call describe for the type paragraph, included tools, skills, and relationships."
       refute_includes view_instructions, "before you create"
       assert_includes initialize_instructions(admin), "before you create."
 
@@ -867,12 +868,14 @@ class ProtocolTest < Minitest::Test
   end
 
   def call_tool(grant, name, type = "Page")
+    arguments = { "type" => type }
+    arguments["parent_id"] = "workspace-1" if name == "create"
     RecordingStudioMcp::Protocol.handle(
       {
         "jsonrpc" => "2.0",
         "id" => 3,
         "method" => "tools/call",
-        "params" => { "name" => name, "arguments" => { "type" => type } }
+        "params" => { "name" => name, "arguments" => arguments }
       },
       access_grant: grant
     )

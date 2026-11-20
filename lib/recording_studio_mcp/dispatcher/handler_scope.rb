@@ -64,9 +64,9 @@ module RecordingStudioMcp
       }
     end
 
-    def capability_context(recording, args, action, recordable_type)
+    def capability_context(recording, args, action, recordable_type, named_tool: false)
       enabled_capability_action!(recordable_type, action.name.to_s)
-      action_context(recording, args, action, recordable_type: recordable_type)
+      action_context(recording, args, action, recordable_type: recordable_type, named_tool: named_tool)
     end
 
     def resource_handler_registration(recordable_type, action_name)

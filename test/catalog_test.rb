@@ -518,6 +518,21 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_parent_required_follows_root_allowed
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      register_tree_type("Workspace")
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      RecordingStudio.stub(:root_allowed?, ->(type) { type.to_s == "Workspace" }) do
+        RecordingStudio.stub(:allowed_parent_types_for, ->(_type) { [] }) do
+          assert_equal true, catalog.parent_required?("Page")
+          assert_equal false, catalog.parent_required?("Workspace")
+        end
+      end
+    end
+  end
+
   def test_unknown_type_message_names_the_allowed_set
     catalog = RecordingStudioMcp::Catalog.new(api: :public)
     names = catalog.type_names

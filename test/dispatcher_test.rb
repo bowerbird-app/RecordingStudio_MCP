@@ -153,6 +153,10 @@ class DispatcherTest < Minitest::Test
       false
     end
 
+    def parent_required?(_type)
+      false
+    end
+
     def resolved_server
       RecordingStudioMcp.configuration.catalogs.server_for(api: api)
     end
@@ -1275,7 +1279,7 @@ class DispatcherTest < Minitest::Test
 
       view_create = call_as(view, "create", { type: "Page" })
       view_list = call_as(view, "list", { type: "Page" })
-      admin_create = call_as(admin, "create", { type: "Page", title: "Hi" })
+      admin_create = call_as(admin, "create", { type: "Page", title: "Hi", parent_id: "workspace-1" })
       deleted_list = call_as(deleted, "list", { type: "Page" })
 
       assert view_create[:isError]

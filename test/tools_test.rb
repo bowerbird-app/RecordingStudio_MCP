@@ -104,7 +104,7 @@ class ToolsTest < Minitest::Test
       sort = tool.dig(:inputSchema, :properties, :sort)
 
       assert_equal "string", sort.fetch(:type)
-      assert_includes sort.fetch(:description), "sortable field from the docs"
+      assert_includes sort.fetch(:description), "sortable field"
       assert_includes sort.fetch(:description), "created_at"
       assert_includes sort.fetch(:description), "default"
       assert_includes sort.fetch(:description), "order sets the direction"
@@ -187,7 +187,7 @@ class ToolsTest < Minitest::Test
       assert_equal false, action.dig(:annotations, :idempotentHint)
       assert_equal false, action.dig(:annotations, :openWorldHint)
       assert_includes action[:description], "destructively change data"
-      assert_includes action[:description], "Call the docs for the type"
+      assert_includes action[:description], "Call describe for the type"
       assert_equal(
         "Optional. On an action flagged creates: true, the same key and the same input " \
         "return the first result. A different input with that key is refused. " \
@@ -265,26 +265,32 @@ class ToolsTest < Minitest::Test
       end
       ensure_tree_server(:public)
 
-      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
-      schema = tool.fetch(:inputSchema)
-      clauses = schema.fetch(:allOf).index_by { |clause| clause.dig(:if, :properties, :type, :const) }
+      RecordingStudio.stub(:root_allowed?, ->(type) { type.to_s != "Page" }) do
+        RecordingStudio.stub(:allowed_parent_types_for, lambda { |type|
+          type.to_s == "Page" ? %w[Workspace Folder] : []
+        }) do
+          tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "create" }
+          schema = tool.fetch(:inputSchema)
+          clauses = schema.fetch(:allOf).index_by { |clause| clause.dig(:if, :properties, :type, :const) }
 
-      assert_equal "create", tool[:name]
-      assert_equal ["type"], schema[:required]
-      assert_equal true, schema[:additionalProperties]
-      assert_equal %w[Article Page], schema.dig(:properties, :type, :enum)
-      assert schema[:properties].key?(:parent_id)
-      assert schema[:properties].key?(:idempotency_key)
-      refute schema[:properties].key?(:title)
-      page_title = clauses.fetch("Page").dig(:then, :properties, :title)
-      article_body = clauses.fetch("Article").dig(:then, :properties, :body)
-      assert_equal ["title"], clauses.fetch("Page").dig(:then, :required)
-      assert_equal "string", page_title[:type]
-      assert_equal "Page title.", page_title[:description]
-      assert_equal 1, page_title[:minLength]
-      assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
-      assert_equal "string", article_body[:type]
-      assert_equal %w[short long], article_body[:enum]
+          assert_equal "create", tool[:name]
+          assert_equal ["type"], schema[:required]
+          assert_equal true, schema[:additionalProperties]
+          assert_equal %w[Article Page], schema.dig(:properties, :type, :enum)
+          assert schema[:properties].key?(:parent_id)
+          assert schema[:properties].key?(:idempotency_key)
+          refute schema[:properties].key?(:title)
+          page_title = clauses.fetch("Page").dig(:then, :properties, :title)
+          article_body = clauses.fetch("Article").dig(:then, :properties, :body)
+          assert_equal %w[title parent_id], clauses.fetch("Page").dig(:then, :required)
+          assert_equal "string", page_title[:type]
+          assert_equal "Page title.", page_title[:description]
+          assert_equal 1, page_title[:minLength]
+          assert_equal ["body"], clauses.fetch("Article").dig(:then, :required)
+          assert_equal "string", article_body[:type]
+          assert_equal %w[short long], article_body[:enum]
+        end
+      end
     end
   end
 
@@ -300,7 +306,7 @@ class ToolsTest < Minitest::Test
       update_clause = type_clause("update", "MenuSection")
       items = create_clause.dig(:then, :properties, :items)
 
-      assert_equal ["title"], create_clause.dig(:then, :required)
+      assert_equal %w[title parent_id], create_clause.dig(:then, :required)
       assert_nil update_clause.dig(:then, :required)
       assert_equal "object", items[:type]
       assert_equal "Labels for kit sections.", items[:description]
