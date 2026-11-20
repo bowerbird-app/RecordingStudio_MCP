@@ -9,7 +9,7 @@ module RecordingStudioMcp
       private
 
       def default_describe_payload(recordable_type, registration)
-        {
+        reject_nils({
           "type" => displayed_type_name(recordable_type),
           "description" => type_paragraph(recordable_type),
           "tools" => describe_tools(recordable_type, registration),
@@ -18,7 +18,7 @@ module RecordingStudioMcp
           "parent" => parent_rules(recordable_type),
           "writable_fields" => FieldSchema.for(recordable_type, registration),
           "capability_actions" => advertised_capability_actions(recordable_type, title: :mcp)
-        }.merge("nesting" => NESTED_ITEMS).reject { |key, value| value.nil? && key != "parent" }
+        }.merge("nesting" => NESTED_ITEMS), keep: ["parent"])
       end
 
       def action_title_for(action, recordable_type, source, copied)
@@ -29,13 +29,12 @@ module RecordingStudioMcp
       end
 
       def documentation_type_fields(recordable_type, registration)
-        {
+        reject_nils({
           "operations" => Array(registration&.operations).map(&:to_s),
           "writable_fields" => writable_fields(recordable_type),
           "sortable_fields" => sortable_fields(recordable_type),
           "capability_actions" => advertised_capability_actions(recordable_type)
-        }.merge(describe_registry(recordable_type, registration))
-          .reject { |key, value| value.nil? && key != "parent" }
+        }.merge(describe_registry(recordable_type, registration)), keep: ["parent"])
       end
 
       def describe_registry(recordable_type, registration)

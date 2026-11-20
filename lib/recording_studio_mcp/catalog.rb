@@ -86,7 +86,15 @@ module RecordingStudioMcp
       RecordingStudioMcp.configuration.catalogs.server_for(api: api)
     end
 
+    def capability_actions_advertised?
+      resolved_server&.tool?("capability_action")
+    end
+
     private
+
+    def reject_nils(hash, keep: [])
+      hash.reject { |key, value| value.nil? && !keep.include?(key) }
+    end
 
     def included_type_names
       return api_registered_types if @server == false

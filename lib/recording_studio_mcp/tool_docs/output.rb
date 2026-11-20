@@ -34,7 +34,7 @@ module RecordingStudioMcp
         skills: { type: "array", items: { type: "string" } },
         relationships: { type: "array", items: ACTION },
         nesting: { type: "string" },
-        parent: ACTION,
+        parent: ACTION.merge(type: %w[object null]),
         writable_fields: { type: "array", items: ACTION },
         capability_actions: { type: "array", items: CAPABILITY_ACTION }
       }.freeze
@@ -75,7 +75,7 @@ module RecordingStudioMcp
 
       def describe(catalog)
         properties = DESCRIBE_PROPERTIES
-        properties = properties.except(:capability_actions) unless catalog.resolved_server&.tool?("capability_action")
+        properties = properties.except(:capability_actions) unless catalog.capability_actions_advertised?
         object(properties: properties)
       end
 

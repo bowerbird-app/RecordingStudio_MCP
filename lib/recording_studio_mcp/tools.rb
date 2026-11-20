@@ -399,7 +399,7 @@ module RecordingStudioMcp
     end
 
     def describe_description(catalog)
-      returns = Instructions.describe_returns(catalog.resolved_server&.tool?("capability_action"))
+      returns = Instructions.describe_returns(catalog.capability_actions_advertised?)
       "Describe one type on this server. Returns #{returns}."
     end
 
