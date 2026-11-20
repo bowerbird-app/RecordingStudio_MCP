@@ -21,10 +21,8 @@ module RecordingStudioMcp
 
       def add_tool(registration, override: false)
         key = registration.name.to_s
-        if @tools.key?(key) && !override
-          raise RecordingStudioApi::ConfigurationError, "MCP tool #{key} is already registered"
-        end
-
+        existing = @tools[key]
+        assert_override!(existing, registration) if existing && !override
         store_entry(@tools, key, registration)
       end
 
@@ -54,6 +52,13 @@ module RecordingStudioMcp
         collection[key] = registration
         catalogs.invalidate!
         registration
+      end
+
+      def assert_override!(existing, incoming)
+        return if existing.type.to_s == incoming.type.to_s && existing.target == incoming.target
+
+        raise RecordingStudioApi::ConfigurationError,
+              "MCP tool #{incoming.name} override cannot change type or target"
       end
     end
   end

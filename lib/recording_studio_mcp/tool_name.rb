@@ -33,11 +33,10 @@ module RecordingStudioMcp
     end
 
     def type_plural_snake(type)
-      token = type_public_token(type)
-      declared = declared_plural_snake(token)
+      declared = RecordingStudio.recordable_type_plural_label(type_public_token(type)).to_s.parameterize(separator: "_")
       return declared if declared.present?
 
-      token.underscore.singularize.pluralize
+      type_singular_snake(type).pluralize
     end
 
     def type_public_token(type)
@@ -46,37 +45,16 @@ module RecordingStudioMcp
     end
 
     def api_public_name(type_name)
-      return unless defined?(RecordingStudioApi)
       return unless RecordingStudioApi.respond_to?(:recordable_registration_for)
-      return unless RecordingStudioApi.instance_variable_defined?(:@configuration)
 
       RecordingStudioApi.recordable_registration_for(type_name, api: :public)&.public_name
-    end
-
-    def declared_plural_snake(token)
-      return unless defined?(RecordingStudio)
-      return unless RecordingStudio.respond_to?(:recordable_declaration_for)
-
-      declaration = RecordingStudio.recordable_declaration_for(token)
-      return if declaration.nil? || !declaration.respond_to?(:plural_label)
-
-      parameterize_label(declaration.plural_label)
-    end
-
-    def parameterize_label(label)
-      text = label.to_s.strip
-      return if text.blank?
-
-      text.parameterize(separator: "_").presence
     end
 
     def ends_with_noun?(verb, type_snake)
       verb == type_snake || verb.end_with?("_#{type_snake}")
     end
 
-    class << self
-      private :verb_for, :type_singular_snake, :type_plural_snake, :type_public_token,
-              :api_public_name, :declared_plural_snake, :parameterize_label, :ends_with_noun?
-    end
+    private_class_method :verb_for, :type_singular_snake, :type_plural_snake, :type_public_token,
+                         :api_public_name, :ends_with_noun?
   end
 end

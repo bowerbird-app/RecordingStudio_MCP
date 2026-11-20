@@ -27,9 +27,14 @@ class RegistrationsTest < Minitest::Test
   def test_host_override_changes_title_only
     with_isolated_api_configuration do
       register_tree_type("Page")
-      RecordingStudioMcp.register_server(:public, api: :public) do
-        include_tool :list, title: "Find pages"
-      end
+      RecordingStudioMcp.register_tool(
+        name: "list",
+        operation: :index,
+        title: "Find pages",
+        description: "Host list copy.",
+        input: {},
+        output: "records"
+      )
 
       list = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }
 
@@ -37,34 +42,20 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
-  def test_duplicate_tool_name_raises
+  def test_override_cannot_change_target
     with_isolated_api_configuration do
-      register_tree_type("Page")
-      name = RecordingStudioMcp.tool_name("Page", :create)
-      RecordingStudioMcp.register_tool(
-        name: name,
-        type: "Page",
-        operation: :create,
-        title: "Create page",
-        description: "Create a page.",
-        input: {},
-        output: "the page"
-      )
-
       error = assert_raises(RecordingStudioApi::ConfigurationError) do
         RecordingStudioMcp.register_tool(
-          name: name,
-          type: "Page",
-          operation: :create,
-          title: "Create page again",
-          description: "Create a page.",
+          name: "list",
+          operation: :show,
+          title: "List",
+          description: "Wrong target.",
           input: {},
-          output: "the page"
+          output: "records"
         )
       end
 
-      assert_includes error.message, "already registered"
-      assert_includes error.message, name
+      assert_includes error.message, "cannot change type or target"
     end
   end
 
@@ -366,6 +357,48 @@ class RegistrationsTest < Minitest::Test
       lines = RecordingStudioMcp.configuration.catalogs.audit!
 
       assert(lines.any? { |line| line.include?("tool delete sensitive=true") })
+    end
+  end
+
+  def test_extra_input_key_on_generic_list_fails_boot
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_tool(
+        name: "list",
+        operation: :index,
+        title: "List",
+        description: "List records.",
+        input: { "extra" => { description: "not a protocol key" } },
+        output: "records"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :list }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "extra"
+    end
+  end
+
+  def test_extra_input_key_on_generic_create_fails_boot
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_tool(
+        name: "create",
+        operation: :create,
+        title: "Create",
+        description: "Create a record.",
+        input: { "sneaky" => { description: "not a protocol key" } },
+        output: "the created record"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :create }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "sneaky"
     end
   end
 

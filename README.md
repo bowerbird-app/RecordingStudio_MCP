@@ -67,7 +67,7 @@ This is the locked `register_tool` / `register_type` shape other gems copy. Do n
 - `type` — recordable type name
 - `description` — type paragraph for people and agents. No Access wording
 
-`list`, `show`, `create`, `update`, `delete`, and `capability_action` are includable generic tools. `register_tool` raises when the name is already registered. Override title or description on `include_tool`. Type, target, required, and non-empty rules stay on the API contract. MCP text may only describe or narrow inputs.
+`list`, `show`, `create`, `update`, `delete`, and `capability_action` are includable generic tools. Re-registering a tool name overrides title, description, and input copy only. Type, target, required, and non-empty rules stay on the API contract. MCP text may only describe or narrow inputs. A host override that changes type or target raises at boot.
 
 `describe` lists the types, tools, and skills that server includes. It also returns `parent` (`root`, `allowed_parent_types`; `null` when there are no parent rules), `writable_fields` (name, required, type, allowed values, description), and `capability_actions` when that server includes `capability_action`. Type paragraphs come from `register_type`. Field types, enums, parents, and actions come from the API registration and Recording Studio. Docs type sections use that same `describe` payload.
 
