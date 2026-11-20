@@ -310,7 +310,8 @@ module RecordingStudioMcp
         destructive: destructive_target?(registration),
         idempotent: read_only_target?(registration),
         required: required,
-        properties: properties
+        properties: properties,
+        api: catalog.api
       }
     end
 

@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.42.1
+
+Previous version is `0.42.0`. No MCP migration.
+
+Named typed tools pass the catalog API when MCP UI looks up a widget. Hosts that load MCP UI no longer see `initialize` fail with `ConfigurationError` because `ui_for` received a nil API.
+
 ## 0.42.0
 
 Previous version is `0.41.1`. No MCP migration.
