@@ -16,12 +16,46 @@ module RecordingStudioMcp
 
     def tags_for_entry(entry, api: nil)
       case entry.family
-      when :tree then tree_tags
+      when :tree then tree_entry_tags(entry, api)
       when :metric then metric_tags(entry.metric.name)
       when :endpoint then endpoint_tags(entry.endpoint, api: api)
       else []
       end
     end
+
+    def tree_entry_tags(entry, api)
+      name = (entry.definition[:name] || entry.definition["name"]).to_s
+      return tree_tags if Tools::TREE_NAMES.include?(name) || api.nil?
+
+      named_tree_tags(name, api)
+    end
+    private_class_method :tree_entry_tags
+
+    def named_tree_tags(name, api)
+      registration = named_tree_registration(name, api)
+      type_name = registration&.type.to_s
+      return tree_tags if type_name.blank?
+
+      action_tags(
+        type_name,
+        api: api,
+        type_names: Catalog.new(api: api).type_names,
+        tag_suffix: named_action_tag_suffix(registration, api, type_name)
+      )
+    end
+    private_class_method :named_tree_tags
+
+    def named_tree_registration(name, api)
+      Catalog.new(api: api).resolved_server&.tool(name)&.registration
+    end
+    private_class_method :named_tree_registration
+
+    def named_action_tag_suffix(registration, api, type_name)
+      return unless registration.target.action?
+
+      Documentation::Openapi::ActionDocs.tag_suffix(registration.target.value, api, type_name)
+    end
+    private_class_method :named_action_tag_suffix
 
     def openapi_extras(_entry, tool, surface = nil)
       extras = {}
@@ -51,32 +85,10 @@ module RecordingStudioMcp
     end
     private_class_method :tool_sidebar_tags
 
-    def assign_type_tag_description(acc, entry, page, group_tags)
-      type_name = entry_recordable_type(entry)
-      return if type_name.blank?
-
-      description = Documentation::Openapi::Schemas.registered_type_description(type_name, page.api_key)
-      return if description.blank?
-
-      type_tags(type_name, api: page.api_key, group_tags: group_tags).each do |tag|
-        remember_tag_description(acc, tag, description)
-      end
-    end
-    private_class_method :assign_type_tag_description
-
     def entry_recordable_type(entry)
       (entry["recordable_type"] || entry[:recordable_type]).to_s
     end
     private_class_method :entry_recordable_type
-
-    def remember_tag_description(acc, tag, description)
-      if !acc.key?(tag)
-        acc[tag] = description
-      elsif acc[tag] != description
-        acc[tag] = nil
-      end
-    end
-    private_class_method :remember_tag_description
 
     def tags_for_openapi(tool, surface)
       found = entry_for_tool(tool, surface)

@@ -99,7 +99,10 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes names, "list"
     assert_includes names, "describe"
     assert_includes names, "ping"
-    assert_includes names, "Workspace--ping"
+    assert_includes names, "create"
+    refute_includes names, "Workspace--ping"
+    live = RecordingStudioMcp::Tools.definitions(api: :public).map { |tool| tool[:name].to_s }.sort
+    assert_equal live, names.sort
     assert_equal ["TypeName"], schemas.keys
     refute_includes schemas.keys, "Workspace"
     refute_includes schemas.keys, "Folder"
@@ -118,26 +121,12 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
     assert_equal ["Overview"], tools.fetch("list")["tags"]
     assert_equal ["Overview"], tools.fetch("ping")["tags"]
-    assert_equal ["Workspace"], tools.fetch("Workspace--ping")["tags"]
-    %w[grant_access list_access revoke_access update_access].each do |action|
-      assert_equal ["Workspace"], tools.fetch("Workspace--#{action}")["tags"]
+    assert_equal ["Overview"], tools.fetch("create")["tags"]
+    %w[ping grant_access list_access revoke_access update_access].each do |action|
+      refute_includes names, "Workspace--#{action}"
     end
     assert tools.fetch("list").key?("outputSchema")
-    ping_tool = tools.fetch("Workspace--ping")
-    assert_equal "Workspace - Ping", ping_tool["title"]
-    assert ping_tool["x-mcp-docs-only"]
     refute tools.fetch("list").key?("x-mcp-docs-only")
-    assert ping_tool.dig("inputSchema", "properties", "style")
-    refute ping_tool["inputSchema"].key?("fields")
-    assert_includes ping_tool["description"], "Runs on Workspace records."
-    assert_includes ping_tool["description"], "Type: `Workspace`"
-    refute_includes ping_tool["description"], "Allowed operations:"
-    refute_includes ping_tool["description"], "Writable fields:"
-    assert_equal ["Tool: capability_action with type `Workspace` and action `ping`."],
-                 tool_lines(ping_tool["description"])
-    refute_includes ping_tool["description"], "style"
-    refute_includes ping_tool["description"], "idempotency_key"
-    refute_includes ping_tool["description"], "Tool: list"
     intro = spec.fetch("tags").find { |tag| tag["name"] == "Workspace" }.fetch("description")
     assert_equal 1, intro.scan("Tool: list with type `Workspace`").size
     assert_includes intro, "Tool: list with type `Workspace`\n"
@@ -147,7 +136,7 @@ class McpDocsTest < ActionDispatch::IntegrationTest
                             "and optional idempotency_key"
     assert_includes intro, "Tool: update with type `Workspace`, id, and writable fields"
     refute_includes intro, "Tool: delete"
-    refute_includes intro, "Tool: capability_action"
+    assert_includes intro, "Tool: capability_action with type `Workspace`."
     folder = spec.fetch("tags").find { |tag| tag["name"] == "Folder" }
     assert_includes folder.fetch("description"), "Tool: list with type `Folder`"
     refute tools.key?("Folder--list")
@@ -277,10 +266,6 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     user
   end
 
-  def tool_lines(text)
-    text.to_s.scan(/^Tool: .+$/)
-  end
-
   def assert_docs_tool_fallback(body, spec_path)
     fallback = body[%r{<noscript>(.*?)</noscript>}m]
     assert fallback
@@ -289,9 +274,13 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes fallback, "ping checks the connection."
     assert_includes fallback, ">Overview<"
     assert_includes fallback, ">list<"
-    assert_includes fallback, ">Workspace--ping<"
+    assert_includes fallback, ">create<"
+    assert_includes fallback, ">ping<"
+    refute_includes fallback, ">Workspace--ping<"
     refute_includes fallback, ">Core<"
-    assert_operator fallback.index(">Overview<"), :<, fallback.index(">Workspace<")
+    other = fallback.index(">Other tools<")
+    overview = fallback.index(">Overview<")
+    assert_operator overview, :<, other if other
   end
 
   def assert_docs_surfaces(status)

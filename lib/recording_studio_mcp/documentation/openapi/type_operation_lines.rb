@@ -8,39 +8,38 @@ module RecordingStudioMcp
 
         def context_for(page)
           {
-            catalog: Catalog.new(api: page.api_key),
             schemas: Tools.definitions(api: page.api_key).each_with_object({}) do |tool, schemas|
               schemas[tool[:name]] = Internals.stringify(tool[:inputSchema] || {})
             end
           }
         end
 
-        def lines_for(entry, shown, full_name, context)
-          Tools::TREE_OPERATION_TOOLS.filter_map do |operation, tool_name|
-            next unless context[:catalog].type_names_for(operation).include?(full_name)
+        def section_for(entry, shown, _full_name, context)
+          shown_entry = Internals.stringify(entry)
+          [
+            shown_entry["description"],
+            *lines_for(shown_entry, shown, context),
+            TypeDescribeBlocks.parent_block(shown_entry),
+            TypeDescribeBlocks.relationships_block(shown_entry)
+          ].compact.reject(&:blank?).join("\n\n")
+        end
 
-            tool_line(tool_name, shown, context[:schemas].fetch(tool_name, {}), entry)
+        def lines_for(entry, shown, context)
+          Array(entry["tools"]).filter_map do |name|
+            line_for_tool(name.to_s, shown, Internals.stringify(entry), context)
           end
         end
 
-        def capability_line(type_name, action_name, include_idempotency_key:)
-          line = "Tool: capability_action with type `#{type_name}` and action `#{action_name}`."
-          return line unless include_idempotency_key
-
-          "#{line} Pass idempotency_key to replay an action flagged creates: true when the input matches. " \
-            "A different input for that key is an error."
+        def line_for_tool(name, type_name, entry, context)
+          if Tools::TREE_OPERATION_TOOLS.value?(name)
+            tool_line(name, type_name, context[:schemas].fetch(name, {}), entry)
+          elsif name == "capability_action"
+            "Tool: capability_action with type `#{type_name}`."
+          else
+            "Tool: #{name}"
+          end
         end
-
-        def replays?(action_name, recordable_type, api_key)
-          action = RecordingStudioApi.capability_action(action_name, api: api_key)
-          return false if action.nil?
-          return true if action.creates?
-
-          registration = RecordingStudioApi.resource_handler_registration(
-            recordable_type, action.name, api: api_key
-          )
-          registration.respond_to?(:creates?) && registration.creates?
-        end
+        private_class_method :line_for_tool
 
         def tool_line(tool_name, type_name, schema, entry)
           "Tool: #{tool_name} with #{joined(argument_parts(tool_name, type_name, schema, entry))}"
@@ -122,6 +121,51 @@ module RecordingStudioMcp
         end
         private_class_method :joined
       end
+
+      module TypeDescribeBlocks
+        module_function
+
+        def parent_block(entry)
+          parent = entry["parent"]
+          return if parent.blank?
+
+          parts = []
+          parts << "root #{parent['root']}" if parent.key?("root")
+          parts << allowed_parents_part(parent) if parent.key?("allowed_parent_types")
+          return if parts.empty?
+
+          "Parents: #{parts.join('. ')}."
+        end
+
+        def relationships_block(entry)
+          rels = Array(entry["relationships"])
+          return if rels.empty?
+
+          lines = rels.map { |rel| relationship_line(Internals.stringify(rel)) }
+          (["Relationships:"] + lines).join("\n")
+        end
+
+        def allowed_parents_part(parent)
+          types = Array(parent["allowed_parent_types"])
+          return "allowed parent types none" if types.empty?
+
+          "allowed parent types #{types.join(', ')}"
+        end
+        private_class_method :allowed_parents_part
+
+        def relationship_line(rel)
+          bits = [rel["name"]]
+          bits << rel["source"] if rel["source"].present?
+          bits << rel["child_type"] if rel["child_type"].present?
+          bits << (rel["many"] ? "many" : "one") if rel.key?("many")
+          line = "- #{bits.join(', ')}"
+          return line if rel["description"].blank?
+
+          "#{line}. #{rel['description']}"
+        end
+        private_class_method :relationship_line
+      end
+      private_constant :TypeDescribeBlocks
     end
   end
 end
