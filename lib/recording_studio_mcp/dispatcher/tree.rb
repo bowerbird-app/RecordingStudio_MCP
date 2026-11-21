@@ -16,6 +16,7 @@ module RecordingStudioMcp
     end
 
     def dispatch_resource(operation_name, args)
+      require_member_id!(operation_name, args)
       validate_index_arguments!(args) if operation_name == :index
       recordable_type = catalog.resolve_type!(args["type"])
       reject_disabled_operation!(recordable_type, operation_name)
@@ -69,6 +70,11 @@ module RecordingStudioMcp
       when :show, :update then load_recording(recordable_type, id)
       when :destroy then load_recording(recordable_type, id, include_trashed: true)
       end
+    end
+
+    def require_member_id!(operation_name, args)
+      return unless MEMBER_ID_OPERATIONS.include?(operation_name)
+      raise RecordingStudioApi::InvalidActionInputError, "id is required" if args["id"].blank?
     end
   end
 end

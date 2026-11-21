@@ -53,8 +53,11 @@ module RecordingStudioMcp
         enabled_action_registrations(recordable_type).map { |action| action.name.to_s }.sort
       end
 
-      def writable_fields(recordable_type)
-        Array(registration_for(recordable_type)&.writable_attributes).map(&:to_s)
+      def writable_fields(recordable_type, operation: nil)
+        names = Array(registration_for(recordable_type)&.writable_attributes).map(&:to_s)
+        return names unless operation&.to_sym == :update
+
+        names - Array(registration_for(recordable_type)&.immutable_fields).map(&:to_s)
       end
 
       def parent_required?(recordable_type)

@@ -323,6 +323,82 @@ class ToolsTest < Minitest::Test
     end
   end
 
+  def test_named_crud_tools_advertise_the_same_protocol_fields_as_generic_tools
+    with_isolated_api_configuration do
+      register_ping_capability
+      register_tree_type(
+        "Page",
+        operations: %i[index show create update destroy],
+        capability_actions: %i[ping]
+      )
+      RecordingStudioApi.register_default_resource_actions!(api: :public)
+      RecordingStudioMcp.configuration.list_parent_id_types = %w[Page]
+      names = register_named_page_tools
+      tools = RecordingStudioMcp::Tools.definitions.index_by { |tool| tool[:name] }
+      generic_list = tools.fetch("list").fetch(:inputSchema)
+      generic_id = tools.fetch("show").dig(:inputSchema, :properties, :id)
+
+      index = tools.fetch(names.fetch(:index)).fetch(:inputSchema)
+      refute index.fetch(:properties).key?(:type)
+      %i[q limit sort order filter pagination_token parent_id].each do |key|
+        assert_equal generic_list.dig(:properties, key), index.dig(:properties, key), key
+      end
+      refute_includes index.fetch(:required), "q"
+      refute_includes index.fetch(:required), "parent_id"
+
+      show = tools.fetch(names.fetch(:show)).fetch(:inputSchema)
+      assert_equal ["id"], show.fetch(:required)
+      assert_equal generic_id, show.dig(:properties, :id)
+      refute show.fetch(:properties).key?(:type)
+
+      update = tools.fetch(names.fetch(:update)).fetch(:inputSchema)
+      assert_includes update.fetch(:required), "id"
+      assert_equal generic_id, update.dig(:properties, :id)
+      assert_equal 1, update.fetch(:required).count("id")
+      refute update.fetch(:properties).key?(:type)
+
+      destroy = tools.fetch(names.fetch(:destroy)).fetch(:inputSchema)
+      assert_equal ["id"], destroy.fetch(:required)
+      assert_equal generic_id, destroy.dig(:properties, :id)
+      refute destroy.fetch(:properties).key?(:type)
+
+      action = tools.fetch(names.fetch(:action)).fetch(:inputSchema)
+      assert_includes action.fetch(:required), "id"
+      assert_equal generic_id, action.dig(:properties, :id)
+    end
+  end
+
+  def test_named_action_keeps_contract_id_over_the_protocol_default
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :inspect,
+        capability: :accessible,
+        input_contract: {
+          fields: {
+            id: { type: :string, required: true, enum: %w[kept] }
+          }
+        },
+        handler: ->(_) { { json: { ok: true } } }
+      )
+      register_tree_type("Page", operations: %i[show], capability_actions: %i[inspect])
+      name = RecordingStudioMcp.tool_name("Page", :inspect)
+      RecordingStudioMcp.register_tool(
+        name: name,
+        type: "Page",
+        action: :inspect,
+        title: "Inspect page",
+        description: "Inspect a page.",
+        input: {},
+        output: "the result"
+      )
+      ensure_tree_server(:public, extra_tools: [name])
+      schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == name }.fetch(:inputSchema)
+
+      assert_equal %w[kept], schema.dig(:properties, :id, :enum)
+      assert_equal ["id"], schema.fetch(:required)
+    end
+  end
+
   def test_typed_create_schema_matches_generic_create_for_the_same_type
     with_isolated_api_configuration do
       register_tree_type(
@@ -551,6 +627,43 @@ class ToolsTest < Minitest::Test
         }
       }
     )
+  end
+
+  def register_named_page_tools
+    names = {
+      index: RecordingStudioMcp.tool_name("Page", :index),
+      show: RecordingStudioMcp.tool_name("Page", :show),
+      update: RecordingStudioMcp.tool_name("Page", :update),
+      destroy: RecordingStudioMcp.tool_name("Page", :destroy),
+      action: RecordingStudioMcp.tool_name("Page", :ping)
+    }
+    {
+      names[:index] => [:index, "List pages", "List pages."],
+      names[:show] => [:show, "Show page", "Show a page."],
+      names[:update] => [:update, "Update page", "Update a page."],
+      names[:destroy] => [:destroy, "Delete page", "Delete a page."]
+    }.each do |name, (operation, title, description)|
+      RecordingStudioMcp.register_tool(
+        name: name,
+        type: "Page",
+        operation: operation,
+        title: title,
+        description: description,
+        input: {},
+        output: "the page"
+      )
+    end
+    RecordingStudioMcp.register_tool(
+      name: names[:action],
+      type: "Page",
+      action: :ping,
+      title: "Ping page",
+      description: "Ping a page.",
+      input: {},
+      output: "the result"
+    )
+    ensure_tree_server(:public, extra_tools: names.values)
+    names
   end
 
   def type_clause(tool_name, type_name)

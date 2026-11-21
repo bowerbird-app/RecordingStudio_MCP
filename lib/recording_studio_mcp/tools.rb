@@ -319,7 +319,7 @@ module RecordingStudioMcp
       dropped = forced_keys(registration, built.lookup)
       properties = drop_forced_keys(lookup_properties(built, catalog, registration), dropped)
       required = SchemaFromContract.required_names(built.lookup&.input_contract) - dropped
-      properties, required = apply_named_action_id(registration, properties, required)
+      properties, required = apply_named_protocol_fields(catalog, registration, properties, required)
       apply_named_create_parent_id(catalog, registration, properties, required)
     end
 
@@ -348,11 +348,44 @@ module RecordingStudioMcp
       properties.except(*dropped.map(&:to_sym))
     end
 
-    def apply_named_action_id(registration, properties, required)
-      return [properties, required] unless registration.target.action?
+    def apply_named_protocol_fields(catalog, registration, properties, required)
+      properties, required = apply_named_member_id(registration, properties, required)
+      apply_named_index_fields(catalog, registration, properties, required)
+    end
 
-      merged = { id: protocol_field(:string, "Recording id.") }.merge(properties)
-      [merged, (["id"] + required).uniq]
+    def apply_named_member_id(registration, properties, required)
+      return [properties, required] unless named_member_id?(registration)
+
+      merge_protocol_defaults(
+        properties,
+        required,
+        { id: protocol_field(:string, "Recording id.") },
+        extra_required: ["id"]
+      )
+    end
+
+    def named_member_id?(registration)
+      return true if registration.target.action?
+      return false unless registration.target.operation?
+
+      %i[show update destroy].include?(registration.target.value)
+    end
+
+    def apply_named_index_fields(catalog, registration, properties, required)
+      return [properties, required] unless registration.target.operation? && registration.target.value == :index
+
+      merge_protocol_defaults(properties, required, named_list_protocol_properties(catalog))
+    end
+
+    def named_list_protocol_properties(catalog)
+      SchemaFromContract.overlay_copy(
+        list_properties(catalog).except(:type),
+        GenericTools::LIST.fetch(:input)
+      )
+    end
+
+    def merge_protocol_defaults(properties, required, defaults, extra_required: [])
+      [defaults.merge(properties), (extra_required + required).uniq]
     end
 
     def apply_named_create_parent_id(catalog, registration, properties, required)
@@ -472,7 +505,10 @@ module RecordingStudioMcp
                          :endpoint_description, :list_description, :list_properties,
                          :create_type_requirements, :lookup_clause, :update_type_requirements,
                          :attach_meta, :attach_ui_meta, :forced_keys, :keep_contract_type?,
-                         :drop_forced_keys, :apply_named_action_id, :apply_named_create_parent_id,
+                         :drop_forced_keys, :apply_named_protocol_fields, :apply_named_member_id,
+                         :named_member_id?, :apply_named_index_fields, :named_list_protocol_properties,
+                         :merge_protocol_defaults,
+                         :apply_named_create_parent_id,
                          :parent_id_schema, :protocol_field, :read_only_target?, :destructive_target?,
                          :registered_tool_options, :lookup_properties, :metric_tool_options,
                          :describe_description, :show_description, :show_id_sources

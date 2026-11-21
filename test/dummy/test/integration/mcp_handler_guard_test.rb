@@ -44,10 +44,12 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     view = view_token
     edit = edit_token
 
-    miss_ids = [nil, "", @foreign.id, @folder.id, @trashed.id]
-    miss_ids.each do |id|
-      arguments = { type: "Page" }
-      arguments[:id] = id unless id.nil?
+    [[nil, {}], ["", { id: "" }]].each do |_label, arguments|
+      assert_tool_text(view, "show", arguments.merge(type: "Page"), "id is required")
+      assert_tool_text(edit, "update", arguments.merge(type: "Page", title: "Hi"), "id is required")
+    end
+    [@foreign.id, @folder.id, @trashed.id].each do |id|
+      arguments = { type: "Page", id: id }
       assert_tool_miss(view, "show", arguments)
       assert_tool_miss(edit, "update", arguments.merge(title: "Hi"))
     end

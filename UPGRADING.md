@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.45.0
+
+Previous version is `0.44.0`. This is a breaking change. No MCP migration.
+
+### Changed (breaking)
+
+Updates now reject immutable fields with `<field> cannot be changed on update`. Create still accepts those fields. Stop sending create-only fields on `update`.
+
+Named `register_tool(operation:)` tools now advertise the same protocol fields as generic `list` / `show` / `update` / `delete`. `type` stays omitted when the registration already forces it. A missing `id` on show, update, or destroy returns the tool error `id is required` instead of a scope miss. Gem `input` / contract properties still win when they already define the same key.
+
 ## 0.44.0
 
 Previous version is `0.43.5`. This is a breaking MCP tool-name change for named typed tools.
