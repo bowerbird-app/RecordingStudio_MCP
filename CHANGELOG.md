@@ -7,15 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.44.1] - 2026-11-20
+## [0.45.0] - 2026-11-21
+
+### Changed (breaking)
+- Updates now reject immutable fields with `<field> cannot be changed on update`. Create is unchanged. The dispatch allow-list matches the advertised update schema.
 
 ### Fixed
 - Named `register_tool(operation:)` tools now advertise the same protocol fields as the generic tree tools. `show`, `update`, and `destroy` require `id`. `index` lists `q`, `limit`, `sort`, `order`, `filter`, `pagination_token`, and `parent_id` when the generic `list` tool does. A missing `id` on show, update, or destroy is the validation error `id is required`.
-- `update` rejects immutable, create-only fields (for example `credit_id`) with `cannot be changed on update` instead of forwarding them for the API to ignore. Create is unchanged. The dispatch allow-list matches the advertised update schema.
 
 ### Upgrade notes
-- Bump to `0.44.1`. Previous version is `0.44.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+- Bump to `0.45.0`. Previous version is `0.44.0`. Breaking: `update` rejects immutable fields. No MCP migration. See [UPGRADING.md](UPGRADING.md).
 - MCP clients that call named `show_*`, `update_*`, `delete_*`, or `list_*` tools should send `id` (required) and the same optional list fields as generic `list`.
+- MCP clients that send an immutable field on `update` now get `<field> cannot be changed on update` instead of a silent ignore.
 
 ## [0.44.0] - 2026-11-20
 
@@ -1314,8 +1317,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.1...HEAD
-[0.44.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.0...v0.44.1
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.0...HEAD
+[0.45.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.5...v0.44.0
 [0.43.5]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.4...v0.43.5
 [0.43.4]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.3...v0.43.4
