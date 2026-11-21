@@ -2,6 +2,8 @@
 
 module RecordingStudioMcp
   class Dispatcher
+    include FieldErrors
+
     private
 
     def resource_context(recordable_type, args, recording: nil, parent_recording: nil, operation_name: nil)
@@ -93,24 +95,6 @@ module RecordingStudioMcp
       return if unknown.empty?
 
       raise RecordingStudioApi::InvalidActionInputError, unknown_fields_message(recordable_type, unknown, allowed)
-    end
-
-    def reject_immutable_update_fields!(recordable_type, payload, allowed)
-      frozen = payload.keys & (catalog.writable_fields(recordable_type) - allowed)
-      return if frozen.empty?
-
-      raise RecordingStudioApi::InvalidActionInputError,
-            "#{frozen.sort.join(', ')} cannot be changed on update. " \
-            "#{writable_fields_sentence(recordable_type, allowed)}"
-    end
-
-    def unknown_fields_message(recordable_type, unknown, allowed)
-      "Unknown fields #{unknown.sort.join(', ')}. #{writable_fields_sentence(recordable_type, allowed)}"
-    end
-
-    def writable_fields_sentence(recordable_type, allowed)
-      listed = allowed.any? ? allowed.join(", ") : "(none)"
-      "Writable fields for #{catalog.displayed_type_name(recordable_type)}: #{listed}"
     end
 
     def create_idempotency_key(args, operation_name)
