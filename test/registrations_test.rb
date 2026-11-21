@@ -390,6 +390,52 @@ class RegistrationsTest < Minitest::Test
     end
   end
 
+  def test_unknown_typeless_action_raises_at_boot
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_tool(
+        name: "missing_upload",
+        action: :missing_upload,
+        title: "Missing upload",
+        description: "An action the API does not have.",
+        input: {},
+        output: "nothing"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) { include_tools :missing_upload }
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "missing_upload"
+      assert_includes error.message, "that is not on public"
+    end
+  end
+
+  def test_unknown_typed_action_raises_at_boot
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      RecordingStudioMcp.register_tool(
+        name: RecordingStudioMcp.tool_name("Page", :missing_upload),
+        type: "Page",
+        action: :missing_upload,
+        title: "Missing page upload",
+        description: "An action the API does not have.",
+        input: {},
+        output: "nothing"
+      )
+      RecordingStudioMcp.register_server(:public, api: :public) do
+        include_tools RecordingStudioMcp.tool_name("Page", :missing_upload)
+      end
+
+      error = assert_raises(RecordingStudioApi::ConfigurationError) do
+        RecordingStudioMcp.configuration.catalogs.build!
+      end
+
+      assert_includes error.message, "that is not on public"
+    end
+  end
+
   def test_extra_input_key_on_generic_create_fails_boot
     with_isolated_api_configuration do
       register_tree_type("Page")

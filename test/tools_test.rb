@@ -629,6 +629,70 @@ class ToolsTest < Minitest::Test
     )
   end
 
+  def test_typeless_named_action_schema_includes_contract_fields_and_id
+    with_isolated_api_configuration do
+      register_upload_action
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      RecordingStudioMcp.register_tool(
+        name: "create_upload",
+        action: :create_upload,
+        title: "Create upload",
+        description: "Create an upload on the host type passed in args.",
+        input: {},
+        output: "the upload"
+      )
+      ensure_tree_server(:public, extra_tools: %w[create_upload])
+
+      schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "create_upload" }.fetch(:inputSchema)
+      properties = schema.fetch(:properties)
+
+      assert properties.key?(:id)
+      assert properties.key?(:filename)
+      assert properties.key?(:byte_size)
+      refute properties.key?(:action)
+      assert_includes schema.fetch(:required), "id"
+      assert_includes schema.fetch(:required), "filename"
+    end
+  end
+
+  def test_typeless_generic_list_schema_stays_protocol_only
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }.fetch(:inputSchema)
+
+      assert_equal ["type"], schema.fetch(:required)
+      assert schema.fetch(:properties).key?(:type)
+      assert schema.fetch(:properties).key?(:pagination_token)
+      refute schema.fetch(:properties).key?(:filename)
+    end
+  end
+
+  def test_typed_named_action_schema_still_drops_forced_type_and_action
+    with_isolated_api_configuration do
+      register_upload_action
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      name = RecordingStudioMcp.tool_name("Page", :create_upload)
+      RecordingStudioMcp.register_tool(
+        name: name,
+        type: "Page",
+        action: :create_upload,
+        title: "Create page upload",
+        description: "Create an upload on a page.",
+        input: {},
+        output: "the upload"
+      )
+      ensure_tree_server(:public, extra_tools: [name])
+
+      schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == name }.fetch(:inputSchema)
+      properties = schema.fetch(:properties)
+
+      assert properties.key?(:id)
+      assert properties.key?(:filename)
+      refute properties.key?(:type)
+      refute properties.key?(:action)
+    end
+  end
+
   def register_named_page_tools
     names = {
       index: RecordingStudioMcp.tool_name("Page", :index),
@@ -669,5 +733,19 @@ class ToolsTest < Minitest::Test
   def type_clause(tool_name, type_name)
     tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == tool_name }
     tool.dig(:inputSchema, :allOf).find { |clause| clause.dig(:if, :properties, :type, :const) == type_name }
+  end
+
+  def register_upload_action
+    RecordingStudioApi.register_capability_action(
+      :create_upload,
+      capability: :attachable,
+      input_contract: {
+        fields: {
+          filename: { type: :string, required: true },
+          byte_size: { type: :integer, required: true }
+        }
+      },
+      handler: ->(_context) { { json: { ok: true } } }
+    )
   end
 end
