@@ -84,18 +84,11 @@ jobs:
 
       - name: Install dummy app dependencies
         # One job avoids a Bundler git hardlink race on Ruby 3.4 when many
-        # GitHub gems clone into the same cache. Retry the same command when
-        # git clone still fails with a missing objects/maintenance.lock.
+        # GitHub gems clone into the same cache.
+        run: bundle install --jobs 1
         working-directory: test/dummy
         env:
           BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
-        run: |
-          for attempt in 1 2 3; do
-            bundle install --jobs 1 && exit 0
-            echo "dummy bundle install failed (attempt ${attempt})"
-            sleep 4
-          done
-          exit 1
 
       - name: Build dummy app Tailwind assets
         run: bundle exec rails tailwindcss:build
