@@ -650,8 +650,32 @@ class ToolsTest < Minitest::Test
       assert properties.key?(:filename)
       assert properties.key?(:byte_size)
       refute properties.key?(:action)
+      assert properties.key?(:type)
+      assert_includes schema.fetch(:required), "type"
       assert_includes schema.fetch(:required), "id"
       assert_includes schema.fetch(:required), "filename"
+    end
+  end
+
+  def test_typeless_named_action_schema_requires_type
+    with_isolated_api_configuration do
+      register_upload_action
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      register_tree_type("Folder", operations: %i[index show])
+      RecordingStudioMcp.register_tool(
+        name: "create_upload",
+        action: :create_upload,
+        title: "Create upload",
+        description: "Create an upload on the host type passed in args.",
+        input: {},
+        output: "the upload"
+      )
+      ensure_tree_server(:public, extra_tools: %w[create_upload])
+
+      schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "create_upload" }.fetch(:inputSchema)
+
+      assert_includes schema.fetch(:required), "type"
+      assert_equal %w[Folder Page], schema.dig(:properties, :type, :enum)
     end
   end
 

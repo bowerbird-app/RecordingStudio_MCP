@@ -349,8 +349,24 @@ module RecordingStudioMcp
     end
 
     def apply_named_protocol_fields(catalog, registration, properties, required)
+      properties, required = apply_named_typeless_type(catalog, registration, properties, required)
       properties, required = apply_named_member_id(registration, properties, required)
       apply_named_index_fields(catalog, registration, properties, required)
+    end
+
+    def apply_named_typeless_type(catalog, registration, properties, required)
+      return [properties, required] unless named_typeless_action?(registration)
+
+      merge_protocol_defaults(
+        properties,
+        required,
+        { type: catalog.type_schema },
+        extra_required: ["type"]
+      )
+    end
+
+    def named_typeless_action?(registration)
+      registration.target.action? && registration.type.blank?
     end
 
     def apply_named_member_id(registration, properties, required)

@@ -36,10 +36,18 @@ module RecordingStudioMcp
 
         resolved_server.tools.each_value.filter_map do |tool|
           next if Catalogs::GENERIC_NAMES.include?(tool.name)
-          next unless tool.registration&.type.to_s == recordable_type.to_s
+          next unless listed_for_type?(tool.registration, recordable_type)
 
           tool.name
         end
+      end
+
+      def listed_for_type?(registration, recordable_type)
+        return false if registration.nil?
+        return registration.type.to_s == recordable_type.to_s if registration.type.present?
+        return false unless registration.target.action?
+
+        visible_capability_names(recordable_type).include?(registration.target.value.to_s)
       end
 
       def describe_skills(recordable_type)

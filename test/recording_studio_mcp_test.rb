@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_45_1
-    assert_equal "0.45.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_45_2
+    assert_equal "0.45.2", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -122,7 +122,7 @@ class RecordingStudioMcpTest < Minitest::Test
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes root_gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes gemfile, "recording_studio_mcp_ui"
-    assert_includes gemfile, 'gem "puma", "8.1.0"'
+    assert_includes gemfile, 'gem "puma", "8.1.2"'
     assert_includes gemfile, 'gem "msgpack", ">= 1.8.7"'
     refute_includes gemfile, "recording_studio_users"
     refute_includes gemfile, 'tag: "v0.5.4"'
@@ -148,7 +148,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.45.1\n"
+    assert_includes readme, "## Version\n\n0.45.2\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."
