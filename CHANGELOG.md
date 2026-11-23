@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-11-23
+
+### Added
+- `RecordingStudioMcp::ToolName.type_singular_snake(type)` and `RecordingStudioMcp::ToolName.type_public_token(type)` are public. They return the API public name, demodulized (`PressKit` and `FeaturedIn::PressKit` are `press_kit` and `PressKit`). `RecordingStudioMcp.tool_name` and tool names are unchanged.
+
+### Upgrade notes
+- Bump to `0.46.0`. Previous version is `0.45.2`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.45.2] - 2026-11-23
 
 ### Fixed
@@ -1335,7 +1343,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.46.0...HEAD
+[0.46.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.2...v0.46.0
 [0.45.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.1...v0.45.2
 [0.45.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.0...v0.45.1
 [0.45.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.0...v0.45.0

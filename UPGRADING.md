@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.46.0
+
+Previous version is `0.45.2`. No MCP migration. Tool names from `RecordingStudioMcp.tool_name` are unchanged.
+
+`RecordingStudioMcp::ToolName.type_singular_snake(type)` and `RecordingStudioMcp::ToolName.type_public_token(type)` are public. They return the API public name, demodulized (`press_kit` and `PressKit` for `PressKit` or `FeaturedIn::PressKit`).
+
 ## 0.45.2
 
 Previous version is `0.45.1`. No MCP migration.

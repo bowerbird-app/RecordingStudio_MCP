@@ -72,7 +72,7 @@ module RecordingStudioMcp
       verb == type_snake || verb.end_with?("_#{type_snake}")
     end
 
-    private_class_method :verb_for, :type_singular_snake, :type_plural_snake, :type_public_token,
-                         :api_public_name, :join_action_and_type, :leading_type_overlap, :ends_with_noun?
+    private_class_method :verb_for, :type_plural_snake, :api_public_name, :join_action_and_type,
+                         :leading_type_overlap, :ends_with_noun?
   end
 end
