@@ -266,7 +266,7 @@ class CatalogTest < Minitest::Test
         documented = catalog.documentation_type(catalog.resolve_type!("Folder"))
 
         assert_equal(
-          %w[capability_actions description nesting parent relationships skills tools type writable_fields],
+          %w[capability_actions description nesting parent relationships repeat_safe skills tools type writable_fields],
           described.keys.sort
         )
         refute described.key?("metrics")

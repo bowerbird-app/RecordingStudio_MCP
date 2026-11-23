@@ -12,14 +12,14 @@ class ToolsTest < Minitest::Test
       register_tree_type("Page")
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update describe], names
+      assert_equal %w[list show create update describe read_skill], names
       list = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "list" }
       refute list.key?(:tags)
       assert_equal "array", list.dig(:outputSchema, :properties, :records, :type)
       describe = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "describe" }
       assert describe.key?(:outputSchema)
       assert_includes describe[:description],
-                      "Returns the type paragraph, included tools, skills, relationships, " \
+                      "Returns the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions."
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "Call describe before"
@@ -32,7 +32,7 @@ class ToolsTest < Minitest::Test
       register_tree_type("Page", operations: %i[index show create])
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create describe], names
+      assert_equal %w[list show create describe read_skill], names
     end
   end
 
@@ -46,7 +46,7 @@ class ToolsTest < Minitest::Test
       )
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[list show create update delete capability_action describe], names
+      assert_equal %w[list show create update delete capability_action describe read_skill], names
     end
   end
 
@@ -65,7 +65,7 @@ class ToolsTest < Minitest::Test
         tools = RecordingStudioMcp::Tools.definitions
         names = tools.map { |tool| tool[:name] }
 
-        assert_equal %w[describe alpha zeta], names
+        assert_equal %w[describe read_skill alpha zeta], names
         refute_includes names, "list"
       end
     end
@@ -81,7 +81,7 @@ class ToolsTest < Minitest::Test
 
         names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-        assert_equal %w[list show create update describe alpha zeta], names
+        assert_equal %w[list show create update describe read_skill alpha zeta], names
       end
     end
   end
@@ -155,7 +155,7 @@ class ToolsTest < Minitest::Test
   def test_read_tools_are_marked_read_only
     with_isolated_api_configuration do
       register_tree_type("Page")
-      %w[list show describe].each do |name|
+      %w[list show describe read_skill].each do |name|
         tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == name }
         assert_equal true, tool.dig(:annotations, :readOnlyHint), name
         assert_equal false, tool.dig(:annotations, :destructiveHint), name
@@ -206,10 +206,10 @@ class ToolsTest < Minitest::Test
       tools = RecordingStudioMcp::Tools.definitions
       names = tools.map { |tool| tool[:name] }
 
-      assert_equal %w[list show describe], names
+      assert_equal %w[list show describe read_skill], names
       describe = tools.find { |tool| tool[:name] == "describe" }
       assert_includes describe[:description],
-                      "Returns the type paragraph, included tools, skills, relationships, " \
+                      "Returns the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions."
       refute_includes describe[:description], "Use this before"
       refute_includes describe[:description], "before create"
@@ -428,7 +428,9 @@ class ToolsTest < Minitest::Test
       generic = type_clause("create", "Page").fetch(:then)
       typed = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == create_page }.fetch(:inputSchema)
 
-      assert_equal generic.fetch(:properties), typed.fetch(:properties)
+      assert_equal generic.fetch(:properties), typed.fetch(:properties).except(:idempotency_key)
+      assert typed.dig(:properties, :idempotency_key)
+      refute_includes typed.fetch(:required), "idempotency_key"
       assert_equal generic.fetch(:required), typed.fetch(:required)
     end
   end
@@ -515,14 +517,14 @@ class ToolsTest < Minitest::Test
   def test_show_only_omits_list
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show])
-      assert_equal %w[show describe], RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }.to_a
+      assert_equal %w[show describe read_skill], RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }.to_a
     end
   end
 
   def test_index_only_omits_show
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[index])
-      assert_equal %w[list describe], RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }.to_a
+      assert_equal %w[list describe read_skill], RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }.to_a
     end
   end
 
@@ -675,7 +677,7 @@ class ToolsTest < Minitest::Test
       schema = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "create_upload" }.fetch(:inputSchema)
 
       assert_includes schema.fetch(:required), "type"
-      assert_equal %w[Folder Page], schema.dig(:properties, :type, :enum)
+      assert_equal %w[Page], schema.dig(:properties, :type, :enum)
     end
   end
 

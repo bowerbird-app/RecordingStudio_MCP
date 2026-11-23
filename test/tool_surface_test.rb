@@ -15,7 +15,7 @@ class ToolSurfaceTest < Minitest::Test
       assert_equal true, surface.known?("describe")
       assert_equal true, surface.tree_tool?("list")
       assert_equal false, surface.known?("ping")
-      assert_equal %w[list show create update describe], surface.tool_names
+      assert_equal %w[list show create update describe read_skill], surface.tool_names
       assert_equal false, surface.known?("capability_action")
       assert_equal false, surface.known?("delete")
       assert_equal true, surface.read_only_tool?("list")
@@ -28,7 +28,7 @@ class ToolSurfaceTest < Minitest::Test
       register_tree_type("SupportPage", operations: %i[index show])
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[list show describe], surface.tool_names
+      assert_equal %w[list show describe read_skill], surface.tool_names
       assert_equal true, surface.known?("list")
       assert_equal true, surface.known?("show")
       assert_equal true, surface.known?("describe")
@@ -46,7 +46,7 @@ class ToolSurfaceTest < Minitest::Test
       register_tree_type("Page", operations: %i[index show create update])
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[list show create update describe], surface.tool_names
+      assert_equal %w[list show create update describe read_skill], surface.tool_names
       assert_equal true, surface.known?("create")
       assert_equal true, surface.known?("update")
       assert_equal false, surface.known?("capability_action")
@@ -60,7 +60,7 @@ class ToolSurfaceTest < Minitest::Test
       register_tree_type("Page", operations: %i[index show create update])
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[list show create update describe], surface.tool_names
+      assert_equal %w[list show create update describe read_skill], surface.tool_names
     end
   end
 
@@ -74,7 +74,7 @@ class ToolSurfaceTest < Minitest::Test
       )
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[list show create update delete capability_action describe], surface.tool_names
+      assert_equal %w[list show create update delete capability_action describe read_skill], surface.tool_names
     end
   end
 
@@ -99,7 +99,7 @@ class ToolSurfaceTest < Minitest::Test
       assert_equal true, surface.endpoints_enabled?
       assert_equal false, surface.tree_tool?("list")
       assert_equal true, surface.known?("ping")
-      assert_equal %w[describe ping shout], surface.tool_names
+      assert_equal %w[describe read_skill ping shout], surface.tool_names
       assert_equal :get, surface.endpoint_for("ping").http_verb
       assert_equal true, surface.read_only_tool?("ping")
       assert_equal false, surface.read_only_tool?("shout")
@@ -119,7 +119,7 @@ class ToolSurfaceTest < Minitest::Test
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
       assert_equal false, surface.metric_tools?
-      assert_equal %w[list show create update describe ping], surface.tool_names
+      assert_equal %w[list show create update describe read_skill ping], surface.tool_names
     end
   end
 
@@ -144,7 +144,7 @@ class ToolSurfaceTest < Minitest::Test
         surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
         assert_equal(
-          %w[list show create update describe] +
+          %w[list show create update describe read_skill] +
             %w[folders-created_over_time folders-total pages-total] +
             %w[alpha zeta],
           surface.tool_names
@@ -225,7 +225,7 @@ class ToolSurfaceTest < Minitest::Test
       include_api_endpoints(tree: true)
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[list describe ping], surface.tool_names
+      assert_equal %w[list describe read_skill ping], surface.tool_names
       assert_equal true, surface.known?("list")
       assert_equal true, surface.tree_tool?("list")
       assert_equal false, surface.known?("bad name")
@@ -249,7 +249,7 @@ class ToolSurfaceTest < Minitest::Test
       register_tree_type("Page", operations: %i[show])
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[show describe], surface.tool_names
+      assert_equal %w[show describe read_skill], surface.tool_names
       assert_equal false, surface.known?("list")
     end
   end
@@ -259,7 +259,7 @@ class ToolSurfaceTest < Minitest::Test
       register_tree_type("Page", operations: %i[index])
       surface = RecordingStudioMcp::ToolSurface.for(api: "public")
 
-      assert_equal %w[list describe], surface.tool_names
+      assert_equal %w[list describe read_skill], surface.tool_names
       assert_equal false, surface.known?("show")
     end
   end
@@ -287,7 +287,7 @@ class ToolSurfaceTest < Minitest::Test
       register_tree_type("Article", api: :docs, operations: nil, allow_sensitive: true)
       read_only = RecordingStudioMcp::ToolSurface.for(api: "docs")
 
-      assert_equal %w[list show describe], read_only.tool_names
+      assert_equal %w[list show describe read_skill], read_only.tool_names
     end
 
     with_isolated_api_configuration do
@@ -318,9 +318,9 @@ class ToolSurfaceTest < Minitest::Test
       admin = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(:admin))
       deleted = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(nil))
 
-      assert_equal %w[list show capability_action describe], view.tool_names
-      assert_equal %w[list show create update delete capability_action describe], admin.tool_names
-      assert_equal %w[describe], deleted.tool_names
+      assert_equal %w[list show capability_action describe read_skill], view.tool_names
+      assert_equal %w[list show create update delete capability_action describe read_skill], admin.tool_names
+      assert_equal %w[describe read_skill], deleted.tool_names
     end
   end
 

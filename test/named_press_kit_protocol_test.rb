@@ -141,7 +141,7 @@ class NamedPressKitProtocolTest < Minitest::Test
       assert_includes create[:description], "Call describe"
       refute_includes create[:description], "Call the docs"
       assert_includes instructions,
-                      "Call describe for the type paragraph, included tools, skills, relationships, " \
+                      "Call describe for the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions"
       refute_includes instructions, "Call the docs"
       refute_includes instructions, "AccessGrant"

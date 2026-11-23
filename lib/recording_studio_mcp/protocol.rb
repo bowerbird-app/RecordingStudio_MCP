@@ -76,7 +76,7 @@ module RecordingStudioMcp
     def log_internal_error(error)
       return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
 
-      Rails.logger.error("[RecordingStudioMcp::Protocol] #{error.class}: #{error.message}")
+      Rails.logger.error("[RecordingStudioMcp::Protocol] #{error.class}")
     end
   end
 end

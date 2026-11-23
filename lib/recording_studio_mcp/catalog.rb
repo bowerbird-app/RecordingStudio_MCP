@@ -5,6 +5,7 @@ require_relative "catalog/visibility"
 require_relative "catalog/describe_tools"
 require_relative "catalog/describe_shape"
 require_relative "catalog/reader"
+require_relative "catalog/call_hints"
 
 module RecordingStudioMcp
   class Catalog
@@ -13,6 +14,7 @@ module RecordingStudioMcp
     include DescribeTools
     include DescribeShape
     include Reader
+    include CallHints
 
     def self.for(access_grant)
       api = api_from(access_grant)

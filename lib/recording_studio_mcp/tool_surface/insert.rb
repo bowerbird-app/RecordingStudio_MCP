@@ -14,9 +14,17 @@ module RecordingStudioMcp
       )
     end
 
+    def insert_read_skill
+      insert(
+        Catalogs::READ_SKILL_NAME,
+        Entry.new(family: :tree, definition: Tools.read_skill_tool(catalog))
+      )
+    end
+
     def insert_server_tools
       insert_generic_tools
       insert_describe
+      insert_read_skill
       return unless server
 
       server.tools.each_value do |tool|
@@ -77,8 +85,17 @@ module RecordingStudioMcp
     end
 
     def insert_typed_tool(tool)
+      return unless typed_tool_advertised?(tool)
+
       definition = Tools.registered_tool(tool, catalog)
       insert(tool.name, Entry.new(family: :tree, definition: definition))
+    end
+
+    def typed_tool_advertised?(tool)
+      registration = tool.registration
+      return true unless registration&.target&.action?
+
+      catalog.action_advertised?(registration.target.value, registration.type.presence)
     end
 
     def insert(name, entry)

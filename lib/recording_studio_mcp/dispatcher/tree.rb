@@ -8,6 +8,8 @@ module RecordingStudioMcp
       case name
       when "describe"
         success_result(catalog.describe(args["type"]))
+      when Catalogs::READ_SKILL_NAME
+        read_skill_result(args)
       when "capability_action"
         dispatch_capability_action(args)
       else
@@ -18,7 +20,7 @@ module RecordingStudioMcp
     def dispatch_resource(operation_name, args)
       require_member_id!(operation_name, args)
       validate_index_arguments!(args) if operation_name == :index
-      recordable_type = catalog.resolve_type!(args["type"])
+      recordable_type = prepared_type!(operation_name, args)
       reject_disabled_operation!(recordable_type, operation_name)
       lookup = resource_lookup(recordable_type, operation_name)
       if custom_lookup?(lookup, recordable_type, operation_name)
@@ -75,6 +77,41 @@ module RecordingStudioMcp
     def require_member_id!(operation_name, args)
       return unless MEMBER_ID_OPERATIONS.include?(operation_name)
       raise RecordingStudioApi::InvalidActionInputError, "id is required" if args["id"].blank?
+    end
+
+    def prepared_type!(operation_name, args)
+      recordable_type = catalog.resolve_type!(args["type"])
+      assign_default_parent!(recordable_type, args) if operation_name == :create
+      recordable_type
+    end
+
+    def assign_default_parent!(recordable_type, args)
+      @parent_hint_type = recordable_type
+      return if args["parent_id"].present?
+      return unless catalog.respond_to?(:workspace_parent_id)
+
+      parent_id = catalog.workspace_parent_id(recordable_type)
+      args["parent_id"] = parent_id if parent_id.present?
+    end
+
+    def read_skill_result(args)
+      return error_result("name is required") if args["name"].blank?
+
+      found = visible_skill(args["name"])
+      return error_result("Skill was not found") if found.nil?
+
+      success_result("name" => found[0], "text" => found[1])
+    end
+
+    def visible_skill(raw)
+      name = Skills::SkillName.parse(raw.to_s)
+      registration = name && exposed_skill(name)
+      document = registration && Skills::Document.read(registration)
+      [registration.name, document.text] if document
+    end
+
+    def exposed_skill(name)
+      RecordingStudioMcp.exposed_skills(access_grant: access_grant).find { |skill| skill.name == name }
     end
   end
 end

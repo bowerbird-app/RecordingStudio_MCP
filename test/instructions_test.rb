@@ -14,7 +14,7 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "Use an OAuth Bearer token. It has the same access as the app."
       assert_equal 1, text.scan("Call describe for the type paragraph").length
       assert_includes text,
-                      "Call describe for the type paragraph, included tools, skills, relationships, " \
+                      "Call describe for the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions before you create"
       assert_includes text, "not refreshed on its own"
       assert_includes text, "ping checks the connection."
@@ -76,8 +76,7 @@ class InstructionsTest < Minitest::Test
       include_api_endpoints(tree: true)
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe for the type paragraph, included tools, skills, relationships, " \
-                            "allowed parents, writable fields, and available actions"
+      assert_includes text, describe_sentence
       assert_includes text, "plus named route tools"
       refute_includes text, "If you only see named route tools"
       refute_includes text, "generating UI"
@@ -113,7 +112,7 @@ class InstructionsTest < Minitest::Test
       refute_includes view, "## Make changes"
       refute_includes view, "create, update, delete"
       refute_includes view, "view-only connection"
-      assert_includes view, "list, show, capability_action, describe, and ping"
+      assert_includes view, "list, show, capability_action, describe, read_skill, and ping"
     end
   end
 
@@ -122,8 +121,7 @@ class InstructionsTest < Minitest::Test
       register_tree_type("SupportPage", operations: %i[index show])
       text = RecordingStudioMcp::Instructions.text
 
-      assert_includes text, "Call describe for the type paragraph, included tools, skills, relationships, " \
-                            "allowed parents, writable fields, and available actions."
+      assert_includes text, "#{describe_sentence}."
       refute_includes text, "before you create"
       assert_includes text, "pagination_token"
       refute_includes text, "not under attributes"
@@ -140,7 +138,7 @@ class InstructionsTest < Minitest::Test
 
       assert_includes text, "before you create or run an action."
       assert_equal 1, text.scan("Call describe for the type paragraph").length
-      assert_includes text, "list, show, create, update, delete, capability_action, describe, and ping"
+      assert_includes text, "list, show, create, update, delete, capability_action, describe, read_skill, and ping"
     end
   end
 
@@ -150,7 +148,9 @@ class InstructionsTest < Minitest::Test
         RecordingStudioMcp.configuration.instructions_suffix = "Read the host guide before you write."
         text = RecordingStudioMcp::Instructions.text
 
-        assert_operator text.index("Read the relevant ones."), :<, text.index("Read the host guide before you write.")
+        skill_at = text.index("Call read_skill with the name.")
+        guide_at = text.index("Read the host guide before you write.")
+        assert_operator skill_at, :<, guide_at
         assert text.end_with?("Read the host guide before you write.")
       end
     end
@@ -210,6 +210,11 @@ class InstructionsTest < Minitest::Test
         assert_operator text.index("## Guides"), :<, text.index("## Metrics")
       end
     end
+  end
+
+  def describe_sentence
+    "Call describe for the type paragraph, included tools, skills via read_skill, " \
+      "relationships, allowed parents, writable fields, and available actions"
   end
 
   def test_tree_hosts_still_get_the_walk_and_not_the_endpoint_only_line

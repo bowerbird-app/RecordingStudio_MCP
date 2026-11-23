@@ -558,7 +558,7 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_standard_error_is_not_a_tool_error
+  def test_standard_error_during_tools_call_is_a_generic_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
         RecordingStudioApi.stub(:resource_action, lambda { |*|
@@ -566,9 +566,11 @@ class DispatcherTest < Minitest::Test
         }) do
           RecordingStudioApi.stub(:resource_name_for, "workspaces") do
             RecordingStudioApi.stub(:default_api_version, "v1") do
-              error = assert_raises(StandardError) { dispatch("list", { "type" => "Workspace" }) }
+              result = dispatch("list", { "type" => "Workspace" })
 
-              assert_equal "boom", error.message
+              assert result[:isError]
+              assert_equal "Internal error", result.dig(:content, 0, :text)
+              refute_includes result.dig(:content, 0, :text), "boom"
             end
           end
         end

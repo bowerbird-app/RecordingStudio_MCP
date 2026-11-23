@@ -6,7 +6,7 @@ require "test_helper"
 require "tmpdir"
 
 class SkillsTest < Minitest::Test
-  SKILL_SENTENCE = "This server may offer skills. Read the relevant ones."
+  SKILL_SENTENCE = "This server may offer skills. Call read_skill with the name."
   DESCRIPTION = "Research publication guidance."
 
   def setup
@@ -292,7 +292,7 @@ class SkillsTest < Minitest::Test
           result = handle("tools/list", id: 2)
           names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
 
-          assert_equal %w[list show create update describe], names
+          assert_equal %w[list show create update describe read_skill], names
         end
       end
     end

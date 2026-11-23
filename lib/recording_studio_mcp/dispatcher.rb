@@ -37,6 +37,10 @@ module RecordingStudioMcp
       dispatch_named(tool_name, arguments)
     rescue *TOOL_ERROR_CLASSES => e
       tool_error_for(e)
+    rescue ActiveRecord::RecordNotFound
+      error_result(HANDLER_SCOPE_MISS)
+    rescue StandardError => e
+      unexpected_tool_error(e)
     ensure
       AuthorizedBy.leave
     end

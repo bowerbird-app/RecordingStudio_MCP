@@ -11,7 +11,7 @@ class CatalogMetricToolsTest < Minitest::Test
       total = tool(surface, "widgets-total")
       series = tool(surface, "widgets-created_over_time")
 
-      assert_equal %w[describe widgets-created_over_time widgets-total], surface.tool_names
+      assert_equal %w[describe read_skill widgets-created_over_time widgets-total], surface.tool_names
       assert_equal true, surface.catalog_metric_tools?
       assert_equal false, surface.recordable_metric_tools?
       assert_equal true, surface.read_only_tool?("widgets-total")

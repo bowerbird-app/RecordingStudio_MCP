@@ -18,6 +18,7 @@ module RecordingStudioMcp
       RecordingStudio::Denial
     ].freeze
     TOOL_ERROR_CLASSES = (API_TOOL_ERRORS + DOMAIN_TOOL_ERRORS).freeze
+    PARENT_NOT_FOUND = "Parent resource was not found in this API scope"
 
     private
 
@@ -57,7 +58,36 @@ module RecordingStudioMcp
         return error_result(error.message, code: error.code)
       end
 
-      error_result(error.message, details: copied_details(error))
+      error_result(tool_error_message(error), details: copied_details(error))
+    end
+
+    def tool_error_message(error)
+      message = error.message.to_s
+      return message unless message == PARENT_NOT_FOUND && @parent_hint_type
+      return message unless catalog.respond_to?(:parent_rules_for)
+
+      parent_not_found_message(@parent_hint_type)
+    end
+
+    def parent_not_found_message(recordable_type)
+      types = Array(catalog.parent_rules_for(recordable_type)["allowed_parent_types"])
+      listed = types.any? ? types.join(", ") : "(none)"
+      message = "#{PARENT_NOT_FOUND} Allowed parent types: #{listed}."
+      workspace_id = catalog.workspace_parent_id(recordable_type)
+      return message if workspace_id.blank?
+
+      "#{message} Workspace id: #{workspace_id}."
+    end
+
+    def unexpected_tool_error(error)
+      log_tool_error(error)
+      error_result("Internal error")
+    end
+
+    def log_tool_error(error)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.error("[RecordingStudioMcp::Dispatcher] #{error.class}")
     end
 
     def record_invalid_tool_message(error)

@@ -14,7 +14,7 @@ class IncludeToolsFilterTest < Minitest::Test
 
       assert_equal listed.sort, docs_tool_names(spec).sort
       create_press_kit = RecordingStudioMcp.tool_name("PressKit", :create)
-      assert_equal [create_press_kit, "describe"].sort, listed.sort
+      assert_equal [create_press_kit, "describe", "read_skill"].sort, listed.sort
       refute_includes listed, "create"
       refute_includes listed, "list"
       refute_includes listed, "show"

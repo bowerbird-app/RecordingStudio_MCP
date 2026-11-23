@@ -40,6 +40,27 @@ module RecordingStudioMcp
         )
       end
 
+      def type_names_for_action(action_name)
+        name = action_name.to_s
+        type_names.select { |type| visible_capability_names(type).include?(name) }
+      end
+
+      def type_schema_for_action(action_name)
+        type_schema.merge(
+          enum: displayed_names_for(type_names_for_action(action_name)),
+          description: "Type on this named API that enables #{action_name}. Call describe for included tools."
+        )
+      end
+
+      def action_advertised?(action_name, recordable_type = nil)
+        name = action_name.to_s
+        if recordable_type.present?
+          visible_capability_names(recordable_type.to_s).include?(name)
+        else
+          type_names_for_action(name).any?
+        end
+      end
+
       private
 
       def operations_for(type)

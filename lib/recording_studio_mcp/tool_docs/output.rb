@@ -36,6 +36,7 @@ module RecordingStudioMcp
         nesting: { type: "string" },
         parent: ACTION.merge(type: %w[object null]),
         writable_fields: { type: "array", items: ACTION },
+        repeat_safe: { type: "array", items: { type: "string" } },
         capability_actions: { type: "array", items: CAPABILITY_ACTION }
       }.freeze
       METRIC_POINT = {
