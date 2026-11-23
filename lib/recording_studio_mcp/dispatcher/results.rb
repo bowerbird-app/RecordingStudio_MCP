@@ -101,6 +101,7 @@ module RecordingStudioMcp
 
     def success_result(payload)
       json = PresentedTypes.apply(stringify_payload(payload), catalog)
+      json = { "records" => json } if json.is_a?(Array)
       {
         content: [{ type: "text", text: JSON.generate(json) }],
         structuredContent: json,

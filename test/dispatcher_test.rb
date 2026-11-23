@@ -1034,6 +1034,36 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_capability_action_array_result_wraps_records
+    with_isolated_api_configuration do
+      register_ping_capability
+      RecordingStudioApi.register_capability_action(
+        :list_followers,
+        capability: :accessible,
+        handler: ->(_context) { { json: [{ id: "follower-1" }, { id: "follower-2" }] } }
+      )
+      register_tree_type("PressCenter", capability_actions: %i[list_followers ping])
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("center-1", "PressCenter"))
+
+      array_result = dispatch(
+        "capability_action",
+        { type: "PressCenter", id: "center-1", action: "list_followers" }
+      )
+      hash_result = dispatch("capability_action", { type: "PressCenter", id: "center-1", action: "ping" })
+
+      refute array_result[:isError], array_result.dig(:content, 0, :text)
+      assert_instance_of Hash, array_result[:structuredContent]
+      assert_equal(
+        [{ "id" => "follower-1" }, { "id" => "follower-2" }],
+        array_result.dig(:structuredContent, "records")
+      )
+      assert_equal array_result[:structuredContent], JSON.parse(array_result.dig(:content, 0, :text))
+      refute hash_result[:isError], hash_result.dig(:content, 0, :text)
+      assert_equal true, hash_result.dig(:structuredContent, "ok")
+      refute hash_result[:structuredContent].key?("records")
+    end
+  end
+
   def test_capability_action_result_includes_fields_that_need_the_grant
     with_isolated_api_configuration do
       recordable = Object.new

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.45.2] - 2026-11-23
+
+### Fixed
+- Tool results that return an array now wrap MCP `structuredContent` as `{ "records": [...] }`, matching `list`. Spec-compliant clients require an object. Hash results are unchanged. Text content matches `structuredContent`.
+
+### Upgrade notes
+- Bump to `0.45.2`. Previous version is `0.45.1`. No MCP migration. Capability actions that returned a JSON array now return `{ "records": [...] }`. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.45.1] - 2026-11-21
 
 ### Fixed
@@ -1325,7 +1333,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.2...HEAD
+[0.45.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.1...v0.45.2
 [0.45.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.0...v0.45.1
 [0.45.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.43.5...v0.44.0

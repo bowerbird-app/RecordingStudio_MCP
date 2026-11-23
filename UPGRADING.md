@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.45.2
+
+Previous version is `0.45.1`. No MCP migration.
+
+Capability actions (and any other tool) whose JSON result is an array now wrap MCP `structuredContent` as `{ "records": [...] }`, the same as `list`. Text content is that object. Hash results are unchanged.
+
+Read `structuredContent.records` when the action returns a list. Spec-compliant MCP clients reject a bare array.
+
 ## 0.45.1
 
 Previous version is `0.45.0`. No MCP migration for typed tools or generic tree tools.

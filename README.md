@@ -191,7 +191,7 @@ config.catalog_metric_resources = %w[mcp_calls]
 
 Tree tools stay parameterized over the recordable tree. They are not one MCP tool per OpenAPI path. Registered endpoints are a different registry. Each one is its own tool.
 
-Tool results include MCP `structuredContent`. The initialize `instructions` match the grant's surface. Hosts may set `instructions_suffix`. It is shown under Guides. On the docs page the callable receives no grant. Initialize `instructions` and the docs Overview are the same text for that surface. The tool list is not refreshed on its own. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), and GET versus mutating endpoint verbs. `capability_action` is `readOnlyHint: false` and `destructiveHint: true` even when the only enabled action is a view-only `ping`. The server reports `tools.listChanged: false`. Call `tools/list` again when you need a fresh list.
+Tool results include MCP `structuredContent` as an object. An array result is wrapped as `{ "records": [...] }`, the same shape as `list`. The initialize `instructions` match the grant's surface. Hosts may set `instructions_suffix`. It is shown under Guides. On the docs page the callable receives no grant. Initialize `instructions` and the docs Overview are the same text for that surface. The tool list is not refreshed on its own. Tools include display titles. Annotations mark reads, writes, retries (`idempotentHint`), closed Studio scope (`openWorldHint: false`), and GET versus mutating endpoint verbs. `capability_action` is `readOnlyHint: false` and `destructiveHint: true` even when the only enabled action is a view-only `ping`. The server reports `tools.listChanged: false`. Call `tools/list` again when you need a fresh list.
 
 Handlers call the same API resource actions, capability actions, and registered endpoint handlers. MCP does not serve records when API access is disabled.
 
@@ -428,4 +428,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.45.1
+0.45.2
