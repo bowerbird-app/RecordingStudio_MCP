@@ -122,7 +122,7 @@ class RecordingStudioMcpTest < Minitest::Test
     refute_includes gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes root_gemfile, "cursor/recordable-metrics-hook-0fe9"
     refute_includes gemfile, "recording_studio_mcp_ui"
-    assert_includes gemfile, 'gem "puma", "8.1.0"'
+    assert_includes gemfile, 'gem "puma", "8.1.2"'
     assert_includes gemfile, 'gem "msgpack", ">= 1.8.7"'
     refute_includes gemfile, "recording_studio_users"
     refute_includes gemfile, 'tag: "v0.5.4"'
