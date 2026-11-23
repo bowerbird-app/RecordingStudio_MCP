@@ -8,6 +8,8 @@ Capability actions (and any other tool) whose JSON result is an array now wrap M
 
 Read `structuredContent.records` when the action returns a list. Spec-compliant MCP clients reject a bare array.
 
+A named capability-action tool registered without `type` now requires `type` in `inputSchema`, the same way it already requires `id`. Callers still pass the host type in args. `describe` lists that tool under every registered type that enables the action (for example Attachable `create_upload` on each attachable type). Typed named tools and generic tree tools are unchanged.
+
 ## 0.45.1
 
 Previous version is `0.45.0`. No MCP migration for typed tools or generic tree tools.

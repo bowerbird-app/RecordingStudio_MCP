@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Tool results that return an array now wrap MCP `structuredContent` as `{ "records": [...] }`, matching `list`. Spec-compliant clients require an object. Hash results are unchanged. Text content matches `structuredContent`.
+- Named capability-action tools registered without `type` now require `type` in `inputSchema` (same protocol path as `id`). Callers still pass the host type in args.
+- `describe` lists a typeless capability-action tool under every registered type that enables that action (Attachable `create_upload`, `attach`, `import_attachment`).
 
 ### Upgrade notes
-- Bump to `0.45.2`. Previous version is `0.45.1`. No MCP migration. Capability actions that returned a JSON array now return `{ "records": [...] }`. See [UPGRADING.md](UPGRADING.md).
+- Bump to `0.45.2`. Previous version is `0.45.1`. No MCP migration. Capability actions that returned a JSON array now return `{ "records": [...] }`. Typeless named action tools require `type` and appear on `describe` for each type that enables the action. See [UPGRADING.md](UPGRADING.md).
 
 ## [0.45.1] - 2026-11-21
 

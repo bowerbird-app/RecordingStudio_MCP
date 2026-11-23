@@ -196,6 +196,38 @@ class CatalogTest < Minitest::Test
     end
   end
 
+  def test_describe_lists_typeless_action_under_types_that_enable_it
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :create_upload,
+        capability: :attachable,
+        input_contract: {
+          fields: {
+            filename: { type: :string, required: true }
+          }
+        },
+        handler: ->(_context) { { json: { ok: true } } }
+      )
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      register_tree_type("Folder", capability_actions: %i[create_upload])
+      register_tree_type("Workspace", operations: %i[index show])
+      RecordingStudioMcp.register_tool(
+        name: "create_upload",
+        action: :create_upload,
+        title: "Create upload",
+        description: "Create an upload on the host type passed in args.",
+        input: {},
+        output: "the upload"
+      )
+      ensure_tree_server(:public, extra_tools: %w[create_upload])
+      catalog = RecordingStudioMcp::Catalog.new(api: :public)
+
+      assert_includes catalog.describe("Page").fetch("tools"), "create_upload"
+      assert_includes catalog.describe("Folder").fetch("tools"), "create_upload"
+      refute_includes catalog.describe("Workspace").fetch("tools"), "create_upload"
+    end
+  end
+
   def test_listed_actions_stay_off_tools_when_the_api_has_not_enabled_them
     with_isolated_api_configuration do
       register_tree_type("Workspace", capability_actions: %i[ping])
