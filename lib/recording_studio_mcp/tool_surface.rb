@@ -79,7 +79,7 @@ module RecordingStudioMcp
     end
 
     def tree_tool_names
-      names = [Catalogs::DESCRIBE_NAME]
+      names = [Catalogs::DESCRIBE_NAME, Catalogs::READ_SKILL_NAME]
       names.concat(Tools.advertised_tree_names(catalog).select { |name| server&.tool?(name) }) if server
       names.uniq
     end
@@ -124,7 +124,7 @@ module RecordingStudioMcp
 
     def read_only_tool?(name)
       key = name.to_s
-      return true if tree_tool?(key) && %w[list show describe].include?(key)
+      return true if tree_tool?(key) && %w[list show describe read_skill].include?(key)
       return true if metric_tool(key)
 
       @by_name[key]&.endpoint&.http_verb == :get

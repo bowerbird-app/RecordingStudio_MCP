@@ -76,7 +76,7 @@ class ProtocolTest < Minitest::Test
       )
 
       names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-      assert_equal %w[list show create update describe], names
+      assert_equal %w[list show create update describe read_skill], names
     end
   end
 
@@ -100,9 +100,9 @@ class ProtocolTest < Minitest::Test
       names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
       instructions = initialized.body.dig(:result, :instructions)
 
-      assert_equal %w[list show describe], names
+      assert_equal %w[list show describe read_skill], names
       assert_includes instructions,
-                      "Call describe for the type paragraph, included tools, skills, relationships, " \
+                      "Call describe for the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions."
       refute_includes instructions, "before you create"
       refute_includes instructions, "before create"
@@ -126,7 +126,7 @@ class ProtocolTest < Minitest::Test
       )
 
       names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-      assert_equal %w[describe ping], names
+      assert_equal %w[describe read_skill ping], names
     end
   end
 
@@ -172,7 +172,8 @@ class ProtocolTest < Minitest::Test
     assert_equal(-32_603, result.body.dig(:error, :code))
     assert_equal "Internal error", result.body.dig(:error, :message)
     refute_includes result.body.to_json, "secret token xyz"
-    assert_includes log.string, "secret token xyz"
+    refute_includes log.string, "secret token xyz"
+    assert_includes log.string, "StandardError"
   end
 
   def test_initialized_notification_has_no_body
@@ -412,7 +413,7 @@ class ProtocolTest < Minitest::Test
       names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
       assert_equal "complete", discover.body.dig(:result, :resultType)
       assert_equal false, discover.body.dig(:result, :capabilities, :tools, :listChanged)
-      assert_equal %w[list show create update describe], names
+      assert_equal %w[list show create update describe read_skill], names
       assert_equal "complete", listed.body.dig(:result, :resultType)
       assert_equal 0, listed.body.dig(:result, :ttlMs)
       assert_equal "private", listed.body.dig(:result, :cacheScope)
@@ -764,14 +765,14 @@ class ProtocolTest < Minitest::Test
   def test_show_only_omits_list
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[show])
-      assert_equal %w[show describe], tool_names_for(@grant)
+      assert_equal %w[show describe read_skill], tool_names_for(@grant)
     end
   end
 
   def test_index_only_omits_show
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[index])
-      assert_equal %w[list describe], tool_names_for(@grant)
+      assert_equal %w[list describe read_skill], tool_names_for(@grant)
     end
   end
 
@@ -792,7 +793,7 @@ class ProtocolTest < Minitest::Test
 
       assert_nil result.body[:error]
       names = result.body.dig(:result, :tools).map { |tool| tool[:name] }
-      assert_equal %w[list describe], names
+      assert_equal %w[list describe read_skill], names
     end
   end
 
@@ -822,12 +823,12 @@ class ProtocolTest < Minitest::Test
       admin = role_grant(:admin)
       deleted = role_grant(nil)
 
-      assert_equal %w[list show describe], tool_names_for(view)
+      assert_equal %w[list show describe read_skill], tool_names_for(view)
       assert_includes tool_names_for(admin), "create"
-      assert_equal %w[describe], tool_names_for(deleted)
+      assert_equal %w[describe read_skill], tool_names_for(deleted)
       view_instructions = initialize_instructions(view)
       assert_includes view_instructions,
-                      "Call describe for the type paragraph, included tools, skills, relationships, " \
+                      "Call describe for the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions."
       refute_includes view_instructions, "before you create"
       assert_includes initialize_instructions(admin), "before you create."

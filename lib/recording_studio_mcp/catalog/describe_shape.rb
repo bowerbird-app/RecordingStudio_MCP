@@ -18,7 +18,7 @@ module RecordingStudioMcp
           "parent" => parent_rules(recordable_type),
           "writable_fields" => FieldSchema.for(recordable_type, registration),
           "capability_actions" => advertised_capability_actions(recordable_type, title: :mcp)
-        }.merge("nesting" => NESTED_ITEMS), keep: ["parent"])
+        }.merge("nesting" => NESTED_ITEMS, "repeat_safe" => repeat_safe_names(recordable_type)), keep: ["parent"])
       end
 
       def action_title_for(action, recordable_type, source, copied)

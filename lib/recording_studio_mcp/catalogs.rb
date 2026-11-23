@@ -7,6 +7,7 @@ module RecordingStudioMcp
   class Catalogs
     GENERIC_NAMES = GenericTools.names.freeze
     DESCRIBE_NAME = "describe"
+    READ_SKILL_NAME = "read_skill"
     OPERATION_TOOLS = {
       "list" => :index,
       "show" => :show,

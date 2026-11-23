@@ -10,7 +10,7 @@ class RegistrationsTest < Minitest::Test
 
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal %w[show describe], names
+      assert_equal %w[show describe read_skill], names
     end
   end
 
@@ -20,7 +20,7 @@ class RegistrationsTest < Minitest::Test
 
       names = RecordingStudioMcp::Tools.definitions.map { |tool| tool[:name] }
 
-      assert_equal ["describe"], names
+      assert_equal %w[describe read_skill], names
     end
   end
 

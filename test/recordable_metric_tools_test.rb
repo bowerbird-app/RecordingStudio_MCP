@@ -8,7 +8,7 @@ class RecordableMetricToolsTest < Minitest::Test
   def test_two_types_advertise_one_tool_per_metric
     with_metric_types do |surface|
       assert_equal(
-        %w[list show create update describe folders-created_over_time folders-total pages-total],
+        %w[list show create update describe read_skill folders-created_over_time folders-total pages-total],
         surface.tool_names
       )
 

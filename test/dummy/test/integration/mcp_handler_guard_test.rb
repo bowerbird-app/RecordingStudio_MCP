@@ -156,6 +156,78 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     assert_nil @seen.parent_recording
   end
 
+  test "a blank parent_id uses the workspace before the handler runs" do
+    register_page_handler(:create) do |context|
+      @called = true
+      { json: { parent_id: context.parent_id }, status: :ok }
+    end
+
+    created = call_tool(edit_token, "create", type: "Page", title: "Home")
+    listed = tool_list(edit_token)
+    create_tool = listed.find { |tool| tool["name"] == "create" }
+    clause = Array(create_tool.dig("inputSchema", "allOf")).find { |entry| entry.dig("if", "properties", "type", "const") == "Page" }
+
+    assert_equal @root_recording.id, created["parent_id"]
+    refute_includes Array(clause&.dig("then", "required")), "parent_id"
+  end
+
+  test "a missing parent lists allowed types and the workspace id" do
+    body = post_tool(edit_token, "create", type: "Page", parent_id: "missing-parent", title: "Nope")
+    text = body.dig("result", "content", 0, "text").to_s
+
+    assert_nil body["error"]
+    assert_equal true, body.dig("result", "isError")
+    assert_includes text, "Parent resource was not found in this API scope"
+    assert_includes text, "Allowed parent types:"
+    assert_includes text, "Workspace"
+    assert_includes text, @root_recording.id
+  end
+
+  test "a missing record in a tool handler is the scope miss" do
+    register_page_handler(:show) { raise ActiveRecord::RecordNotFound, "Couldn't find Page id=secret-row" }
+    body = post_tool(view_token, "show", type: "Page", id: @page.id)
+    text = body.dig("result", "content", 0, "text").to_s
+
+    assert_nil body["error"]
+    assert_equal true, body.dig("result", "isError")
+    assert_equal SCOPE_MISS, text
+    refute_includes body.to_json, "secret-row"
+  end
+
+  test "an unexpected tool error hides the message" do
+    register_page_handler(:show) { raise RuntimeError, "bearer secret-token" }
+    messages = []
+    logger = Logger.new(nil)
+    logger.define_singleton_method(:error) { |message| messages << message.to_s }
+    original = Rails.logger
+    Rails.logger = logger
+    body = post_tool(view_token, "show", type: "Page", id: @page.id)
+    logged = messages.join("\n")
+
+    assert_nil body["error"]
+    assert_equal true, body.dig("result", "isError")
+    assert_equal "Internal error", body.dig("result", "content", 0, "text")
+    refute_includes body.to_json, "secret-token"
+    assert_includes logged, "RuntimeError"
+    refute_includes logged, "secret-token"
+  ensure
+    Rails.logger = original if defined?(original) && original
+  end
+
+  test "read_skill returns a visible skill and hides unknown names" do
+    visible = post_tool(view_token, "read_skill", name: "page-desk")
+    missing = post_tool(view_token, "read_skill", name: "not-a-skill")
+    resource = post_rpc(view_token, "resources/read", uri: "skill://page-desk/SKILL.md")
+
+    assert_nil visible["error"]
+    refute visible.dig("result", "isError")
+    assert_equal "page-desk", visible.dig("result", "structuredContent", "name")
+    assert_equal resource.dig("result", "contents", 0, "text"), visible.dig("result", "structuredContent", "text")
+    assert_includes visible.dig("result", "structuredContent", "text"), "Use list with type Page"
+    assert_equal "Skill was not found", missing.dig("result", "content", 0, "text")
+    assert_equal true, missing.dig("result", "isError")
+  end
+
   test "scoped endpoints scope the recording and hide guard messages" do
     register_guard_endpoint(:guard_page, verb: :get, path: "guard-page/:id")
     register_guard_endpoint(:guard_page_edit, verb: :post, path: "guard-page-edit/:id")
@@ -387,6 +459,24 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     refute_includes result.dig("content", 0, "text"), "does not match"
     refute_includes result.dig("content", 0, "text"), "authorized"
     refute @called
+  end
+
+  def tool_list(token)
+    body = post_rpc(token, "tools/list")
+    body.dig("result", "tools")
+  end
+
+  def post_tool(token, tool_name, **arguments)
+    post_rpc(token, "tools/call", name: tool_name, arguments: arguments)
+  end
+
+  def post_rpc(token, method, **params)
+    post "/recording_studio_mcp",
+         params: rpc(method, **params).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :success, response.body
+    JSON.parse(response.body)
   end
 
   def call_tool(token, name, **arguments)

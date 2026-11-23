@@ -1,5 +1,21 @@
 # Upgrading Recording Studio MCP
 
+## 0.47.0
+
+Previous version is `0.46.0`. No MCP migration.
+
+Leave `parent_id` blank on create when this connection's workspace is an allowed parent. MCP fills that workspace id before the API runs. When the workspace is not an allowed parent, `parent_id` stays required.
+
+Named create tools, and action tools whose action has `creates: true`, take an optional `idempotency_key`. The same key and the same input return the first result. `describe` lists those names in `repeat_safe`.
+
+A typeless action tool such as `attach` lists only types that enable that action. If no type enables it, the tool is not in `tools/list`.
+
+`tools/call` maps `ActiveRecord::RecordNotFound` to `Resource was not found in this API scope`. Any other unexpected error is a tool result with `isError` and the text `Internal error`. The server log records the exception class only.
+
+Call `read_skill` with a skill name from `describe`. The text is the same skill `resources/read` would return. A name this connection cannot see is `Skill was not found`.
+
+A missing parent on create still says `Parent resource was not found in this API scope`, then lists the allowed parent types. When the workspace is one of those types, the message includes `Workspace id`.
+
 ## 0.46.0
 
 Previous version is `0.45.2`. No MCP migration. Tool names from `RecordingStudioMcp.tool_name` are unchanged.

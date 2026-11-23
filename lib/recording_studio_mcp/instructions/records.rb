@@ -57,7 +57,7 @@ module RecordingStudioMcp
     end
 
     def guides_section(access_grant)
-      section("Guides", ["This server may offer skills. Read the relevant ones.", suffix_text(access_grant)])
+      section("Guides", ["This server may offer skills. Call read_skill with the name.", suffix_text(access_grant)])
     end
 
     private_class_method :walk_section, :walk_lines, :workspace_line, :parent_line, :pagination_line,

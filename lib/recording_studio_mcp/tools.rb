@@ -11,6 +11,9 @@ module RecordingStudioMcp
       destroy: "delete"
     }.freeze
     FIELD_META_KEYS = %w[name required type allowed_values description immutable_on_update].freeze
+    PARENT_ID_DESCRIPTION = "Parent recording id. Required for a non-root type unless this " \
+                            "workspace is an allowed parent. A blank value then uses that workspace."
+    CREATE_IDEMPOTENCY_KEY = "Create idempotency key. Same as the API Idempotency-Key header."
 
     module_function
 
@@ -159,17 +162,8 @@ module RecordingStudioMcp
           required: ["type"],
           properties: {
             type: catalog.type_schema_for(:create),
-            parent_id: protocol_field(
-              :string,
-              "Parent recording id. Required for types that are not roots.",
-              required: false,
-              allow_blank: true
-            ),
-            idempotency_key: protocol_field(
-              :string,
-              "Create idempotency key. Same as the API Idempotency-Key header.",
-              allow_blank: true
-            )
+            parent_id: protocol_field(:string, PARENT_ID_DESCRIPTION, required: false, allow_blank: true),
+            idempotency_key: protocol_field(:string, CREATE_IDEMPOTENCY_KEY, allow_blank: true)
           }
         ),
         output_schema: ToolDocs.record_output_schema(catalog)
@@ -212,7 +206,14 @@ module RecordingStudioMcp
       required = SchemaFromContract.required_names(contract)
       return [properties, required] unless operation == :create && catalog.parent_required?(type_name)
 
-      [properties.merge(parent_id: parent_id_schema), required | ["parent_id"]]
+      parent_fields(catalog, type_name, properties, required)
+    end
+
+    def parent_fields(catalog, type_name, properties, required)
+      optional = catalog.workspace_parent_id(type_name).present?
+      merged = properties.merge(parent_id: parent_id_schema)
+      next_required = optional ? (required - ["parent_id"]) : (required | ["parent_id"])
+      [merged, next_required]
     end
 
     def update_tool(catalog)
@@ -308,7 +309,7 @@ module RecordingStudioMcp
         description: built.description,
         read_only: read_only_target?(registration),
         destructive: destructive_target?(registration),
-        idempotent: read_only_target?(registration),
+        idempotent: read_only_target?(registration) || idempotency_advertised?(catalog, registration),
         required: required,
         properties: properties,
         api: catalog.api
@@ -320,7 +321,8 @@ module RecordingStudioMcp
       properties = drop_forced_keys(lookup_properties(built, catalog, registration), dropped)
       required = SchemaFromContract.required_names(built.lookup&.input_contract) - dropped
       properties, required = apply_named_protocol_fields(catalog, registration, properties, required)
-      apply_named_create_parent_id(catalog, registration, properties, required)
+      properties, required = apply_named_create_parent_id(catalog, registration, properties, required)
+      apply_named_idempotency_key(catalog, registration, properties, required)
     end
 
     def lookup_properties(built, catalog, registration)
@@ -360,7 +362,7 @@ module RecordingStudioMcp
       merge_protocol_defaults(
         properties,
         required,
-        { type: catalog.type_schema },
+        { type: catalog.type_schema_for_action(registration.target.value) },
         extra_required: ["type"]
       )
     end
@@ -408,12 +410,31 @@ module RecordingStudioMcp
       return [properties, required] unless registration.target.operation? && registration.target.value == :create
       return [properties, required] unless registration.type.present? && catalog.parent_required?(registration.type)
 
-      merged = properties.merge(parent_id: parent_id_schema)
-      [merged, (required | ["parent_id"])]
+      parent_fields(catalog, registration.type, properties, required)
+    end
+
+    def apply_named_idempotency_key(catalog, registration, properties, required)
+      return [properties, required] unless idempotency_advertised?(catalog, registration)
+
+      field = protocol_field(:string, idempotency_description(registration), allow_blank: true)
+      merge_protocol_defaults(properties, required, { idempotency_key: field })
+    end
+
+    def idempotency_advertised?(catalog, registration)
+      return true if registration.target.operation? && registration.target.value == :create
+      return false unless registration.target.action?
+
+      catalog.action_creates?(registration.target.value, registration.type.presence)
+    end
+
+    def idempotency_description(registration)
+      return CREATE_IDEMPOTENCY_KEY if registration.target.operation?
+
+      Catalog::Reader::CAPABILITY_IDEMPOTENCY_KEY
     end
 
     def parent_id_schema
-      protocol_field(:string, "Parent recording id. Required for types that are not roots.")
+      protocol_field(:string, PARENT_ID_DESCRIPTION, allow_blank: true)
     end
 
     def protocol_field(type, description, required: false, allow_blank: nil)
@@ -430,6 +451,27 @@ module RecordingStudioMcp
 
     def destructive_target?(registration)
       registration.target.operation? && registration.target.value == :destroy
+    end
+
+    def read_skill_tool(_catalog)
+      ToolDocs.decorate(
+        tool(
+          name: Catalogs::READ_SKILL_NAME,
+          title: "Read a skill",
+          description: "Read one skill this connection can already see. Pass the name from describe. " \
+                       "Returns the skill text.",
+          read_only: true,
+          idempotent: true,
+          required: ["name"],
+          properties: { name: protocol_field(:string, "Skill name from describe.") }
+        ),
+        output_schema: {
+          type: "object",
+          properties: { name: { type: "string" }, text: { type: "string" } },
+          required: %w[name text],
+          additionalProperties: false
+        }
+      )
     end
 
     def describe_tool(catalog)
@@ -508,8 +550,13 @@ module RecordingStudioMcp
       payload
     end
 
+    def builtin_tool?(action_name)
+      name = action_name.to_s
+      TREE_NAMES.include?(name) || name == Catalogs::READ_SKILL_NAME
+    end
+
     def attach_ui_meta(payload, action_name, api)
-      return if action_name.blank? || TREE_NAMES.include?(action_name.to_s)
+      return if action_name.blank? || builtin_tool?(action_name)
 
       uri = McpUi.resource_uri_for(action_name: action_name, api: api)
       return if uri.blank?
@@ -520,11 +567,12 @@ module RecordingStudioMcp
     private_class_method :tool, :endpoint_tool_options, :endpoint_title,
                          :endpoint_description, :list_description, :list_properties,
                          :create_type_requirements, :lookup_clause, :update_type_requirements,
-                         :attach_meta, :attach_ui_meta, :forced_keys, :keep_contract_type?,
+                         :attach_meta, :attach_ui_meta, :builtin_tool?, :forced_keys, :keep_contract_type?,
                          :drop_forced_keys, :apply_named_protocol_fields, :apply_named_member_id,
                          :named_member_id?, :apply_named_index_fields, :named_list_protocol_properties,
                          :merge_protocol_defaults,
-                         :apply_named_create_parent_id,
+                         :apply_named_create_parent_id, :parent_fields,
+                         :apply_named_idempotency_key, :idempotency_advertised?, :idempotency_description,
                          :parent_id_schema, :protocol_field, :read_only_target?, :destructive_target?,
                          :registered_tool_options, :lookup_properties, :metric_tool_options,
                          :describe_description, :show_description, :show_id_sources

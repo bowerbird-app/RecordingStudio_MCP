@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-11-23
+
+### Added
+- `read_skill` returns the text of a skill this connection can already see in `resources/list`. Unknown and hidden names return `Skill was not found`.
+- `describe` includes `repeat_safe`, the create tools and creating actions that accept `idempotency_key`.
+- Named create tools, and action tools whose action creates, accept an optional `idempotency_key`. The same key and the same input return the first result.
+
+### Changed
+- A blank `parent_id` on create uses the connection's workspace when that workspace is an allowed parent. `parent_id` is optional in that schema.
+- A typeless action tool lists only types that enable the action. The tool is left out of `tools/list` when none do.
+- `ActiveRecord::RecordNotFound` during `tools/call` is the tool error `Resource was not found in this API scope`. Other unexpected `tools/call` errors are a tool error `Internal error`. The log line is the exception class only.
+- When create reports `Parent resource was not found in this API scope`, the tool error also lists the allowed parent types and, when the workspace is one of them, its id.
+- `describe` copy says to call `read_skill` for a skill name.
+
+### Upgrade notes
+- Bump to `0.47.0`. Previous version is `0.46.0`. No MCP migration. Clients may omit `parent_id` when the workspace is an allowed parent. Send `idempotency_key` on named creates and creating actions when a retry must return the first result. Read skills with `read_skill`. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.46.0] - 2026-11-23
 
 ### Added
@@ -1343,7 +1360,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.46.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.0...HEAD
+[0.47.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.2...v0.46.0
 [0.45.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.1...v0.45.2
 [0.45.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.0...v0.45.1

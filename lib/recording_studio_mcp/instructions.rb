@@ -2,11 +2,11 @@
 
 module RecordingStudioMcp
   module Instructions
-    GENERAL_TOOL_NAMES = %w[list show create update delete capability_action describe].freeze
+    GENERAL_TOOL_NAMES = %w[list show create update delete capability_action describe read_skill].freeze
     DESCRIBE_RETURN_ITEMS = [
       "the type paragraph",
       "included tools",
-      "skills",
+      "skills via read_skill",
       "relationships",
       "allowed parents",
       "writable fields"
