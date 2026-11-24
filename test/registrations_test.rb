@@ -234,6 +234,41 @@ class RegistrationsTest < Minitest::Test
     assert_equal 1, built[:minLength]
   end
 
+  def test_contract_description_and_trivial_example_fill_a_blank_schema
+    schema = RecordingStudioMcp::SchemaFromContract
+    built = schema.property(
+      { type: :string, description: "HTTPS URL of the file.", example: "https://cdn.example/a.png" },
+      catalog_property: { "type" => "string", "description" => "" }
+    )
+    from_string_key = schema.property(
+      { "type" => "string", "description" => "Base64 file bytes.", "example" => { "raw" => true } }
+    )
+
+    flag = schema.property({ type: :boolean, description: "Public.", example: true })
+    count = schema.property({ type: :integer, description: "Bytes.", example: 12 })
+
+    assert_equal "HTTPS URL of the file.", built[:description]
+    assert_equal ["https://cdn.example/a.png"], built[:examples]
+    assert_equal "Base64 file bytes.", from_string_key[:description]
+    refute from_string_key.key?(:examples)
+    assert_equal [true], flag[:examples]
+    assert_equal [12], count[:examples]
+  end
+
+  def test_copy_beats_catalog_and_catalog_beats_the_contract
+    schema = RecordingStudioMcp::SchemaFromContract
+    contract = { type: :string, description: "Contract text.", example: "contract" }
+    catalog = { description: "Catalog text.", examples: ["catalog"] }
+
+    copied = schema.property(contract, copy: { description: "Copy text.", example: "copy" }, catalog_property: catalog)
+    catalog_only = schema.property(contract, catalog_property: catalog)
+
+    assert_equal "Copy text.", copied[:description]
+    assert_equal ["copy"], copied[:examples]
+    assert_equal "Catalog text.", catalog_only[:description]
+    assert_equal ["catalog"], catalog_only[:examples]
+  end
+
   def test_unknown_type_raises_configuration_error
     with_isolated_api_configuration do
       RecordingStudioApi.register_recordable_type_api(

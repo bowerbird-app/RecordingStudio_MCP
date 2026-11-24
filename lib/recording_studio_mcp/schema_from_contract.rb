@@ -45,6 +45,8 @@ module RecordingStudioMcp
         built.merge!(NestedSchema.copy_nested(contract_field, :items, :properties, :additionalProperties))
       end
       overlay_copy_on(built, copy)
+      fill_contract_description(built, contract_field)
+      fill_contract_example(built, contract_field)
       apply_contract_constraints(built, contract_field)
       built
     end
@@ -99,6 +101,22 @@ module RecordingStudioMcp
       property[:examples] = Array(meta[:example]) if meta.key?(:example)
     end
 
+    def fill_contract_description(built, contract_field)
+      return if built[:description].present?
+
+      description = field_value(contract_field, :description)
+      built[:description] = description.to_s if description.present?
+    end
+
+    def fill_contract_example(built, contract_field)
+      return if built.key?(:examples)
+
+      example = field_value(contract_field, :example)
+      return unless example.is_a?(String) || example.is_a?(Numeric) || example == true || example == false
+
+      built[:examples] = [example]
+    end
+
     def catalog_property_schema(catalog_property)
       return {} if catalog_property.blank?
 
@@ -121,7 +139,8 @@ module RecordingStudioMcp
       )
       schema.is_a?(Hash) ? schema[:properties] || schema["properties"] : nil
     end
-    private_class_method :overlay_copy_on, :catalog_property_schema, :attributes_properties,
-                         :apply_contract_constraints
+    private_class_method :overlay_copy_on, :fill_contract_description, :fill_contract_example,
+                         :catalog_property_schema,
+                         :attributes_properties, :apply_contract_constraints
   end
 end
