@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "digest"
-require "json"
 
 module RecordingStudioMcp
   class Protocol
@@ -9,7 +8,7 @@ module RecordingStudioMcp
 
     def tools_list_result(_params, _id, _method_name)
       tools = Tools.definitions(access_grant: access_grant)
-      remember_tool_list(tools)
+      note_tool_list
       ResultShape.complete(
         { tools: tools },
         protocol_version: request_protocol_version
@@ -20,27 +19,31 @@ module RecordingStudioMcp
       error = call_tool_error(params, id)
       return error if error
 
-      remember_tool_list(Tools.definitions(access_grant: access_grant))
+      note_tool_list
       complete_tool_call(params)
     end
 
-    def remember_tool_list(tools)
-      request_context&.connection&.note_tools_list!(tools_fingerprint(tools))
+    def note_tool_list
+      request_context&.connection&.note_tools_list!(tool_list_fingerprint)
     end
 
-    def tools_fingerprint(tools)
-      Digest::SHA256.hexdigest(JSON.generate(canonicalize_tools(tools)))
+    # Named API, grant role, and catalog generation. A tool call does not build the tool list.
+    def tool_list_fingerprint
+      Digest::SHA256.hexdigest(tool_list_stamp)
     end
 
-    def canonicalize_tools(value)
-      case value
-      when Hash
-        value.each_with_object({}) { |(key, item), out| out[key.to_s] = canonicalize_tools(item) }.sort.to_h
-      when Array
-        value.map { |item| canonicalize_tools(item) }
-      else
-        value.is_a?(Symbol) ? value.to_s : value
-      end
+    def tool_list_stamp
+      [Catalog.api_from(access_grant), grant_access_level, catalog_generation].join(" ")
+    end
+
+    def grant_access_level
+      return unless access_grant.respond_to?(:role)
+
+      access_grant.role.to_s
+    end
+
+    def catalog_generation
+      RecordingStudioMcp.configuration.catalogs.generation
     end
 
     def complete_tool_call(params)

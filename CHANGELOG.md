@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A named or custom tool given an id of a different type in this grant and this API names that type and the tool to call. An id outside the grant stays `Resource was not found in this API scope`.
 
 ### Changed
-- Initialize reports `tools.listChanged: true`. A live session that has already called `tools/list` or `tools/call` receives `notifications/tools/list_changed` on the next `tools/list` or `tools/call` when that list differs. The notice goes out on that process's listen stream, including `subscriptions/listen` on protocol `2026-07-28`. A client that is not listening does not receive it. A deploy drops in-memory sessions, so the notice does not cross a restart.
+- Initialize reports `tools.listChanged: true`. A live session that has already called `tools/list` or `tools/call` receives `notifications/tools/list_changed` on the next `tools/list` or `tools/call` when the named API, the grant's role, or the catalog generation changes. A tool call does not rebuild the tool list to check. The notice goes out on that process's listen stream, including `subscriptions/listen` on protocol `2026-07-28`. A client that is not listening does not receive it. A deploy drops in-memory sessions, so the notice does not cross a restart.
 
 ### Upgrade notes
 - Bump to `0.49.0`. Previous version is `0.48.1`. No MCP migration. Reconnect after a deploy when the app ignores `notifications/tools/list_changed`. See [UPGRADING.md](UPGRADING.md).

@@ -73,6 +73,47 @@ class ProtocolTest < Minitest::Test
     end
   end
 
+  def test_tools_call_does_not_rebuild_definitions_when_nothing_changed
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 1,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      connection = RecordingStudioMcp::Connections.open(
+        protocol_version: "2026-07-28",
+        access_grant: @grant,
+        subscription_id: 9
+      )
+      context.attach_connection(connection)
+      RecordingStudioMcp::Protocol.handle(
+        { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" },
+        access_grant: @grant,
+        request_context: context
+      )
+      builds = 0
+      RecordingStudioMcp::Tools.stub(:definitions, lambda { |**|
+        builds += 1
+        []
+      }) do
+        RecordingStudioMcp::Protocol.handle(
+          {
+            "jsonrpc" => "2.0",
+            "id" => 3,
+            "method" => "tools/call",
+            "params" => { "name" => "describe", "arguments" => { "type" => "Page" } }
+          },
+          access_grant: @grant,
+          request_context: context
+        )
+      end
+
+      assert_equal 0, builds
+      assert_nil connection.shift_pending(timeout: 0)
+    end
+  end
+
   def test_initialize_returns_tree_instructions_when_types_exist
     with_isolated_api_configuration do
       register_tree_type("Page")
