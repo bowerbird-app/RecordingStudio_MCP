@@ -48,11 +48,23 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
       assert_tool_text(view, "show", arguments.merge(type: "Page"), "id is required")
       assert_tool_text(edit, "update", arguments.merge(type: "Page", title: "Hi"), "id is required")
     end
-    [@foreign.id, @folder.id, @trashed.id].each do |id|
+    [@foreign.id, @trashed.id].each do |id|
       arguments = { type: "Page", id: id }
       assert_tool_miss(view, "show", arguments)
       assert_tool_miss(edit, "update", arguments.merge(title: "Hi"))
     end
+    assert_tool_text(
+      view,
+      "show",
+      { type: "Page", id: @folder.id },
+      "Resource type does not match Page. This id is a Folder. Use show."
+    )
+    assert_tool_text(
+      edit,
+      "update",
+      { type: "Page", id: @folder.id, title: "Hi" },
+      "Resource type does not match Page. This id is a Folder. Use update."
+    )
     refute @called
 
     shown = call_tool(view, "show", type: "Page", id: @page.id)
@@ -75,12 +87,24 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     view = view_token
     edit = edit_token
 
-    [nil, "", @foreign.id, @folder.id, @trashed.id, @page.id].each do |id|
+    [nil, "", @foreign.id, @trashed.id, @page.id].each do |id|
       assert_tool_miss(view, "capability_action", capability_arguments(id))
     end
-    [@foreign.id, @folder.id, @trashed.id, nil, ""].each do |id|
+    assert_tool_text(
+      view,
+      "capability_action",
+      capability_arguments(@folder.id),
+      "Resource type does not match Page. This id is a Folder. Use that item's content_id."
+    )
+    [@foreign.id, @trashed.id, nil, ""].each do |id|
       assert_tool_miss(edit, "capability_action", capability_arguments(id))
     end
+    assert_tool_text(
+      edit,
+      "capability_action",
+      capability_arguments(@folder.id),
+      "Resource type does not match Page. This id is a Folder. Use that item's content_id."
+    )
     refute @called
 
     probed = call_tool(edit, "capability_action", **capability_arguments(@page.id))

@@ -16,7 +16,7 @@ class InstructionsTest < Minitest::Test
       assert_includes text,
                       "Call describe for the type paragraph, included tools, skills via read_skill, relationships, " \
                       "allowed parents, writable fields, and available actions before you create"
-      assert_includes text, "not refreshed on its own"
+      assert_includes text, "notifications/tools/list_changed"
       assert_includes text, "ping checks the connection."
       assert_includes text, "Call list with the workspace type and no parent_id to find workspaces."
       assert_includes text, "Records nest by parent_id."
@@ -54,7 +54,7 @@ class InstructionsTest < Minitest::Test
       assert_includes text, "## If you only see named route tools"
       assert_includes text, "That is the whole set."
       assert_includes text, "One tool per named route. Path parameters are arguments."
-      assert_includes text, "not refreshed on its own"
+      assert_includes text, "notifications/tools/list_changed"
       assert_includes text, "ping checks the connection."
       refute_includes text, "Call describe for the type paragraph"
       refute_includes text, "Records nest by parent_id."

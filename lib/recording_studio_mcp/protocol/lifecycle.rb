@@ -50,7 +50,7 @@ module RecordingStudioMcp
 
     def server_capabilities
       capabilities = {
-        tools: { listChanged: false },
+        tools: { listChanged: true },
         resources: resources_capability,
         extensions: { "io.modelcontextprotocol/skills" => {} }
       }

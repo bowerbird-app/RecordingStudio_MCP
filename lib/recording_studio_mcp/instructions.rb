@@ -44,7 +44,8 @@ module RecordingStudioMcp
     def find_tool_lines(surface)
       [
         "Call tools/list.",
-        "The list is not refreshed on its own, so call tools/list again if it may have changed.",
+        "A live session receives notifications/tools/list_changed when that list changes.",
+        "Reconnect after a deploy if the app ignores that notice.",
         "ping checks the connection.",
         describe_line(surface),
         general_tools_line(surface),

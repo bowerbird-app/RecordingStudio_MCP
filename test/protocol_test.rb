@@ -11,6 +11,68 @@ class ProtocolTest < Minitest::Test
     @grant = FakeGrant.new(nil)
   end
 
+  def test_a_session_receives_list_changed_after_its_tool_list_changes
+    with_isolated_api_configuration do
+      register_tree_type("Page")
+      context = RecordingStudioMcp::RequestContext.new(
+        request_id: 1,
+        protocol_version: "2026-07-28",
+        access_grant: @grant
+      )
+      connection = RecordingStudioMcp::Connections.open(
+        protocol_version: "2026-07-28",
+        access_grant: @grant,
+        subscription_id: 9
+      )
+      context.attach_connection(connection)
+      list_message = { "jsonrpc" => "2.0", "id" => 2, "method" => "tools/list" }
+
+      RecordingStudioMcp::Protocol.handle(list_message, access_grant: @grant, request_context: context)
+      assert_nil connection.shift_pending(timeout: 0)
+
+      RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 3,
+          "method" => "tools/call",
+          "params" => { "name" => "describe", "arguments" => { "type" => "Page" } }
+        },
+        access_grant: @grant,
+        request_context: context
+      )
+      assert_nil connection.shift_pending(timeout: 0)
+
+      register_tree_type("Note")
+      RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 4,
+          "method" => "tools/call",
+          "params" => { "name" => "describe", "arguments" => { "type" => "Page" } }
+        },
+        access_grant: @grant,
+        request_context: context
+      )
+      notice = connection.shift_pending(timeout: 0)
+
+      assert_equal "notifications/tools/list_changed", notice[:method]
+      assert_equal 9, notice.dig(:params, :_meta, RecordingStudioMcp::Connection::SUBSCRIPTION_ID_META)
+      assert_equal true, RecordingStudioMcp::Protocol.handle(
+        {
+          "jsonrpc" => "2.0",
+          "id" => 5,
+          "method" => "initialize",
+          "params" => {
+            "protocolVersion" => "2025-06-18",
+            "capabilities" => {},
+            "clientInfo" => { "name" => "test" }
+          }
+        },
+        access_grant: @grant
+      ).body.dig(:result, :capabilities, :tools, :listChanged)
+    end
+  end
+
   def test_initialize_returns_tree_instructions_when_types_exist
     with_isolated_api_configuration do
       register_tree_type("Page")
@@ -27,7 +89,7 @@ class ProtocolTest < Minitest::Test
       instructions = result.body.dig(:result, :instructions)
       assert_equal :ok, result.status
       assert_equal "2025-06-18", result.body.dig(:result, :protocolVersion)
-      assert_equal false, result.body.dig(:result, :capabilities, :tools, :listChanged)
+      assert_equal true, result.body.dig(:result, :capabilities, :tools, :listChanged)
       assert_equal "recording-studio", result.body.dig(:result, :serverInfo, :name)
       assert_equal RecordingStudioMcp::VERSION, result.body.dig(:result, :serverInfo, :version)
       assert_includes instructions, "before you create."
@@ -61,7 +123,7 @@ class ProtocolTest < Minitest::Test
       assert_includes instructions, "Use an OAuth Bearer token."
       assert_includes instructions, "If you only see named route tools"
       assert_includes instructions, "One tool per named route. Path parameters are arguments."
-      assert_includes instructions, "not refreshed on its own"
+      assert_includes instructions, "notifications/tools/list_changed"
       refute_includes instructions, "Call describe"
       refute_includes instructions, "generating UI"
     end
@@ -347,7 +409,7 @@ class ProtocolTest < Minitest::Test
       )
       refute payload.key?(:protocolVersions)
       refute payload.key?(:serverInfo)
-      assert_equal false, payload.dig(:capabilities, :tools, :listChanged)
+      assert_equal true, payload.dig(:capabilities, :tools, :listChanged)
       assert_equal({}, payload.dig(:capabilities, :resources))
       assert_equal({}, payload.dig(:capabilities, :extensions, "io.modelcontextprotocol/skills"))
       assert_includes payload[:instructions], "before you create."
@@ -412,7 +474,7 @@ class ProtocolTest < Minitest::Test
 
       names = listed.body.dig(:result, :tools).map { |tool| tool[:name] }
       assert_equal "complete", discover.body.dig(:result, :resultType)
-      assert_equal false, discover.body.dig(:result, :capabilities, :tools, :listChanged)
+      assert_equal true, discover.body.dig(:result, :capabilities, :tools, :listChanged)
       assert_equal %w[list show create update describe read_skill], names
       assert_equal "complete", listed.body.dig(:result, :resultType)
       assert_equal 0, listed.body.dig(:result, :ttlMs)

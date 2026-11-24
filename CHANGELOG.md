@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-11-24
+
+### Fixed
+- A blank `parent_id` is left for the API. The tool error names the type, for example `parent_id is required for PressKit`. `parent_id` descriptions name that type's allowed parents. The workspace sentence stays only when this connection's workspace is an allowed parent.
+- A named or custom tool given an id of a different type in this grant and this API names that type and the tool to call. An id outside the grant stays `Resource was not found in this API scope`.
+
+### Changed
+- Initialize reports `tools.listChanged: true`. A live session that has already called `tools/list` or `tools/call` receives `notifications/tools/list_changed` on the next `tools/list` or `tools/call` when that list differs. The notice goes out on that process's listen stream, including `subscriptions/listen` on protocol `2026-07-28`. A client that is not listening does not receive it. A deploy drops in-memory sessions, so the notice does not cross a restart.
+
+### Upgrade notes
+- Bump to `0.49.0`. Previous version is `0.48.1`. No MCP migration. Reconnect after a deploy when the app ignores `notifications/tools/list_changed`. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.48.1] - 2026-11-24
 
 ### Fixed
@@ -1387,7 +1399,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.49.0...HEAD
+[0.49.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.1...v0.49.0
 [0.48.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.0...v0.48.1
 [0.48.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.1...v0.48.0
 [0.47.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.0...v0.47.1

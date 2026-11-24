@@ -711,7 +711,7 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_equal RecordingStudioMcp::Configuration::SUPPORTED_PROTOCOL_VERSIONS, discover.fetch("supportedVersions")
     refute discover.key?("protocolVersions")
     refute discover.key?("serverInfo")
-    assert_equal false, discover.dig("capabilities", "tools", "listChanged")
+    assert_equal true, discover.dig("capabilities", "tools", "listChanged")
     assert_equal true, discover.dig("capabilities", "resources", "subscribe")
     assert_equal({}, discover.dig("capabilities", "extensions", "io.modelcontextprotocol/skills"))
     assert_equal({}, discover.dig("capabilities", "events"))

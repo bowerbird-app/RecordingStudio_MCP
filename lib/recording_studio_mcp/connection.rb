@@ -69,6 +69,17 @@ module RecordingStudioMcp
       nil
     end
 
+    def note_tools_list!(fingerprint)
+      @mutex.synchronize do
+        return false if @finished || fingerprint.blank?
+
+        changed = !@tools_fingerprint.nil? && @tools_fingerprint != fingerprint
+        @tools_fingerprint = fingerprint
+        enqueue_payload(list_changed_payload) if changed
+        changed
+      end
+    end
+
     def shift_pending(timeout: 1)
       @mutex.synchronize do
         @wait.wait(@mutex, timeout) if @queue.empty? && !@finished
@@ -110,7 +121,11 @@ module RecordingStudioMcp
     def store_update(uri)
       return :rejected if @finished || !@uris.include?(uri.to_s)
 
-      if @queue.push(updated_payload(uri)) == :full
+      enqueue_payload(updated_payload(uri))
+    end
+
+    def enqueue_payload(payload)
+      if @queue.push(payload) == :full
         @finished = true
         @wait.broadcast
         return :full
@@ -125,6 +140,14 @@ module RecordingStudioMcp
         jsonrpc: Protocol::JSONRPC_VERSION,
         method: "notifications/resources/updated",
         params: with_subscription_meta({ uri: uri })
+      }
+    end
+
+    def list_changed_payload
+      {
+        jsonrpc: Protocol::JSONRPC_VERSION,
+        method: "notifications/tools/list_changed",
+        params: with_subscription_meta({})
       }
     end
 

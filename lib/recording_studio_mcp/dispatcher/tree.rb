@@ -54,7 +54,7 @@ module RecordingStudioMcp
 
     def call_resource_handler(handler, recordable_type, operation_name, args)
       guarded = scoped_resource(recordable_type, operation_name, args["id"])
-      return scope_miss_result unless guarded
+      return scope_miss_result(expected_type: recordable_type, id: args["id"], operation: operation_name) unless guarded
 
       context = guarded_resource_context(recordable_type, args, guarded, operation_name)
       result = replay_registered_create(context, operation_name) { handler.call(context) }

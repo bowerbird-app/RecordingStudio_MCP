@@ -37,7 +37,7 @@ module RecordingStudioMcp
 
     def call_capability_handler(handler, args, action, recordable_type, named_tool: false)
       guarded = handler_scope { capability_guard(recordable_type, action, args) }
-      return scope_miss_result unless guarded
+      return scope_miss_result(expected_type: recordable_type, id: args["id"], operation: action.name) unless guarded
 
       context = capability_context(guarded.recording, args, action, recordable_type, named_tool: named_tool)
       result = replay_creating_action(action, recordable_type, context) { handler.call(context) }

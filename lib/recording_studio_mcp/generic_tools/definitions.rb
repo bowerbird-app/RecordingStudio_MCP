@@ -49,8 +49,7 @@ module RecordingStudioMcp
       input: {
         "type" => { description: "Type on this server that allows create." },
         "parent_id" => {
-          description: "Parent recording id. Required for a non-root type unless this " \
-                       "workspace is an allowed parent. A blank value then uses that workspace."
+          description: "Parent recording id. The type says which record this one goes in."
         },
         "idempotency_key" => { description: "Create idempotency key. Same as the API Idempotency-Key header." }
       },
