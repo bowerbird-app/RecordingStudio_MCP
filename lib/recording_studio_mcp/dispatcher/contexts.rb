@@ -50,7 +50,7 @@ module RecordingStudioMcp
       RecordingStudioApi::ActionContext.new(
         **grant_fields,
         recording: recording,
-        params: capability_input_params(args, action, named_tool: named_tool),
+        params: capability_input_params(args, action, recordable_type: recordable_type, named_tool: named_tool),
         progress_reporter: progress_reporter,
         id: args["id"],
         recordable_type: recordable_type,
@@ -101,10 +101,7 @@ module RecordingStudioMcp
     def reject_unknown_fields!(recordable_type, payload, operation_name)
       allowed = catalog.writable_fields(recordable_type, operation: operation_name)
       reject_immutable_update_fields!(recordable_type, payload, allowed)
-      unknown = payload.keys - allowed
-      return if unknown.empty?
-
-      raise RecordingStudioApi::InvalidActionInputError, unknown_fields_message(recordable_type, unknown, allowed)
+      reject_unknown_keys!(recordable_type, payload, allowed)
     end
 
     def create_idempotency_key(args, operation_name)

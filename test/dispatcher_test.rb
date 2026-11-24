@@ -1897,7 +1897,137 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_capability_action_rejects_unknown_arguments
+    with_isolated_api_configuration do
+      captured = nil
+      register_section_action(lambda { |context|
+        captured = context
+        { json: { title: context.params[:title] } }
+      })
+      name = register_section_tool
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      log = StringIO.new
+      previous = Rails.logger
+      begin
+        Rails.logger = Logger.new(log)
+        rejected = dispatch(name, section_call("bogus_field" => "do-not-log-this"))
+        generic = dispatch(
+          "capability_action",
+          section_call("type" => "Page", "action" => "add_section", "bogus_field" => "do-not-log-this")
+        )
+        accepted = dispatch(name, section_call)
+
+        rejected_text = rejected.dig(:content, 0, :text)
+        assert rejected[:isError]
+        assert_equal "Unknown fields bogus_field. Writable fields for Page: title", rejected_text
+        refute_includes rejected_text, "do-not-log-this"
+        refute_includes log.string, "do-not-log-this"
+        assert generic[:isError]
+        assert_equal rejected_text, generic.dig(:content, 0, :text)
+
+        refute accepted[:isError], accepted.dig(:content, 0, :text)
+        assert_equal "Episode", accepted.dig(:structuredContent, "title")
+        assert_equal "Episode", captured.params[:title]
+        assert_equal "again-1", captured.idempotency_key
+        refute captured.params.key?(:authorized_by_type)
+        refute captured.params.key?(:authorized_by_id)
+        refute captured.params.key?(:bogus_field)
+        refute captured.params.key?(:type)
+        refute captured.params.key?(:action)
+      ensure
+        Rails.logger = previous
+      end
+    end
+  end
+
+  def test_custom_member_handler_rejects_unknown_arguments_after_the_guard
+    with_isolated_api_configuration do
+      builtin_called = false
+      custom_called = false
+      captured = nil
+      register_section_action(lambda { |_context|
+        builtin_called = true
+        { json: { via: "builtin" } }
+      })
+      RecordingStudioApi.register_resource_handler("Page", :add_section, handler: lambda { |context|
+        custom_called = true
+        captured = context
+        { json: { title: context.params[:title] }, status: :ok }
+      })
+      name = register_section_tool
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      missing = dispatch(name, section_call("id" => "missing", "bogus_field" => "do-not-log-this"))
+      assert_scope_miss missing
+      refute_includes missing.dig(:content, 0, :text), "do-not-log-this"
+      refute_includes missing.dig(:content, 0, :text), "Unknown fields"
+      refute custom_called
+      refute builtin_called
+
+      rejected = dispatch(name, section_call("bogus_field" => "do-not-log-this"))
+      assert rejected[:isError]
+      assert_equal "Unknown fields bogus_field. Writable fields for Page: title", rejected.dig(:content, 0, :text)
+      refute_includes rejected.dig(:content, 0, :text), "do-not-log-this"
+      refute custom_called
+      refute builtin_called
+
+      accepted = dispatch(name, section_call)
+      refute accepted[:isError], accepted.dig(:content, 0, :text)
+      assert_equal "Episode", accepted.dig(:structuredContent, "title")
+      assert custom_called
+      refute builtin_called
+      assert_equal "Episode", captured.params[:title]
+      refute captured.params.key?(:authorized_by_type)
+      refute captured.params.key?(:authorized_by_id)
+      assert_equal "again-1", captured.idempotency_key
+    end
+  end
+
   private
+
+  def register_section_action(handler)
+    RecordingStudioApi.register_capability_action(
+      :add_section,
+      capability: :accessible,
+      input_contract: {
+        fields: {
+          title: { type: :string, required: true }
+        }
+      },
+      handler: handler
+    )
+    register_tree_type("Page", capability_actions: %i[add_section])
+  end
+
+  def register_section_tool
+    name = RecordingStudioMcp.tool_name("Page", :add_section)
+    RecordingStudioMcp.register_tool(
+      name: name,
+      type: "Page",
+      action: :add_section,
+      title: "Add section",
+      description: "Add a section.",
+      input: {},
+      output: "the section"
+    )
+    ensure_tree_server(:public, extra_tools: [name])
+    name
+  end
+
+  def section_call(extra = {})
+    {
+      "id" => "1",
+      "type" => "Folder",
+      "action" => "missing",
+      "parent_id" => "workspace-1",
+      "idempotency_key" => "again-1",
+      "title" => "Episode",
+      "authorized_by_type" => "Spoofed",
+      "authorized_by_id" => "spoof-id",
+      "params" => { "title" => "from-params" }
+    }.merge(extra)
+  end
 
   def assert_scope_miss(result)
     assert result[:isError]

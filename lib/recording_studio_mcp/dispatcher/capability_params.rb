@@ -4,8 +4,14 @@ module RecordingStudioMcp
   class Dispatcher
     private
 
-    def capability_input_params(args, action, named_tool: false)
+    def capability_input_params(args, action, recordable_type:, named_tool: false)
+      reject_unknown_action_arguments!(recordable_type, args, action)
       apply_capability_contract(action, capability_raw_params(args, action, named_tool: named_tool))
+    end
+
+    def reject_unknown_action_arguments!(recordable_type, args, action)
+      payload = stringify_keys(args).except(*ACTION_ARGUMENT_KEYS)
+      reject_unknown_keys!(recordable_type, payload, capability_contract_keys(action))
     end
 
     def capability_raw_params(args, action, named_tool:)

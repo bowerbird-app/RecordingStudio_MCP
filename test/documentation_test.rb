@@ -939,6 +939,8 @@ class DocumentationTest < Minitest::Test
       refute_includes names, "Page--ping"
       refute tools.fetch(ping_folder)["x-mcp-docs-only"]
       assert_equal ["Folder"], tools.fetch(ping_folder)["tags"]
+      assert_equal false, tools.fetch(ping_folder).dig("inputSchema", "additionalProperties")
+      assert_equal false, tools.fetch("capability_action").dig("inputSchema", "additionalProperties")
     end
   end
 
