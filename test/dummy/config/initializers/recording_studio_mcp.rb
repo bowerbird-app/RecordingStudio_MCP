@@ -50,6 +50,16 @@ RecordingStudioMcp.register_tool(
 )
 
 RecordingStudioMcp.register_tool(
+  name: "file_desk_note",
+  type: "Workspace",
+  action: :file_desk_note,
+  title: "File a desk note",
+  description: "File a note on this workspace. The server chooses where it sits.",
+  input: {},
+  output: "the note"
+)
+
+RecordingStudioMcp.register_tool(
   name: "demo_progress",
   endpoint: :demo_progress,
   title: "Demo progress",
@@ -89,7 +99,7 @@ RecordingStudioMcp.register_skill(
 
 RecordingStudioMcp.register_server(:public, api: :public) do
   include_tools :list, :show, :create, :update, :capability_action, :ping, :demo_progress,
-                RecordingStudioMcp.tool_name("Workspace", :ping)
+                RecordingStudioMcp.tool_name("Workspace", :ping), :file_desk_note
   include_skills "page-desk"
 end
 

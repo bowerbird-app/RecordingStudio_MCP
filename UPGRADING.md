@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.48.0
+
+Previous version is `0.47.1`. No MCP migration. Hosts must upgrade `recording_studio_api` to `>= 1.22.0`.
+
+When an API create catalog entry says `parent` is `server`, MCP does not ask for `parent_id` and does not send one. That covers the generic `create` tool for that type, a named create tool, and a capability action that creates. A `parent_id` a caller still sends is ignored. Creates that do not opt in are unchanged. A blank `parent_id` still uses the workspace when the workspace is an allowed parent.
+
 ## 0.47.1
 
 No action needed.

@@ -34,7 +34,7 @@ module RecordingStudioMcp
 
         def line_for_tool(name, type_name, entry, context)
           if Tools::TREE_OPERATION_TOOLS.value?(name)
-            tool_line(name, type_name, context[:schemas].fetch(name, {}), entry)
+            tool_line(name, type_name, context[:schemas].fetch(name, {}), entry, context)
           elsif name == "capability_action"
             "Tool: capability_action with type `#{type_name}`."
           else
@@ -43,14 +43,14 @@ module RecordingStudioMcp
         end
         private_class_method :line_for_tool
 
-        def tool_line(tool_name, type_name, schema, entry)
-          "Tool: #{tool_name} with #{joined(argument_parts(tool_name, type_name, schema, entry))}"
+        def tool_line(tool_name, type_name, schema, entry, context)
+          "Tool: #{tool_name} with #{joined(argument_parts(tool_name, type_name, schema, entry, context))}"
         end
 
-        def argument_parts(tool_name, type_name, schema, entry)
+        def argument_parts(tool_name, type_name, schema, entry, context)
           case tool_name
           when "list" then list_parts(type_name, schema, entry)
-          when "create" then create_parts(type_name, schema)
+          when "create" then create_parts(type_name, schema, entry, context)
           when "update" then update_parts(type_name, schema)
           else id_parts(type_name, schema)
           end
@@ -66,10 +66,10 @@ module RecordingStudioMcp
         end
         private_class_method :list_parts
 
-        def create_parts(type_name, schema)
+        def create_parts(type_name, schema, entry, context)
           props = properties(schema)
           parts = ["type `#{type_name}`"]
-          parts << "parent_id" if props.include?("parent_id")
+          parts << "parent_id" if props.include?("parent_id") && !TypeDescribeBlocks.server_parent?(entry, context)
           parts << "writable fields at the top level" if schema["additionalProperties"]
           parts << idempotency_part(schema) if props.include?("idempotency_key")
           parts

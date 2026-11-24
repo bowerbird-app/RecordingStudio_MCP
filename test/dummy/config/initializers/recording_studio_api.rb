@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require Rails.root.join("app/mcp/demo_progress")
+require Rails.root.join("app/mcp/file_desk_note")
 
 RecordingStudioApi.configure do |config|
   config.openapi_title = "Recording Studio API"
@@ -68,6 +69,21 @@ RecordingStudioApi.register_capability_action(
     }
   },
   handler: Dummy::PingWorkspace
+)
+
+RecordingStudioApi.register_capability_action(
+  :file_desk_note,
+  capability: :accessible,
+  creates: true,
+  parent: :server,
+  required_role: :edit,
+  input_contract: {
+    fields: {
+      note: { type: :string, required: true },
+      parent_id: { type: :string, required: true }
+    }
+  },
+  handler: FileDeskNote
 )
 
 RecordingStudioApi.register_endpoint(

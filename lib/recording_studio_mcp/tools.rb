@@ -151,20 +151,13 @@ module RecordingStudioMcp
         tool(
           name: "create",
           title: "Create a record",
-          description: "Changes data by creating a record. Send writable fields at the root, " \
-                       "for example title, not nested under attributes. " \
-                       "Child types need parent_id. Call describe for included tools and relationships. " \
-                       "Returns the created record.",
+          description: create_description(catalog),
           read_only: false,
           destructive: false,
           idempotent: true,
           additional_properties: true,
           required: ["type"],
-          properties: {
-            type: catalog.type_schema_for(:create),
-            parent_id: protocol_field(:string, PARENT_ID_DESCRIPTION, required: false, allow_blank: true),
-            idempotency_key: protocol_field(:string, CREATE_IDEMPOTENCY_KEY, allow_blank: true)
-          }
+          properties: create_properties(catalog)
         ),
         output_schema: ToolDocs.record_output_schema(catalog)
       )
@@ -204,9 +197,45 @@ module RecordingStudioMcp
         api: catalog.api
       )
       required = SchemaFromContract.required_names(contract)
-      return [properties, required] unless operation == :create && catalog.parent_required?(type_name)
+      return [properties, required] unless operation == :create
+      return without_parent_id(properties, required) if server_parent_type?(catalog, type_name)
+      return [properties, required] unless catalog.parent_required?(type_name)
 
       parent_fields(catalog, type_name, properties, required)
+    end
+
+    def create_description(catalog)
+      parent = caller_supplies_parent?(catalog) ? "Child types need parent_id. " : ""
+      "Changes data by creating a record. Send writable fields at the root, " \
+        "for example title, not nested under attributes. " \
+        "#{parent}Call describe for included tools and relationships. " \
+        "Returns the created record."
+    end
+
+    def create_properties(catalog)
+      type_field = catalog.type_schema_for(:create)
+      idempotency_key = protocol_field(:string, CREATE_IDEMPOTENCY_KEY, allow_blank: true)
+      return { type: type_field, idempotency_key: idempotency_key } unless caller_supplies_parent?(catalog)
+
+      {
+        type: type_field,
+        parent_id: protocol_field(:string, PARENT_ID_DESCRIPTION, required: false, allow_blank: true),
+        idempotency_key: idempotency_key
+      }
+    end
+
+    def caller_supplies_parent?(catalog)
+      return true unless catalog.respond_to?(:caller_supplies_create_parent?)
+
+      catalog.caller_supplies_create_parent?
+    end
+
+    def server_parent_type?(catalog, type_name)
+      catalog.respond_to?(:server_chosen_create_parent?) && catalog.server_chosen_create_parent?(type_name)
+    end
+
+    def without_parent_id(properties, required)
+      [properties.except(:parent_id), required - ["parent_id"]]
     end
 
     def parent_fields(catalog, type_name, properties, required)
@@ -322,6 +351,7 @@ module RecordingStudioMcp
       required = SchemaFromContract.required_names(built.lookup&.input_contract) - dropped
       properties, required = apply_named_protocol_fields(catalog, registration, properties, required)
       properties, required = apply_named_create_parent_id(catalog, registration, properties, required)
+      properties, required = omit_named_server_action_parent(catalog, registration, properties, required)
       apply_named_idempotency_key(catalog, registration, properties, required)
     end
 
@@ -436,9 +466,18 @@ module RecordingStudioMcp
 
     def apply_named_create_parent_id(catalog, registration, properties, required)
       return [properties, required] unless registration.target.operation? && registration.target.value == :create
-      return [properties, required] unless registration.type.present? && catalog.parent_required?(registration.type)
+      return [properties, required] if registration.type.blank?
+      return without_parent_id(properties, required) if catalog.server_chosen_create_parent?(registration.type)
+      return [properties, required] unless catalog.parent_required?(registration.type)
 
       parent_fields(catalog, registration.type, properties, required)
+    end
+
+    def omit_named_server_action_parent(catalog, registration, properties, required)
+      return [properties, required] unless registration.target.action?
+      return [properties, required] unless catalog.server_chosen_action_parent?(registration.target.value)
+
+      without_parent_id(properties, required)
     end
 
     def apply_named_idempotency_key(catalog, registration, properties, required)
@@ -599,7 +638,9 @@ module RecordingStudioMcp
                          :drop_forced_keys, :apply_named_protocol_fields, :apply_named_member_id,
                          :named_member_id?, :apply_named_index_fields, :named_list_protocol_properties,
                          :merge_protocol_defaults,
-                         :apply_named_create_parent_id, :parent_fields,
+                         :apply_named_create_parent_id, :omit_named_server_action_parent, :parent_fields,
+                         :create_description, :create_properties, :caller_supplies_parent?,
+                         :server_parent_type?, :without_parent_id,
                          :apply_named_idempotency_key, :idempotency_advertised?, :idempotency_description,
                          :parent_id_schema, :protocol_field, :read_only_target?, :destructive_target?,
                          :registered_tool_options, :lookup_properties, :metric_tool_options,

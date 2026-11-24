@@ -4,6 +4,20 @@ require "logger"
 require "stringio"
 require "test_helper"
 
+class ParentHintRedis
+  def initialize
+    @entries = {}
+  end
+
+  def get(key)
+    @entries[key]
+  end
+
+  def set(key, value, **)
+    @entries[key] = value
+  end
+end
+
 class AgentHintsTest < Minitest::Test
   PARENT_MISS = "Parent resource was not found in this API scope"
   SCOPE_MISS = "Resource was not found in this API scope"
@@ -149,6 +163,100 @@ class AgentHintsTest < Minitest::Test
     end
   end
 
+  def test_server_chosen_parent_leaves_parent_id_out_and_ignores_a_sent_one
+    with_parent_rules do
+      register_parent_types
+      register_create("Page", &:parent_id)
+      register_create("Note", &:parent_id)
+      register_server_ticket
+      register_handler_slip
+      register_file_note
+      register_named_create_for("Ticket", "create_ticket")
+      register_named_create_for("Note", "create_note")
+      register_action_tool("file_note")
+      ensure_tree_server(:public, extra_tools: %w[create_ticket create_note file_note])
+      grant = workspace_grant
+
+      create = listed_tool(grant, "create").fetch(:inputSchema)
+      ticket = type_clause(grant, "create", "Ticket")
+      note = type_clause(grant, "create", "Note")
+      ticket_tool = listed_tool(grant, "create_ticket").fetch(:inputSchema)
+      note_tool = listed_tool(grant, "create_note").fetch(:inputSchema)
+      file_note = listed_tool(grant, "file_note").fetch(:inputSchema)
+      described = describe_type("Ticket")
+      fields = described.fetch("capability_actions").find { |action| action["name"] == "file_note" }
+      ticket_intro = docs_intro("Ticket")
+      note_intro = docs_intro("Note")
+
+      assert create.dig(:properties, :parent_id)
+      refute ticket.dig(:then, :properties).key?(:parent_id)
+      refute_includes Array(ticket.dig(:then, :required)), "parent_id"
+      assert_includes Array(note.dig(:then, :required)), "parent_id"
+      refute ticket_tool.fetch(:properties).key?(:parent_id)
+      refute_includes ticket_tool.fetch(:required), "parent_id"
+      assert note_tool.dig(:properties, :parent_id)
+      assert_includes note_tool.fetch(:required), "parent_id"
+      refute file_note.fetch(:properties).key?(:parent_id)
+      refute_includes file_note.fetch(:required), "parent_id"
+      assert file_note.dig(:properties, :note)
+      refute fields.dig("params", "fields").key?("parent_id")
+      assert fields.dig("params", "fields", "note")
+      refute_includes ticket_intro, "parent_id"
+      assert_includes note_intro, "parent_id"
+
+      sent = call_tool(grant, "create", { "type" => "Ticket", "parent_id" => "folder-9", "title" => "T" })
+      blank = call_tool(grant, "create", { "type" => "Ticket", "title" => "T" })
+      slip = call_tool(grant, "create", { "type" => "Slip", "parent_id" => "folder-9", "title" => "S" })
+      named = call_tool(grant, "create_ticket", { "parent_id" => "folder-9", "title" => "Named" })
+
+      [sent, blank, slip, named].each do |result|
+        refute result.body.dig(:result, :isError), result.body.dig(:result, :content, 0, :text)
+        assert_nil result.body.dig(:result, :structuredContent, "parent_id")
+        assert_nil result.body.dig(:result, :structuredContent, "seen")
+      end
+    end
+  end
+
+  def test_server_chosen_parent_keeps_one_result_when_a_retry_changes_parent_id
+    store = nil
+    original = nil
+    with_parent_rules do
+      calls = 0
+      register_tree_type(
+        "Ticket",
+        operations: %i[create],
+        create_parent: :server,
+        parent_resolver: ->(_context) { "ws-1" }
+      )
+      RecordingStudioApi.register_resource_handler("Ticket", :create, handler: lambda { |context|
+        calls += 1
+        { json: { parent_id: context.parent_id, calls: calls }, status: :ok }
+      })
+      grant = workspace_grant
+      grant.define_singleton_method(:actor) { Actor.new("user-1") }
+      store = RecordingStudioApi::IdempotencyStore.singleton_class
+      original = RecordingStudioApi::IdempotencyStore.method(:redis)
+      memory = ParentHintRedis.new
+      store.define_method(:redis) { memory }
+      first = call_tool(
+        grant, "create",
+        { "type" => "Ticket", "parent_id" => "folder-9", "title" => "T", "idempotency_key" => "ticket-1" }
+      )
+      second = call_tool(
+        grant, "create",
+        { "type" => "Ticket", "parent_id" => "other", "title" => "T", "idempotency_key" => "ticket-1" }
+      )
+
+      refute first.body.dig(:result, :isError), first.body.dig(:result, :content, 0, :text)
+      refute second.body.dig(:result, :isError), second.body.dig(:result, :content, 0, :text)
+      assert_equal 1, calls
+      assert_equal 1, first.body.dig(:result, :structuredContent, "calls")
+      assert_equal 1, second.body.dig(:result, :structuredContent, "calls")
+    end
+  ensure
+    store.define_method(:redis, original) if store && original
+  end
+
   def test_read_skill_returns_visible_text_and_hides_the_rest
     with_isolated_mcp_configuration do
       Dir.mktmpdir do |dir|
@@ -199,6 +307,76 @@ class AgentHintsTest < Minitest::Test
         }, &body)
       end
     end
+  end
+
+  def register_server_ticket
+    register_tree_type(
+      "Ticket",
+      operations: %i[index show create],
+      capability_actions: %i[file_note],
+      create_parent: :server,
+      parent_resolver: ->(_context) { "ws-1" }
+    )
+    RecordingStudioApi.register_resource_handler("Ticket", :create, handler: echo_parent_handler)
+  end
+
+  def register_handler_slip
+    register_tree_type("Slip", operations: %i[create])
+    RecordingStudioApi.register_resource_handler("Slip", :create, parent: :server, handler: echo_parent_handler)
+  end
+
+  def register_file_note
+    RecordingStudioApi.register_capability_action(
+      :file_note,
+      capability: :accessible,
+      creates: true,
+      parent: :server,
+      input_contract: {
+        fields: {
+          note: { type: :string, required: true },
+          parent_id: { type: :string, required: true }
+        }
+      },
+      handler: ->(_context) { { json: { ok: true } } }
+    )
+  end
+
+  def register_named_create_for(type, name)
+    RecordingStudioMcp.register_tool(
+      name: name,
+      type: type,
+      operation: :create,
+      title: "Create #{type}",
+      description: "Create a #{type}.",
+      input: {},
+      output: "the record"
+    )
+  end
+
+  def echo_parent_handler
+    lambda do |context|
+      { json: { parent_id: context.parent_id, seen: forwarded_parent(context) }, status: :ok }
+    end
+  end
+
+  def forwarded_parent(context)
+    values = [context.parent_id]
+    [context.params, context.request_params].each do |params|
+      next if params.nil?
+
+      hash = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
+      values << (hash["parent_id"] || hash[:parent_id])
+    end
+    values.compact.first
+  end
+
+  def describe_type(name)
+    RecordingStudioMcp::Catalog.new(api: :public).describe(name)
+  end
+
+  def docs_intro(type_name)
+    spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+    spec.fetch("tags").find { |tag| tag["name"] == type_name }.fetch("description")
   end
 
   def register_create(type, &block)

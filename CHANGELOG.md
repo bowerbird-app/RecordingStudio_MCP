@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-11-24
+
+### Added
+- MCP honors an API create whose catalog entry says `parent` is `server`. Those creates leave `parent_id` out of the input schema, `describe`, and the live docs page. Dispatch does not fill a default parent and does not send a caller `parent_id`.
+
+### Upgrade notes
+- Bump to `0.48.0`. Previous version is `0.47.1`. No MCP migration. Upgrade `recording_studio_api` to `>= 1.22.0`. Creates that do not opt in are unchanged. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.47.1] - 2026-11-24
 
 ### Fixed
@@ -1371,7 +1379,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.0...HEAD
+[0.48.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.1...v0.48.0
 [0.47.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.0...v0.47.1
 [0.47.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.2...v0.46.0

@@ -86,6 +86,11 @@ module RecordingStudioMcp
     end
 
     def assign_default_parent!(recordable_type, args)
+      if catalog.respond_to?(:server_chosen_create_parent?) && catalog.server_chosen_create_parent?(recordable_type)
+        args.delete("parent_id")
+        return
+      end
+
       @parent_hint_type = recordable_type
       return if args["parent_id"].present?
       return unless catalog.respond_to?(:workspace_parent_id)
