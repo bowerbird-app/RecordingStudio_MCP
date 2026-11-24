@@ -1175,52 +1175,33 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_empty_docs_group_is_hidden_and_intro_only_tag_stays
-    with_isolated_api_configuration do
-      RecordingStudioApi.configuration.api :public
-      register_tree_type("KeptNote", operations: %i[index show])
-      RecordingStudioApi.register_recordable_type_api(
-        "EmptyShelf",
-        serializer: ->(*) { { title: "Title" } },
-        output_keys: %i[title],
-        writable_attributes: %i[title],
-        operations: %i[index show],
-        auto_capability_actions: false,
-        openapi: { tags: ["EmptyShelf"] }
-      )
-      RecordingStudioMcp.register_type(type: "EmptyShelf", description: "")
-      ensure_tree_server(:public)
-      page = RecordingStudioMcp::Documentation.page(api: :public)
-      grouped = page.with(
-        tag_groups: [
-          { "name" => "Notes", "tags" => %w[KeptNote EmptyShelf] },
-          { "name" => "Blank", "tags" => ["EmptyShelf"] }
-        ]
-      )
-      lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
-      section = lambda { |entry, *_rest|
-        entry["type"].to_s == "KeptNote" ? "A kept note stays on the shelf." : ""
-      }
-      spec = nil
-      groups = RecordingStudio.stub(:root_allowed?, false) do
-        RecordingStudio.stub(:allowed_parent_types_for, ->(*) { [] }) do
-          lines.stub(:section_for, section) do
-            spec = Openapi.document(grouped)
-            RecordingStudioMcp::Documentation::ToolIndex.groups(grouped)
-          end
-        end
-      end
-      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
-      list_names = groups.map(&:first)
-      kept = spec.fetch("tags").find { |tag| tag["name"] == "KeptNote" }
+  def test_tag_with_intro_and_no_tools_is_absent_from_docs_groups
+    spec, groups = docs_for_kept_note_and_empty_shelf
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    grouped = Array(spec["x-tagGroups"])
+    grouped_tags = grouped.flat_map { |group| Array(group["tags"]) }
+    list_names = groups.map(&:first)
 
-      assert_includes tag_names, "KeptNote"
-      refute_includes tag_names, "EmptyShelf"
-      assert_equal [{ "name" => "Notes", "tags" => ["KeptNote"] }], spec["x-tagGroups"]
-      assert_includes kept.fetch("description"), "A kept note stays on the shelf."
-      assert_includes list_names, "KeptNote"
-      refute_includes list_names, "EmptyShelf"
-    end
+    refute_includes tag_names, "EmptyShelf"
+    refute_includes grouped_tags, "EmptyShelf"
+    refute_includes grouped.map { |group| group["name"] }, "Blank"
+    refute_includes list_names, "EmptyShelf"
+    refute_includes spec.fetch("tags").to_json, "An empty shelf still has a paragraph."
+  end
+
+  def test_tag_carried_by_a_tool_stays_in_docs_groups
+    spec, groups = docs_for_kept_note_and_empty_shelf
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    grouped_tags = Array(spec["x-tagGroups"]).flat_map { |group| Array(group["tags"]) }
+    list_names = groups.map(&:first)
+    kept = spec.fetch("tags").find { |tag| tag["name"] == "KeptNote" }
+    notes = spec.fetch("x-tagGroups").find { |group| group["name"] == "Notes" }
+
+    assert_includes tag_names, "KeptNote"
+    assert_includes grouped_tags, "KeptNote"
+    assert_includes list_names, "KeptNote"
+    assert_equal ["KeptNote"], notes.fetch("tags")
+    assert_includes kept.fetch("description"), "A kept note stays on the shelf."
   end
 
   def test_host_tag_groups_are_emitted_when_set_on_the_page
@@ -1490,6 +1471,57 @@ class DocumentationTest < Minitest::Test
     spec.dig("x-mcp", "tools").each do |tool|
       refute tool["x-mcp-docs-only"], "#{tool['name']} must not be docs-only"
     end
+  end
+
+  def docs_for_kept_note_and_empty_shelf
+    spec = nil
+    groups = nil
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("KeptNote", operations: %i[index show])
+      RecordingStudioApi.register_recordable_type_api(
+        "EmptyShelf",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[index show],
+        auto_capability_actions: false,
+        openapi: { tags: ["EmptyShelf"] }
+      )
+      RecordingStudioMcp.register_type(type: "EmptyShelf", description: "An empty shelf still has a paragraph.")
+      RecordingStudioApi.register_endpoint(
+        :show_kept_note,
+        http_verb: :get,
+        path: "kept_notes",
+        openapi: { summary: "Show kept note", tags: ["KeptNote"] },
+        handler: ->(_context) { { ok: true } }
+      )
+      include_api_endpoints(tree: true)
+      page = RecordingStudioMcp::Documentation.page(api: :public)
+      grouped = page.with(
+        tag_groups: [
+          { "name" => "Notes", "tags" => %w[KeptNote EmptyShelf] },
+          { "name" => "Blank", "tags" => ["EmptyShelf"] }
+        ]
+      )
+      lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
+      section = lambda { |entry, *_rest|
+        case entry["type"].to_s
+        when "KeptNote" then "A kept note stays on the shelf."
+        when "EmptyShelf" then "An empty shelf still has a paragraph."
+        else ""
+        end
+      }
+      RecordingStudio.stub(:root_allowed?, false) do
+        RecordingStudio.stub(:allowed_parent_types_for, ->(*) { [] }) do
+          lines.stub(:section_for, section) do
+            spec = Openapi.document(grouped)
+            groups = RecordingStudioMcp::Documentation::ToolIndex.groups(grouped)
+          end
+        end
+      end
+    end
+    [spec, groups]
   end
 
   def ordered_sidebar_names(names)
