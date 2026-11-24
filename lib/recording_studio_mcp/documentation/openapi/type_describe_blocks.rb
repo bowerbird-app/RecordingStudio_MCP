@@ -6,6 +6,11 @@ module RecordingStudioMcp
       module TypeDescribeBlocks
         module_function
 
+        def server_parent?(entry, context)
+          type_name = entry["recordable_type"].to_s
+          type_name.present? && RecordingStudioApi.server_create_parent?(type_name, api: context[:api_key])
+        end
+
         def parent_block(entry)
           parent = entry["parent"]
           return if parent.blank?

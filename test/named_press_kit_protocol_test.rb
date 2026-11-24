@@ -116,7 +116,7 @@ class NamedPressKitProtocolTest < Minitest::Test
 
       assert missing[:isError]
       assert_includes missing.dig(:content, 0, :text),
-                      "parent_id is required for McpTestKits::Kit"
+                      "parent_id is required for PressKit"
     end
   end
 

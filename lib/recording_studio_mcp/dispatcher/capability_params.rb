@@ -21,13 +21,26 @@ module RecordingStudioMcp
     end
 
     def apply_capability_contract(action, raw)
+      raw = raw.except("parent_id", :parent_id) if server_action_parent?(action)
       normalized = raw.respond_to?(:deep_symbolize_keys) ? raw.deep_symbolize_keys : raw
-      return normalized if action.input_contract.nil?
+      contract = request_contract_for(action)
+      return normalized if contract.nil?
 
-      result = action.input_contract.call(normalized)
+      result = contract.call(normalized)
       return result.value if result.success?
 
-      raise_contract_failure!("Invalid input for #{invoked_tool_name}", action.input_contract, result)
+      raise_contract_failure!("Invalid input for #{invoked_tool_name}", contract, result)
+    end
+
+    def server_action_parent?(action)
+      action.respond_to?(:server_parent?) && action.server_parent?
+    end
+
+    def request_contract_for(action)
+      return catalog.action_request_contract(action) if catalog.respond_to?(:action_request_contract)
+      return if action.nil?
+
+      action.respond_to?(:request_input_contract) ? action.request_input_contract : action.input_contract
     end
 
     def invoked_tool_name
@@ -39,7 +52,7 @@ module RecordingStudioMcp
     end
 
     def capability_contract_fields(action)
-      contract = action.input_contract
+      contract = request_contract_for(action)
       return {} if contract.nil?
 
       payload = contract.respond_to?(:as_json) ? contract.as_json : contract

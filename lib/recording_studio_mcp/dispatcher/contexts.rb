@@ -13,26 +13,32 @@ module RecordingStudioMcp
 
     def resource_context_fields(recordable_type, args, recording, parent_recording, operation_name)
       grant_fields
-        .merge(resource_identity_fields(recordable_type, args, recording, parent_recording))
+        .merge(resource_identity_fields(recordable_type, args, recording, parent_recording, operation_name))
         .merge(resource_request_fields(recordable_type, args, operation_name))
     end
 
-    def resource_identity_fields(recordable_type, args, recording, parent_recording)
+    def resource_identity_fields(recordable_type, args, recording, parent_recording, operation_name)
       {
         recording: recording,
         recordable_type: recordable_type,
         resource_name: RecordingStudioApi.resource_name_for(recordable_type),
         id: args["id"],
-        parent_id: args["parent_id"],
+        parent_id: (server_chosen_create?(recordable_type, operation_name) ? nil : args["parent_id"]),
         parent_recording: parent_recording,
         relationship_id: nil
       }
     end
 
+    def server_chosen_create?(recordable_type, operation_name)
+      operation_name == :create &&
+        catalog.respond_to?(:server_chosen_create_parent?) &&
+        catalog.server_chosen_create_parent?(recordable_type)
+    end
+
     def resource_request_fields(recordable_type, args, operation_name)
       {
         api_version: api_version,
-        params: permitted_params(resource_params(recordable_type, args)),
+        params: permitted_params(resource_params(recordable_type, args, operation_name)),
         request_params: permitted_params(write_params(recordable_type, args, operation_name)),
         scoped_recordings: access_grant.accessible_recordings,
         idempotency_key: create_idempotency_key(args, operation_name),
@@ -66,9 +72,11 @@ module RecordingStudioMcp
       ActionController::Parameters.new(hash).permit!
     end
 
-    def resource_params(recordable_type, args)
+    def resource_params(recordable_type, args, operation_name)
       keys = %w[id parent_id q limit sort order filter include pagination_token]
-      { "resource" => RecordingStudioApi.resource_name_for(recordable_type) }.merge(args.slice(*keys)).compact
+      sliced = args.slice(*keys)
+      sliced = sliced.except("parent_id") if server_chosen_create?(recordable_type, operation_name)
+      { "resource" => RecordingStudioApi.resource_name_for(recordable_type) }.merge(sliced).compact
     end
 
     def write_params(recordable_type, args, operation_name)
@@ -77,7 +85,9 @@ module RecordingStudioMcp
       reject_attributes_wrapper!(args)
       payload = stringify_keys(args).except(*WRITE_RESERVED_KEYS, *FINGERPRINT_EXCLUDED_KEYS)
       reject_unknown_fields!(recordable_type, payload, operation_name)
-      payload["parent_id"] = args["parent_id"] if args.key?("parent_id")
+      if args.key?("parent_id") && !server_chosen_create?(recordable_type, operation_name)
+        payload["parent_id"] = args["parent_id"]
+      end
       payload
     end
 

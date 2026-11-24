@@ -4,8 +4,8 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_47_0
-    assert_equal "0.47.1", ::RecordingStudioMcp::VERSION
+  def test_version_is_0_48_0
+    assert_equal "0.48.0", ::RecordingStudioMcp::VERSION
   end
 
   def test_engine_exists
@@ -18,7 +18,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes gemspec, 'spec.add_dependency "recording_studio", ">= 7.0", "< 8.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_admin", ">= 2.19.0", "< 3.0"'
     refute_includes gemspec, '"recording_studio_admin", ">= 2.0", "< 2.6"'
-    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.21.3", "< 2.0"'
+    assert_includes gemspec, 'spec.add_dependency "recording_studio_api", ">= 1.22.0", "< 2.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_logs", ">= 0.8.0", "< 1.0"'
     assert_includes gemspec, 'spec.add_dependency "recording_studio_metrics", ">= 0.9.0", "< 1.0"'
     refute_includes gemspec, "recording_studio_mcp_ui"
@@ -90,7 +90,7 @@ class RecordingStudioMcpTest < Minitest::Test
       gem_pin("recording_studio", "~> 7.8", "RecordingStudio", "v7.8.0"),
       gem_pin("recording_studio_accessible", "~> 0.58", "RecordingStudio_accessible", "v0.58.0"),
       gem_pin("recording_studio_admin", "~> 2.20", "RecordingStudio_admin", "v2.20.0"),
-      gem_pin("recording_studio_api", "~> 1.21", "RecordingStudio_api", "v1.21.3"),
+      gem_pin("recording_studio_api", "~> 1.21", "RecordingStudio_api", "v1.22.0"),
       gem_pin("recording_studio_attachable", "~> 0.34", "RecordingStudio_attachable", "v0.34.0"),
       gem_pin("recording_studio_cache", "~> 0.8", "RecordingStudio_cache", "v0.8.0"),
       gem_pin("recording_studio_icons", "~> 0.5", "RecordingStudio_icons", "v0.5.0"),
@@ -148,7 +148,7 @@ class RecordingStudioMcpTest < Minitest::Test
     assert_includes readme, "vendored Redoc"
     assert_includes readme, "Telemetry is off"
     refute_includes readme, "Sourcey"
-    assert_includes readme, "## Version\n\n0.47.1\n"
+    assert_includes readme, "## Version\n\n0.48.0\n"
     assert_includes readme, "Content-Security-Policy"
     assert_includes readme, "recording_studio_mcp_docs_for"
     assert_includes readme, "This gem ships no end-user product UI."

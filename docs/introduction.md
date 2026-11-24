@@ -6,7 +6,7 @@ Hosts mount live docs with `recording_studio_mcp_docs_for`. That page reads the 
 
 - `list`, `show`, and `describe` for reading
 - `read_skill` for the text of a skill this connection can already see. Pass the name from `describe`.
-- `create` and `update` for writing. A blank `parent_id` on create uses this connection's workspace when that workspace is an allowed parent. A missing parent lists the allowed parent types and, when the workspace is one of them, its id.
+- `create` and `update` for writing. A blank `parent_id` on create uses this connection's workspace when that workspace is an allowed parent. A missing parent lists the allowed parent types and, when the workspace is one of them, its id. When the API catalog entry says `parent` is `server`, that create does not ask for `parent_id` and does not send one.
 - `capability_action` for named API capability actions. An optional `idempotency_key`, or the `Idempotency-Key` header, replays an action flagged `creates: true` when the input matches. A different input for that key is an error. Other actions ignore the key. Named create tools and those creating actions accept the same key. `describe` lists them in `repeat_safe`.
 - `Recording` at `recording://{id}`. `resources/list` returns these in id order, 100 at a time. Follow `nextCursor` until a page leaves it out. Skill and UI resources are on the first page.
 

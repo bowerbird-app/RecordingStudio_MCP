@@ -16,6 +16,31 @@ module RecordingStudioMcp
         identifier.to_s
       end
 
+      def server_chosen_create_parent?(recordable_type)
+        return false if recordable_type.blank?
+        return false unless defined?(RecordingStudioApi) && RecordingStudioApi.respond_to?(:server_create_parent?)
+
+        RecordingStudioApi.server_create_parent?(recordable_type.to_s, api: api)
+      end
+
+      def caller_supplies_create_parent?
+        names = type_names_for(:create)
+        return true if names.empty?
+
+        names.any? { |type| !server_chosen_create_parent?(type) }
+      end
+
+      def server_chosen_action_parent?(action_name)
+        action = capability_action_for(action_name)
+        action.respond_to?(:server_parent?) && action.server_parent?
+      end
+
+      def action_request_contract(action)
+        return if action.nil?
+
+        action.respond_to?(:request_input_contract) ? action.request_input_contract : action.input_contract
+      end
+
       def action_creates?(action_name, recordable_type = nil)
         action = capability_action_for(action_name)
         return false if action.nil?

@@ -50,6 +50,10 @@ class DispatcherTest < Minitest::Test
       {}
     end
 
+    def public_name
+      nil
+    end
+
     def metric_names
       []
     end
