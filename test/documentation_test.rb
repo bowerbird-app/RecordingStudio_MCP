@@ -103,6 +103,7 @@ class DocumentationTest < Minitest::Test
         handler: ->(_context) { { ok: true } }
       )
       include_api_endpoints(tree: true)
+      carry_sidebar_tag!("Folder")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       mcp = spec.fetch("x-mcp")
@@ -174,6 +175,7 @@ class DocumentationTest < Minitest::Test
         handler: ->(_context) { { chats: [] } }
       )
       include_api_endpoints(tree: true)
+      carry_sidebar_tag!("Folder")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       mcp = spec.fetch("x-mcp")
@@ -344,6 +346,7 @@ class DocumentationTest < Minitest::Test
         )
         register_tree_type("Note", operations: %i[index show], capability_actions: %i[ping])
         register_tree_type("Message", operations: %i[show])
+        carry_sidebar_tag!("PressKit", "Note", "Message")
 
         spec = press_kit_parent_spec
         names = docs_tool_names(spec)
@@ -382,6 +385,7 @@ class DocumentationTest < Minitest::Test
       with_isolated_api_configuration do
         register_ping_capability
         register_tree_type("Page", operations: %i[index show create], capability_actions: %i[ping])
+        carry_sidebar_tag!("Page")
 
         spec = RecordingStudioMcp::Documentation.openapi(api: :public)
         tools = spec.dig("x-mcp", "tools")
@@ -405,6 +409,7 @@ class DocumentationTest < Minitest::Test
     with_isolated_api_configuration do
       register_named_capability(:search, summary: "Search support articles")
       register_tree_type("Support", operations: %i[index show], capability_actions: %i[search])
+      carry_sidebar_tag!("Support")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       tools = spec.dig("x-mcp", "tools")
@@ -440,6 +445,7 @@ class DocumentationTest < Minitest::Test
         handler: ->(_context) { { json: { ok: true } } },
         openapi: { summary: "Remove the image" }
       )
+      carry_sidebar_tag!("Identity")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       names = docs_tool_names(spec)
@@ -469,6 +475,7 @@ class DocumentationTest < Minitest::Test
       RecordingStudioApi.register_resource_handler(
         "Folder", :add_file, handler: ->(_context) { { json: { ok: true } } }, creates: true
       )
+      carry_sidebar_tag!("Folder")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       described = RecordingStudioMcp::Catalog.new(api: :public).describe("Folder")
@@ -488,7 +495,7 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_type_without_actions_still_gets_an_intro_for_allowed_core_tools
+  def test_type_without_a_tagged_tool_is_left_out_of_the_sidebar
     with_isolated_api_configuration do
       register_tree_type(
         "SupportPage",
@@ -497,14 +504,15 @@ class DocumentationTest < Minitest::Test
       )
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
+      page = RecordingStudioMcp::Documentation.page(api: :public)
       names = spec.dig("x-mcp", "tools").map { |tool| tool["name"] }
-      intro = spec.fetch("tags").find { |tag| tag["name"] == "Support" }.fetch("description")
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      list_names = RecordingStudioMcp::Documentation::ToolIndex.groups(page).map(&:first)
 
-      assert_includes spec.fetch("tags").map { |tag| tag["name"] }, "Support"
-      assert_equal [
-        "Tool: list with type `SupportPage`",
-        "Tool: show with type `SupportPage` and id"
-      ], tool_lines(intro)
+      refute_includes tag_names, "Support"
+      refute_includes list_names, "Support"
+      refute spec.key?("x-tagGroups")
+      refute_includes spec.fetch("tags").to_json, "Tool: list with type `SupportPage`"
       refute(names.any? { |name| name.start_with?("SupportPage--") })
     end
   end
@@ -679,6 +687,7 @@ class DocumentationTest < Minitest::Test
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[index show create update])
       register_tree_type("Trash", operations: %i[index show create update destroy])
+      carry_sidebar_tag!("Page", "Trash")
       catalog = RecordingStudioMcp::Catalog.new(api: :public)
       described = catalog.describe("Page")
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
@@ -740,6 +749,7 @@ class DocumentationTest < Minitest::Test
         operations: %i[index show],
         openapi: { tags: ["Press Kit"], description: "Credits on a press kit." }
       )
+      carry_sidebar_tag!("Press Kit")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
@@ -768,6 +778,7 @@ class DocumentationTest < Minitest::Test
         operations: %i[index show],
         openapi: { tags: ["Press Kit"], description: "Sections in a press kit." }
       )
+      carry_sidebar_tag!("Press Kit")
 
       spec = RecordingStudioMcp::Documentation.openapi(api: :public)
       press_kit = spec.fetch("tags").find { |tag| tag["name"] == "Press Kit" }
@@ -819,6 +830,7 @@ class DocumentationTest < Minitest::Test
       )
       register_named_capability(:reorder_credits, summary: "Reorder credits in this section")
       register_named_capability(:remove_credit, summary: "Remove a credit from this section")
+      carry_sidebar_tag!("Press Kit")
 
       spec = stub_allowed_parents(
         "RecordingStudioPresskits::CreditLine" => ["RecordingStudioPresskits::CreditsSection"],
@@ -875,6 +887,7 @@ class DocumentationTest < Minitest::Test
       register_named_capability(:publish, summary: "Publish this gallery")
       register_named_capability(:add_slide, summary: "Add a slide to this section")
       register_named_capability(:remove_slide, summary: "Remove this slide")
+      carry_sidebar_tag!("Galleries")
 
       spec = stub_allowed_parents(
         "GallerySection" => ["Gallery"],
@@ -1175,52 +1188,33 @@ class DocumentationTest < Minitest::Test
     end
   end
 
-  def test_empty_docs_group_is_hidden_and_intro_only_tag_stays
-    with_isolated_api_configuration do
-      RecordingStudioApi.configuration.api :public
-      register_tree_type("KeptNote", operations: %i[index show])
-      RecordingStudioApi.register_recordable_type_api(
-        "EmptyShelf",
-        serializer: ->(*) { { title: "Title" } },
-        output_keys: %i[title],
-        writable_attributes: %i[title],
-        operations: %i[index show],
-        auto_capability_actions: false,
-        openapi: { tags: ["EmptyShelf"] }
-      )
-      RecordingStudioMcp.register_type(type: "EmptyShelf", description: "")
-      ensure_tree_server(:public)
-      page = RecordingStudioMcp::Documentation.page(api: :public)
-      grouped = page.with(
-        tag_groups: [
-          { "name" => "Notes", "tags" => %w[KeptNote EmptyShelf] },
-          { "name" => "Blank", "tags" => ["EmptyShelf"] }
-        ]
-      )
-      lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
-      section = lambda { |entry, *_rest|
-        entry["type"].to_s == "KeptNote" ? "A kept note stays on the shelf." : ""
-      }
-      spec = nil
-      groups = RecordingStudio.stub(:root_allowed?, false) do
-        RecordingStudio.stub(:allowed_parent_types_for, ->(*) { [] }) do
-          lines.stub(:section_for, section) do
-            spec = Openapi.document(grouped)
-            RecordingStudioMcp::Documentation::ToolIndex.groups(grouped)
-          end
-        end
-      end
-      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
-      list_names = groups.map(&:first)
-      kept = spec.fetch("tags").find { |tag| tag["name"] == "KeptNote" }
+  def test_tag_with_intro_and_no_tools_is_absent_from_docs_groups
+    spec, groups = docs_for_kept_note_and_empty_shelf
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    grouped = Array(spec["x-tagGroups"])
+    grouped_tags = grouped.flat_map { |group| Array(group["tags"]) }
+    list_names = groups.map(&:first)
 
-      assert_includes tag_names, "KeptNote"
-      refute_includes tag_names, "EmptyShelf"
-      assert_equal [{ "name" => "Notes", "tags" => ["KeptNote"] }], spec["x-tagGroups"]
-      assert_includes kept.fetch("description"), "A kept note stays on the shelf."
-      assert_includes list_names, "KeptNote"
-      refute_includes list_names, "EmptyShelf"
-    end
+    refute_includes tag_names, "EmptyShelf"
+    refute_includes grouped_tags, "EmptyShelf"
+    refute_includes grouped.map { |group| group["name"] }, "Blank"
+    refute_includes list_names, "EmptyShelf"
+    refute_includes spec.fetch("tags").to_json, "An empty shelf still has a paragraph."
+  end
+
+  def test_tag_carried_by_a_tool_stays_in_docs_groups
+    spec, groups = docs_for_kept_note_and_empty_shelf
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    grouped_tags = Array(spec["x-tagGroups"]).flat_map { |group| Array(group["tags"]) }
+    list_names = groups.map(&:first)
+    kept = spec.fetch("tags").find { |tag| tag["name"] == "KeptNote" }
+    notes = spec.fetch("x-tagGroups").find { |group| group["name"] == "Notes" }
+
+    assert_includes tag_names, "KeptNote"
+    assert_includes grouped_tags, "KeptNote"
+    assert_includes list_names, "KeptNote"
+    assert_equal ["KeptNote"], notes.fetch("tags")
+    assert_includes kept.fetch("description"), "A kept note stays on the shelf."
   end
 
   def test_host_tag_groups_are_emitted_when_set_on_the_page
@@ -1297,8 +1291,6 @@ class DocumentationTest < Minitest::Test
       tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
       tag_names = spec.fetch("tags").map { |tag| tag["name"] }
       names = docs_tool_names(spec)
-      press_kit = tag_names.index("Press Kit")
-      press_kit_list = tag_names.index("Press Kit List Section")
 
       assert_docs_tools_match_live spec
       assert_equal ["Overview"], tools.fetch("list")["tags"]
@@ -1308,8 +1300,9 @@ class DocumentationTest < Minitest::Test
       assert_equal ["Workspace"], tools.fetch("workspace_ping")["tags"]
       assert_equal ["Other tools"], tools.fetch("loose_end")["tags"]
       assert_equal ["Zebra"], tools.fetch("zebra")["tags"]
-      assert_operator press_kit, :<, press_kit_list
-      assert_equal [], tag_names[(press_kit + 1)...press_kit_list]
+      refute_includes tag_names, "Press Kit"
+      refute_includes tag_names, "Press Kit List Section"
+      assert_operator tag_names.index("Workspace"), :<, tag_names.index("Zebra")
       assert_equal "Overview", tag_names.first
       refute_includes tag_names, "Core"
       refute_includes tag_names, "Tools"
@@ -1490,6 +1483,72 @@ class DocumentationTest < Minitest::Test
     spec.dig("x-mcp", "tools").each do |tool|
       refute tool["x-mcp-docs-only"], "#{tool['name']} must not be docs-only"
     end
+  end
+
+  def carry_sidebar_tag!(*names, api: :public)
+    names.each do |name|
+      key = "carry_#{name.to_s.gsub(/[^A-Za-z0-9]+/, '_').downcase}"
+      RecordingStudioApi.register_endpoint(
+        key.to_sym,
+        api: api,
+        http_verb: :get,
+        path: key,
+        openapi: { summary: "Carry #{name}", tags: [name.to_s] },
+        handler: ->(_context) { { ok: true } }
+      )
+    end
+    include_api_endpoints(api: api, tree: true)
+  end
+
+  def docs_for_kept_note_and_empty_shelf
+    spec = nil
+    groups = nil
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("KeptNote", operations: %i[index show])
+      RecordingStudioApi.register_recordable_type_api(
+        "EmptyShelf",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[index show],
+        auto_capability_actions: false,
+        openapi: { tags: ["EmptyShelf"] }
+      )
+      RecordingStudioMcp.register_type(type: "EmptyShelf", description: "An empty shelf still has a paragraph.")
+      RecordingStudioApi.register_endpoint(
+        :show_kept_note,
+        http_verb: :get,
+        path: "kept_notes",
+        openapi: { summary: "Show kept note", tags: ["KeptNote"] },
+        handler: ->(_context) { { ok: true } }
+      )
+      include_api_endpoints(tree: true)
+      page = RecordingStudioMcp::Documentation.page(api: :public)
+      grouped = page.with(
+        tag_groups: [
+          { "name" => "Notes", "tags" => %w[KeptNote EmptyShelf] },
+          { "name" => "Blank", "tags" => ["EmptyShelf"] }
+        ]
+      )
+      lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
+      section = lambda { |entry, *_rest|
+        case entry["type"].to_s
+        when "KeptNote" then "A kept note stays on the shelf."
+        when "EmptyShelf" then "An empty shelf still has a paragraph."
+        else ""
+        end
+      }
+      RecordingStudio.stub(:root_allowed?, false) do
+        RecordingStudio.stub(:allowed_parent_types_for, ->(*) { [] }) do
+          lines.stub(:section_for, section) do
+            spec = Openapi.document(grouped)
+            groups = RecordingStudioMcp::Documentation::ToolIndex.groups(grouped)
+          end
+        end
+      end
+    end
+    [spec, groups]
   end
 
   def ordered_sidebar_names(names)

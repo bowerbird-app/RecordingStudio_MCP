@@ -9,9 +9,8 @@ module RecordingStudioMcp
         spec = Openapi.document(page)
         tools = Array(spec.dig("x-mcp", "tools"))
         buckets = tool_buckets(tools)
-        descriptions = tag_descriptions(spec)
         tag_names(spec, tools).filter_map do |name|
-          next unless ToolDocs.shown_sidebar_tag?(name, tools: tools, descriptions: descriptions)
+          next unless ToolDocs.shown_sidebar_tag?(name, tools: tools)
 
           [name, buckets[name]]
         end
@@ -23,11 +22,6 @@ module RecordingStudioMcp
         buckets
       end
       private_class_method :tool_buckets
-
-      def tag_descriptions(spec)
-        Array(spec["tags"]).to_h { |tag| [tag["name"], tag["description"]] }
-      end
-      private_class_method :tag_descriptions
 
       def tag_names(spec, tools)
         ordered = Array(spec["tags"]).filter_map { |tag| tag["name"].presence }

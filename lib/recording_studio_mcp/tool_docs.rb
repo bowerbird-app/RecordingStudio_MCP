@@ -62,9 +62,8 @@ module RecordingStudioMcp
       text == "Core" ? OVERVIEW_TAG : text
     end
 
-    def shown_sidebar_tag?(name, tools:, descriptions:)
-      tagged = Array(tools).any? { |tool| Array(tool["tags"]).include?(name) }
-      tagged || descriptions[name].present?
+    def shown_sidebar_tag?(name, tools:)
+      Array(tools).any? { |tool| Array(tool["tags"]).include?(name) }
     end
 
     def openapi_tags(names, descriptions: {})
