@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.50.0
+
+Previous version is `0.49.0`. This is a breaking change. No MCP migration.
+
+Action tools reject unknown top-level arguments. `capability_action`, a named capability action, and a custom member handler return a tool error when the call includes a key that is not a writable field and not a transport argument. The error names the unknown keys and lists the writable fields. `tools/list` and the docs spec set `additionalProperties` to false on those input schemas.
+
+Stop sending extra keys on those tools. `id`, `type`, `action`, `parent_id`, `params`, and `idempotency_key` are still accepted. A client `authorized_by_type` or `authorized_by_id` is still removed and does not cause this error. An id outside this API scope is still `Resource was not found in this API scope` when the same call also has an unknown argument.
+
+Create and update already rejected unknown fields. That behavior is unchanged.
+
 ## 0.49.0
 
 Previous version is `0.48.1`. No MCP migration.

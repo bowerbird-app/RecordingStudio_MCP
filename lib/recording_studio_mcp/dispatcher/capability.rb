@@ -47,7 +47,7 @@ module RecordingStudioMcp
     def run_capability_action(recordable_type, args, action, handler: nil, named_tool: false)
       recording = load_recording(recordable_type, args["id"])
       authorize_capability!(recording, action)
-      context = action_context(recording, args, action, named_tool: named_tool)
+      context = action_context(recording, args, action, recordable_type: recordable_type, named_tool: named_tool)
       result = replay_creating_action(action, recordable_type, context) do
         { json: serialize_capability_result(action, (handler || action.handler).call(context), args), status: :ok }
       end

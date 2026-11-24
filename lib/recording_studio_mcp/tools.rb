@@ -307,6 +307,7 @@ module RecordingStudioMcp
           read_only: false,
           destructive: true,
           idempotent: false,
+          additional_properties: false,
           required: %w[type id action],
           properties: {
             type: catalog.type_schema,
@@ -331,7 +332,7 @@ module RecordingStudioMcp
     def registered_tool_options(built, catalog)
       registration = built.registration
       properties, required = named_schema_fields(built, catalog, registration)
-      {
+      options = {
         name: registration.name,
         title: built.title,
         description: advertised_description(built, catalog, registration),
@@ -342,6 +343,8 @@ module RecordingStudioMcp
         properties: properties,
         api: catalog.api
       }
+      options[:additional_properties] = false if registration.target.action?
+      options
     end
 
     def named_schema_fields(built, catalog, registration)

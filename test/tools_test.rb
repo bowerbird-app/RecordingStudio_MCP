@@ -365,6 +365,9 @@ class ToolsTest < Minitest::Test
       action = tools.fetch(names.fetch(:action)).fetch(:inputSchema)
       assert_includes action.fetch(:required), "id"
       assert_equal generic_id, action.dig(:properties, :id)
+      assert_equal false, action[:additionalProperties]
+      assert_equal false, tools.fetch("capability_action").dig(:inputSchema, :additionalProperties)
+      refute show.key?(:additionalProperties)
     end
   end
 
