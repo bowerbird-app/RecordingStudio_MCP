@@ -152,7 +152,13 @@ RecordingStudioApi.register_endpoint(
 )
 ```
 
-`x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds it to `required`. `description` is copied onto the field. Each field's `inputSchema` property is the file object, with `download_url`, `file_id`, `mime_type`, and `file_name` strings, `download_url` and `file_id` required. A declared field replaces any `input_contract` field of the same name in the schema. File fields live only in that schema. They do not add provider-specific `_meta`. Endpoints without the key are unchanged. MCP only describes the input; the endpoint handler downloads `download_url` (temporary) and does its own validation. Only top-level fields are supported.
+`x-mcp-file-params` is a list of field names, or a hash of name => options. `nullable: true` makes the field `["object", "null"]`. `required: true` adds the field to `inputSchema.required`. `description` is copied onto the field. Each field's `inputSchema` property is an object with string properties `download_url`, `file_id`, `mime_type`, and `file_name`. That object requires `download_url` and `file_id`. A declared field replaces any `input_contract` field of the same name. Endpoints without the key are unchanged.
+
+A top-level input property is a file field when its schema type includes `object` and its properties include both `download_url` and `file_id`. `FileParams` is the only code that decides this. Endpoint tools opt in with `x-mcp-file-params`, which builds that object. A registered tool opts in by putting that object on a contract field. Attachable uses `RecordingStudioAttachable::McpCopy.upload_file_field` on the field `file`. An action contract stores the field as `type: :hash`. `required: true` or `required: false` says whether the argument is required. A `required` array on the object is kept. When that array is absent, the object requires `download_url` and `file_id`. MCP does not match host type names. Only top-level fields are file inputs.
+
+Those tools set `_meta["openai/fileParams"]` to the file field names. An existing `_meta` value, including `ui.resourceUri`, stays on the tool. ChatGPT sends `{ download_url, file_id, mime_type, file_name }` on each named field. `download_url` is a short-lived bearer URL. The host handler fetches it. MCP does not download the file. `url` and `data` stay as the contract defines them. The file field is optional unless the contract sets `required: true`.
+
+Usage logs store the tool name and leave out arguments, so `download_url` is not logged. Tool errors that MCP builds replace that URL with `[redacted]`.
 
 Mixed hosts include generic tools, metric tool names, and endpoint tools on the same server. Included generic tools are then filtered by the access grant role. An endpoint is advertised only when its name is one MCP tool token (`[A-Za-z][A-Za-z0-9_.-]*`). Names such as `bad name` and `1bad` are skipped. Dotted names such as `presskits.edit` stay. Names that match a tree tool (`list`, `show`, `create`, `update`, `delete`, `capability_action`, `describe`) are skipped too, so `tools/list` still succeeds. A Workspace `ping` endpoint stays a tool when included. The JSON-RPC `ping` method is separate and is not that tool. An endpoint whose name matches a recordable or API metric tool keeps the endpoint. The metric tool is skipped and logged. `tools/list` still succeeds.
 
@@ -428,4 +434,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.50.1
+0.51.0

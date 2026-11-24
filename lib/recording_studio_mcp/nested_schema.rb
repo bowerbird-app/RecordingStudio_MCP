@@ -20,6 +20,13 @@ module RecordingStudioMcp
       end
     end
 
+    def object_fragment(field)
+      copied = copy_nested(field, :items, :properties, :additionalProperties)
+      required = field.respond_to?(:[]) ? field[:required] || field["required"] : nil
+      copied[:required] = required.map(&:to_s) if required.is_a?(Array)
+      copied
+    end
+
     def stringify(value)
       case value
       when Hash

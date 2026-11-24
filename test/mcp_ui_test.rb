@@ -63,7 +63,7 @@ class McpUiTest < Minitest::Test
     end
   end
 
-  def test_file_params_stay_off_ui_meta
+  def test_file_params_merge_with_ui_meta
     with_isolated_api_configuration do
       RecordingStudioApi.register_endpoint(
         "presskits.edit",
@@ -81,7 +81,7 @@ class McpUiTest < Minitest::Test
       edit = RecordingStudioMcp::Tools.definitions.find { |tool| tool[:name] == "presskits.edit" }
 
       assert_match(%r{\Aui://presskits/editor\?v=}, edit.dig(:_meta, :ui, :resourceUri))
-      refute edit[:_meta]&.key?("openai/fileParams")
+      assert_equal ["cover_file"], edit.dig(:_meta, "openai/fileParams")
     end
   end
 

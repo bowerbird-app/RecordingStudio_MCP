@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "nested_schema"
+require_relative "file_params"
 
 module RecordingStudioMcp
   module SchemaFromContract
@@ -41,14 +42,12 @@ module RecordingStudioMcp
     def property(contract_field, copy: {}, catalog_property: nil)
       built = catalog_property_schema(catalog_property)
       built[:type] ||= json_type(contract_field)
-      if catalog_property.blank?
-        built.merge!(NestedSchema.copy_nested(contract_field, :items, :properties, :additionalProperties))
-      end
+      fill_nested_object(built, contract_field)
       overlay_copy_on(built, copy)
       fill_contract_description(built, contract_field)
       fill_contract_example(built, contract_field)
       apply_contract_constraints(built, contract_field)
-      built
+      FileParams.ensure_file_schema(built)
     end
 
     def properties(contract, copy: {}, catalog_properties: {})
@@ -101,6 +100,18 @@ module RecordingStudioMcp
       property[:examples] = Array(meta[:example]) if meta.key?(:example)
     end
 
+    def fill_nested_object(built, contract_field)
+      NestedSchema.object_fragment(contract_field).each do |key, value|
+        built[key] = value unless built.key?(key)
+      end
+      built[:type] = "object" if built[:properties].is_a?(Hash) && !object_type?(built[:type])
+    end
+
+    def object_type?(type)
+      types = type.is_a?(Array) ? type : [type]
+      types.map(&:to_s).include?("object")
+    end
+
     def fill_contract_description(built, contract_field)
       return if built[:description].present?
 
@@ -139,7 +150,8 @@ module RecordingStudioMcp
       )
       schema.is_a?(Hash) ? schema[:properties] || schema["properties"] : nil
     end
-    private_class_method :overlay_copy_on, :fill_contract_description, :fill_contract_example,
+    private_class_method :overlay_copy_on, :fill_nested_object, :object_type?,
+                         :fill_contract_description, :fill_contract_example,
                          :catalog_property_schema,
                          :attributes_properties, :apply_contract_constraints
   end

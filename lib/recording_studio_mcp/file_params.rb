@@ -10,6 +10,8 @@ module RecordingStudioMcp
       file_name: { type: "string" }
     }.freeze
     FILE_REQUIRED = %w[download_url file_id].freeze
+    META_KEY = "openai/fileParams"
+    REDACTED = "[redacted]"
 
     module_function
 
@@ -61,5 +63,50 @@ module RecordingStudioMcp
         description: options[:description].presence
       }
     end
+
+    def ensure_file_schema(schema)
+      return schema unless file_schema?(schema)
+      return schema if schema[:required].is_a?(Array) || schema["required"].is_a?(Array)
+
+      schema[:required] = FILE_REQUIRED.dup
+      schema
+    end
+
+    def annotate(payload)
+      names = field_names(payload.dig(:inputSchema, :properties))
+      return payload if names.empty?
+
+      payload[:_meta] = (payload[:_meta] || {}).merge(META_KEY => names)
+      payload
+    end
+
+    def field_names(properties)
+      return [] unless properties.is_a?(Hash)
+
+      properties.filter_map { |name, schema| name.to_s if file_schema?(schema) }
+    end
+
+    def file_schema?(schema)
+      return false unless schema.is_a?(Hash)
+      return false unless object_type?(schema[:type] || schema["type"])
+
+      names = property_names(schema)
+      names.include?("download_url") && names.include?("file_id")
+    end
+
+    def object_type?(type)
+      types = type.is_a?(Array) ? type : [type]
+      types.map(&:to_s).include?("object")
+    end
+
+    def property_names(schema)
+      properties = schema[:properties] || schema["properties"]
+      return [] unless properties.is_a?(Hash)
+
+      properties.keys.map(&:to_s)
+    end
+    private_class_method :file_schema?, :object_type?, :property_names
   end
 end
+
+require_relative "file_params/redaction"
