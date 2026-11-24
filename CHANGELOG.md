@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.50.1] - 2026-11-24
+
+### Fixed
+- A contract field description is used on `tools/list` when the catalog property and the copy overlay omit one. Copy wins, then the catalog, then the contract. A string, number, or boolean contract example fills `examples` when nothing else set it.
+- Initialize instructions include one upload line when `tools/list` includes a tool whose schema has `url` and `data`. The line tells the client to call the create_upload tool with an https url, or with `data` (base64) plus `filename`, then pass the returned `signed_blob_id` to the set tool.
+
+### Upgrade notes
+- Bump to `0.50.1`. Previous version is `0.50.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.50.0] - 2026-11-24
 
 ### Changed (breaking)
@@ -1407,7 +1416,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.1...HEAD
+[0.50.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.0...v0.50.1
 [0.50.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.49.0...v0.50.0
 [0.49.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.1...v0.49.0
 [0.48.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.0...v0.48.1

@@ -1,5 +1,13 @@
 # Upgrading Recording Studio MCP
 
+## 0.50.1
+
+Previous version is `0.50.0`. No MCP migration.
+
+`tools/list` uses a contract field description when the catalog property and the tool copy omit one. Copy still wins, then the catalog. A string, number, or boolean contract example fills `examples` when nothing else set it.
+
+Initialize instructions add one line when a listed tool accepts `url` and `data`. That line tells the client to call the create_upload tool with an https url, or with `data` (base64) plus `filename`, then pass `signed_blob_id` to the set tool.
+
 ## 0.50.0
 
 Previous version is `0.49.0`. This is a breaking change. No MCP migration.
