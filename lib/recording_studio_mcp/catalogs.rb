@@ -20,6 +20,7 @@ module RecordingStudioMcp
       @configuration = configuration
       @by_api = nil
       @by_name = nil
+      @generation = 0
     end
 
     def server_for(api:)
@@ -40,7 +41,10 @@ module RecordingStudioMcp
     def invalidate!
       @by_api = nil
       @by_name = nil
+      @generation += 1
     end
+
+    attr_reader :generation
 
     def build!
       @by_api, @by_name = Builder.new(@configuration).call

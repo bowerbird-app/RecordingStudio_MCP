@@ -19,8 +19,34 @@ module RecordingStudioMcp
       nil
     end
 
-    def scope_miss_result
-      error_result(HANDLER_SCOPE_MISS)
+    def scope_miss_result(expected_type: nil, id: nil, operation: nil)
+      error_result(handler_scope_message(expected_type, id, operation))
+    end
+
+    def handler_scope_message(expected_type, id, operation)
+      recording = mismatched_recording(expected_type, id)
+      return HANDLER_SCOPE_MISS if recording.nil?
+
+      actual = catalog.displayed_type_name(recording.recordable_type)
+      expected = catalog.displayed_type_name(expected_type)
+      tool = sibling_tool_name(recording.recordable_type, operation)
+      lead = "Resource type does not match #{expected}. This id is a #{actual}."
+      return "#{lead} Use #{tool}." if tool
+
+      "#{lead} Use that item's content_id."
+    end
+
+    def mismatched_recording(expected_type, id)
+      return if expected_type.blank? || id.blank?
+
+      recording = scoped_recordings(false).find_by(id: id)
+      return if recording.nil?
+
+      found = recording.recordable_type.to_s
+      return if found == expected_type.to_s
+      return unless catalog.type_names.include?(found)
+
+      recording
     end
 
     def scoped_resource(recordable_type, operation_name, id)

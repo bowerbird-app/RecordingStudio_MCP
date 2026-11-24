@@ -119,6 +119,7 @@ module RecordingStudioMcp
 end
 
 require "recording_studio_mcp/dispatcher/handler_scope"
+require "recording_studio_mcp/dispatcher/type_hint"
 require "recording_studio_mcp/dispatcher/tree"
 require "recording_studio_mcp/dispatcher/capability"
 require "recording_studio_mcp/dispatcher/endpoint"

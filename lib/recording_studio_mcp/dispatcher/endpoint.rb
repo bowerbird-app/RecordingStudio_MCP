@@ -68,6 +68,8 @@ module RecordingStudioMcp
 
     def require_endpoint_path_args!(path_keys, args)
       path_keys.each do |key|
+        next if key.to_s == "parent_id"
+
         raise RecordingStudioApi::InvalidActionInputError, "#{key} is required" if args[key].blank?
       end
     end

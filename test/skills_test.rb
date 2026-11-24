@@ -77,7 +77,7 @@ class SkillsTest < Minitest::Test
 
       assert_equal(
         {
-          tools: { listChanged: false },
+          tools: { listChanged: true },
           resources: {},
           extensions: { "io.modelcontextprotocol/skills" => {} }
         },

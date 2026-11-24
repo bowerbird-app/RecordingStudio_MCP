@@ -45,6 +45,23 @@ class AgentHintsTest < Minitest::Test
     end
   end
 
+  def test_parent_id_descriptions_follow_allowed_parents
+    with_parent_rules do
+      register_parent_types
+      register_create("Page") { "ws-1" }
+      register_create("Note") { "folder-1" }
+      register_named_create
+      grant = workspace_grant
+      page = listed_tool(grant, "create_page").dig(:inputSchema, :properties, :parent_id, :description)
+      note = type_clause(grant, "create", "Note").dig(:then, :properties, :parent_id, :description)
+      shared = listed_tool(grant, "create").dig(:inputSchema, :properties, :parent_id, :description)
+
+      assert_equal "Id of the Workspace this Page goes in. A blank value then uses that workspace.", page
+      assert_equal "Id of the Folder this Note goes in.", note
+      refute_includes shared, "A blank value then uses that workspace."
+    end
+  end
+
   def test_named_create_can_omit_parent_id_when_the_workspace_applies
     with_parent_rules do
       register_parent_types

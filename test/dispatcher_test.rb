@@ -1384,6 +1384,29 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_blank_parent_id_on_an_endpoint_reaches_the_api_message
+    seen = nil
+    with_isolated_api_configuration do
+      mcp_endpoint(
+        :create_kit,
+        http_verb: :post,
+        path: "kits/:parent_id",
+        handler: lambda { |context|
+          seen = context.params[:parent_id]
+          raise RecordingStudioApi::InvalidActionInputError, "parent_id is required for PressKit"
+        }
+      )
+
+      result = dispatch("create_kit", { parent_id: "" })
+      text = result.dig(:content, 0, :text)
+
+      assert result[:isError]
+      assert_equal "", seen
+      assert_includes text, "parent_id is required for PressKit"
+      refute_equal "parent_id is required", text
+    end
+  end
+
   def test_unknown_tool_on_catalog_only_host_lists_endpoint_names
     with_isolated_api_configuration do
       register_mcp_endpoint_tool(
@@ -1700,7 +1723,6 @@ class DispatcherTest < Minitest::Test
 
     [
       ["show", { type: "Page", id: "missing" }, FakeRelation.new(nil)],
-      ["show", { type: "Page", id: "folder-1" }, FakeRelation.new(folder)],
       ["update", { type: "Page", id: "page-1", title: "Hi" }, FakeRelation.new(recording)]
     ].each do |tool, args, relation|
       called = false
@@ -1711,6 +1733,17 @@ class DispatcherTest < Minitest::Test
       assert_scope_miss result
       refute called, tool
     end
+
+    called = false
+    @grant.deny_authorization = false
+    @grant.accessible_recordings = FakeRelation.new(folder)
+    wrong_type = dispatch_custom_show(handler, { type: "Page", id: "folder-1" })
+    wrong_text = wrong_type.dig(:content, 0, :text)
+
+    assert wrong_type[:isError]
+    assert_includes wrong_text, "This id is a Folder."
+    refute_equal SCOPE_MISS, wrong_text
+    refute called
 
     called = false
     @grant.deny_authorization = true

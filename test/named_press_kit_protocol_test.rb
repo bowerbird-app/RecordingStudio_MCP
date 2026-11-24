@@ -120,6 +120,70 @@ class NamedPressKitProtocolTest < Minitest::Test
     end
   end
 
+  def test_blank_parent_id_on_named_create_returns_the_api_message
+    with_press_kit_surface(custom_create: false, named_operations: true) do
+      missing = call_tool(RecordingStudioMcp.tool_name(PRESS_KIT, :create), parent_id: "", title: "Kit")
+      text = missing.dig(:content, 0, :text)
+
+      assert missing[:isError]
+      assert_includes text, "parent_id is required for PressKit"
+      refute_equal "parent_id is required", text
+    end
+  end
+
+  def test_named_create_parent_id_names_the_allowed_parent
+    with_press_kit_surface(named_operations: true) do
+      register_tree_type(
+        "McpTestKits::Center",
+        operations: %i[show],
+        public_name: "PressCenter",
+        description: "A press center."
+      )
+      description = listed_tool(RecordingStudioMcp.tool_name(PRESS_KIT, :create)).dig(
+        :inputSchema, :properties, :parent_id, :description
+      )
+
+      assert_equal "Id of the PressCenter this PressKit goes in.", description
+      refute_includes description, "blank value"
+    end
+  end
+
+  def test_named_show_of_a_different_in_scope_type_names_the_tool
+    with_press_kit_surface(named_operations: true) do
+      register_tree_type("KitSection", operations: %i[show], public_name: "KitSection", description: "A section.")
+      RecordingStudioApi.register_resource_handler("KitSection", :show, handler: ->(_) { { json: {} } })
+      RecordingStudioMcp.register_tool(
+        name: "kit_section_show",
+        type: "KitSection",
+        operation: :show,
+        title: "Show kit section",
+        description: "Show a kit section.",
+        input: {},
+        output: "the section"
+      )
+      ensure_tree_server(:public, extra_tools: ["kit_section_show"])
+      section = FakeRecording.new("sec-1", "KitSection")
+      hidden = FakeRecording.new("hid-1", "HiddenNote")
+      records = { "sec-1" => section, "hid-1" => hidden }
+      relation = Object.new
+      relation.define_singleton_method(:find_by) { |id:| records[id.to_s] }
+      @grant.define_singleton_method(:accessible_recordings) { |**| relation }
+      show = RecordingStudioMcp.tool_name(PRESS_KIT, :show)
+
+      missing = call_tool(show, id: "missing")
+      wrong = call_tool(show, id: "sec-1")
+      outside = call_tool(show, id: "hid-1")
+
+      assert_equal "Resource was not found in this API scope", missing.dig(:content, 0, :text)
+      assert wrong[:isError]
+      assert_includes wrong.dig(:content, 0, :text), "This id is a KitSection. Use kit_section_show."
+      refute_equal "Resource was not found in this API scope", wrong.dig(:content, 0, :text)
+      assert_equal "Resource was not found in this API scope", outside.dig(:content, 0, :text)
+      refute_includes outside.dig(:content, 0, :text), "HiddenNote"
+      refute_includes outside.dig(:content, 0, :text), "kit_section_show"
+    end
+  end
+
   def test_describe_and_instructions_point_at_describe_not_a_docs_tool
     with_press_kit_surface do
       described = call_tool("describe", type: "PressKit")

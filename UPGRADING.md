@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.49.0
+
+Previous version is `0.48.1`. No MCP migration.
+
+A blank `parent_id` is no longer rejected before the API runs. The tool error names the type, for example `parent_id is required for PressKit`. `parent_id` text names that type's allowed parents. The sentence `A blank value then uses that workspace` stays only when this connection's workspace is an allowed parent.
+
+A named or custom tool given an id of a different type in this grant and this API names that type and the tool to call, for example `This id is a KitSection. Use kit_section_show.` An id outside the grant stays `Resource was not found in this API scope`. Public and operations APIs stay separate.
+
+Initialize reports `tools.listChanged: true`. A live session that has already called `tools/list` or `tools/call` receives `notifications/tools/list_changed` on the next `tools/list` or `tools/call` when the named API, the grant's role, or the catalog generation changes. A tool call does not rebuild the tool list to check. The notice goes out on that process's listen stream, including `subscriptions/listen` on protocol `2026-07-28`. A client that is not listening does not receive it. A deploy drops in-memory sessions, so the notice does not cross a restart. Reconnect after a deploy when the app ignores the notice.
+
 ## 0.48.1
 
 Previous version is `0.48.0`. No MCP migration.

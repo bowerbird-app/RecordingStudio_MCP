@@ -24,7 +24,7 @@ module RecordingStudioMcp
         def capabilities
           resources = RecordingStudioMcp.events_registered? ? { "subscribe" => true } : {}
           {
-            "tools" => { "listChanged" => false },
+            "tools" => { "listChanged" => true },
             "resources" => resources
           }
         end

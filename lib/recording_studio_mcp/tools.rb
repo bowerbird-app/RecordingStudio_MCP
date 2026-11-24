@@ -11,8 +11,7 @@ module RecordingStudioMcp
       destroy: "delete"
     }.freeze
     FIELD_META_KEYS = %w[name required type allowed_values description immutable_on_update].freeze
-    PARENT_ID_DESCRIPTION = "Parent recording id. Required for a non-root type unless this " \
-                            "workspace is an allowed parent. A blank value then uses that workspace."
+    PARENT_ID_DESCRIPTION = "Parent recording id. The type says which record this one goes in."
     CREATE_IDEMPOTENCY_KEY = "Create idempotency key. Same as the API Idempotency-Key header."
 
     module_function
@@ -240,7 +239,7 @@ module RecordingStudioMcp
 
     def parent_fields(catalog, type_name, properties, required)
       optional = catalog.workspace_parent_id(type_name).present?
-      merged = properties.merge(parent_id: parent_id_schema)
+      merged = properties.merge(parent_id: parent_id_schema(catalog, type_name))
       next_required = optional ? (required - ["parent_id"]) : (required | ["parent_id"])
       [merged, next_required]
     end
@@ -500,8 +499,33 @@ module RecordingStudioMcp
       Catalog::Reader::CAPABILITY_IDEMPOTENCY_KEY
     end
 
-    def parent_id_schema
-      protocol_field(:string, PARENT_ID_DESCRIPTION, allow_blank: true)
+    def parent_id_schema(catalog, type_name)
+      protocol_field(:string, parent_id_description(catalog, type_name), allow_blank: true)
+    end
+
+    def parent_id_description(catalog, type_name)
+      child = catalog.displayed_type_name(type_name)
+      parents = parent_type_names(catalog, type_name)
+      lead = if parents.one?
+               "Id of the #{parents.first} this #{child} goes in."
+             elsif parents.any?
+               "Id of the #{parents.to_sentence} this #{child} goes in."
+             else
+               "Parent recording id for this #{child}."
+             end
+      return lead unless workspace_parent_for?(catalog, type_name)
+
+      "#{lead} A blank value then uses that workspace."
+    end
+
+    def parent_type_names(catalog, type_name)
+      return [] unless catalog.respond_to?(:parent_rules_for)
+
+      Array(catalog.parent_rules_for(type_name)["allowed_parent_types"]).map(&:to_s).reject(&:empty?)
+    end
+
+    def workspace_parent_for?(catalog, type_name)
+      catalog.respond_to?(:workspace_parent_id) && catalog.workspace_parent_id(type_name).present?
     end
 
     def protocol_field(type, description, required: false, allow_blank: nil)
@@ -642,7 +666,8 @@ module RecordingStudioMcp
                          :create_description, :create_properties, :caller_supplies_parent?,
                          :server_parent_type?, :without_parent_id,
                          :apply_named_idempotency_key, :idempotency_advertised?, :idempotency_description,
-                         :parent_id_schema, :protocol_field, :read_only_target?, :destructive_target?,
+                         :parent_id_schema, :parent_id_description, :parent_type_names,
+                         :workspace_parent_for?, :protocol_field, :read_only_target?, :destructive_target?,
                          :registered_tool_options, :lookup_properties, :metric_tool_options,
                          :describe_description, :show_description, :show_id_sources
   end
