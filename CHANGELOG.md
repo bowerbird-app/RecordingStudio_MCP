@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.47.1] - 2026-11-24
+
+### Fixed
+- Docs sidebar, no-JS list, and `x-tagGroups` share one rule. A tag with no tools and no intro text is left out. A tag with intro text and no tools stays. A tag group with no remaining tags is left out.
+- Unknown capability actions list registered MCP tool names. A contract failure names the MCP tool. `describe` nesting no longer names `add_image`. A typeless action tool keeps the enum of types that enable it. Its description keeps the host text and adds `Enabled on` those types.
+- A database deadlock, lock wait timeout, or lock-timeout cancel returns `Another change to this item is in progress. Try again.` The log line is the exception class only.
+- An id in this grant that points at a different type on this API names that type and says to use the item's `content_id`. A type outside this API stays not found.
+
+### Upgrade notes
+- Bump to `0.47.1`. Previous version is `0.47.0`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.47.0] - 2026-11-23
 
 ### Added
@@ -1360,7 +1371,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.1...HEAD
+[0.47.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.47.0...v0.47.1
 [0.47.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.2...v0.46.0
 [0.45.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.45.1...v0.45.2

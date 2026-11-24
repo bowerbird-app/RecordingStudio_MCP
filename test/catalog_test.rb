@@ -138,7 +138,7 @@ class CatalogTest < Minitest::Test
 
       assert_equal(
         "Nested items such as attachments and locations are managed through the parent " \
-        "type's actions (for example add_image), not as their own types.",
+        "type's tools, not as their own types.",
         described.fetch("nesting")
       )
       refute_includes catalog.type_schema.fetch(:enum), "Attachment"

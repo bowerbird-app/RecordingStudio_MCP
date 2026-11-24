@@ -1175,6 +1175,54 @@ class DocumentationTest < Minitest::Test
     end
   end
 
+  def test_empty_docs_group_is_hidden_and_intro_only_tag_stays
+    with_isolated_api_configuration do
+      RecordingStudioApi.configuration.api :public
+      register_tree_type("KeptNote", operations: %i[index show])
+      RecordingStudioApi.register_recordable_type_api(
+        "EmptyShelf",
+        serializer: ->(*) { { title: "Title" } },
+        output_keys: %i[title],
+        writable_attributes: %i[title],
+        operations: %i[index show],
+        auto_capability_actions: false,
+        openapi: { tags: ["EmptyShelf"] }
+      )
+      RecordingStudioMcp.register_type(type: "EmptyShelf", description: "")
+      ensure_tree_server(:public)
+      page = RecordingStudioMcp::Documentation.page(api: :public)
+      grouped = page.with(
+        tag_groups: [
+          { "name" => "Notes", "tags" => %w[KeptNote EmptyShelf] },
+          { "name" => "Blank", "tags" => ["EmptyShelf"] }
+        ]
+      )
+      lines = RecordingStudioMcp::Documentation::Openapi::TypeOperationLines
+      section = lambda { |entry, *_rest|
+        entry["type"].to_s == "KeptNote" ? "A kept note stays on the shelf." : ""
+      }
+      spec = nil
+      groups = RecordingStudio.stub(:root_allowed?, false) do
+        RecordingStudio.stub(:allowed_parent_types_for, ->(*) { [] }) do
+          lines.stub(:section_for, section) do
+            spec = Openapi.document(grouped)
+            RecordingStudioMcp::Documentation::ToolIndex.groups(grouped)
+          end
+        end
+      end
+      tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+      list_names = groups.map(&:first)
+      kept = spec.fetch("tags").find { |tag| tag["name"] == "KeptNote" }
+
+      assert_includes tag_names, "KeptNote"
+      refute_includes tag_names, "EmptyShelf"
+      assert_equal [{ "name" => "Notes", "tags" => ["KeptNote"] }], spec["x-tagGroups"]
+      assert_includes kept.fetch("description"), "A kept note stays on the shelf."
+      assert_includes list_names, "KeptNote"
+      refute_includes list_names, "EmptyShelf"
+    end
+  end
+
   def test_host_tag_groups_are_emitted_when_set_on_the_page
     with_isolated_api_configuration do
       RecordingStudioApi.configuration.api :public
@@ -1187,8 +1235,9 @@ class DocumentationTest < Minitest::Test
       spec = Openapi.document(grouped)
       tag_names = Array(spec["tags"]).map { |tag| tag["name"] }
 
-      assert_equal [{ "name" => "Host", "tags" => %w[Core] }], spec["x-tagGroups"]
+      assert_equal [{ "name" => "Host", "tags" => ["Overview"] }], spec["x-tagGroups"]
       refute_includes tag_names, "Core"
+      assert_includes tag_names, "Overview"
     end
   end
 

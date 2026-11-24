@@ -27,7 +27,11 @@ module RecordingStudioMcp
       result = action.input_contract.call(normalized)
       return result.value if result.success?
 
-      raise_contract_failure!("Invalid input for action #{action.name}", action.input_contract, result)
+      raise_contract_failure!("Invalid input for #{invoked_tool_name}", action.input_contract, result)
+    end
+
+    def invoked_tool_name
+      @tool_name.to_s.empty? ? "capability_action" : @tool_name.to_s
     end
 
     def capability_contract_keys(action)

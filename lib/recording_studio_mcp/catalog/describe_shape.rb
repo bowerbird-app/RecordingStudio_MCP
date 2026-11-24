@@ -4,7 +4,7 @@ module RecordingStudioMcp
   class Catalog
     module DescribeShape
       NESTED_ITEMS = "Nested items such as attachments and locations are managed through the parent " \
-                     "type's actions (for example add_image), not as their own types."
+                     "type's tools, not as their own types."
 
       private
 

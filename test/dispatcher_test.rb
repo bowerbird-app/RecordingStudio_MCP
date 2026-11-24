@@ -1158,6 +1158,110 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_unknown_action_lists_registered_tool_names
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :ping,
+        capability: :accessible,
+        handler: ->(_context) { { json: { ok: true } } }
+      )
+      register_tree_type("Page", capability_actions: %i[ping])
+      RecordingStudioMcp.register_tool(
+        name: "ring_bell",
+        action: :ping,
+        title: "Ring",
+        description: "Ring the bell.",
+        input: {},
+        output: "ok"
+      )
+      ensure_tree_server(:public, extra_tools: %w[ring_bell])
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      result = dispatch("capability_action", { type: "Page", id: "1", action: "nope" })
+      text = result.dig(:content, 0, :text)
+
+      assert result[:isError]
+      assert_includes text, "Unknown action nope"
+      assert_includes text, "Allowed tools for Page: ring_bell"
+      refute_includes text, "ping"
+    end
+  end
+
+  def test_contract_failure_names_the_invoked_tool
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :attach,
+        capability: :accessible,
+        input_contract: { fields: { note: { type: :string, required: true } } },
+        handler: ->(_context) { { json: { ok: true } } }
+      )
+      register_tree_type("Page", capability_actions: %i[attach])
+      RecordingStudioMcp.register_tool(
+        name: "attach",
+        action: :attach,
+        title: "Attach",
+        description: "Attach a file.",
+        input: {},
+        output: "ok"
+      )
+      ensure_tree_server(:public, extra_tools: %w[attach])
+      @grant.accessible_recordings = FakeRelation.new(FakeRecording.new("1", "Page"))
+
+      result = dispatch("attach", { type: "Page", id: "1" })
+      text = result.dig(:content, 0, :text)
+
+      assert result[:isError]
+      assert_includes text, "Invalid input for attach"
+      refute_includes text, "Invalid input for action"
+    end
+  end
+
+  def test_deadlock_is_a_retryable_busy_error
+    assert_retryable_busy ActiveRecord::Deadlocked.new("token-secret-payload")
+  end
+
+  def test_lock_wait_timeout_is_a_retryable_busy_error
+    skip "LockWaitTimeout is not defined" unless defined?(ActiveRecord::LockWaitTimeout)
+
+    assert_retryable_busy ActiveRecord::LockWaitTimeout.new("token-secret-payload")
+  end
+
+  def test_lock_timeout_cancel_is_a_retryable_busy_error
+    error = ActiveRecord::QueryCanceled.new("canceling statement due to lock timeout token-secret-payload")
+
+    assert_retryable_busy error
+  end
+
+  def test_statement_timeout_stays_an_internal_error
+    error = ActiveRecord::QueryCanceled.new("canceling statement due to statement timeout token-secret-payload")
+    text, log = captured_tool_failure(error)
+
+    assert_equal "Internal error", text
+    assert_includes log, "QueryCanceled"
+    refute_includes log, "token-secret-payload"
+  end
+
+  def test_type_mismatch_names_a_type_inside_this_api
+    recording = FakeRecording.new("rec-1", "Page")
+    @grant.accessible_recordings = FakeRelation.new(recording)
+
+    text = type_mismatch_text
+
+    assert_includes text, "Resource type does not match Workspace"
+    assert_includes text, "This id is a Page"
+    assert_includes text, "content_id"
+  end
+
+  def test_type_mismatch_outside_this_api_stays_not_found
+    recording = FakeRecording.new("rec-1", "HiddenNote")
+    @grant.accessible_recordings = FakeRelation.new(recording)
+
+    text = type_mismatch_text
+
+    assert_equal SCOPE_MISS, text
+    refute_includes text, "HiddenNote"
+  end
+
   def test_unknown_action_lists_allowed_actions
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:capability_action, nil) do
@@ -1811,6 +1915,50 @@ class DispatcherTest < Minitest::Test
     existing = Array(RecordingStudioMcp.configuration.servers["public"]&.included_tools).map(&:name)
     extras = (existing - RecordingStudioMcp::Catalogs::GENERIC_NAMES) + [name.to_s]
     ensure_tree_server(:public, extra_tools: extras)
+  end
+
+  def assert_retryable_busy(error)
+    text, log = captured_tool_failure(error)
+
+    assert_equal "Another change to this item is in progress. Try again.", text
+    assert_includes log, error.class.name
+    refute_includes log, "token-secret-payload"
+  end
+
+  def captured_tool_failure(error)
+    log = StringIO.new
+    previous = Rails.logger
+    Rails.logger = Logger.new(log)
+    result = RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(*) { raise error }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              dispatch("list", { "type" => "Workspace" })
+            end
+          end
+        end
+      end
+    end
+    [result.dig(:content, 0, :text), log.string]
+  ensure
+    Rails.logger = previous if previous
+  end
+
+  def type_mismatch_text
+    operation = FakeOperation.new(FakeHandler.new({ json: { title: "Wrong type" } }))
+    result = RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, ->(*) { operation }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              dispatch("show", { type: "Workspace", id: "rec-1" })
+            end
+          end
+        end
+      end
+    end
+    result.dig(:content, 0, :text)
   end
 
   def dispatch(tool_name, arguments, request_context: nil)

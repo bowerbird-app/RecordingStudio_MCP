@@ -37,10 +37,10 @@ module RecordingStudioMcp
       end
 
       def unknown_action_message(action_name, recordable_type)
-        allowed = enabled_capability_action_names(recordable_type)
-        suffix = allowed.any? ? allowed.join(", ") : "(none)"
+        names = action_tool_names(recordable_type)
+        suffix = names.any? ? names.join(", ") : "(none)"
         shown = displayed_type_name(recordable_type)
-        "Unknown action #{action_name}. Allowed actions for #{shown}: #{suffix}"
+        "Unknown action #{action_name}. Allowed tools for #{shown}: #{suffix}"
       end
 
       def allowed_types_sentence

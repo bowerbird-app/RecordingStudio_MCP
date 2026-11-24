@@ -306,7 +306,7 @@ module RecordingStudioMcp
       {
         name: registration.name,
         title: built.title,
-        description: built.description,
+        description: advertised_description(built, catalog, registration),
         read_only: read_only_target?(registration),
         destructive: destructive_target?(registration),
         idempotent: read_only_target?(registration) || idempotency_advertised?(catalog, registration),
@@ -403,7 +403,35 @@ module RecordingStudioMcp
     end
 
     def merge_protocol_defaults(properties, required, defaults, extra_required: [])
-      [defaults.merge(properties), (extra_required + required).uniq]
+      merged = defaults.merge(properties) { |_key, protocol, property| prefer_protocol_enum(protocol, property) }
+      [merged, (extra_required + required).uniq]
+    end
+
+    def prefer_protocol_enum(protocol, property)
+      protocol_enum = enum_values(protocol)
+      return property if protocol_enum.empty? || enum_values(property).any?
+      return property unless property.is_a?(Hash)
+
+      property.merge(enum: protocol_enum)
+    end
+
+    def enum_values(field)
+      return [] unless field.is_a?(Hash)
+
+      Array(field[:enum] || field["enum"])
+    end
+
+    def advertised_description(built, catalog, registration)
+      text = built.description.to_s
+      return text unless named_typeless_action?(registration)
+
+      typeless_action_description(text, catalog, registration.target.value)
+    end
+
+    def typeless_action_description(text, catalog, action_name)
+      enabled = catalog.displayed_names_for(catalog.type_names_for_action(action_name))
+      list = enabled.any? ? enabled.join(", ") : "(none)"
+      [text.to_s.strip.presence, "Enabled on #{list}."].compact.join(" ")
     end
 
     def apply_named_create_parent_id(catalog, registration, properties, required)

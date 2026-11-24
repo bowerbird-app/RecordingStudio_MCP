@@ -64,14 +64,17 @@ module RecordingStudioMcp
 
     def attach_sidebar!(spec, page, group_tags: nil)
       copy = grouped_tag_copy(page, group_tags: group_tags)
+      tools = Array(spec.dig("x-mcp", "tools"))
       names = sidebar_tag_order(tool_sidebar_tags(spec) + copy[:intro_tags])
-      write_sidebar(spec, page, names, copy[:descriptions])
+      shown = names.select { |name| shown_sidebar_tag?(name, tools: tools, descriptions: copy[:descriptions]) }
+      write_sidebar(spec, page, shown, copy[:descriptions])
     end
 
     def write_sidebar(spec, page, names, descriptions)
       tags = openapi_tags(names, descriptions: descriptions)
       spec["tags"] = tags if tags.any?
-      spec["x-tagGroups"] = page.tag_groups if Array(page.tag_groups).any?
+      groups = kept_tag_groups(page.tag_groups, tags.map { |tag| tag["name"] })
+      spec["x-tagGroups"] = groups if groups.any?
       spec
     end
     private_class_method :write_sidebar
