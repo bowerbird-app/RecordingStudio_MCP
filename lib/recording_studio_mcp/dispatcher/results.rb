@@ -116,8 +116,9 @@ module RecordingStudioMcp
     end
 
     def error_result(message, details: nil, code: nil)
+      message, details = FileParams.redact([message.to_s, details], @call_arguments)
       result = {
-        content: [{ type: "text", text: message.to_s }],
+        content: [{ type: "text", text: message }],
         isError: true
       }
       structured = {}

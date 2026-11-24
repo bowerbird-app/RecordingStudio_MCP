@@ -35,6 +35,7 @@ module RecordingStudioMcp
 
     def call(tool_name, arguments)
       @tool_name = tool_name.to_s
+      @call_arguments = arguments
       invoke_tool(tool_name, arguments)
     ensure
       AuthorizedBy.leave

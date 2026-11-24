@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-11-24
+
+### Added
+- Tools that take a file object advertise `_meta["openai/fileParams"]`. ChatGPT can send `download_url`, `file_id`, `mime_type`, and `file_name` on those fields. `url` and `data` stay as they are. The file field is optional unless the contract sets `required: true`.
+
+### Upgrade notes
+- Bump to `0.51.0`. Previous version is `0.50.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.50.1] - 2026-11-24
 
 ### Fixed
@@ -1416,7 +1424,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.51.0...HEAD
+[0.51.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.1...v0.51.0
 [0.50.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.0...v0.50.1
 [0.50.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.49.0...v0.50.0
 [0.49.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.48.1...v0.49.0

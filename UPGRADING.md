@@ -1,5 +1,15 @@
 # Upgrading Recording Studio MCP
 
+## 0.51.0
+
+Previous version is `0.50.1`. No MCP migration.
+
+Tools that accept a file object advertise `_meta["openai/fileParams"]` with those field names. ChatGPT can send `download_url`, `file_id`, `mime_type`, and `file_name` on those fields. `url` and `data` stay as the contract defines them. The file field is optional unless the contract sets `required: true`.
+
+An endpoint still opts in with `x-mcp-file-params`. A registered tool opts in when a top-level contract field is an object whose properties include `download_url` and `file_id`. Attachable's `RecordingStudioAttachable::McpCopy.upload_file_field` on `file` is that object. On an action contract the field type is `hash`. `required: true` or `required: false` says whether the argument is required. A `required` array on the object is kept. When that array is absent, the object requires `download_url` and `file_id`. Nested `properties`, that required list, and descriptions stay on `tools/list`.
+
+`download_url` is a bearer secret. Usage logs store the tool name and leave out arguments. Tool errors that MCP builds replace that URL with `[redacted]`. MCP does not download the file.
+
 ## 0.50.1
 
 Previous version is `0.50.0`. No MCP migration.

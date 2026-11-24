@@ -21,7 +21,11 @@ class UsageCallTest < Minitest::Test
           "arguments" => {
             "title" => "Secret title",
             "idempotency_key" => "replay-key",
-            "fingerprint" => "abc123fingerprintdigest"
+            "fingerprint" => "abc123fingerprintdigest",
+            "file" => {
+              "download_url" => "https://files.example/secret-bearer",
+              "file_id" => "file_1"
+            }
           }
         }
       },
@@ -49,6 +53,8 @@ class UsageCallTest < Minitest::Test
     refute_includes logged, "replay-key"
     refute_includes logged, "abc123fingerprintdigest"
     refute_includes logged, "fingerprint"
+    refute_includes logged, "https://files.example/secret-bearer"
+    refute_includes logged, "download_url"
   end
 
   def test_skill_uri_is_stored_as_the_skill_name

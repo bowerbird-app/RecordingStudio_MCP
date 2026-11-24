@@ -641,6 +641,7 @@ module RecordingStudioMcp
 
     def attach_meta(payload, options)
       attach_ui_meta(payload, options[:name], options[:api])
+      FileParams.annotate(payload)
       payload
     end
 

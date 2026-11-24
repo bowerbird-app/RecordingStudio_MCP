@@ -430,6 +430,36 @@ class DispatcherTest < Minitest::Test
     end
   end
 
+  def test_tool_error_omits_download_url
+    url = "https://files.example/secret-bearer"
+    RecordingStudioMcp::Catalog.stub(:for, @catalog) do
+      RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
+        RecordingStudioApi.stub(:resource_action, lambda { |*|
+          raise RecordingStudioApi::InvalidActionInputError.new(
+            "could not fetch #{url}",
+            details: { "download_url" => url, "note" => "see #{url}" }
+          )
+        }) do
+          RecordingStudioApi.stub(:resource_name_for, "workspaces") do
+            RecordingStudioApi.stub(:default_api_version, "v1") do
+              result = dispatch(
+                "list",
+                { "type" => "Workspace", "file" => { "download_url" => url, "file_id" => "file_1" } }
+              )
+              rendered = JSON.generate(result)
+
+              assert result[:isError]
+              refute_includes rendered, url
+              refute_includes rendered, "secret-bearer"
+              assert_includes result.dig(:content, 0, :text), "[redacted]"
+              assert_includes rendered, "[redacted]"
+            end
+          end
+        end
+      end
+    end
+  end
+
   def test_actor_required_is_tool_error
     RecordingStudioMcp::Catalog.stub(:for, @catalog) do
       RecordingStudioApi.stub(:recordable_registration_for, FakeRegistration.new(true)) do
