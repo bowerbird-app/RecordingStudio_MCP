@@ -142,12 +142,12 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     %w[ping grant_access list_access revoke_access update_access].each do |action|
       assert_includes intro, "- #{action}"
     end
-    folder = spec.fetch("tags").find { |tag| tag["name"] == "Folder" }
-    assert_includes folder.fetch("description"), "Tool: list with type `Folder`"
+    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
+    refute_includes tag_names, "Folder"
+    refute_includes tag_names, "Page"
     refute tools.key?("Folder--list")
     refute tools.key?("Workspace--list")
     refute tools.key?("Workspace--delete")
-    tag_names = spec.fetch("tags").map { |tag| tag["name"] }
     assert_equal "Overview", tag_names.first
     refute_includes tag_names, "Core"
     refute_includes tag_names, "Tools"
@@ -284,6 +284,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     assert_includes fallback, ">ping<"
     assert_includes fallback, ">#{RecordingStudioMcp.tool_name("Workspace", :ping)}<"
     refute_includes fallback, ">Core<"
+    refute_includes fallback, ">Folder<"
+    refute_includes fallback, ">Page<"
     assert_operator fallback.index(">Overview<"), :<, fallback.index(">Workspace<")
     other = fallback.index(">Other tools<")
     assert_operator fallback.index(">Overview<"), :<, other if other

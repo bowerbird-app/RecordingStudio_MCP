@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.48.1
+
+Previous version is `0.48.0`. No MCP migration.
+
+A docs tag is shown only when a tool on that server carries it. Intro text does not keep a tag. The fullscreen sidebar, the no-JS list, and `x-tagGroups` use that rule. An `x-tagGroups` group whose tags are all hidden is left out. Guide pages that are not tags stay.
+
 ## 0.48.0
 
 Previous version is `0.47.1`. No MCP migration. Hosts must upgrade `recording_studio_api` to `>= 1.22.0`.

@@ -66,7 +66,7 @@ module RecordingStudioMcp
       copy = grouped_tag_copy(page, group_tags: group_tags)
       tools = Array(spec.dig("x-mcp", "tools"))
       names = sidebar_tag_order(tool_sidebar_tags(spec) + copy[:intro_tags])
-      shown = names.select { |name| shown_sidebar_tag?(name, tools: tools, descriptions: copy[:descriptions]) }
+      shown = names.select { |name| shown_sidebar_tag?(name, tools: tools) }
       write_sidebar(spec, page, shown, copy[:descriptions])
     end
 
