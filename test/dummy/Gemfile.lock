@@ -179,7 +179,7 @@ GIT
 PATH
   remote: ../..
   specs:
-    recording_studio_mcp (0.47.0)
+    recording_studio_mcp (0.47.1)
       rails (~> 8.1.0)
       recording_studio (>= 7.0, < 8.0)
       recording_studio_admin (>= 2.19.0, < 3.0)
@@ -762,7 +762,7 @@ CHECKSUMS
   recording_studio_cache (0.8.0)
   recording_studio_icons (0.5.0)
   recording_studio_logs (0.9.0)
-  recording_studio_mcp (0.47.0)
+  recording_studio_mcp (0.47.1)
   recording_studio_metrics (0.10.0)
   recording_studio_moveable (6.1.0)
   recording_studio_oauth (0.26.0)

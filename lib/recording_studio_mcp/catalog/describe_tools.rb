@@ -58,6 +58,37 @@ module RecordingStudioMcp
         end
       end
 
+      def action_tool_names(recordable_type)
+        enabled_capability_action_names(recordable_type).filter_map do |action|
+          registered_action_tool_name(recordable_type, action)
+        end.uniq.sort
+      end
+
+      def registered_action_tool_name(recordable_type, action)
+        derived = ToolName.call(recordable_type, action)
+        return derived if resolved_server&.tool?(derived)
+
+        action_tool_named(recordable_type, action)&.name
+      end
+
+      def action_tool_named(recordable_type, action)
+        return unless resolved_server
+
+        resolved_server.tools.each_value.find { |tool| action_tool_for?(tool, recordable_type, action) }
+      end
+
+      def action_tool_for?(tool, recordable_type, action)
+        registration = tool.registration
+        return false if registration.nil? || Catalogs::GENERIC_NAMES.include?(tool.name)
+        return false unless action_registration?(registration, action)
+
+        listed_for_type?(registration, recordable_type)
+      end
+
+      def action_registration?(registration, action)
+        registration.target.action? && registration.target.value.to_s == action.to_s
+      end
+
       def advertised_capability_actions(recordable_type, title: :docs)
         return unless capability_actions_advertised?
 

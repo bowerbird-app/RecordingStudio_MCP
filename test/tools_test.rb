@@ -681,6 +681,45 @@ class ToolsTest < Minitest::Test
     end
   end
 
+  def test_typeless_action_keeps_enabled_types_and_drops_disabled_claims
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :attach,
+        capability: :attachable,
+        input_contract: {
+          fields: {
+            note: { type: :string, required: true },
+            type: { type: :string, required: true, description: "Host type." }
+          }
+        },
+        handler: ->(_context) { { json: { ok: true } } }
+      )
+      register_tree_type("Page", capability_actions: %i[attach])
+      register_tree_type("ImageSection", operations: %i[index show])
+      RecordingStudioMcp.register_tool(
+        name: "attach",
+        action: :attach,
+        title: "Attach",
+        description: "Attach a file to image sections. Allowed types default to image/* and application/pdf. " \
+                     "Send a signed id.",
+        input: {},
+        output: "ok"
+      )
+      ensure_tree_server(:public, extra_tools: %w[attach])
+
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "attach" }
+      description = tool.fetch(:description)
+      enum = tool.dig(:inputSchema, :properties, :type, :enum)
+
+      assert_equal %w[Page], enum
+      assert_includes description, "Send a signed id."
+      assert_includes description, "Enabled on Page."
+      refute_includes description, "image sections"
+      refute_includes description, "image/*"
+      refute_includes description, "ImageSection"
+    end
+  end
+
   def test_typeless_generic_list_schema_stays_protocol_only
     with_isolated_api_configuration do
       register_tree_type("Page")

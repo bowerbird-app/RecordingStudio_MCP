@@ -19,6 +19,7 @@ module RecordingStudioMcp
     ].freeze
     TOOL_ERROR_CLASSES = (API_TOOL_ERRORS + DOMAIN_TOOL_ERRORS).freeze
     PARENT_NOT_FOUND = "Parent resource was not found in this API scope"
+    BUSY_CHANGE = "Another change to this item is in progress. Try again."
 
     private
 
@@ -82,6 +83,24 @@ module RecordingStudioMcp
     def unexpected_tool_error(error)
       log_tool_error(error)
       error_result("Internal error")
+    end
+
+    def retryable_busy_error(error)
+      log_tool_error(error)
+      error_result(BUSY_CHANGE)
+    end
+
+    def busy_database_error?(error)
+      return true if error.is_a?(ActiveRecord::Deadlocked)
+      return true if defined?(ActiveRecord::LockWaitTimeout) && error.is_a?(ActiveRecord::LockWaitTimeout)
+
+      lock_timeout_cancel?(error)
+    end
+
+    def lock_timeout_cancel?(error)
+      return false unless defined?(ActiveRecord::QueryCanceled) && error.is_a?(ActiveRecord::QueryCanceled)
+
+      error.message.to_s.match?(/lock timeout/i)
     end
 
     def log_tool_error(error)

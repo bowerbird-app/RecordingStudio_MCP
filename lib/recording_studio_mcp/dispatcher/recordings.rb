@@ -11,11 +11,19 @@ module RecordingStudioMcp
       raise RecordingStudioApi::NotFoundError, "Resource was not found in this API scope" if recording.nil?
 
       unless recording.recordable_type == recordable_type
-        shown = catalog.displayed_type_name(recordable_type)
-        raise RecordingStudioApi::NotFoundError, "Resource type does not match #{shown}"
+        raise RecordingStudioApi::NotFoundError, type_mismatch_message(recording, recordable_type)
       end
 
       recording
+    end
+
+    def type_mismatch_message(recording, recordable_type)
+      expected = catalog.displayed_type_name(recordable_type)
+      found = recording.recordable_type.to_s
+      return "Resource was not found in this API scope" unless catalog.type_names.include?(found)
+
+      actual = catalog.displayed_type_name(found)
+      "Resource type does not match #{expected}. This id is a #{actual}. Use that item's content_id."
     end
 
     def scoped_recordings(include_trashed)

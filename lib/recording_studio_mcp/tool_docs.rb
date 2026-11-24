@@ -4,6 +4,7 @@ require_relative "tool_docs/output"
 require_relative "tool_docs/endpoint"
 require_relative "tool_docs/groups"
 require_relative "tool_docs/listing"
+require_relative "tool_docs/tag_groups"
 require_relative "tool_docs/tag_intro"
 
 module RecordingStudioMcp
@@ -59,6 +60,11 @@ module RecordingStudioMcp
     def normalize_tag(name)
       text = name.to_s
       text == "Core" ? OVERVIEW_TAG : text
+    end
+
+    def shown_sidebar_tag?(name, tools:, descriptions:)
+      tagged = Array(tools).any? { |tool| Array(tool["tags"]).include?(name) }
+      tagged || descriptions[name].present?
     end
 
     def openapi_tags(names, descriptions: {})

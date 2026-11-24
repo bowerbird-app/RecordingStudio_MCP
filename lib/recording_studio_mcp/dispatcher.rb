@@ -33,19 +33,30 @@ module RecordingStudioMcp
     end
 
     def call(tool_name, arguments)
+      @tool_name = tool_name.to_s
+      invoke_tool(tool_name, arguments)
+    ensure
+      AuthorizedBy.leave
+    end
+
+    private
+
+    def invoke_tool(tool_name, arguments)
       AuthorizedBy.enter(access_grant)
       dispatch_named(tool_name, arguments)
     rescue *TOOL_ERROR_CLASSES => e
       tool_error_for(e)
     rescue ActiveRecord::RecordNotFound
       error_result(HANDLER_SCOPE_MISS)
+    rescue ActiveRecord::StatementInvalid => e
+      statement_tool_error(e)
     rescue StandardError => e
       unexpected_tool_error(e)
-    ensure
-      AuthorizedBy.leave
     end
 
-    private
+    def statement_tool_error(error)
+      busy_database_error?(error) ? retryable_busy_error(error) : unexpected_tool_error(error)
+    end
 
     attr_reader :access_grant, :idempotency_key, :request_context, :catalog, :surface
 

@@ -3,6 +3,7 @@
 module RecordingStudioMcp
   module Tools
     TREE_NAMES = %w[list show create update delete capability_action describe].freeze
+    GENERIC_UPLOAD_LIMITS = %r{Allowed types default to image/\* and application/pdf\.\s*}
     TREE_OPERATION_TOOLS = {
       index: "list",
       show: "show",
@@ -306,7 +307,7 @@ module RecordingStudioMcp
       {
         name: registration.name,
         title: built.title,
-        description: built.description,
+        description: advertised_description(built, catalog, registration),
         read_only: read_only_target?(registration),
         destructive: destructive_target?(registration),
         idempotent: read_only_target?(registration) || idempotency_advertised?(catalog, registration),
@@ -403,7 +404,61 @@ module RecordingStudioMcp
     end
 
     def merge_protocol_defaults(properties, required, defaults, extra_required: [])
-      [defaults.merge(properties), (extra_required + required).uniq]
+      merged = defaults.merge(properties) { |_key, protocol, property| prefer_protocol_enum(protocol, property) }
+      [merged, (extra_required + required).uniq]
+    end
+
+    def prefer_protocol_enum(protocol, property)
+      protocol_enum = enum_values(protocol)
+      return property if protocol_enum.empty? || enum_values(property).any?
+      return property unless property.is_a?(Hash)
+
+      property.merge(enum: protocol_enum)
+    end
+
+    def enum_values(field)
+      return [] unless field.is_a?(Hash)
+
+      Array(field[:enum] || field["enum"])
+    end
+
+    def advertised_description(built, catalog, registration)
+      text = built.description.to_s
+      return text unless named_typeless_action?(registration)
+
+      typeless_action_description(text, catalog, registration.target.value)
+    end
+
+    def typeless_action_description(text, catalog, action_name)
+      enabled = catalog.displayed_names_for(catalog.type_names_for_action(action_name))
+      cleaned = scrub_typeless_description(text, catalog, enabled)
+      list = enabled.any? ? enabled.join(", ") : "(none)"
+      [cleaned.presence, "Enabled on #{list}."].compact.join(" ")
+    end
+
+    def scrub_typeless_description(text, catalog, enabled)
+      phrases = disabled_type_phrases(catalog, enabled)
+      kept = text.to_s.split(/(?<=\.)\s+/).reject { |sentence| mentions_disabled_type?(sentence, phrases) }
+      kept.join(" ").gsub(GENERIC_UPLOAD_LIMITS, "").gsub(/ {2,}/, " ").strip
+    end
+
+    def disabled_type_phrases(catalog, enabled)
+      enabled_names = enabled.map { |name| name.to_s.downcase }
+      catalog.displayed_type_names.values.flat_map do |name|
+        next [] if enabled_names.include?(name.to_s.downcase)
+
+        phrases_for(name)
+      end.uniq
+    end
+
+    def phrases_for(name)
+      words = name.to_s.underscore.humanize.downcase
+      [name.to_s.downcase, words, words.pluralize].uniq
+    end
+
+    def mentions_disabled_type?(sentence, phrases)
+      text = sentence.to_s.downcase
+      phrases.any? { |phrase| phrase.present? && text.include?(phrase) }
     end
 
     def apply_named_create_parent_id(catalog, registration, properties, required)

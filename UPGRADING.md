@@ -1,5 +1,17 @@
 # Upgrading Recording Studio MCP
 
+## 0.47.1
+
+No action needed.
+
+Docs pages leave out a tag that has no tools and no intro text, in the fullscreen sidebar, the no-JS list, and `x-tagGroups`. A tag with intro text and no tools stays.
+
+An unknown capability action lists registered MCP tool names. A contract failure names the MCP tool. A typeless action tool's `type` enum stays the types that enable the action. Its description lists those types.
+
+A database deadlock, lock wait timeout, or lock-timeout cancel returns `Another change to this item is in progress. Try again.` The log line is still the exception class only.
+
+When an id in this grant points at a different type that is also on this API, the tool error names that type and says to use the item's `content_id`. A type outside this API stays `Resource was not found in this API scope`.
+
 ## 0.47.0
 
 Previous version is `0.46.0`. No MCP migration.
