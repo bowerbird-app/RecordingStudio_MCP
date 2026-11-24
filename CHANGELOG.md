@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Docs sidebar, no-JS list, and `x-tagGroups` share one rule. A tag with no tools and no intro text is left out. A tag with intro text and no tools stays. A tag group with no remaining tags is left out.
-- Unknown capability actions list registered MCP tool names. A contract failure names the MCP tool. `describe` nesting no longer names `add_image`. A typeless action tool keeps the enum of types that enable it, lists those types, and drops a sentence about a type where the action is off.
+- Unknown capability actions list registered MCP tool names. A contract failure names the MCP tool. `describe` nesting no longer names `add_image`. A typeless action tool keeps the enum of types that enable it. Its description keeps the host text and adds `Enabled on` those types.
 - A database deadlock, lock wait timeout, or lock-timeout cancel returns `Another change to this item is in progress. Try again.` The log line is the exception class only.
 - An id in this grant that points at a different type on this API names that type and says to use the item's `content_id`. A type outside this API stays not found.
 

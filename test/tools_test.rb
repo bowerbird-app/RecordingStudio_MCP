@@ -681,7 +681,7 @@ class ToolsTest < Minitest::Test
     end
   end
 
-  def test_typeless_action_keeps_enabled_types_and_drops_disabled_claims
+  def test_typeless_action_keeps_the_host_description_and_lists_enabled_types
     with_isolated_api_configuration do
       RecordingStudioApi.register_capability_action(
         :attach,
@@ -712,11 +712,11 @@ class ToolsTest < Minitest::Test
       enum = tool.dig(:inputSchema, :properties, :type, :enum)
 
       assert_equal %w[Page], enum
+      assert_includes description, "Attach a file to image sections."
+      assert_includes description, "Allowed types default to image/* and application/pdf."
       assert_includes description, "Send a signed id."
       assert_includes description, "Enabled on Page."
-      refute_includes description, "image sections"
-      refute_includes description, "image/*"
-      refute_includes description, "ImageSection"
+      refute_includes description, "Enabled on ImageSection"
     end
   end
 

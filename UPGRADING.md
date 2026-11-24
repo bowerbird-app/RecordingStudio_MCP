@@ -6,7 +6,7 @@ No action needed.
 
 Docs pages leave out a tag that has no tools and no intro text, in the fullscreen sidebar, the no-JS list, and `x-tagGroups`. A tag with intro text and no tools stays.
 
-An unknown capability action lists registered MCP tool names. A contract failure names the MCP tool. A typeless action tool's `type` enum stays the types that enable the action. Its description lists those types.
+An unknown capability action lists registered MCP tool names. A contract failure names the MCP tool. A typeless action tool's `type` enum stays the types that enable the action. Its description keeps the host text and adds `Enabled on` those types.
 
 A database deadlock, lock wait timeout, or lock-timeout cancel returns `Another change to this item is in progress. Try again.` The log line is still the exception class only.
 
