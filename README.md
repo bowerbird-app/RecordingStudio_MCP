@@ -61,7 +61,7 @@ This is the locked `register_tool` / `register_type` shape other gems copy. Do n
 - `description` — what the tool does, for people and agents. No Access wording. Audience values stay in this text, not an enum
 - `type` — optional recordable type when the tool is typed. Use the class name on the named API. Named typed operation tools map that class through the public-name catalog the same way generic `create` / `show` do. Leave `type` out for a named capability action that runs on whichever host type the caller passes (Attachable `create_upload`, `attach`, `import_attachment`). Do not send `type: ""`. That typeless tool still requires `type` in args (`inputSchema.required`, same path as `id`). `describe` lists it under every registered type that enables the action.
 - exactly one of `operation`, `action`, or `endpoint` — the lookup target
-- `input` — copy overlay only (descriptions and examples). Required, type, and allow-blank stay on the API contract
+- `input` — copy overlay for descriptions and examples. When that copy and the catalog omit a description, the contract field's description is used. A string, number, or boolean contract example fills examples when nothing else set it. Required, type, and allow-blank stay on the API contract
 - `output` — short result phrase
 
 `register_type`:
@@ -428,4 +428,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.50.0
+0.50.1

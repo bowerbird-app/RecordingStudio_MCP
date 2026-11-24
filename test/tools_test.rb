@@ -761,6 +761,43 @@ class ToolsTest < Minitest::Test
     end
   end
 
+  def test_listed_upload_tool_uses_the_contract_description_unless_copy_sets_one
+    with_isolated_api_configuration do
+      RecordingStudioApi.register_capability_action(
+        :create_upload,
+        capability: :attachable,
+        input_contract: {
+          fields: {
+            url: { type: :string, description: "HTTPS URL of the file.", example: "https://cdn.example/a.png" },
+            data: { type: :string, description: "Base64 file bytes." },
+            filename: { type: :string, required: true, description: "File name.", example: "cover.png" }
+          }
+        },
+        handler: ->(_context) { { json: { signed_blob_id: "blob" } } }
+      )
+      register_tree_type("Page", capability_actions: %i[create_upload])
+      RecordingStudioMcp.register_tool(
+        name: "page_create_upload",
+        type: "Page",
+        action: :create_upload,
+        title: "Create upload",
+        description: "Create an upload.",
+        input: { "filename" => { description: "Host file name.", example: "host.png" } },
+        output: "the upload"
+      )
+      ensure_tree_server(:public, extra_tools: %w[page_create_upload])
+
+      tool = RecordingStudioMcp::Tools.definitions.find { |entry| entry[:name] == "page_create_upload" }
+      properties = tool.dig(:inputSchema, :properties)
+
+      assert_equal "HTTPS URL of the file.", properties.dig(:url, :description)
+      assert_equal ["https://cdn.example/a.png"], properties.dig(:url, :examples)
+      assert_equal "Base64 file bytes.", properties.dig(:data, :description)
+      assert_equal "Host file name.", properties.dig(:filename, :description)
+      assert_equal ["host.png"], properties.dig(:filename, :examples)
+    end
+  end
+
   def register_named_page_tools
     names = {
       index: RecordingStudioMcp.tool_name("Page", :index),
