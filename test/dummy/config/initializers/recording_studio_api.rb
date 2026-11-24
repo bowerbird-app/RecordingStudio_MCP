@@ -83,7 +83,7 @@ RecordingStudioApi.register_capability_action(
       parent_id: { type: :string, required: true }
     }
   },
-  handler: Dummy::FileDeskNote
+  handler: FileDeskNote
 )
 
 RecordingStudioApi.register_endpoint(
