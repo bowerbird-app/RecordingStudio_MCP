@@ -4,6 +4,9 @@ module RecordingStudioMcp
   module Instructions
     module_function
 
+    UPLOAD_LINE = "If you can't PUT the file bytes, call the create_upload tool with an https url, " \
+                  "or with data (base64) plus filename, then pass the returned signed_blob_id to the set tool."
+
     def walk_section(surface)
       return unless surface.tree_enabled?
 
@@ -44,7 +47,23 @@ module RecordingStudioMcp
       lines = []
       lines << fields_line if names.intersect?(%w[create update])
       lines << idempotency_line if names.include?("create")
+      lines << UPLOAD_LINE if upload_tool?(surface)
       lines
+    end
+
+    def upload_tool?(surface)
+      surface.tool_definitions.any? { |definition| upload_schema?(definition) }
+    end
+
+    def upload_schema?(definition)
+      schema = definition[:inputSchema] || definition["inputSchema"]
+      return false unless schema.respond_to?(:[])
+
+      properties = schema[:properties] || schema["properties"]
+      return false unless properties.respond_to?(:keys)
+
+      names = properties.keys.map(&:to_s)
+      names.include?("url") && names.include?("data")
     end
 
     def fields_line
@@ -61,6 +80,7 @@ module RecordingStudioMcp
     end
 
     private_class_method :walk_section, :walk_lines, :workspace_line, :parent_line, :pagination_line,
-                         :changes_section, :change_lines, :fields_line, :idempotency_line, :guides_section
+                         :changes_section, :change_lines, :upload_tool?, :upload_schema?, :fields_line,
+                         :idempotency_line, :guides_section
   end
 end

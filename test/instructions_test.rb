@@ -217,6 +217,58 @@ class InstructionsTest < Minitest::Test
       "relationships, allowed parents, writable fields, and available actions"
   end
 
+  def test_upload_line_appears_only_when_a_listed_tool_accepts_url_and_data
+    line = "If you can't PUT the file bytes, call the create_upload tool with an https url, " \
+           "or with data (base64) plus filename, then pass the returned signed_blob_id to the set tool."
+
+    with_isolated_api_configuration do
+      register_schema_action(:store_link, url: { type: :string }, filename: { type: :string })
+      register_tree_type("Page", capability_actions: %i[store_link])
+      register_action_tool("store_link")
+      text = RecordingStudioMcp::Instructions.text
+
+      refute_includes text, "PUT the file bytes"
+      refute_includes text, "signed_blob_id"
+    end
+
+    with_isolated_api_configuration do
+      register_schema_action(
+        :store_bytes,
+        url: { type: :string },
+        data: { type: :string },
+        filename: { type: :string }
+      )
+      register_tree_type("Page", capability_actions: %i[store_bytes])
+      register_action_tool("store_bytes")
+      text = RecordingStudioMcp::Instructions.text
+
+      assert_includes text, line
+      assert_equal 1, text.scan("signed_blob_id").length
+      assert_operator text.index("## Make changes"), :<, text.index(line)
+    end
+  end
+
+  def register_schema_action(name, **fields)
+    RecordingStudioApi.register_capability_action(
+      name,
+      capability: :attachable,
+      input_contract: { fields: fields },
+      handler: ->(_context) { { json: { signed_blob_id: "blob" } } }
+    )
+  end
+
+  def register_action_tool(name)
+    RecordingStudioMcp.register_tool(
+      name: name.to_s,
+      action: name,
+      title: "Store a file",
+      description: "Store a file.",
+      input: {},
+      output: "the upload"
+    )
+    ensure_tree_server(:public, extra_tools: [name.to_s])
+  end
+
   def test_tree_hosts_still_get_the_walk_and_not_the_endpoint_only_line
     with_isolated_api_configuration do
       register_tree_type("Page")
