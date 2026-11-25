@@ -185,7 +185,15 @@ A recordable metric tool is advertised only when the host included it, that type
 
 Site-usage `operations_metrics_index` and `operations_metrics_show` stay registered endpoint tools. Calling a recordable metric tool runs `RecordingStudioApi::Services::ResourceMetrics::Show`, the same authorize-then-filter path as `GET /:resource/metrics/:name`.
 
-Metrics exposed on the named API also become includable read-only tools. The tool name is the identifier with its dot replaced by a hyphen, same rule as a recordable metric tool. Include that hyphenated name on the server. MCP lists included metrics that `RecordingStudioMetrics::Api::DiscoveryHandler` still allows for the current grant, and from definitions exposed on that API when there is no grant. Calling one runs `RecordingStudioMetrics::Api::ExecuteHandler`. Authorization stays in the metric's `api_authorize` and the grant. MCP does not apply the recordable view check to these tools. A metric the grant cannot run is left off `tools/list`. Calling that name returns `Unknown tool ... Allowed tools: ...`. That hide-on-list behavior is intended.
+Metrics exposed on the named API also become includable read-only tools. The tool name is the identifier with its dot replaced by a hyphen, same rule as a recordable metric tool. Include that hyphenated name on the server. This gem's operations metrics (`mcp_calls-*` and `mcp_subscriptions-failing`) also live on `RecordingStudioMcp::McpCopy`. Hosts splat that list instead of repeating the names:
+
+```ruby
+RecordingStudioMcp.register_server(:operations, api: :operations, allow_sensitive: true) do
+  include_tools :list, :show, *RecordingStudioMcp::McpCopy.tool_names
+end
+```
+
+Literal hyphenated names still work. `tools/list` uses the MCP copy on `McpCopy` (how to call the tool). HTTP `GET /metrics/...` uses the plain titles and descriptions on `Metrics.register`. MCP lists included metrics that `RecordingStudioMetrics::Api::DiscoveryHandler` still allows for the current grant, and from definitions exposed on that API when there is no grant. Calling one runs `RecordingStudioMetrics::Api::ExecuteHandler`. Authorization stays in the metric's `api_authorize` and the grant. MCP does not apply the recordable view check to these tools. A metric the grant cannot run is left off `tools/list`. Calling that name returns `Unknown tool ... Allowed tools: ...`. That hide-on-list behavior is intended.
 
 A timeseries tool takes `from` and `to`. `start` and `start_at` are the same as `from`. `end` and `end_at` are the same as `to`. `interval` is present when the metric has supported intervals. `group_by` is present when the metric has group columns. Metric filters are one `filters` object. The input schema sets `additionalProperties` to false. Unknown arguments return a tool error instead of being ignored.
 
@@ -434,4 +442,4 @@ Dummy credentials (`test/dummy/config/credentials.yml.enc`) are encrypted with t
 
 ## Version
 
-0.51.0
+0.52.0

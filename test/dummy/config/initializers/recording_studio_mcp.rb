@@ -106,11 +106,5 @@ end
 RecordingStudioMcp.register_server(:operations, api: :operations, allow_sensitive: true) do
   include_tools :list, :show, :create, :update, :delete, :capability_action, :ops_ping,
                 :operations_metrics_index, :operations_metrics_show,
-                "mcp_calls-over_time",
-                "mcp_calls-failed_over_time",
-                "mcp_calls-by_tool",
-                "mcp_calls-failed_by_tool",
-                "mcp_calls-by_method",
-                "mcp_calls-rate_limited",
-                "mcp_subscriptions-failing"
+                *RecordingStudioMcp::McpCopy.tool_names
 end

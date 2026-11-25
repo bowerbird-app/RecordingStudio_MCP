@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-11-25
+
+### Added
+- `RecordingStudioMcp::McpCopy.tool_names` lists this gem's operations catalog metrics (`mcp_calls-*` and `mcp_subscriptions-failing`). Hosts include them with `include_tools(*RecordingStudioMcp::McpCopy.tool_names)`. Literal hyphenated names still work.
+
+### Changed
+- Those metric tools use MCP copy on `tools/list` (how an agent calls them). HTTP metrics keep plain titles and descriptions for API developers.
+
+### Upgrade notes
+- Bump to `0.52.0`. Previous version is `0.51.0`. No MCP migration. Tool names are unchanged. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.51.0] - 2026-11-24
 
 ### Added
@@ -1424,7 +1435,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.51.0...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.0...HEAD
+[0.52.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.1...v0.51.0
 [0.50.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.0...v0.50.1
 [0.50.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.49.0...v0.50.0
