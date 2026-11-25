@@ -11,9 +11,14 @@ module RecordingStudioMcp
     EXPOSE = { api: [API] }.freeze
     TOOL_CALLS = ->(relation) { relation.where(method_name: "tools/call") }
     FAILING = ->(relation) { relation.merge(EventSubscription.failing) }
-    FAILED_BY_TOOL_DESCRIPTION = "Failed tools/call requests summed from daily usage rollups, by tool name."
-    FAILING_DESCRIPTION = "Active, unexpired event subscriptions whose last callback delivery failed " \
-                          "(failure_count > 0). They turn inactive after 5 failures in a row."
+    OVER_TIME_DESCRIPTION = "Sum of MCP request counts by day from daily usage rollups."
+    FAILED_OVER_TIME_DESCRIPTION = "Sum of failed MCP request counts by day from daily usage rollups."
+    BY_TOOL_DESCRIPTION = "Sum of tools/call counts by tool name from daily usage rollups."
+    FAILED_BY_TOOL_DESCRIPTION = "Sum of failed tools/call counts by tool name from daily usage rollups."
+    BY_METHOD_DESCRIPTION = "Sum of MCP request counts by JSON-RPC method from daily usage rollups."
+    RATE_LIMITED_DESCRIPTION = "Sum of rate-limited MCP request counts from daily usage rollups."
+    FAILING_DESCRIPTION = "Count of active, unexpired event subscriptions whose last callback failed " \
+                          "(failure_count greater than 0). They turn inactive after 5 failures in a row."
     AUTHORIZE = ->(context) { RecordingStudioMcp::Api::Access.can_view?(context) }
 
     module_function
@@ -38,7 +43,7 @@ module RecordingStudioMcp
     end
 
     def define_subscriptions(dsl)
-      dsl.count :failing, title: "Failing MCP event subscriptions", description: FAILING_DESCRIPTION,
+      dsl.count :failing, title: "Failing event subscriptions", description: FAILING_DESCRIPTION,
                           unit: "count", scope: FAILING, cacheable: false, expose: EXPOSE
     end
 
@@ -53,7 +58,8 @@ module RecordingStudioMcp
 
     def define_over_time(dsl)
       dsl.timeseries :over_time,
-                     title: "MCP calls over time",
+                     title: "Calls over time",
+                     description: OVER_TIME_DESCRIPTION,
                      field: :metric_date,
                      measurement: :sum,
                      value_field: :call_count,
@@ -62,7 +68,8 @@ module RecordingStudioMcp
 
     def define_failed_over_time(dsl)
       dsl.timeseries :failed_over_time,
-                     title: "Failed MCP calls over time",
+                     title: "Failed calls over time",
+                     description: FAILED_OVER_TIME_DESCRIPTION,
                      field: :metric_date,
                      measurement: :sum,
                      value_field: :failed_count,
@@ -71,7 +78,8 @@ module RecordingStudioMcp
 
     def define_by_tool(dsl)
       dsl.breakdown :by_tool,
-                    title: "MCP calls by tool",
+                    title: "Calls by tool",
+                    description: BY_TOOL_DESCRIPTION,
                     field: :subject_name,
                     measurement: :sum,
                     value_field: :call_count,
@@ -81,7 +89,7 @@ module RecordingStudioMcp
 
     def define_failed_by_tool(dsl)
       dsl.breakdown :failed_by_tool,
-                    title: "Failed MCP calls by tool",
+                    title: "Failed calls by tool",
                     description: FAILED_BY_TOOL_DESCRIPTION,
                     unit: "count",
                     field: :subject_name,
@@ -93,7 +101,8 @@ module RecordingStudioMcp
 
     def define_by_method(dsl)
       dsl.breakdown :by_method,
-                    title: "MCP calls by method",
+                    title: "Calls by method",
+                    description: BY_METHOD_DESCRIPTION,
                     field: :method_name,
                     measurement: :sum,
                     value_field: :call_count,
@@ -101,7 +110,8 @@ module RecordingStudioMcp
     end
 
     def define_rate_limited(dsl)
-      dsl.sum :rate_limited, title: "Rate limited MCP calls", field: :rate_limited_count, expose: EXPOSE
+      dsl.sum :rate_limited, title: "Rate limited calls", description: RATE_LIMITED_DESCRIPTION,
+                             field: :rate_limited_count, expose: EXPOSE
     end
   end
 end

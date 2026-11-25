@@ -1,5 +1,21 @@
 # Upgrading Recording Studio MCP
 
+## 0.52.0
+
+Previous version is `0.51.0`. No MCP migration. Tool names are unchanged.
+
+This gem's operations catalog metrics (`mcp_calls-*` and `mcp_subscriptions-failing`) now have `RecordingStudioMcp::McpCopy`. Include them from that list instead of repeating hyphenated names:
+
+```ruby
+RecordingStudioMcp.register_server(:operations, api: :operations, allow_sensitive: true) do
+  include_tools :list, :show, *RecordingStudioMcp::McpCopy.tool_names
+end
+```
+
+Literal names such as `"mcp_calls-over_time"` still resolve. `tools/list` titles and descriptions come from `McpCopy`. HTTP `GET /metrics/mcp_calls/:name` and `GET /metrics/mcp_subscriptions/failing` keep the plain API titles and descriptions on `RecordingStudioMcp::Metrics`. Public MCP still does not list these tools. A workspace operations grant still cannot run them.
+
+If `config.catalog_metric_resources` names resources, include both `mcp_calls` and `mcp_subscriptions` when you splat `tool_names`.
+
 ## 0.51.0
 
 Previous version is `0.50.1`. No MCP migration.

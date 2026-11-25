@@ -40,11 +40,12 @@ module RecordingStudioMcp
 
     def catalog_tool_fields(catalog, entry, identifier)
       resource = read_key(entry, :resource)
+      copy = RecordingStudioMcp::McpCopy.for_identifier(identifier)
       {
         name: ToolName.from_identifier(identifier), identifier: identifier, kind: :catalog,
         resource: resource, resource_name: resource, recordable_type: nil, metric_name: read_key(entry, :name),
-        api: catalog.api, description: read_key(entry, :description),
-        title: read_key(entry, :title).presence || read_key(entry, :name).to_s,
+        api: catalog.api, description: copy&.fetch(:description) || read_key(entry, :description),
+        title: copy&.fetch(:title) || read_key(entry, :title).presence || read_key(entry, :name).to_s,
         plan: ArgumentPlan.from(parameters_for(entry))
       }
     end

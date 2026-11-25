@@ -210,15 +210,18 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
     assert_includes tools.keys, "operations_metrics_index"
     assert_includes tools.keys, "operations_metrics_show"
-    %w[
-      mcp_calls-over_time
-      mcp_calls-failed_over_time
-      mcp_calls-by_tool
-      mcp_calls-failed_by_tool
-      mcp_calls-by_method
-      mcp_calls-rate_limited
-      mcp_subscriptions-failing
-    ].each { |name| assert_includes tools.keys, name }
+    RecordingStudioMcp::McpCopy.tool_names.each { |name| assert_includes tools.keys, name }
+
+    copy = RecordingStudioMcp::McpCopy.for_name("mcp_calls-over_time")
+    listed = tools.fetch("mcp_calls-over_time")
+    assert_equal copy.fetch(:title), listed.fetch("title")
+    assert_equal copy.fetch(:description), listed.fetch("description")
+    refute_equal "Calls over time", listed.fetch("title")
+
+    failing = tools.fetch("mcp_subscriptions-failing")
+    failing_copy = RecordingStudioMcp::McpCopy.for_name("mcp_subscriptions-failing")
+    assert_equal failing_copy.fetch(:title), failing.fetch("title")
+    assert_equal failing_copy.fetch(:description), failing.fetch("description")
 
     over_time = tools.fetch("mcp_calls-over_time").fetch("inputSchema")
     assert_equal false, over_time.fetch("additionalProperties")
@@ -265,9 +268,7 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
   test "a workspace operations token does not see mcp_calls tools" do
     names = mcp(@workspace_operations_token, "tools/list").dig("result", "tools").map { |tool| tool.fetch("name") }
 
-    refute_includes names, "mcp_calls-rate_limited"
-    refute_includes names, "mcp_calls-failed_by_tool"
-    refute_includes names, "mcp_subscriptions-failing"
+    RecordingStudioMcp::McpCopy.tool_names.each { |name| refute_includes names, name }
     assert_includes names, "operations_metrics_index"
     denied = mcp(
       @workspace_operations_token, "tools/call", name: "mcp_calls-rate_limited", arguments: {}
@@ -398,6 +399,14 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
         headers: auth(@public_token),
         as: :json
     assert_includes [404, 401, 403], response.status
+
+    post "/recording_studio_mcp",
+         params: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }.to_json,
+         headers: { "Content-Type" => "application/json", "Accept" => "application/json",
+                    "Authorization" => "Bearer #{@public_token}" }
+    assert_response :success, response.body
+    names = response.parsed_body.dig("result", "tools").map { |tool| tool.fetch("name") }
+    RecordingStudioMcp::McpCopy.tool_names.each { |name| refute_includes names, name }
   end
 
   private

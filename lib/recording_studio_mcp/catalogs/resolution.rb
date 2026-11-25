@@ -36,10 +36,11 @@ module RecordingStudioMcp
 
       def built_metric_tool(server, api, included, name)
         metric = metric_by_name(api, name)
+        copy = RecordingStudioMcp::McpCopy.for_name(name)
         assert_sensitive!(server, included, name, false)
         built_tool(included, name: name, family: :metric, metric: metric,
-                             title: metric.definition_options[:title],
-                             description: metric.definition_options[:description])
+                             title: copy&.fetch(:title) || metric.definition_options[:title],
+                             description: copy&.fetch(:description) || metric.definition_options[:description])
       end
 
       def built_tool(included, **attrs)
