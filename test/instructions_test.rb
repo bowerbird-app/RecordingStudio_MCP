@@ -96,7 +96,7 @@ class InstructionsTest < Minitest::Test
     end
   end
 
-  def test_view_only_grant_omits_make_changes_and_write_tools
+  def test_view_grant_lists_the_same_write_tools_as_the_full_surface
     with_isolated_api_configuration do
       register_ping_capability(required_role: :view)
       register_tree_type(
@@ -109,10 +109,10 @@ class InstructionsTest < Minitest::Test
 
       assert_includes full, "## Make changes"
       assert_includes full, "create, update, delete"
-      refute_includes view, "## Make changes"
-      refute_includes view, "create, update, delete"
+      assert_includes view, "## Make changes"
+      assert_includes view, "create, update, delete"
       refute_includes view, "view-only connection"
-      assert_includes view, "list, show, capability_action, describe, read_skill, and ping"
+      assert_includes view, "list, show, create, update, delete, capability_action, describe, read_skill, and ping"
     end
   end
 

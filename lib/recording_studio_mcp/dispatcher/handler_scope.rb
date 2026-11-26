@@ -3,19 +3,16 @@
 module RecordingStudioMcp
   class Dispatcher
     HANDLER_SCOPE_MISS = "Resource was not found in this API scope"
-    HANDLER_SCOPE_ERRORS = [
-      RecordingStudioApi::NotFoundError,
-      RecordingStudioApi::AuthorizationError
-    ].freeze
 
     private
 
-    # The guard result, or nil when the id is out of scope.
-    # NotFoundError and AuthorizationError become one tool error. The guard
-    # message is dropped so a missing id and a role failure look the same.
+    # tools/list includes every tool this server includes. A missing or
+    # out-of-scope id stays HANDLER_SCOPE_MISS. AuthorizationError is a tool
+    # error with the Recording Studio API message so an over-role call is
+    # refused clearly, not as not found.
     def handler_scope
       yield
-    rescue *HANDLER_SCOPE_ERRORS
+    rescue RecordingStudioApi::NotFoundError
       nil
     end
 

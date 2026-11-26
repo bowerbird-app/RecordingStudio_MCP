@@ -18,9 +18,8 @@ class DocumentationTest < Minitest::Test
       assert_equal "public", page.api_key
       assert_equal "Public MCP", page.title
       refute_empty page.instructions
-      assert_equal overview_for(page.instructions), page.overview
+      assert_equal page.instructions, page.overview
       assert_includes page.overview, "## Sign in"
-      assert_includes page.overview, "A view-only connection gets the same text minus the Make changes part."
       assert_includes page.overview, "A different input for that key is an error."
       refute_includes page.instructions, "view-only connection"
       refute_includes page.overview, "The key applies to create only."
@@ -1560,7 +1559,7 @@ class DocumentationTest < Minitest::Test
   end
 
   def overview_for(instructions)
-    "#{instructions}\n\nA view-only connection gets the same text minus the Make changes part."
+    instructions
   end
 
   def openapi_with_credit_label!

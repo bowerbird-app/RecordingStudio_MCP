@@ -8,6 +8,6 @@ claude mcp add --transport http recording-studio \
   --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
-Mint `YOUR_TOKEN` with the host Oauth flow ([Connect with OAuth](oauth.md)). The grant decides which built-in tools appear. Host-registered tools appear only on that host. Reconnect after a deploy when Claude Code ignores `notifications/tools/list_changed`.
+Mint `YOUR_TOKEN` with the host Oauth flow ([Connect with OAuth](oauth.md)). Built-in tools list for every role on that server. Host-registered tools appear only on that host. Reconnect after a deploy when Claude Code ignores `notifications/tools/list_changed`.
 
 Use `-N` / `--no-buffer` if you probe progress streams with curl. Proxies that buffer SSE will hide progress frames.

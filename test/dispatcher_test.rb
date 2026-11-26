@@ -18,10 +18,11 @@ class DispatcherTest < Minitest::Test
       relation.respond_to?(:find_by) ? relation : FakeRelation.new(nil)
     end
 
-    def authorize!(**)
+    def authorize!(recording:, role:, include_trashed: false)
+      _ = [recording, include_trashed]
       return unless deny_authorization
 
-      raise RecordingStudioApi::AuthorizationError, "API access grant is not authorized for this capability"
+      raise RecordingStudioApi::AuthorizationError, RecordingStudioApi::AuthorizationError.for_required_role(role)
     end
 
     def scope_recording
@@ -1704,28 +1705,41 @@ class DispatcherTest < Minitest::Test
     end
   end
 
-  def test_view_admin_and_deleted_grants_filter_calls
+  def test_view_edit_and_admin_grants_list_the_same_tools
     with_isolated_api_configuration do
-      register_tree_type("Page", operations: %i[index show create])
-      RecordingStudioApi.register_resource_handler("Page", :index, handler: ->(_) { { json: { records: [] } } })
-      RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: { id: "1" } } })
+      register_tree_type("Page", operations: %i[index show create update destroy])
+      expected = %w[list show create update delete describe read_skill]
 
-      view = role_grant(:view)
-      admin = role_grant(:admin)
-      deleted = role_grant(nil)
-
-      view_create = call_as(view, "create", { type: "Page" })
-      view_list = call_as(view, "list", { type: "Page" })
-      admin_create = call_as(admin, "create", { type: "Page", title: "Hi", parent_id: "workspace-1" })
-      deleted_list = call_as(deleted, "list", { type: "Page" })
-
-      assert view_create[:isError]
-      assert_includes view_create.dig(:content, 0, :text), "Unknown tool"
-      refute view_list[:isError]
-      refute admin_create[:isError]
-      assert deleted_list[:isError]
-      assert_includes deleted_list.dig(:content, 0, :text), "Unknown tool"
+      %i[view edit admin].each do |role|
+        names = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(role)).tool_names
+        assert_equal expected, names, role
+      end
     end
+  end
+
+  def test_over_role_update_returns_the_api_authorization_error
+    recording = FakeRecording.new("page-1", "Page")
+    called = false
+    handler = lambda { |_context|
+      called = true
+      { json: { id: "1" }, status: :ok }
+    }
+    @grant.accessible_recordings = FakeRelation.new(recording)
+    @grant.deny_authorization = true
+    result = dispatch_custom_show(handler, { type: "Page", id: "page-1", title: "Hi" }, tool: "update")
+
+    assert_not_allowed result, :edit
+    refute called
+  end
+
+  def test_missing_update_id_stays_not_found
+    handler = lambda { |_context|
+      { json: { id: "1" }, status: :ok }
+    }
+    @grant.accessible_recordings = FakeRelation.new(nil)
+    result = dispatch_custom_show(handler, { type: "Page", id: "missing", title: "Hi" }, tool: "update")
+
+    assert_scope_miss result
   end
 
   def test_custom_handlers_hide_guard_messages_and_skip_the_handler
@@ -1751,18 +1765,18 @@ class DispatcherTest < Minitest::Test
       refute called, tool
     end
 
-    [
-      ["show", { type: "Page", id: "missing" }, FakeRelation.new(nil)],
-      ["update", { type: "Page", id: "page-1", title: "Hi" }, FakeRelation.new(recording)]
-    ].each do |tool, args, relation|
-      called = false
-      @grant.accessible_recordings = relation
-      @grant.deny_authorization = tool == "update"
-      result = dispatch_custom_show(handler, args, tool: tool)
+    called = false
+    @grant.accessible_recordings = FakeRelation.new(nil)
+    missing = dispatch_custom_show(handler, { type: "Page", id: "missing" })
+    assert_scope_miss missing
+    refute called
 
-      assert_scope_miss result
-      refute called, tool
-    end
+    called = false
+    @grant.accessible_recordings = FakeRelation.new(recording)
+    @grant.deny_authorization = true
+    denied = dispatch_custom_show(handler, { type: "Page", id: "page-1", title: "Hi" }, tool: "update")
+    assert_not_allowed denied, :edit
+    refute called
 
     called = false
     @grant.deny_authorization = false
@@ -1790,7 +1804,7 @@ class DispatcherTest < Minitest::Test
                     { type: "Page", id: "page-1", action: "move" }
                   )
 
-                  assert_scope_miss result
+                  assert_not_allowed result, :edit
                   refute called
                 end
               end
@@ -1904,7 +1918,7 @@ class DispatcherTest < Minitest::Test
       @grant.accessible_recordings = FakeRelation.new(recording)
       @grant.deny_authorization = true
       denied = dispatch("guard_page", { id: "page-1" })
-      assert_scope_miss denied
+      assert_not_allowed denied, :edit
       refute called
 
       @grant.deny_authorization = false
@@ -2064,6 +2078,13 @@ class DispatcherTest < Minitest::Test
     assert_equal SCOPE_MISS, result.dig(:content, 0, :text)
     refute_includes result.dig(:content, 0, :text), "does not match"
     refute_includes result.dig(:content, 0, :text), "authorized"
+  end
+
+  def assert_not_allowed(result, role)
+    assert result[:isError]
+    assert_equal RecordingStudioApi::AuthorizationError.for_required_role(role), result.dig(:content, 0, :text)
+    refute_includes result.dig(:content, 0, :text), "Unknown tool"
+    refute_includes result.dig(:content, 0, :text), "not found"
   end
 
   def dispatch_custom_show(handler, args, tool: "show")

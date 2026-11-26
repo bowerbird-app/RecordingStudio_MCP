@@ -299,7 +299,7 @@ class ToolSurfaceTest < Minitest::Test
     end
   end
 
-  def test_view_grant_hides_edit_tools_and_deleted_grant_hides_reads
+  def test_view_edit_and_admin_grants_list_the_same_included_tools
     with_isolated_api_configuration do
       register_ping_capability(required_role: :view)
       RecordingStudioApi.register_capability_action(
@@ -314,13 +314,14 @@ class ToolSurfaceTest < Minitest::Test
         capability_actions: %i[ping shout]
       )
 
+      expected = %w[list show create update delete capability_action describe read_skill]
       view = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(:view))
+      edit = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(:edit))
       admin = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(:admin))
-      deleted = RecordingStudioMcp::ToolSurface.for(access_grant: role_grant(nil))
 
-      assert_equal %w[list show capability_action describe read_skill], view.tool_names
-      assert_equal %w[list show create update delete capability_action describe read_skill], admin.tool_names
-      assert_equal %w[describe read_skill], deleted.tool_names
+      assert_equal expected, view.tool_names
+      assert_equal expected, edit.tool_names
+      assert_equal expected, admin.tool_names
     end
   end
 
