@@ -17,6 +17,19 @@ class RequestContextTest < Minitest::Test
     end
   end
 
+  def test_attach_tool_surface_is_readable_on_the_request
+    surface = Object.new
+    context = RecordingStudioMcp::RequestContext.new(
+      request_id: 1,
+      protocol_version: "2025-06-18",
+      access_grant: Object.new
+    )
+
+    assert_nil context.tool_surface
+    context.attach_tool_surface(surface)
+    assert_same surface, context.tool_surface
+  end
+
   def test_progress_echoes_token_without_jsonrpc_id
     sender = FakeSender.new
     context = RecordingStudioMcp::RequestContext.new(

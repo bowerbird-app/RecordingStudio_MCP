@@ -262,6 +262,93 @@ class CatalogMetricToolsTest < Minitest::Test
     Rails.logger = previous if previous
   end
 
+  def test_surface_collects_the_catalog_once_for_several_metric_tools
+    with_isolated_api_configuration do
+      with_recordable_metric_registry do
+        register_widgets(->(_context) { true })
+        register_gadgets
+        include_metric_server(tree: false)
+        RecordingStudioApi.register_endpoint(
+          "ping",
+          http_verb: :get,
+          path: "ping",
+          handler: ->(_context) { { ok: true } }
+        )
+        include_api_endpoints
+        grant = catalog_grant(allowed: true)
+        collects = 0
+        granted = 0
+        discoveries = 0
+        original_collect = RecordingStudioMcp::MetricTools.method(:collect_catalog)
+        original_discover = RecordingStudioMetrics::Api::DiscoveryHandler.method(:call)
+
+        RecordingStudioMcp::MetricTools.stub(:collect_catalog, lambda { |*args, **kwargs|
+          collects += 1
+          granted += 1 if args[1]
+          original_collect.call(*args, **kwargs)
+        }) do
+          RecordingStudioMetrics::Api::DiscoveryHandler.stub(:call, lambda { |*args, **kwargs|
+            discoveries += 1
+            original_discover.call(*args, **kwargs)
+          }) do
+            surface = RecordingStudioMcp::ToolSurface.for(access_grant: grant)
+
+            assert_operator surface.tool_names.count { |name| name.start_with?("widgets-", "gadgets-") }, :>=, 4
+            assert_includes surface.tool_names, "ping"
+          end
+        end
+
+        assert_equal 1, granted
+        assert_operator collects, :<=, 2
+        assert_equal 2, discoveries
+      end
+    end
+  end
+
+  def test_tools_call_reuses_one_tool_surface_and_one_catalog
+    with_widget_metrics do
+      grant = catalog_grant(allowed: true)
+      builds = 0
+      granted = 0
+      original_for = RecordingStudioMcp::ToolSurface.method(:for)
+      original_collect = RecordingStudioMcp::MetricTools.method(:collect_catalog)
+
+      RecordingStudioMcp::ToolSurface.stub(:for, lambda { |**kwargs|
+        builds += 1
+        original_for.call(**kwargs)
+      }) do
+        RecordingStudioMcp::MetricTools.stub(:collect_catalog, lambda { |*args, **kwargs|
+          granted += 1 if args[1]
+          original_collect.call(*args, **kwargs)
+        }) do
+          surface = RecordingStudioMcp::ToolSurface.for(access_grant: grant)
+          context = RecordingStudioMcp::RequestContext.new(
+            request_id: 1,
+            protocol_version: RecordingStudioMcp::Configuration::MODERN_PROTOCOL_VERSION,
+            access_grant: grant
+          )
+          context.attach_tool_surface(surface)
+          result = RecordingStudioMcp::Protocol.handle(
+            {
+              "jsonrpc" => "2.0",
+              "id" => 4,
+              "method" => "tools/call",
+              "params" => { "name" => "widgets-total", "arguments" => {} }
+            },
+            access_grant: grant,
+            request_context: context
+          )
+
+          refute result.body[:error]
+          refute_includes result.body.dig(:result, :content, 0, :text).to_s, "Unknown tool"
+        end
+      end
+
+      assert_equal 1, builds
+      assert_equal 1, granted
+    end
+  end
+
   private
 
   def with_widget_metrics
@@ -271,6 +358,18 @@ class CatalogMetricToolsTest < Minitest::Test
         include_metric_server(tree: false)
         yield
       end
+    end
+  end
+
+  def register_gadgets
+    RecordingStudioMetrics.register(
+      :gadgets,
+      model: RecordableMetricToolHelpers::Page,
+      blast_radius: :site,
+      api_authorize: ->(_context) { true }
+    ) do
+      count :total, title: "Gadgets", description: "How many gadgets.", expose: { api: [:public] }
+      count :open, title: "Open gadgets", description: "Open gadgets.", expose: { api: [:public] }
     end
   end
 

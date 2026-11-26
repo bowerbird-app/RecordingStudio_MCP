@@ -6,9 +6,15 @@ module RecordingStudioMcp
       private
 
       def live_metric(name)
+        live_metrics.find { |metric| metric.name.to_s == name }
+      end
+
+      def live_metrics
+        return @live_metrics if defined?(@live_metrics)
+
         recordable = MetricTools.collect_recordable(catalog)
         recordable = [] if recordable.empty? || !metric_view_allowed?
-        (recordable + MetricTools.collect_catalog(catalog, @access_grant)).find { |metric| metric.name.to_s == name }
+        @live_metrics = recordable + MetricTools.collect_catalog(catalog, @access_grant)
       end
 
       def metric_view_allowed?
