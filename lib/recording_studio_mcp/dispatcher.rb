@@ -29,7 +29,7 @@ module RecordingStudioMcp
       @access_grant = access_grant
       @idempotency_key = idempotency_key
       @request_context = request_context
-      @surface = ToolSurface.for(access_grant: access_grant)
+      @surface = request_context&.tool_surface || ToolSurface.for(access_grant: access_grant)
       @catalog = @surface.catalog
     end
 

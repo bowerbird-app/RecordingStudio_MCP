@@ -4,7 +4,7 @@ module RecordingStudioMcp
   class RequestContext
     PROTOCOL_WITH_PROGRESS_MESSAGE = %w[2025-06-18 2025-11-25 2026-07-28].freeze
 
-    attr_reader :request_id, :protocol_version, :access_grant, :progress_token, :connection
+    attr_reader :request_id, :protocol_version, :access_grant, :progress_token, :connection, :tool_surface
 
     def initialize(request_id:, protocol_version:, access_grant:, progress_token: nil, sender: nil)
       @request_id = request_id
@@ -21,6 +21,10 @@ module RecordingStudioMcp
 
     def attach_connection(connection)
       @connection = connection
+    end
+
+    def attach_tool_surface(surface)
+      @tool_surface = surface
     end
 
     def attach_sender(sender)

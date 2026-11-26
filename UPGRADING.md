@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.52.1
+
+Previous version is `0.52.0`. No MCP migration.
+
+Operations `tools/call` reuses one `ToolSurface` for read/write classification and dispatch, and collects the metric catalog once while building that surface.
+
 ## 0.52.0
 
 Previous version is `0.51.0`. No MCP migration. Tool names are unchanged.

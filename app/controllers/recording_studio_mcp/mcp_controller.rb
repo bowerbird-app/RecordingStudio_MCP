@@ -164,6 +164,7 @@ module RecordingStudioMcp
         progress_token: StreamDecision.progress_token(jsonrpc_params)
       )
       context.attach_connection(Connections.fetch(request.headers["Mcp-Session-Id"]))
+      context.attach_tool_surface(mcp_tool_surface) if jsonrpc_method == "tools/call"
       context
     end
 
@@ -284,7 +285,11 @@ module RecordingStudioMcp
       ].include?(method_name)
       return false unless method_name == "tools/call"
 
-      ToolSurface.for(access_grant: @access_grant).read_only_tool?(jsonrpc_tool_name)
+      mcp_tool_surface.read_only_tool?(jsonrpc_tool_name)
+    end
+
+    def mcp_tool_surface
+      @mcp_tool_surface ||= ToolSurface.for(access_grant: @access_grant)
     end
 
     def jsonrpc_method
