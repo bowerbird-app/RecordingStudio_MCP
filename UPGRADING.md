@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.52.2
+
+Previous version is `0.52.1`. No MCP migration.
+
+`tools/list` lists every tool the server includes, for every role on that server. Public MCP still does not list operations or admin tools. Authorization stays on `tools/call`. An over-role call returns the Recording Studio API authorization message (`This action needs a grant with the {role} role or higher.`). A missing or out-of-scope id stays `Resource was not found in this API scope`. `notifications/tools/list_changed` no longer keys off the grant role. Docs Overview matches initialize instructions.
+
 ## 0.52.1
 
 Previous version is `0.52.0`. No MCP migration.

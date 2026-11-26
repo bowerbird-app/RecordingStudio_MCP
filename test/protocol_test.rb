@@ -916,32 +916,44 @@ class ProtocolTest < Minitest::Test
     assert_equal "Page cannot be recorded under Folder", result.body.dig(:result, :content, 0, :text)
   end
 
-  def test_tools_list_and_call_follow_the_grant_role
+  def test_tools_list_is_the_same_for_view_edit_and_admin
     with_isolated_api_configuration do
       register_tree_type("Page", operations: %i[index show create update destroy])
       RecordingStudioApi.register_resource_handler("Page", :index, handler: ->(_) { { json: { records: [] } } })
       RecordingStudioApi.register_resource_handler("Page", :create, handler: ->(_) { { json: { id: "1" } } })
 
       view = role_grant(:view)
+      edit = role_grant(:edit)
       admin = role_grant(:admin)
-      deleted = role_grant(nil)
+      listed = %w[list show create update delete describe read_skill]
 
-      assert_equal %w[list show describe read_skill], tool_names_for(view)
-      assert_includes tool_names_for(admin), "create"
-      assert_equal %w[describe read_skill], tool_names_for(deleted)
+      assert_equal listed, tool_names_for(view)
+      assert_equal listed, tool_names_for(edit)
+      assert_equal listed, tool_names_for(admin)
       view_instructions = initialize_instructions(view)
-      assert_includes view_instructions,
-                      "Call describe for the type paragraph, included tools, skills via read_skill, relationships, " \
-                      "allowed parents, writable fields, and available actions."
-      refute_includes view_instructions, "before you create"
+      assert_includes view_instructions, "before you create."
       assert_includes initialize_instructions(admin), "before you create."
-
-      assert_equal true, call_tool(view, "create").body.dig(:result, :isError)
-      assert_includes call_tool(view, "create").body.dig(:result, :content, 0, :text), "Unknown tool"
       refute call_tool(view, "list").body.dig(:result, :isError)
       refute call_tool(admin, "create").body.dig(:result, :isError)
-      assert_includes call_tool(deleted, "list").body.dig(:result, :content, 0, :text), "Unknown tool"
-      refute call_tool(deleted, "describe", "Page").body.dig(:result, :isError)
+    end
+  end
+
+  def test_over_role_tools_call_returns_the_api_authorization_error
+    with_isolated_api_configuration do
+      register_tree_type("Page", operations: %i[index show update])
+      RecordingStudioApi.register_resource_handler("Page", :update, handler: ->(_) { { json: { id: "1" } } })
+      message = RecordingStudioApi::AuthorizationError.for_required_role(:edit)
+      RecordingStudioApi::HandlerGuard.stub(
+        :resource!,
+        ->(*) { raise RecordingStudioApi::AuthorizationError, message }
+      ) do
+        result = call_tool(role_grant(:view), "update")
+
+        assert_equal true, result.body.dig(:result, :isError)
+        assert_equal message, result.body.dig(:result, :content, 0, :text)
+        refute_includes result.body.dig(:result, :content, 0, :text), "Unknown tool"
+        refute_includes result.body.dig(:result, :content, 0, :text), "not found"
+      end
     end
   end
 
@@ -977,6 +989,8 @@ class ProtocolTest < Minitest::Test
   def call_tool(grant, name, type = "Page")
     arguments = { "type" => type }
     arguments["parent_id"] = "workspace-1" if name == "create"
+    arguments["id"] = "page-1" if name == "update"
+    arguments["title"] = "Hi" if name == "update"
     RecordingStudioMcp::Protocol.handle(
       {
         "jsonrpc" => "2.0",

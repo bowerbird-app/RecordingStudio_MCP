@@ -27,19 +27,13 @@ module RecordingStudioMcp
       request_context&.connection&.note_tools_list!(tool_list_fingerprint)
     end
 
-    # Named API, grant role, and catalog generation. A tool call does not build the tool list.
+    # Named API and catalog generation. A tool call does not build the tool list.
     def tool_list_fingerprint
       Digest::SHA256.hexdigest(tool_list_stamp)
     end
 
     def tool_list_stamp
-      [Catalog.api_from(access_grant), grant_access_level, catalog_generation].join(" ")
-    end
-
-    def grant_access_level
-      return unless access_grant.respond_to?(:role)
-
-      access_grant.role.to_s
+      [Catalog.api_from(access_grant), catalog_generation].join(" ")
     end
 
     def catalog_generation

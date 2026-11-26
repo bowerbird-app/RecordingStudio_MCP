@@ -72,8 +72,14 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     assert_nil shown["parent_id"]
     assert_equal @page.id, @seen.id
 
-    # A view grant is not offered update, so the handler never runs.
-    assert_handler_not_called(view, "update", { type: "Page", id: @page.id, title: "Hi" })
+    assert_tool_text(
+      view,
+      "update",
+      { type: "Page", id: @page.id, title: "Hi" },
+      RecordingStudioApi::AuthorizationError.for_required_role(:edit)
+    )
+    assert_tool_miss(view, "update", { type: "Page", id: "missing", title: "Hi" })
+    assert_tool_miss(view, "update", { type: "Page", id: @foreign.id, title: "Hi" })
     @called = false
     updated = call_tool(edit, "update", type: "Page", id: @page.id, title: "Hi")
     assert_equal @page.id, updated["id"]
@@ -87,9 +93,15 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     view = view_token
     edit = edit_token
 
-    [nil, "", @foreign.id, @trashed.id, @page.id].each do |id|
+    [nil, "", @foreign.id, @trashed.id].each do |id|
       assert_tool_miss(view, "capability_action", capability_arguments(id))
     end
+    assert_tool_text(
+      view,
+      "capability_action",
+      capability_arguments(@page.id),
+      RecordingStudioApi::AuthorizationError.for_required_role(:edit)
+    )
     assert_tool_text(
       view,
       "capability_action",
@@ -125,7 +137,12 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
     edit = edit_token
     invalid = { type: "Page", id: @page.id, action: "guard_edit", params: {} }
 
-    assert_tool_miss(view, "capability_action", invalid)
+    assert_tool_text(
+      view,
+      "capability_action",
+      invalid,
+      RecordingStudioApi::AuthorizationError.for_required_role(:edit)
+    )
     assert_equal 0, calls[0]
 
     assert_tool_text(edit, "capability_action", invalid, "Invalid input for capability_action: note is required")
@@ -263,7 +280,12 @@ class McpHandlerGuardTest < ActionDispatch::IntegrationTest
       assert_tool_miss(view, "guard_page", endpoint_arguments(id))
       assert_tool_miss(edit, "guard_page_edit", endpoint_arguments(id))
     end
-    assert_tool_miss(view, "guard_page_edit", id: @page.id)
+    assert_tool_text(
+      view,
+      "guard_page_edit",
+      { id: @page.id },
+      RecordingStudioApi::AuthorizationError.for_required_role(:edit)
+    )
     refute @called
 
     shown = call_tool(view, "guard_page", id: @page.id)

@@ -3,20 +3,12 @@
 module RecordingStudioMcp
   class Catalog
     module Visibility
-      OPERATION_ROLES = {
-        index: :view,
-        show: :view,
-        create: :edit,
-        update: :edit,
-        destroy: :edit
-      }.freeze
-
       def registered_operations
         @registered_operations ||= type_names.flat_map { |type| operations_for(type) }.uniq.freeze
       end
 
       def visible_operations
-        registered_operations.select { |operation| role_allows?(OPERATION_ROLES.fetch(operation)) }
+        registered_operations
       end
 
       def capability_actions?
@@ -25,8 +17,6 @@ module RecordingStudioMcp
 
       def type_names_for(operation)
         name = operation.to_sym
-        return [] unless role_allows?(OPERATION_ROLES.fetch(name))
-
         type_names.select { |type| operations_for(type).include?(name) }
       end
 
@@ -68,24 +58,7 @@ module RecordingStudioMcp
       end
 
       def visible_capability_names(type)
-        enabled_action_registrations(type).map { |action| action.name.to_s }.select { |name| action_visible?(name) }
-      end
-
-      def action_visible?(name)
-        return true unless grant_reports_role?
-
-        action = RecordingStudioApi.capability_action(name, api: api)
-        role_allows?(action&.required_role || :edit)
-      end
-
-      def grant_reports_role?
-        access_grant.respond_to?(:role)
-      end
-
-      def role_allows?(minimum_role)
-        return true unless grant_reports_role?
-
-        RecordingStudio::AccessRoles.satisfies?(role: access_grant.role, minimum_role: minimum_role)
+        enabled_action_registrations(type).map { |action| action.name.to_s }
       end
     end
   end

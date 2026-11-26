@@ -14,6 +14,6 @@ Call MCP with `Authorization: Bearer <token>`. The same Bearer works for that na
 
 Staff register the client in Oauth. There is no Dynamic Client Registration in the gem. The dummy app can turn self-registration on for Inspector.
 
-A view grant sees read tools. Create, update, and delete need edit. `describe` stays when the API has types.
+Every role on that server sees the same `tools/list`. Create, update, and delete still need edit on `tools/call`. `describe` stays when the API has types.
 
 Do not commit tokens.

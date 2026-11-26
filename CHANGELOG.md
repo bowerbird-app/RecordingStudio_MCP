@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.52.2] - 2026-11-26
+
+### Changed
+- `tools/list` includes every tool the server includes, for every grant role on that server. `include_tools` and the named API still set the server's surface. Authorization stays on `tools/call`.
+- An over-role `tools/call` returns the Recording Studio API authorization message. A missing or out-of-scope id stays `Resource was not found in this API scope`.
+- `notifications/tools/list_changed` fingerprints the named API and catalog generation. It no longer includes the grant role.
+- Docs Overview is the initialize text. It no longer adds a view-only shorter-text line.
+
+### Upgrade notes
+- Bump to `0.52.2`. Previous version is `0.52.1`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.52.1] - 2026-11-26
 
 ### Fixed
@@ -1443,7 +1454,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.1...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.2...HEAD
+[0.52.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.1...v0.52.2
 [0.52.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.0...v0.52.1
 [0.52.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.50.1...v0.51.0

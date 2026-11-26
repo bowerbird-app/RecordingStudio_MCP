@@ -113,11 +113,8 @@ class McpDocsTest < ActionDispatch::IntegrationTest
     refute_empty description
     assert_includes description, "## Sign in"
     assert_includes description, "## Walk your records"
-    assert_includes description, "A view-only connection gets the same text minus the Make changes part."
-    assert_equal(
-      "#{spec.dig('x-mcp', 'instructions')}\n\nA view-only connection gets the same text minus the Make changes part.",
-      description
-    )
+    refute_includes description, "view-only connection"
+    assert_equal spec.dig("x-mcp", "instructions"), description
     tools = spec.dig("x-mcp", "tools").index_by { |tool| tool["name"] }
     assert_equal ["Overview"], tools.fetch("list")["tags"]
     assert_equal ["Overview"], tools.fetch("ping")["tags"]
