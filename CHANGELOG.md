@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.52.3] - 2026-11-27
+
+### Changed
+- Timeseries `start` / `start_at` and `end` / `end_at` argument descriptions name the window instead of saying `Same as start.` or `Same as end.`
+
+### Upgrade notes
+- Bump to `0.52.3`. Previous version is `0.52.2`. No MCP migration. See [UPGRADING.md](UPGRADING.md).
+
 ## [0.52.2] - 2026-11-26
 
 ### Changed
@@ -1454,7 +1462,8 @@ Staff/ops MCP clients authorize on the operations named API. Public MCP authoriz
 ### Upgrade notes
 - First release. Mount after API and Oauth. Register the MCP app as an OauthClient. Do not add a second authorization server.
 
-[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.2...HEAD
+[Unreleased]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.3...HEAD
+[0.52.3]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.2...v0.52.3
 [0.52.2]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.1...v0.52.2
 [0.52.1]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.52.0...v0.52.1
 [0.52.0]: https://github.com/bowerbird-app/RecordingStudio_MCP/compare/v0.51.0...v0.52.0

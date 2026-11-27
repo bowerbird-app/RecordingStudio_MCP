@@ -3,6 +3,12 @@
 module RecordingStudioMcp
   module MetricTools
     class ArgumentPlan
+      START_WINDOW =
+        "Inclusive start of the reporting window, as an ISO-8601 date-time. Same meaning as from."
+      END_WINDOW =
+        "Exclusive end of the reporting window, as an ISO-8601 date-time. Same meaning as to."
+      START_PRIMARIES = %w[from start start_at].freeze
+
       attr_reader :properties, :required, :filter_attributes, :passthrough
 
       def self.from(parameters)
@@ -84,9 +90,17 @@ module RecordingStudioMcp
           @properties[alias_name.to_sym] = {
             type: "string",
             format: "date-time",
-            description: "Same as #{period_primary(catalog_name)}."
+            description: period_alias_description(catalog_name)
           }
           @passthrough << alias_name
+        end
+
+        def period_alias_description(catalog_name)
+          primary = period_primary(catalog_name)
+          names = [primary, catalog_name.to_s]
+          return ArgumentPlan::START_WINDOW if names.intersect?(ArgumentPlan::START_PRIMARIES)
+
+          ArgumentPlan::END_WINDOW
         end
 
         def period_primary(name)

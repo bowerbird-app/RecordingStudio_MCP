@@ -225,8 +225,10 @@ class McpMetricsApiTest < ActionDispatch::IntegrationTest
 
     over_time = tools.fetch("mcp_calls-over_time").fetch("inputSchema")
     assert_equal false, over_time.fetch("additionalProperties")
-    assert_equal "Same as start.", over_time.dig("properties", "start", "description")
-    assert_equal "Same as end.", over_time.dig("properties", "end", "description")
+    start_window = RecordingStudioMcp::MetricTools::ArgumentPlan::START_WINDOW
+    end_window = RecordingStudioMcp::MetricTools::ArgumentPlan::END_WINDOW
+    assert_equal start_window, over_time.dig("properties", "start", "description")
+    assert_equal end_window, over_time.dig("properties", "end", "description")
     assert_equal %w[day week month year], over_time.dig("properties", "interval", "enum")
     refute over_time.fetch("properties").key?("group_by")
 

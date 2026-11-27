@@ -395,6 +395,8 @@ class RecordableMetricToolsTest < Minitest::Test
   end
 
   def window_properties
+    start_window = RecordingStudioMcp::MetricTools::ArgumentPlan::START_WINDOW
+    end_window = RecordingStudioMcp::MetricTools::ArgumentPlan::END_WINDOW
     {
       from: {
         type: "string",
@@ -402,16 +404,16 @@ class RecordableMetricToolsTest < Minitest::Test
         description: "Inclusive period start, as an ISO-8601 date-time. start must match from when both are sent. " \
                      "start_at is the fallback."
       },
-      start: { type: "string", format: "date-time", description: "Same as start." },
-      start_at: { type: "string", format: "date-time", description: "Same as start." },
+      start: { type: "string", format: "date-time", description: start_window },
+      start_at: { type: "string", format: "date-time", description: start_window },
       to: {
         type: "string",
         format: "date-time",
         description: "Exclusive period end, as an ISO-8601 date-time. end must match to when both are sent. " \
                      "end_at is the fallback."
       },
-      end: { type: "string", format: "date-time", description: "Same as end." },
-      end_at: { type: "string", format: "date-time", description: "Same as end." },
+      end: { type: "string", format: "date-time", description: end_window },
+      end_at: { type: "string", format: "date-time", description: end_window },
       interval: { type: "string", description: "Time-series bucket size.", enum: %w[day week] },
       group_by: {
         type: "string",

@@ -21,10 +21,12 @@ class CatalogMetricToolsTest < Minitest::Test
       assert_equal false, total.dig(:inputSchema, :properties, :filters, :additionalProperties)
       assert_equal %w[closed open], total.dig(:inputSchema, :properties, :filters, :properties, :status, :enum).sort
       refute total.dig(:inputSchema, :properties).key?(:from)
-      assert_equal "Same as start.", series.dig(:inputSchema, :properties, :start, :description)
-      assert_equal "Same as start.", series.dig(:inputSchema, :properties, :start_at, :description)
-      assert_equal "Same as end.", series.dig(:inputSchema, :properties, :end, :description)
-      assert_equal "Same as end.", series.dig(:inputSchema, :properties, :end_at, :description)
+      start_window = RecordingStudioMcp::MetricTools::ArgumentPlan::START_WINDOW
+      end_window = RecordingStudioMcp::MetricTools::ArgumentPlan::END_WINDOW
+      assert_equal start_window, series.dig(:inputSchema, :properties, :start, :description)
+      assert_equal start_window, series.dig(:inputSchema, :properties, :start_at, :description)
+      assert_equal end_window, series.dig(:inputSchema, :properties, :end, :description)
+      assert_equal end_window, series.dig(:inputSchema, :properties, :end_at, :description)
       assert_equal %w[day week], series.dig(:inputSchema, :properties, :interval, :enum)
       assert_equal ["status"], series.dig(:inputSchema, :properties, :group_by, :enum)
       assert_equal false, series.dig(:inputSchema, :additionalProperties)
