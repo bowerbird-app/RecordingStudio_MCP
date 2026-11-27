@@ -4,7 +4,7 @@ require "json"
 require "test_helper"
 
 class RecordingStudioMcpTest < Minitest::Test
-  def test_version_is_0_52_2
+  def test_version_is_0_52_3
     assert_equal "0.52.3", ::RecordingStudioMcp::VERSION
   end
 
