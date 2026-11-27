@@ -943,17 +943,26 @@ class ProtocolTest < Minitest::Test
       register_tree_type("Page", operations: %i[index show update])
       RecordingStudioApi.register_resource_handler("Page", :update, handler: ->(_) { { json: { id: "1" } } })
       message = RecordingStudioApi::AuthorizationError.for_required_role(:edit)
-      RecordingStudioApi::HandlerGuard.stub(
-        :resource!,
-        ->(*) { raise RecordingStudioApi::AuthorizationError, message }
-      ) do
-        result = call_tool(role_grant(:view), "update")
-
-        assert_equal true, result.body.dig(:result, :isError)
-        assert_equal message, result.body.dig(:result, :content, 0, :text)
-        refute_includes result.body.dig(:result, :content, 0, :text), "Unknown tool"
-        refute_includes result.body.dig(:result, :content, 0, :text), "not found"
+      grant = role_grant(:view)
+      recording = Struct.new(:id, :recordable_type).new("page-1", "Page")
+      relation = Struct.new(:recording) do
+        def find_by(id:)
+          recording if recording&.id.to_s == id.to_s
+        end
+      end.new(recording)
+      grant.define_singleton_method(:accessible_recordings) { |**| relation }
+      grant.define_singleton_method(:scope_recording) { recording }
+      grant.define_singleton_method(:authorize!) do |recording:, role:, include_trashed: false|
+        _ = [recording, include_trashed]
+        raise RecordingStudioApi::AuthorizationError, RecordingStudioApi::AuthorizationError.for_required_role(role)
       end
+
+      result = call_tool(grant, "update")
+
+      assert_equal true, result.body.dig(:result, :isError)
+      assert_equal message, result.body.dig(:result, :content, 0, :text)
+      refute_includes result.body.dig(:result, :content, 0, :text), "Unknown tool"
+      refute_includes result.body.dig(:result, :content, 0, :text), "not found"
     end
   end
 

@@ -313,6 +313,22 @@ class McpEndpointTest < ActionDispatch::IntegrationTest
     assert_includes response.headers["WWW-Authenticate"], 'error="invalid_token"'
   end
 
+  test "a revoked oauth token calling a tool is refused with 401" do
+    token = issue_delegated_token
+    authorization = RecordingStudioOauth::OauthAuthorization.find_by!(
+      oauth_client: @oauth_client,
+      manager_actor: @user
+    )
+    authorization.access_tokens.find_each(&:revoke!)
+
+    post "/recording_studio_mcp",
+         params: rpc("tools/call", name: "list", arguments: { type: "Workspace" }).to_json,
+         headers: json_headers.merge("Authorization" => "Bearer #{token}")
+
+    assert_response :unauthorized
+    assert_includes response.headers["WWW-Authenticate"], 'error="invalid_token"'
+  end
+
   test "list does not include a workspace outside the grant" do
     token = issue_delegated_token
     outsider = Workspace.create!(name: "Secret #{SecureRandom.hex(4)}")

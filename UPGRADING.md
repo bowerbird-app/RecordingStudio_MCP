@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.52.4
+
+Previous version is `0.52.3`. No MCP migration.
+
+Tests-only. A revoked OAuth token on `tools/call` is HTTP 401. Over-role `tools/call` is still the Recording Studio API authorization message.
+
 ## 0.52.3
 
 Previous version is `0.52.2`. No MCP migration.
