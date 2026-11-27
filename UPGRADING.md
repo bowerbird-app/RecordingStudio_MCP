@@ -1,5 +1,11 @@
 # Upgrading Recording Studio MCP
 
+## 0.52.3
+
+Previous version is `0.52.2`. No MCP migration.
+
+Timeseries tools still accept `start` / `start_at` as `from` and `end` / `end_at` as `to`. Those alias fields now describe the window instead of repeating `Same as start.` / `Same as end.`
+
 ## 0.52.2
 
 Previous version is `0.52.1`. No MCP migration.
